@@ -4,8 +4,48 @@
 // is to *guide* a human player through a bot's turn, not to fully simulate
 // Anachrony's rules. Detailed rules live inside each BotModule (see ./bots).
 
-/** The four Anachrony resources tracked on the resource wheels. */
-export type Resource = 'water' | 'gold' | 'titanium' | 'uranium';
+/** The five Anachrony resources (Neutronium is the "premium" resource). */
+export type Resource = 'water' | 'gold' | 'titanium' | 'uranium' | 'neutronium';
+
+export const RESOURCES: Resource[] = [
+  'water',
+  'gold',
+  'titanium',
+  'uranium',
+  'neutronium',
+];
+
+/** The four Anachrony worker types. */
+export type Worker = 'genius' | 'administrator' | 'engineer' | 'scientist';
+
+export const WORKERS: Worker[] = [
+  'genius',
+  'administrator',
+  'engineer',
+  'scientist',
+];
+
+/** The four primary building types the Chronobot can Construct. */
+export type BuildingType = 'factory' | 'lab' | 'powerplant' | 'support';
+
+export const BUILDING_TYPES: BuildingType[] = [
+  'factory',
+  'lab',
+  'powerplant',
+  'support',
+];
+
+/**
+ * Breakthrough "shapes." Anachrony uses three geometric shapes; a "complete
+ * shape set" (one of each) is worth bonus VP to the solo bots at game end.
+ */
+export type BreakthroughShape = 'circle' | 'triangle' | 'square';
+
+export const BREAKTHROUGH_SHAPES: BreakthroughShape[] = [
+  'circle',
+  'triangle',
+  'square',
+];
 
 /** Which solo opponent ("bot") is driving the game. */
 export type BotModeId =
@@ -26,8 +66,10 @@ export type ExpansionId =
 export interface GameConfig {
   bot: BotModeId;
   expansions: ExpansionId[];
-  /** Difficulty / level selector; meaning is defined per bot module. */
-  difficulty?: string;
+  /** Difficulty options selected at setup; meaning is defined per bot module. */
+  difficulty: string[];
+  /** Which side of the player board the human chose (cosmetic to the bot). */
+  playerBoardSide?: 'A' | 'B';
 }
 
 /** A resource bundle, e.g. gains or costs. */

@@ -1,0 +1,205 @@
+import { describe, expect, it } from 'vitest';
+import { DEFAULT_CONFIG, emptyChronobotState, type GameState } from '../state';
+import {
+  actionRoundsCanEnd,
+  botPassDecision,
+  chooseBreakthroughDiscard,
+  chooseMineResources,
+  chooseRecruitWorker,
+  chooseRemoveAnomalyDiscards,
+  resolveParadox,
+  resolvePowerUp,
+  resolveWarp,
+  scoreChronobot,
+  setup,
+  takeActionTurn,
+} from './chronobot';
+
+function gameWith(mut: (s: GameState) => void): GameState {
+  const s = setup({ ...DEFAULT_CONFIG, bot: 'chronobot' });
+  mut(s);
+  return s;
+}
+
+describe('Mine priority', () => {
+  it('prioritises resources it lacks', () => {
+    const bot = emptyChronobotState();
+    bot.resources.gold = 2; // has gold
+    // wants the two it lacks by priority: uranium > titanium (gold excluded as owned)
+    expect(chooseMineResources(bot)).toEqual(['uranium', 'titanium']);
+  });
+
+  it('breaks ties by Uranium > Gold > Titanium when it has none', () => {
+    const bot = emptyChronobotState();
+    expect(chooseMineResources(bot)).toEqual(['uranium', 'gold']);
+  });
+});
+
+describe('Recruit priority', () => {
+  it('targets the highest-priority worker it lacks', () => {
+    const bot = emptyChronobotState();
+    bot.workers.genius = 1;
+    expect(chooseRecruitWorker(bot)).toBe('administrator');
+  });
+  it('returns null when it has all four', () => {
+    const bot = emptyChronobotState();
+    bot.workers = { genius: 1, administrator: 1, engineer: 1, scientist: 1 };
+    expect(chooseRecruitWorker(bot)).toBeNull();
+  });
+});
+
+describe('Remove Anomaly discards', () => {
+  it('spends the resources it has most of, tie to Titanium first', () => {
+    const bot = emptyChronobotState();
+    bot.resources = { water: 0, gold: 2, titanium: 2, uranium: 0, neutronium: 0 };
+    // Step-wise "most of": tie gold(2)/titanium(2) -> titanium (priority); then
+    // gold(2) > titanium(1) -> gold.
+    expect(chooseRemoveAnomalyDiscards(bot)).toEqual(['titanium', 'gold']);
+
+    const single = emptyChronobotState();
+    single.resources = { water: 0, gold: 0, titanium: 3, uranium: 0, neutronium: 0 };
+    // only titanium available -> two titanium
+    expect(chooseRemoveAnomalyDiscards(single)).toEqual(['titanium', 'titanium']);
+  });
+  it('treats one Neutronium as two cubes', () => {
+    const bot = emptyChronobotState();
+    bot.resources.neutronium = 1;
+    expect(chooseRemoveAnomalyDiscards(bot)).toEqual(['neutronium']);
+  });
+  it('returns null when it cannot spend two cube-value', () => {
+    const bot = emptyChronobotState();
+    bot.resources.gold = 1;
+    expect(chooseRemoveAnomalyDiscards(bot)).toBeNull();
+  });
+});
+
+describe('Breakthrough discard', () => {
+  it('discards the shape it has most of', () => {
+    const bot = emptyChronobotState();
+    bot.breakthroughs = { circle: 1, triangle: 3, square: 2 };
+    expect(chooseBreakthroughDiscard(bot)).toBe('triangle');
+  });
+});
+
+describe('Power Up', () => {
+  it('powers up 6 pre-Impact and 4 post-Impact', () => {
+    const pre = resolvePowerUp(gameWith((s) => (s.phase = 'powerup')));
+    expect(pre.chronobot.exosuitsAvailable).toBe(6);
+    const post = resolvePowerUp(
+      gameWith((s) => {
+        s.phase = 'powerup';
+        s.impact = true;
+      }),
+    );
+    expect(post.chronobot.exosuitsAvailable).toBe(4);
+  });
+});
+
+describe('Warp', () => {
+  it('adds warp tiles equal to the paradox roll', () => {
+    const s = resolveWarp(gameWith((g) => (g.phase = 'warp')), 3);
+    expect(s.chronobot.warpTilesOnTimeline).toBe(3);
+    expect(s.phase).toBe('actions');
+  });
+});
+
+describe('Paradox', () => {
+  it('gains an anomaly and removes a warp tile', () => {
+    const s = resolveParadox(
+      gameWith((g) => {
+        g.phase = 'paradox';
+        g.chronobot.warpTilesOnTimeline = 2;
+      }),
+      true,
+    );
+    expect(s.chronobot.anomalies).toBe(1);
+    expect(s.chronobot.warpTilesOnTimeline).toBe(1);
+  });
+  it('does nothing at 3 anomalies', () => {
+    const s = resolveParadox(
+      gameWith((g) => {
+        g.phase = 'paradox';
+        g.chronobot.anomalies = 3;
+        g.chronobot.warpTilesOnTimeline = 2;
+      }),
+      true,
+    );
+    expect(s.chronobot.anomalies).toBe(3);
+    expect(s.chronobot.warpTilesOnTimeline).toBe(2);
+  });
+});
+
+describe('Action turns', () => {
+  it('Reboot does nothing and costs no exosuit', () => {
+    const base = resolvePowerUp(gameWith((g) => (g.phase = 'powerup')));
+    const { state } = takeActionTurn(base, { dieRoll: 1, actionId: 'reboot' });
+    expect(state.chronobot.exosuitsAvailable).toBe(6);
+    expect(state.chronobot.actionsThisEra).toBe(1);
+    expect(state.chronobot.vp).toBe(0);
+  });
+
+  it('Recruit places an exosuit and grants +1 VP', () => {
+    const base = resolvePowerUp(gameWith((g) => (g.phase = 'powerup')));
+    const { state } = takeActionTurn(base, { dieRoll: 3, actionId: 'recruit' });
+    expect(state.chronobot.exosuitsAvailable).toBe(5);
+    expect(state.chronobot.vp).toBe(1);
+    expect(state.chronobot.workers.genius).toBe(1);
+  });
+
+  it('Time Travel fails (no exosuit) when no warp tiles remain', () => {
+    const base = resolvePowerUp(gameWith((g) => (g.phase = 'powerup')));
+    const { state } = takeActionTurn(base, { dieRoll: 4, actionId: 'time-travel' });
+    expect(state.chronobot.vp).toBe(1);
+    expect(state.chronobot.exosuitsAvailable).toBe(6); // no exosuit placed
+  });
+
+  it('Construct fails (still places exosuit) at 3 of a type', () => {
+    const base = resolvePowerUp(
+      gameWith((g) => {
+        g.phase = 'powerup';
+        g.chronobot.buildings.lab = 3;
+      }),
+    );
+    const { state } = takeActionTurn(base, { dieRoll: 2, actionId: 'construct-lab' });
+    expect(state.chronobot.vp).toBe(1);
+    expect(state.chronobot.exosuitsAvailable).toBe(5);
+    expect(state.chronobot.buildings.lab).toBe(3);
+  });
+});
+
+describe('Pass logic', () => {
+  it('bot keeps going while it has exosuits', () => {
+    const s = resolvePowerUp(gameWith((g) => (g.phase = 'powerup')));
+    expect(botPassDecision(s)).toBe('continue');
+  });
+  it('bot must continue to reach 3 actions when out of exosuits', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.chronobot.exosuitsAvailable = 0;
+      g.chronobot.actionsThisEra = 1;
+    });
+    expect(botPassDecision(s)).toBe('must-continue-min3');
+  });
+  it('action rounds can end only when both passed and >=3 actions', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.passed = true;
+      g.chronobot.actionsThisEra = 3;
+    });
+    expect(actionRoundsCanEnd(s)).toBe(true);
+  });
+});
+
+describe('Scoring', () => {
+  it('scores 1 VP per breakthrough plus 2 per complete shape set', () => {
+    const bot = emptyChronobotState();
+    bot.vp = 10;
+    bot.breakthroughs = { circle: 2, triangle: 2, square: 1 };
+    // 5 breakthroughs = 5, complete sets = min(2,2,1)=1 -> +2
+    const score = scoreChronobot(bot);
+    expect(score.breakthroughVP).toBe(5);
+    expect(score.shapeSetBonus).toBe(2);
+    expect(score.total).toBe(17);
+  });
+});
