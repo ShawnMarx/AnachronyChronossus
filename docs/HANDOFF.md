@@ -36,8 +36,9 @@ this. Longer history is in `docs/BUILD-LOG.md`.
 
 ## Gotchas / decisions locked
 
-- Chronobot = the **PnP** version (6 tokens 1–6 + standard D6), **not** the 4-Command-
-  token "Solo Opponents" version. Board art = `public/assets/solo/board-chronobot.jpg`.
+- Chronobot = the **"Solo Opponents" rulebook** version (4 Command tokens 2–5 + the AI
+  die / Flux die), **not** the older PnP (6 tokens + D6). Board art =
+  `public/assets/solo/board-chronobot.jpg` (the purple rulebook board).
 - Overlay positions are **% of the board image** (1500×1110); `.board-wrap` preserves
   that aspect so % maps 1:1. Don't switch to pixel positioning.
 - `pw-validate.mjs` hardcodes the cached Chromium path (`chromium_headless_shell-1217`);

@@ -120,8 +120,8 @@ function setupInstructions(): Instruction[] {
     },
     {
       id: 'setup-commands',
-      text: 'Place the 6 Chronobot tokens (numbered 1–6) on their starting spaces on the Chronobot board.',
-      detail: 'The Chronobot does not use a Focus marker. Its die is a standard D6.',
+      text: 'Place the 4 Command tokens on the 4 marked positions on the Chronobot board.',
+      detail: 'The Chronobot does not use a Focus marker. Its die is the AI die (the Flux die reused).',
     },
     {
       id: 'setup-banner',
@@ -273,7 +273,7 @@ export function takeActionTurn(
 
   instr.push({
     id: `turn-die-${bot.totalActions}`,
-    text: `Die shows ${input.dieRoll} → activate token #${input.dieRoll}: the Chronobot performs the "${def.label}" action on that token's space, then advances the token along the board arrows.`,
+    text: `AI die shows ${input.dieRoll} → the Command token with that number performs the "${def.label}" action on its space, then advances along its colored arrow.`,
     detail: def.summary,
   });
 

@@ -9,10 +9,12 @@ automated opponent. It runs only the *bot's* turns and tells the player where to
 move physical pieces; it does **not** simulate the human's game. The app performs
 the bot's randomness (dice, bag draws) so the player doesn't.
 
-- **Chronobot** — base-game automa. **Primary focus right now.** The player owns the
-  original **Print-and-Play** Chronobot: 6 tokens numbered 1–6 + a standard D6 on a
-  serpentine command track. (There is a newer "Solo Opponents" Chronobot with 4
-  Command tokens + Flux die — *not* what this app targets.)
+- **Chronobot** — base-game automa. **Primary focus right now.** We target the
+  Chronobot as described in the **"Chronobot & Chronossus Solo Opponents" rulebook**:
+  **4 Command tokens** (numbered 2–5) + the **AI die** (the Flux die reused), on the
+  shared Solo board (Chronobot side). Verbatim rules come from that rulebook (pp. 4–6).
+  (There is also an older Print-and-Play Chronobot with 6 tokens + a D6 — *not* what
+  this app targets.)
 - **Chronossus** — the more complex automa; **later** (registered but not implemented).
 
 Unofficial fan aid; requires owning the physical game. Roadmap: Base Chronobot →
@@ -97,9 +99,10 @@ new positions; use this script to verify.
 ## Reference materials (outside the repo)
 
 `C:/Users/shawn/OneDrive/Program Development/Anachrony Chronossus/reference/`
-- `Rules/The-Chronobot-PnP.pdf` — the definitive Chronobot components (board art here).
-- `Rules/Anachrony-Chronobot-and-Chronossus-Solo-Opponents…pdf` — solo rules (Chronobot
-  rules pp. 4–6 are transcribed verbatim into `chronobotActions.ts`).
+- `Rules/Anachrony-Chronobot-and-Chronossus-Solo-Opponents…pdf` — **the** rulebook we
+  target (Chronobot rules pp. 4–6 transcribed verbatim into `chronobotActions.ts`).
+- `Rules/The-Chronobot-PnP.pdf` — older PnP Chronobot (different: 6 tokens + D6). Not
+  our target, but a component reference.
 - Other rulebooks (Essential, Fractures, Future-Imperfect, Classic).
 - `TTS Mod/*.ttsmod` — a ZIP; art extracted from `Mods/Images/` (hash-named). Read
   PDFs/art with **PyMuPDF** (`import fitz`) — native Python, use `C:/…` paths.

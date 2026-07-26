@@ -324,9 +324,10 @@ function ActionRoundsPanel({ game }: { game: Game }) {
       </div>
 
       <p className="explain">
-        On the Chronobot’s turn, roll its D6, then tap the action shown on token
-        #N’s current space (check the board). The app makes the decision and tells
-        you exactly what to do, then you advance that token along the arrows.
+        On the Chronobot’s turn, roll the AI die, then tap the action shown on the
+        matching Command token’s current space (check the board). The app makes the
+        decision and tells you exactly what to do, then you advance that token along
+        its colored arrow.
       </p>
 
       <div className="die-row">
@@ -335,11 +336,11 @@ function ActionRoundsPanel({ game }: { game: Game }) {
           onClick={() => setDie(rollAiDie(AI_DIE_FACES))}
           disabled={!Chronobot.botHasExosuit(bot) && decision !== 'time-travel-then-pass'}
         >
-          🎲 Roll the Chronobot’s D6
+          🎲 Roll the AI die for the Chronobot
         </button>
         {die !== null && (
           <span className="die-result">
-            Rolled <strong>{die}</strong> → activate token #{die}
+            Rolled <strong>{die}</strong> → act with Command token {die}
           </span>
         )}
       </div>
