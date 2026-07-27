@@ -60,6 +60,27 @@ type PendingStep =
   | 'reboot'
   | 'timeTravel';
 
+/**
+ * A serializable snapshot of everything needed to restore a moment: the engine
+ * state, the Command-token positions, and the die/token shown for the turn that
+ * produced this state. Undo, History, and (later) Persistence all build on it.
+ */
+interface Snapshot {
+  state: GameState;
+  tokens: CommandTokensState;
+  botDie: number | null;
+  activeToken: CommandToken | null;
+}
+
+/** One entry on the undo/history stack: the pre-commit snapshot + what happened. */
+interface UndoEntry {
+  snap: Snapshot;
+  label: string;
+}
+
+/** Cap the undo/history depth so persisted state stays bounded. */
+const UNDO_CAP = 50;
+
 /** Describe a Resource-cube discard list, e.g. "2 titanium + 1 gold". */
 function describeCubes(cubes: Resource[]): string {
   const order: Resource[] = ['neutronium', 'titanium', 'gold', 'uranium', 'water'];
@@ -212,6 +233,8 @@ export default function BoardExplorer() {
   );
   const [botDie, setBotDie] = useState<number | null>(null);
   const [activeToken, setActiveToken] = useState<CommandToken | null>(null);
+  // Undo/history stack: each entry is the snapshot *before* a committed step.
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
   // Refs mirror the die/token for the synchronous immediate-resolve path
   // (state updates are async, so `resolve` reads these instead).
   const botDieRef = useRef<number | null>(null);
@@ -283,9 +306,52 @@ export default function BoardExplorer() {
     passTimeTravelRef.current = false;
   };
 
+  // Commit a state change: push the current (pre-commit) snapshot + a history
+  // label onto the undo stack, then apply the next state + tokens. Every
+  // committed turn routes through here so Undo/History have one source of truth.
+  const commit = (
+    next: GameState,
+    nextTokens: CommandTokensState,
+    label: string,
+  ) => {
+    const pre: Snapshot = { state, tokens, botDie, activeToken };
+    setUndoStack((s) => [...s, { snap: pre, label }].slice(-UNDO_CAP));
+    setState(next);
+    setTokens(nextTokens);
+  };
+
+  /** One-line history label for a resolved Action turn. */
+  const turnLabel = (
+    instructions: Instruction[],
+    die: number | null,
+    actionLabel: string,
+  ) => {
+    const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
+    const diePart = die != null ? `🎲${die} · ` : '';
+    const vpPart = vp ? ` · +${vp} VP` : '';
+    return `Era ${state.era} · ${diePart}${actionLabel}${vpPart}`;
+  };
+
+  // Undo the last committed step: restore its snapshot wholesale, including the
+  // die that was shown (so re-taking the turn repeats the same roll).
+  const undo = () => {
+    if (undoStack.length === 0) return;
+    const { snap } = undoStack[undoStack.length - 1];
+    closePanel(); // clears panel + die/token/refs first…
+    setState(snap.state);
+    setTokens(snap.tokens);
+    setBotDie(snap.botDie); // …then restore the die/token from the snapshot
+    setActiveToken(snap.activeToken);
+    botDieRef.current = snap.botDie;
+    activeTokenRef.current = null;
+    setPassMsg(null);
+    setUndoStack((s) => s.slice(0, -1));
+  };
+
   const reset = () => {
     setState(initDebugState());
     setTokens(Chronobot.initialCommandTokens());
+    setUndoStack([]);
     setShowBreakthroughs(false);
     setPassMsg(null);
     closePanel();
@@ -331,14 +397,14 @@ export default function BoardExplorer() {
         onTileClick(h);
       } else {
         const { state: next, instructions } = Chronobot.resolveBotPass(state);
-        setState(next);
+        commit(next, tokens, `Era ${state.era} · Bot: Time Travel + pass`);
         setPassMsg(instructions.map((i) => i.text).join(' '));
       }
       return;
     }
     if (decision === 'pass') {
       const { state: next, instructions } = Chronobot.resolveBotPass(state);
-      setState(next);
+      commit(next, tokens, `Era ${state.era} · Bot passed`);
       setPassMsg(instructions.map((i) => i.text).join(' '));
       setBotDie(null);
       setActiveToken(null);
@@ -347,7 +413,8 @@ export default function BoardExplorer() {
       return;
     }
     // 'continue' / 'must-continue-min3' → take a normal die-driven Action turn.
-    const die = rollAiDie();
+    // Reuse a die already shown (e.g. restored by Undo) so it repeats the same roll.
+    const die = botDie ?? rollAiDie();
     const token = die as CommandToken;
     const pos = tokens.positions[token];
     const action = Chronobot.tokenAction(pos);
@@ -365,7 +432,7 @@ export default function BoardExplorer() {
   // then decides (on the next Take Bot Action) whether the phase ends, the bot
   // must keep going to its minimum, or it owes a final Time Travel before passing.
   const playerPass = () => {
-    setState((s) => Chronobot.markPlayerPassed(s));
+    commit(Chronobot.markPlayerPassed(state), tokens, `Era ${state.era} · You passed`);
     setPassMsg(null);
     closePanel();
   };
@@ -391,15 +458,13 @@ export default function BoardExplorer() {
       minedResources: opts.minedResources,
       recruitedWorker: opts.recruitedWorker,
     });
-    setState(next);
-    setResult(instructions);
-    setPending(null);
     // Die-driven turn: advance the activated Command token to its next path step.
     const tk = activeTokenRef.current;
-    if (tk != null) {
-      setTokens((t) => Chronobot.advanceActiveToken(t, tk));
-      activeTokenRef.current = null;
-    }
+    const nextTokens = tk != null ? Chronobot.advanceActiveToken(tokens, tk) : tokens;
+    commit(next, nextTokens, turnLabel(instructions, botDie, CHRONOBOT_ACTIONS[h.action].label));
+    setResult(instructions);
+    setPending(null);
+    activeTokenRef.current = null;
   };
 
   const onTileClick = (h: Hotspot) => {
@@ -532,7 +597,7 @@ export default function BoardExplorer() {
         // The bot's forced final Time Travel before passing — resolve the pass
         // (does the Time Travel effect, then marks the bot passed).
         const { state: next, instructions } = Chronobot.resolveBotPass(state);
-        setState(next);
+        commit(next, tokens, `Era ${state.era} · Bot: Time Travel + pass`);
         setPassMsg(instructions.map((i) => i.text).join(' '));
       } else {
         resolve(active, {});
@@ -562,6 +627,8 @@ export default function BoardExplorer() {
         playerPassed={state.playerPassed}
         canPass={!calibrate && active == null}
         onPlayerPass={playerPass}
+        canUndo={undoStack.length > 0}
+        onUndo={undo}
       />
 
       <div className="board-stage">
@@ -1002,6 +1069,8 @@ function StatsBar({
   playerPassed,
   canPass,
   onPlayerPass,
+  canUndo,
+  onUndo,
 }: {
   bot: ChronobotState;
   debug: boolean;
@@ -1018,6 +1087,8 @@ function StatsBar({
   playerPassed: boolean;
   canPass: boolean;
   onPlayerPass: () => void;
+  canUndo: boolean;
+  onUndo: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
@@ -1095,6 +1166,14 @@ function StatsBar({
             </label>
           </>
         )}
+        <button
+          className="undo-btn"
+          onClick={onUndo}
+          disabled={!canUndo}
+          title="Undo the last step (restores the same die roll)"
+        >
+          ↶ Undo
+        </button>
         <button className="reset-btn" onClick={onReset}>
           ⟳ Reset
         </button>

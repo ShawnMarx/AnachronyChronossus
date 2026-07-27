@@ -166,6 +166,47 @@ confirm), possibly a small `src/persist.ts` helper, `src/BoardExplorer.css`.
 
 ---
 
+## Feature 6 — Full-screen dialogs on small screens
+
+**What:** Below a breakpoint (phone/narrow), the `DetailPanel` (and the read-only
+rule panel) fill the **entire viewport** instead of overlaying a slice of the
+board's right zone, so the action controls/rules are readable on a small screen.
+
+**How:** A CSS media query (e.g. `max-width: 640px`) overrides `.detail-panel`'s
+percentage `left/top/width/height` with a fixed full-screen layout
+(`position: fixed; inset: 0`), scrollable body, larger close target. The inline
+`style` positions from `hotspot.panel` still apply at desktop widths; the media
+query wins on small screens (add `!important` or move the desktop positions behind
+a `min-width` guard).
+
+**Files:** `src/BoardExplorer.css` (media query), possibly a class hook on
+`.detail-panel`. Likely no TS change.
+
+**Decisions:**
+- Single breakpoint to start (~640px). Calibrate/History panes can get the same
+  treatment later if needed.
+
+## Feature 7 — Bottom bar as a dismissible large tooltip
+
+**What:** The persistent bottom **End of Actions** strip (You/Bot flags, Actions
+N/min, decision hint) becomes an on-demand **large tooltip/popover** rather than
+an always-visible bar. It **closes when you click the action controls at the top**
+(Take Bot Action / You Pass / a tile).
+
+**How:** Replace the always-rendered `EndOfActionsBar` with a small **status
+chip/button** (in the top bar) that toggles a large popover containing the same
+details. Opening is explicit (click the chip); the popover is dismissed whenever a
+top action fires (wire a `closeStatus()` into `takeBotAction`, `playerPass`, and
+tile clicks) and on outside-click/Esc.
+
+**Files:** `src/BoardExplorer.tsx` (status chip + popover state; dismissers in the
+action handlers), `src/BoardExplorer.css`.
+
+**Decisions / open:**
+- The bottom-bar content is unchanged; only its presentation moves to a popover.
+- Confirm the trigger: a top-bar **status chip** (recommended) vs. hovering the
+  Actions pill. Plan assumes a click-to-open chip that any top action closes.
+
 ## Recommended implementation order
 
 1. **Feature 2 — Tracker tooltips + building VPs.** Small, self-contained engine
@@ -179,6 +220,9 @@ confirm), possibly a small `src/persist.ts` helper, `src/BoardExplorer.css`.
 5. **Feature 5 — Persistence + Reset Game.** Serialize the step-3/4 structures to
    `localStorage`, rehydrate on mount, relabel Reset with a confirm. Done last so
    it persists the finished shape.
+6. **Feature 6 — Full-screen dialogs on small screens.** CSS-only; independent.
+7. **Feature 7 — Bottom bar → dismissible tooltip.** Small UI refactor of the
+   existing status strip; done after the top-bar action handlers are settled.
 
 Rationale: the two independent features (2, 1) land first and de-risk the UI;
 then the interdependent trio is built bottom-up (backbone → undo → history →

@@ -73,6 +73,24 @@
 .reset-btn:hover {
   background: rgba(139, 92, 246, 0.32);
 }
+.undo-btn {
+  background: rgba(59, 130, 246, 0.18);
+  border: 1px solid rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.undo-btn:hover:not(:disabled) {
+  background: rgba(59, 130, 246, 0.32);
+}
+.undo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .stats-row {
   display: flex;
   gap: 0.5rem;

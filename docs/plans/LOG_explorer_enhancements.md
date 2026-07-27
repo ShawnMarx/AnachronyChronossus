@@ -29,14 +29,14 @@ order. Mark `[x]` as completed; note deviations inline.
 
 ## Feature 3 — Shared backbone + Undo
 
-- [ ] 3.1 Define `Snapshot` type and a `commit(nextState, nextTokens, meta)` helper
+- [x] 3.1 Define `Snapshot` type and a `commit(nextState, nextTokens, meta)` helper
       that pushes the prior snapshot to the undo stack and records a history entry.
-- [ ] 3.2 Route all committed turns through `commit`: `resolve`, `resolveBotPass`
+- [x] 3.2 Route all committed turns through `commit`: `resolve`, `resolveBotPass`
       path, `playerPass`, era transitions.
-- [ ] 3.3 `undo()` pops + restores the prior snapshot (state, tokens, botDie,
+- [x] 3.3 `undo()` pops + restores the prior snapshot (state, tokens, botDie,
       activeToken); button disabled when the stack is empty.
-- [ ] 3.4 Cap the undo stack (e.g. 50). CSS for the button.
-- [ ] 3.5 build + test + lint clean; manual check that undo re-shows the same die.
+- [x] 3.4 Cap the undo stack (e.g. 50). CSS for the button.
+- [x] 3.5 build + test + lint clean; manual check that undo re-shows the same die.
 
 ## Feature 4 — History right pane
 
@@ -53,6 +53,22 @@ order. Mark `[x]` as completed; note deviations inline.
 - [ ] 5.2 Load-on-mount (schema-version guarded); save-on-change effect.
 - [ ] 5.3 Relabel Reset → "Reset Game" with a confirm that clears storage + re-inits.
 - [ ] 5.4 build + test + lint clean; manual refresh-persistence check.
+
+## Feature 6 — Full-screen dialogs on small screens
+
+- [ ] 6.1 CSS media query (~640px): `.detail-panel` fills the viewport
+      (`position: fixed; inset: 0`), scrollable body, larger close target.
+- [ ] 6.2 Ensure desktop `hotspot.panel` positions still win above the breakpoint.
+- [ ] 6.3 build + lint; manual check at a narrow width.
+
+## Feature 7 — Bottom bar → dismissible tooltip
+
+- [ ] 7.1 Replace the always-on `EndOfActionsBar` with a top-bar status chip that
+      toggles a large popover holding the same details.
+- [ ] 7.2 Dismiss the popover when a top action fires (Take Bot Action / You Pass /
+      tile click) and on outside-click / Esc.
+- [ ] 7.3 CSS for the chip + popover.
+- [ ] 7.4 build + test + lint clean.
 
 ---
 
