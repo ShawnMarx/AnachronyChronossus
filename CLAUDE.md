@@ -26,12 +26,24 @@ Chronossus base → Chronossus + Fractures of Time.
 npm install
 npm run dev      # Vite dev server (default port 5173; a session may run it on 5199)
 npm run build    # tsc -b + vite build  (must stay clean)
-npm test         # vitest run  (21 tests; keep green)
+npm test         # vitest run  (29 tests; keep green)
 npm run lint     # oxlint
 ```
 
 React 19 + Vite + TypeScript. No backend yet. Optional login (shared auth, later)
 would only gate saved stats.
+
+## Deployment
+
+Live at **https://anachrony.boardgameedge.com** — a **public static site** on the
+shared BoardGameEdge (BGE) DigitalOcean Droplet (`the deploy host`). Pushing to `main`
+auto-deploys via GitHub Actions (`.github/workflows/deploy-production.yml`): it SSHes
+to the Droplet as `deploy`, `git reset --hard origin/main`, `npm ci`, `npm run build`;
+**nginx serves `/var/www/anachrony/dist` directly** — no backend, no systemd service,
+no `sudo` in the deploy path. CI uses a dedicated `the deploy key` deploy key
+(repo secrets `PROD_HOST` + `DEPLOY_SSH_KEY`). Full runbook, nginx block, and server
+setup live in **`docs/DEPLOYMENT.md`**. Not yet done (deferred): staging, access-gating
+via `auth.boardgameedge.com`, and listing on the `boardgameedge.com` landing page.
 
 ## Architecture
 

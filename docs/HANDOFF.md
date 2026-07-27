@@ -1,17 +1,21 @@
-# Handoff — 2026-07-26 (main actions complete)
+# Handoff — 2026-07-27 (deployed to production)
 
 Snapshot for continuing without this chat's context. Read `CLAUDE.md` first, then
 this. Longer history is in `docs/BUILD-LOG.md`.
 
 ## Where things are
 
+- **🚀 LIVE at https://anachrony.boardgameedge.com** — public static site on the shared
+  BGE Droplet; **push to `main` auto-deploys** (GitHub Actions). See `docs/DEPLOYMENT.md`
+  and the archived plan `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
 - **Default view = `src/BoardExplorer.tsx`** — board-first explorer + debug harness.
-  All **eight base Chronobot actions** now resolve through the engine with guided,
-  per-action dialogs (below). `App.tsx` (guided game runner) still exists but is not
+  All **eight base Chronobot actions** resolve through the engine with guided,
+  per-action dialogs (below), plus the **Passing & End of Actions** flow (an
+  `EndOfActionsBar` footer). `App.tsx` (guided game runner) still exists but is not
   the current view.
-- `npm run build`, `npm test` (21), `oxlint` all clean.
-- **Working tree has this session's work UNCOMMITTED** (new assets + engine/UI edits).
-  Last commit is `a0bb07c`. Commit before/after starting the next feature.
+- `npm run build`, `npm test` (29), `oxlint` all clean.
+- **Working tree is clean and everything is committed + deployed.** Latest commits:
+  the deploy setup + the End-of-Actions feature + the deploy log.
 
 ## Actions implemented this session (BoardExplorer dialogs)
 
