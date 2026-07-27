@@ -1,53 +1,103 @@
-# Handoff — 2026-07-26
+# Handoff — 2026-07-26 (main actions complete)
 
 Snapshot for continuing without this chat's context. Read `CLAUDE.md` first, then
 this. Longer history is in `docs/BUILD-LOG.md`.
 
 ## Where things are
 
-- **Committed & pushed** to `main` on private repo `ShawnMarx/AnachronyChronossus`.
+- **Default view = `src/BoardExplorer.tsx`** — board-first explorer + debug harness.
+  All **eight base Chronobot actions** now resolve through the engine with guided,
+  per-action dialogs (below). `App.tsx` (guided game runner) still exists but is not
+  the current view.
 - `npm run build`, `npm test` (21), `oxlint` all clean.
-- **Default view = `src/BoardExplorer.tsx`** (a board-first explorer + debug harness).
-  The guided game runner `App.tsx` exists but is not the current view.
-- The **Chronobot engine** (`src/engine`) is complete and tested for base actions.
+- **Working tree has this session's work UNCOMMITTED** (new assets + engine/UI edits).
+  Last commit is `a0bb07c`. Commit before/after starting the next feature.
 
-## What works in the explorer today
+## Actions implemented this session (BoardExplorer dialogs)
 
-- Tap any of the 12 action tiles → verbatim rule panel; "places an Exosuit" links to
-  the mech-placement rules.
-- Tapping a tile also **resolves the action through the engine** (debug), updating live
-  counts. Seeded with 2 Warp tiles + 6 Exosuits; Reset restores it.
-- **Mech-placement gate** (Confirm placed / Cannot place) before any Exosuit is spent.
-- **Construct VP entry**: buildings 1–4, superprojects 3–7 → added to VP; max 3/type.
-- **8 on-board count badges** (Mechs, Breakthroughs, Superproject, 4 buildings,
-  Anomalies) — positions just calibrated and baked into `BOARD_COUNTERS`.
-- **Calibrate mode** (top-bar toggle): click board to place a badge, arrow-keys nudge,
-  panel emits the `BOARD_COUNTERS` literal to paste back.
+Every action ends with a green **▶ Start Your Turn** that commits to the engine and
+closes the panel. Full-rules 📖 collapsibles render *outside/below* the orange boxes.
 
-## Next up (user's stated direction)
+- **Construct** (`construct-*`, superproject): mech gate → tap the tile's printed VP
+  (highlights; re-pickable) → Start. Max 3 of a type / no Breakthrough (superproject)
+  → **Failed Action** notice (still places an Exosuit, +1 VP). VP goes to `buildingVp`.
+- **Mine Resource** (NOT a Capital action): Q "Is there one or more Mining Action
+  space available?" → **Yes**: pick the 2 gained cubes — all 4 shown in priority order
+  **Neutronium > Uranium > Gold > Titanium** (lacking-first), top-2 pre-selected,
+  **click a cube twice for ×2**; instruction says place the mech in the matching Mine
+  space + discard those cubes from the board. **No** → no-space Failed (+1 VP, no mech).
+  **+5 VP** set bonus auto-fires when all 4 resource types are held.
+- **Recruit** (Capital): mech gate → single-select **Worker** — 4 figures in priority
+  **Genius > Administrator > Engineer > Scientist** (missing-first), top pre-selected.
+  **+5 VP** set bonus auto-fires on completing all 4 worker types (discard one of each).
+- **Recruit Genius / Research** (branch check, no mech gate first): Q "Genius available
+  **and** an open Recruit space (or World Council)?" → **Yes**: place mech on Recruit
+  space + recruit a Genius (+1 VP, remove from board). **No**: the *exact* Research flow
+  (mech gate labelled **Research** → shape roll).
+- **Research** (Capital): mech gate → app **rolls the shape die** → shows the rolled
+  Breakthrough icon + running per-shape tally → Start. Only the shape matters.
+- **Remove Anomaly** (**never places a mech**, no player choice): determined by state —
+  has an Anomaly AND ≥2 cube-value (Neutronium = 2)? **Yes**: discard the determined
+  cubes + remove 1 Anomaly. **No**: Failed Action, +1 VP (no Exosuit).
+- **Time Travel** (no mech): Warp tiles left → orange box "remove one Warp tile…" →
+  Start advances the marker 1 spot + decrements Warp. No Warp → Failed (+1 VP).
+- **Reboot**: "Reboot: Chronobot does nothing." → Start.
 
-1. **More board positions to set soon** — the user will calibrate additional overlay
-   spots (beyond the 8 counters). Use the same pattern: add entries with `pos` %,
-   place them via **calibrate mode**, paste the literal back, bake it in, verify with
-   `node pw-validate.mjs`. Generalize calibrate to cover the new spot list when asked.
-2. Keep filling in Chronobot behavior the debug harness surfaces; correct any rule/text
-   mismatches the user finds while clicking through.
-3. Then per roadmap: **Chronossus base**, then **Chronossus + Fractures of Time**.
+## Engine additions (`src/engine`)
+
+- `ChronobotState.buildingVp` — Construct/Superproject tile VP tracked apart from `vp`.
+- `ActionTurnInput`: `minedResources`, `recruitedWorker`, `shape` (now honored),
+  `geniusAvailable` (now honored).
+- Decision/scoring helpers (all exported via `Chronobot.*`): `rankMineResources`,
+  `mineResourceOrder`, `recruitWorkerOrder`, `TIME_TRAVEL_VP`, `timeTravelSpot`,
+  `timeTravelVp`, `breakthroughVp`, `SET_BONUS_RESOURCES`.
+- Mine & Recruit **set bonuses now fire on completion** (add, then check all 4).
+- `remove-anomaly` def → `placesExosuit: false` (never spends an Exosuit, even on fail).
+
+## Assets + board data (new)
+
+- `public/assets/solo/resources/{neutronium,uranium,gold,titanium}.png` (cubes)
+- `public/assets/solo/workers/{genius,administrator,engineer,scientist}.png` (figures)
+- `public/assets/solo/breakthroughs/{circle,triangle,square}.png` (shape tiles)
+- `public/assets/solo/timetravel-marker.png` (hex marker)
+- `src/board/timeTravelTrack.ts` — `TIME_TRAVEL_TRACK` = 7 calibrated `spots` + `markerWidth`.
+- `BOARD_COUNTERS` gained 4 resource + 4 worker trackers (positions calibrated in-app).
+
+## UI features (new)
+
+- **VP pill is expandable** (top bar): collapsed = total; expands to
+  **token · bldg · time travel · breakthrough**. `total = token + bldg + tt + bt`.
+- **Breakthroughs badge is clickable** → popover with per-shape counts (circle/tri/sq).
+- **Time Travel marker** rides its track (purple silhouette outline + drop shadow);
+  advances one spot per Time Travel; position scores 0/2/4/6/8/10/12 VP.
+- **Calibrate mode** now covers badges **+ the 7 Time Travel spots + a marker-width
+  slider**, and emits BOTH the `BOARD_COUNTERS` and `TIME_TRAVEL_TRACK` literals.
+
+## Next up (new session): Phase & turn tracking
+
+The app currently runs **single action turns** only (debug harness). Next: build the
+**per-Era phase/turn structure** on top of the engine's existing phase functions
+(`Chronobot.setup`, power-up, Action Rounds, `botPassDecision`, `actionRoundsCanEnd`,
+`markBotPassed` / `markPlayerPassed`, Era advance, `scoreChronobot`). Goal: guide the
+player through a full Chronobot turn/Era — AI-die roll picking the active Command token,
+action-round flow, pass logic, and Era clean-up — rather than free-tapping tiles.
 
 ## Gotchas / decisions locked
 
 - Chronobot = the **"Solo Opponents" rulebook** version (4 Command tokens 2–5 + the AI
-  die / Flux die), **not** the older PnP (6 tokens + D6). Board art =
-  `public/assets/solo/board-chronobot.jpg` (the purple rulebook board).
-- Overlay positions are **% of the board image** (1500×1110); `.board-wrap` preserves
-  that aspect so % maps 1:1. Don't switch to pixel positioning.
-- `pw-validate.mjs` hardcodes the cached Chromium path (`chromium_headless_shell-1217`);
-  update if that version changes. Playwright is a devDependency; browsers are the
-  machine's `ms-playwright` cache (not downloaded per-install).
+  die / Flux die), not the older PnP. Board art = `public/assets/solo/board-chronobot.jpg`.
+- Overlay positions are **% of the board image** (1500×1110); marker width is % of board
+  width. Don't switch to pixel positioning. Calibrate in-app, paste the literal back.
+- `AI_DIE_FACES` in `engine/index.ts` is still a placeholder `[1..6]` — verify vs the
+  physical die when wiring turn tracking.
+- `pw-validate.mjs` hardcodes the cached Chromium path (`chromium_headless_shell-1217`).
 - Reference PDFs/art live outside the repo (see `CLAUDE.md`); read with PyMuPDF.
+- Open question: an extra `Operator.png` sits in the crop temp folder — not one of the 4
+  engine worker types; left unused pending clarification.
 
 ## Paths
 
 - Repo: `c:\repos\AnachronyChronossus`
 - Reference: `C:/Users/shawn/OneDrive/Program Development/Anachrony Chronossus/reference/`
+- Crop temp (source art): `C:/Users/shawn/OneDrive/Program Development/Anachrony Chronossus/temp/`
 - Persistent memory: `C:/Users/shawn/.claude/projects/c--repos-AnachronyChronossus/memory/`

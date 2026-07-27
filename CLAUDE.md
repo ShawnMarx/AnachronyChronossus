@@ -52,34 +52,46 @@ src/
       BotModule.ts            metadata-only registry
     index.ts                  public API: `Chronobot.*`, dice rollers, AI_DIE_FACES
   board/
-    chronobotHotspots.ts      CHRONOBOT_HOTSPOTS (tap tiles) + BOARD_COUNTERS (badges),
-                              positions as % rects/points over the board image
+    chronobotHotspots.ts      CHRONOBOT_HOTSPOTS (tap tiles) + BOARD_COUNTERS (badges:
+                              8 counters + 4 resource + 4 worker trackers), % positions
+    timeTravelTrack.ts        TIME_TRAVEL_TRACK: 7 marker spots + markerWidth (% points)
     ActionIcon.tsx            renders one icon from the sprite sheet
   BoardExplorer.tsx           DEFAULT VIEW (wired in main.tsx) — see below
   App.tsx                     guided game runner (built earlier; NOT the current view)
   useGame.ts                  React hook over the engine (used by App.tsx)
-public/assets/solo/           board art + chronobot-icons.png sprite sheet
+public/assets/solo/           board art + chronobot-icons.png sprite sheet;
+                              resources/ workers/ breakthroughs/ (cube/figure/shape art),
+                              timetravel-marker.png
 ```
 
 ### BoardExplorer (current default view)
 
 Board-first: the Chronobot solo board fills the viewport. Tap an action tile → a
-dark, purple-bordered detail panel overlays the board's right zone showing the
-**verbatim** rule. It doubles as a **debug harness**: tapping a tile resolves that
-action through `Chronobot.takeActionTurn` and updates live counters.
+dark, purple-bordered detail panel overlays the board's right zone. Every one of the
+**8 base actions** resolves through `Chronobot.takeActionTurn` via a guided per-action
+dialog, each ending with a green **▶ Start Your Turn** that commits + closes the panel.
+Full-rules 📖 collapsibles (verbatim `rule` text) render *outside/below* the orange
+action boxes. Still a debug harness (top stats, Reset, seeded 2 Warp + 6 Exosuits).
 
-Key interactions already built:
-- **Mech-placement gate**: any mech-placing action prompts *Confirm placed / Cannot
-  place* before an Exosuit is spent (Cannot place → the "no available space" failed
-  action: +1 VP, no Exosuit).
-- **Construct VP entry**: after placement, tap the tile's printed VP — **buildings
-  1–4**, **superprojects 3–7** — added to the bot's score; max 3 per building type
-  (4th fails). Engine input: `buildingVP`.
-- **8 on-board count badges** (`BOARD_COUNTERS`): Mechs (hexagon), Breakthroughs
-  (bottom-left), Superproject + 4 buildings + Anomalies (bottom row).
-- **Calibrate mode** (toggle in the top bar): click the board to place the selected
-  badge, arrow-keys nudge (0.2% / Shift 1%); the panel emits a ready-to-paste
-  `BOARD_COUNTERS` literal. Use this for any new on-board position instead of guessing.
+Per-action flows (see `docs/HANDOFF.md` for the full list):
+- **Mech-placement gate** (Confirm placed / Cannot place) precedes Exosuit-spending
+  Capital actions; Cannot place → no-space failed action (+1 VP, no Exosuit).
+- **Construct**: gate → tap the tile's printed VP (buildings 1–4, superprojects 3–7;
+  engine input `buildingVP`, tracked in `buildingVp`); max 3/type → Failed Action.
+- **Mine** (not Capital): "mining space open?" → cube picker (all 4 in priority order,
+  ×2 by double-click, `minedResources`). **Recruit**: gate → worker picker
+  (`recruitedWorker`). Both auto-fire the **+5 VP set bonus** on completing all 4 types.
+- **Recruit Genius / Research**: Genius+space? → recruit Genius, else the Research flow.
+  **Research**: app rolls the shape die (`shape`) → shows the shape + per-shape tally.
+- **Remove Anomaly**: never places a mech, no player choice (state-determined).
+  **Time Travel**: no mech; removes a Warp tile + advances the marker. **Reboot**: nothing.
+- **VP pill** (top bar) is expandable: total · token · bldg · time travel · breakthrough.
+- **Board overlays** (`BOARD_COUNTERS`): 8 count badges + 4 resource + 4 worker trackers;
+  the Breakthroughs badge is **clickable** → per-shape popover. A **Time Travel marker**
+  rides its 7-spot track (`TIME_TRAVEL_TRACK`), scoring 0/2/4/6/8/10/12 VP.
+- **Calibrate mode** (top-bar toggle): click board to place the selected badge, arrow-keys
+  nudge (0.2% / Shift 1%); also covers the 7 Time Travel spots + a marker-width slider.
+  The panel emits ready-to-paste `BOARD_COUNTERS` **and** `TIME_TRAVEL_TRACK` literals.
 
 ## Positioning board overlays
 

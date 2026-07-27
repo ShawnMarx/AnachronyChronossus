@@ -133,7 +133,7 @@ export const CHRONOBOT_ACTIONS: Record<ChronobotActionId, ChronobotActionDef> = 
     jit: 'Discard the Resources it has most of; ties: Titanium > Gold > Uranium > Neutronium. One Neutronium = two cubes.',
     rule:
       'Each time “Remove Anomaly” is selected, it discards any 2 Resource cubes. Choose Resources it has the most of; if tied, the order of priority is:\n\nTitanium > Gold > Uranium > Neutronium\n\n1 Neutronium cube is equal to 2 non-Neutronium cubes when calculating priority and discarding. Then, if it has the Resources to discard, it removes 1 Anomaly. If it doesn’t have an Anomaly or the Resources to remove one, it takes 1 VP instead as usual for Failed Actions.',
-    placesExosuit: true,
+    placesExosuit: false,
   },
   reboot: {
     id: 'reboot',

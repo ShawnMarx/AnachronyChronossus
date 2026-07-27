@@ -32,7 +32,15 @@ export interface BoardCounter {
     | 'lab'
     | 'anomaly'
     | 'breakthrough'
-    | 'mech';
+    | 'mech'
+    | 'neutronium'
+    | 'uranium'
+    | 'gold'
+    | 'titanium'
+    | 'genius'
+    | 'administrator'
+    | 'engineer'
+    | 'scientist';
   /** Center position [x, y] % over the board image. */
   pos: [number, number];
   label: string;
@@ -48,6 +56,16 @@ export const BOARD_COUNTERS: BoardCounter[] = [
   { key: 'support', pos: [67.3, 80.8], label: 'Life Support' },
   { key: 'lab', pos: [79.6, 80.8], label: 'Lab' },
   { key: 'anomaly', pos: [93.7, 80.8], label: 'Anomalies' },
+  // Resource trackers — calibrated in-app (2026-07-26).
+  { key: 'neutronium', pos: [58.3, 11.7], label: 'Neutronium' },
+  { key: 'uranium', pos: [58.3, 24], label: 'Uranium' },
+  { key: 'gold', pos: [58.3, 36.5], label: 'Gold' },
+  { key: 'titanium', pos: [58.3, 49.1], label: 'Titanium' },
+  // Worker trackers — calibrated in-app (2026-07-26).
+  { key: 'genius', pos: [69.1, 9.8], label: 'Genius' },
+  { key: 'administrator', pos: [69.1, 22.1], label: 'Administrator' },
+  { key: 'engineer', pos: [69.1, 35], label: 'Engineer' },
+  { key: 'scientist', pos: [69.1, 47.4], label: 'Scientist' },
 ];
 
 // Uniform tile boxes: columns × rows of the board's action-tile grid.
@@ -66,18 +84,18 @@ const box = (c: number, r: number): [number, number, number, number] => [
 // Reading order follows the board's three tile rows (top, middle, lower).
 export const CHRONOBOT_HOTSPOTS: Hotspot[] = [
   // Row 1 (top tiles)
-  { id: 'h1', action: 'construct-support', rect: box(0, 0), note: 'Construct → Life Support (water)' },
+  { id: 'h1', action: 'construct-support', rect: box(0, 0) },
   { id: 'h2', action: 'time-travel', rect: box(1, 0) },
   { id: 'h3', action: 'construct-superproject', rect: box(2, 0) },
   { id: 'h4', action: 'remove-anomaly', rect: box(3, 0) },
   // Row 2 (middle tiles)
   { id: 'h5', action: 'mine-resource', rect: box(0, 1) },
-  { id: 'h6', action: 'construct-powerplant', rect: box(1, 1), note: 'Construct → Power Plant (energy)' },
+  { id: 'h6', action: 'construct-powerplant', rect: box(1, 1) },
   { id: 'h7', action: 'recruit', rect: box(2, 1) },
-  { id: 'h8', action: 'construct-factory', rect: box(3, 1), note: 'Construct → Factory (titanium)' },
+  { id: 'h8', action: 'construct-factory', rect: box(3, 1) },
   // Row 3 (lower tiles)
   { id: 'h9', action: 'research', rect: box(0, 2) },
-  { id: 'h10', action: 'construct-lab', rect: box(1, 2), note: 'Construct → Lab (research)' },
+  { id: 'h10', action: 'construct-lab', rect: box(1, 2) },
   { id: 'h11', action: 'recruit-genius-research', rect: box(2, 2) },
   { id: 'h12', action: 'reboot', rect: box(3, 2) },
 ];

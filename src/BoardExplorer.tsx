@@ -10,15 +10,66 @@ import {
   type ChronobotState,
   type GameState,
   type Instruction,
+  type Resource,
+  type Worker,
+  type BreakthroughShape,
 } from './engine';
 import {
   BOARD_COUNTERS,
   CHRONOBOT_HOTSPOTS,
   type Hotspot,
 } from './board/chronobotHotspots';
+import { TIME_TRAVEL_TRACK } from './board/timeTravelTrack';
 import { ActionIcon } from './board/ActionIcon';
 
-type PendingStep = null | 'mech' | 'buildingVP';
+/** Time Travel marker spot keys used in the calibration flow (tt0 = start). */
+const TT_KEYS = TIME_TRAVEL_TRACK.spots.map((_, i) => `tt${i}`);
+/** Every calibratable point: count badges then the 7 Time Travel spots. */
+const CAL_KEYS: string[] = [...BOARD_COUNTERS.map((c) => c.key), ...TT_KEYS];
+
+type PendingStep =
+  | null
+  | 'mech'
+  | 'buildingVP'
+  | 'mineOpen'
+  | 'mineResources'
+  | 'recruitWorker'
+  | 'geniusQuestion'
+  | 'geniusRecruit'
+  | 'research'
+  | 'removeAnomaly'
+  | 'reboot'
+  | 'timeTravel';
+
+/** Describe a Resource-cube discard list, e.g. "2 titanium + 1 gold". */
+function describeCubes(cubes: Resource[]): string {
+  const order: Resource[] = ['neutronium', 'titanium', 'gold', 'uranium', 'water'];
+  const counts = new Map<Resource, number>();
+  for (const c of cubes) counts.set(c, (counts.get(c) ?? 0) + 1);
+  return order
+    .filter((r) => counts.has(r))
+    .map((r) => `${counts.get(r)} ${r}`)
+    .join(' + ');
+}
+
+/** Cropped icon per Breakthrough shape (only the shape matters to the Chronobot). */
+const SHAPE_IMG: Record<BreakthroughShape, string> = {
+  circle: '/assets/solo/breakthroughs/circle.png',
+  triangle: '/assets/solo/breakthroughs/triangle.png',
+  square: '/assets/solo/breakthroughs/square.png',
+};
+const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
+
+function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) {
+  return (
+    <img
+      className="shape-icon"
+      src={SHAPE_IMG[shape]}
+      alt={shape}
+      style={{ width: size, height: size }}
+    />
+  );
+}
 
 function isConstructBuilding(a: ChronobotActionId): boolean {
   return a.startsWith('construct-') && a !== 'construct-superproject';
@@ -42,6 +93,16 @@ function counterValue(
         bot.breakthroughs.triangle +
         bot.breakthroughs.square
       );
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return bot.resources[key];
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist':
+      return bot.workers[key];
     default:
       return bot.buildings[key];
   }
@@ -72,13 +133,22 @@ export default function BoardExplorer() {
   const [active, setActive] = useState<Hotspot | null>(null);
   const [pending, setPending] = useState<PendingStep>(null);
   const [result, setResult] = useState<Instruction[]>([]);
+  const [selectedVP, setSelectedVP] = useState<number | null>(null);
+  const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
+  const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
+  const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
+  const [showBreakthroughs, setShowBreakthroughs] = useState(false);
   const [outline, setOutline] = useState(true);
 
-  // --- Badge position calibration ---
+  // --- Badge / Time Travel spot position calibration ---
   const [calibrate, setCalibrate] = useState(false);
   const [positions, setPositions] = useState<Record<string, [number, number]>>(
-    () => Object.fromEntries(BOARD_COUNTERS.map((c) => [c.key, c.pos])),
+    () => ({
+      ...Object.fromEntries(BOARD_COUNTERS.map((c) => [c.key, c.pos])),
+      ...Object.fromEntries(TIME_TRAVEL_TRACK.spots.map((p, i) => [`tt${i}`, p])),
+    }),
   );
+  const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [selected, setSelected] = useState<string>(BOARD_COUNTERS[0].key);
 
   useEffect(() => {
@@ -108,31 +178,48 @@ export default function BoardExplorer() {
     const x = +(((e.clientX - rect.left) / rect.width) * 100).toFixed(1);
     const y = +(((e.clientY - rect.top) / rect.height) * 100).toFixed(1);
     setPositions((p) => ({ ...p, [selected]: [x, y] }));
-    const keys: string[] = BOARD_COUNTERS.map((c) => c.key);
-    const i = keys.indexOf(selected);
-    setSelected(keys[(i + 1) % keys.length]);
+    const i = CAL_KEYS.indexOf(selected);
+    setSelected(CAL_KEYS[(i + 1) % CAL_KEYS.length]);
   };
 
   const bot = state.chronobot;
 
-  const reset = () => {
-    setState(initDebugState());
+  const closePanel = () => {
     setActive(null);
     setPending(null);
     setResult([]);
+    setSelectedVP(null);
+    setSelectedResources([]);
+    setSelectedWorker(null);
+    setRolledShape(null);
+  };
+
+  const reset = () => {
+    setState(initDebugState());
+    setShowBreakthroughs(false);
+    closePanel();
   };
 
   const resolve = (
     h: Hotspot,
-    opts: { cannotPlace?: boolean; buildingVP?: number },
+    opts: {
+      cannotPlace?: boolean;
+      buildingVP?: number;
+      minedResources?: Resource[];
+      recruitedWorker?: Worker;
+      shape?: BreakthroughShape;
+      geniusAvailable?: boolean;
+    },
   ) => {
     const { state: next, instructions } = Chronobot.takeActionTurn(state, {
       dieRoll: Math.floor(Math.random() * 6) + 1,
       actionId: h.action,
-      shape: rollShapeDie(),
-      geniusAvailable: false,
+      shape: opts.shape ?? rollShapeDie(),
+      geniusAvailable: opts.geniusAvailable ?? false,
       noSpaceAvailable: opts.cannotPlace,
       buildingVP: opts.buildingVP,
+      minedResources: opts.minedResources,
+      recruitedWorker: opts.recruitedWorker,
     });
     setState(next);
     setResult(instructions);
@@ -142,10 +229,24 @@ export default function BoardExplorer() {
   const onTileClick = (h: Hotspot) => {
     setActive(h);
     setResult([]);
-    if (CHRONOBOT_ACTIONS[h.action].placesExosuit) {
+    setSelectedVP(null);
+    setSelectedResources([]);
+    setSelectedWorker(null);
+    setRolledShape(null);
+    if (h.action === 'mine-resource') {
+      setPending('mineOpen'); // Mine uses a Mine space — first ask if one is open
+    } else if (h.action === 'recruit-genius-research') {
+      setPending('geniusQuestion'); // Genius + space available? else Research
+    } else if (h.action === 'remove-anomaly') {
+      setPending('removeAnomaly'); // outcome fully determined by bot state
+    } else if (h.action === 'reboot') {
+      setPending('reboot'); // Chronobot does nothing
+    } else if (h.action === 'time-travel' && bot.warpTilesOnTimeline > 0) {
+      setPending('timeTravel'); // player removes a Warp tile & advances the marker
+    } else if (CHRONOBOT_ACTIONS[h.action].placesExosuit) {
       setPending('mech'); // ask before spending a mech
     } else {
-      resolve(h, {}); // no mech to place — resolve immediately
+      resolve(h, {}); // no mech / no Warp tile — resolve immediately
     }
   };
 
@@ -159,12 +260,26 @@ export default function BoardExplorer() {
           bot.breakthroughs.triangle +
           bot.breakthroughs.square >
         0;
-      if (bot.superprojects < 3 && hasBreakthrough) setPending('buildingVP');
-      else resolve(active, {});
+      if (bot.superprojects < 3 && hasBreakthrough) {
+        setSelectedVP(null);
+        setPending('buildingVP');
+      } else resolve(active, {});
     } else if (isConstructBuilding(a)) {
       const type = a.replace('construct-', '') as keyof typeof bot.buildings;
-      if (bot.buildings[type] < 3) setPending('buildingVP');
-      else resolve(active, {});
+      if (bot.buildings[type] < 3) {
+        setSelectedVP(null);
+        setPending('buildingVP');
+      } else resolve(active, {});
+    } else if (a === 'recruit') {
+      // Missing a Worker type → pick which was recruited; else resolve the set bonus.
+      if (Chronobot.chooseRecruitWorker(bot)) {
+        setSelectedWorker(Chronobot.recruitWorkerOrder(bot)[0]);
+        setPending('recruitWorker');
+      } else resolve(active, {});
+    } else if (a === 'research' || a === 'recruit-genius-research') {
+      // Research (or the Recruit-Genius-Research fallback): roll the shape die.
+      setRolledShape(rollShapeDie());
+      setPending('research');
     } else {
       resolve(active, {});
     }
@@ -174,8 +289,67 @@ export default function BoardExplorer() {
     if (active) resolve(active, { cannotPlace: true });
   };
 
-  const onSubmitBuildingVP = (vp: number) => {
-    if (active) resolve(active, { buildingVP: vp });
+  // Mine: player confirmed an open Mine space → pre-select the priority pair.
+  const onMineHasSpace = () => {
+    setSelectedResources(Chronobot.mineResourceOrder(bot).slice(0, 2));
+    setPending('mineResources');
+  };
+  // Mine: no open Mine space → Failed Action (no Exosuit placed, +1 VP).
+  const onMineNoSpace = () => {
+    if (active) resolve(active, { cannotPlace: true });
+  };
+
+  // Pick a VP value — highlights it but does not commit; the player can re-pick.
+  const onPickVP = (vp: number) => setSelectedVP(vp);
+
+  // Pick the recruited Worker (single select) — highlights but does not commit.
+  const onPickWorker = (w: Worker) => setSelectedWorker(w);
+
+  // Recruit Genius / Research: player answers the Genius + space check.
+  const onGeniusYes = () => setPending('geniusRecruit');
+  // No Genius / no space → perform the Research action (its own mech gate + roll).
+  const onGeniusNo = () => setPending('mech');
+
+  // Click a Resource to add one; click again for ×2; a 3rd click clears it.
+  // Total is capped at 2 (a Mine space grants 2 cubes, possibly the same twice).
+  const onToggleResource = (r: Resource) => {
+    setSelectedResources((cur) => {
+      const countR = cur.filter((x) => x === r).length;
+      if (countR === 2) return cur.filter((x) => x !== r); // ×2 → clear
+      const next = [...cur, r]; // increment this resource
+      while (next.length > 2) {
+        // drop the most recent *other* resource to stay at 2 total
+        for (let i = next.length - 1; i >= 0; i--) {
+          if (next[i] !== r) {
+            next.splice(i, 1);
+            break;
+          }
+        }
+      }
+      return next;
+    });
+  };
+
+  // "Start Your Turn" — commit any pending selection, then close the box.
+  const startTurn = () => {
+    if (pending === 'buildingVP' && selectedVP != null && active) {
+      resolve(active, { buildingVP: selectedVP });
+    } else if (pending === 'mineResources' && selectedResources.length === 2 && active) {
+      resolve(active, { minedResources: selectedResources });
+    } else if (pending === 'recruitWorker' && selectedWorker && active) {
+      resolve(active, { recruitedWorker: selectedWorker });
+    } else if (pending === 'research' && rolledShape && active) {
+      resolve(active, { shape: rolledShape });
+    } else if (pending === 'geniusRecruit' && active) {
+      resolve(active, { geniusAvailable: true });
+    } else if (pending === 'removeAnomaly' && active) {
+      resolve(active, {});
+    } else if (pending === 'reboot' && active) {
+      resolve(active, {});
+    } else if (pending === 'timeTravel' && active) {
+      resolve(active, {});
+    }
+    closePanel();
   };
 
   return (
@@ -186,7 +360,10 @@ export default function BoardExplorer() {
         onToggleOutline={() => setOutline((o) => !o)}
         onReset={reset}
         calibrate={calibrate}
-        onToggleCalibrate={() => setCalibrate((c) => !c)}
+        onToggleCalibrate={() => {
+          setShowBreakthroughs(false);
+          setCalibrate((c) => !c);
+        }}
       />
 
       <div className="board-stage">
@@ -220,31 +397,91 @@ export default function BoardExplorer() {
             const count = counterValue(bot, c.key);
             const [x, y] = positions[c.key] ?? c.pos;
             const sel = calibrate && selected === c.key;
+            const breakdown = c.key === 'breakthrough' && !calibrate;
             return (
               <div
                 key={c.key}
-                className={`count-badge ${sel ? 'cal-selected' : ''}`}
+                className={`count-badge ${sel ? 'cal-selected' : ''} ${breakdown ? 'clickable' : ''}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
-                title={`${c.label}: ${count}`}
+                title={breakdown ? 'Breakthroughs — click for shapes' : `${c.label}: ${count}`}
+                onClick={breakdown ? () => setShowBreakthroughs((v) => !v) : undefined}
               >
                 {calibrate ? (sel ? '◎' : '·') : count}
+                {breakdown && showBreakthroughs && (
+                  <div className="bt-popover" onClick={(e) => e.stopPropagation()}>
+                    {SHAPE_ORDER.map((s) => (
+                      <span key={s} className="bt-pop-row">
+                        <ShapeIcon shape={s} size={22} />
+                        <b>{bot.breakthroughs[s]}</b>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
+
+          {/* Time Travel marker — at its track spot; all 7 shown while calibrating. */}
+          {calibrate
+            ? TT_KEYS.map((key, i) => {
+                const [x, y] = positions[key] ?? TIME_TRAVEL_TRACK.spots[i];
+                return (
+                  <img
+                    key={key}
+                    src="/assets/solo/timetravel-marker.png"
+                    alt=""
+                    className={`tt-marker ${selected === key ? 'cal-selected' : 'cal-ghost'}`}
+                    style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth}%` }}
+                  />
+                );
+              })
+            : (() => {
+                const spot = Chronobot.timeTravelSpot(bot);
+                const [x, y] = positions[`tt${spot}`] ?? TIME_TRAVEL_TRACK.spots[spot];
+                return (
+                  <img
+                    src="/assets/solo/timetravel-marker.png"
+                    alt="Time Travel marker"
+                    className="tt-marker"
+                    style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth}%` }}
+                  />
+                );
+              })()}
 
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
               pending={pending}
               result={result}
+              selectedVP={selectedVP}
+              selectedResources={selectedResources}
+              selectedWorker={selectedWorker}
+              rolledShape={rolledShape}
+              breakthroughs={bot.breakthroughs}
+              removeAnomaly={(() => {
+                const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
+                return {
+                  canRemove: bot.anomalies >= 1 && discards != null,
+                  discards: discards ? describeCubes(discards) : '',
+                  reason:
+                    bot.anomalies < 1
+                      ? 'it has no Anomaly to remove'
+                      : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+                };
+              })()}
+              mineOrder={Chronobot.mineResourceOrder(bot)}
+              workerOrder={Chronobot.recruitWorkerOrder(bot)}
               onConfirmPlace={onConfirmPlace}
               onCannotPlace={onCannotPlace}
-              onSubmitBuildingVP={onSubmitBuildingVP}
-              onClose={() => {
-                setActive(null);
-                setPending(null);
-                setResult([]);
-              }}
+              onMineHasSpace={onMineHasSpace}
+              onMineNoSpace={onMineNoSpace}
+              onGeniusYes={onGeniusYes}
+              onGeniusNo={onGeniusNo}
+              onPickVP={onPickVP}
+              onToggleResource={onToggleResource}
+              onPickWorker={onPickWorker}
+              onStartTurn={startTurn}
+              onClose={closePanel}
             />
           )}
         </div>
@@ -255,6 +492,8 @@ export default function BoardExplorer() {
           positions={positions}
           selected={selected}
           onSelect={setSelected}
+          markerWidth={markerWidth}
+          onMarkerWidth={setMarkerWidth}
         />
       )}
     </div>
@@ -265,10 +504,14 @@ function CalibrationPanel({
   positions,
   selected,
   onSelect,
+  markerWidth,
+  onMarkerWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
   onSelect: (k: string) => void;
+  markerWidth: number;
+  onMarkerWidth: (w: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -277,12 +520,32 @@ function CalibrationPanel({
       return `  { key: '${c.key}', pos: [${x}, ${y}], label: '${c.label}' },`;
     }).join('\n') +
     '\n];';
+  const ttLiteral =
+    'export const TIME_TRAVEL_TRACK: TimeTravelTrackLayout = {\n  spots: [\n' +
+    TT_KEYS.map((key, i) => {
+      const [x, y] = positions[key] ?? TIME_TRAVEL_TRACK.spots[i];
+      return `    [${x}, ${y}],`;
+    }).join('\n') +
+    `\n  ],\n  markerWidth: ${markerWidth},\n};`;
+  const ttLabel = (i: number) =>
+    i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
   return (
     <div className="cal-panel">
       <p className="cal-hint">
         <b>Calibrate.</b> Pick a spot, click the board to place it, then arrow-keys
         nudge (0.2% / Shift = 1%). Copy the result to me when done.
       </p>
+      <label className="cal-size">
+        Marker width: <b>{markerWidth}%</b>
+        <input
+          type="range"
+          min={1}
+          max={12}
+          step={0.1}
+          value={markerWidth}
+          onChange={(e) => onMarkerWidth(+e.target.value)}
+        />
+      </label>
       <div className="cal-list">
         {BOARD_COUNTERS.map((c) => (
           <button
@@ -296,9 +559,73 @@ function CalibrationPanel({
             </span>
           </button>
         ))}
+        {TT_KEYS.map((key, i) => (
+          <button
+            key={key}
+            className={`cal-item tt ${selected === key ? 'on' : ''}`}
+            onClick={() => onSelect(key)}
+          >
+            {ttLabel(i)}{' '}
+            <span className="cal-xy">
+              {(positions[key] ?? TIME_TRAVEL_TRACK.spots[i]).join(', ')}
+            </span>
+          </button>
+        ))}
       </div>
       <textarea className="cal-out" readOnly value={literal} />
+      <textarea className="cal-out" readOnly value={ttLiteral} />
     </div>
+  );
+}
+
+/**
+ * The Chronobot's VP as an expandable pill. Collapsed shows the total; clicking
+ * reveals the breakdown: "token" VP (everything except Buildings & Time Travel),
+ * "bldg" VP (Construct tiles), and "time travel" VP (the track position).
+ */
+function VpPill({
+  botVp,
+  buildingVp,
+  timeTravelVp,
+  breakthroughVp,
+}: {
+  botVp: number;
+  buildingVp: number;
+  timeTravelVp: number;
+  breakthroughVp: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const nonBuilding = botVp - buildingVp;
+  const total = botVp + timeTravelVp + breakthroughVp;
+  return (
+    <button
+      type="button"
+      className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
+      onClick={() => setOpen((o) => !o)}
+      title="Click to break VP down: total · token · bldg · time travel · breakthrough"
+      aria-expanded={open}
+    >
+      <span className="vp-caret">{open ? '▾' : '▸'}</span>
+      <span className="vp-seg">
+        <b>{total}</b> VP
+      </span>
+      {open && (
+        <>
+          <span className="vp-seg vp-sub" title="Token VP — everything except Buildings, Time Travel & Breakthroughs">
+            <b>{nonBuilding}</b> token
+          </span>
+          <span className="vp-seg vp-sub" title="Building VP — from Construct actions (Buildings & Superprojects)">
+            <b>{buildingVp}</b> bldg
+          </span>
+          <span className="vp-seg vp-sub" title="Time Travel VP — from the marker's track position">
+            <b>{timeTravelVp}</b> time travel
+          </span>
+          <span className="vp-seg vp-sub" title="Breakthrough VP — 1 each + 2 per complete shape set">
+            <b>{breakthroughVp}</b> breakthrough
+          </span>
+        </>
+      )}
+    </button>
   );
 }
 
@@ -318,7 +645,6 @@ function StatsBar({
   onToggleCalibrate: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
-    { label: 'VP', value: bot.vp },
     { label: 'Warp', value: bot.warpTilesOnTimeline },
     { label: 'Actions', value: bot.totalActions },
   ];
@@ -327,8 +653,14 @@ function StatsBar({
       <div className="stats-left">
         <span className="debug-badge">DEBUG</span>
         <div className="stats-row">
-          {stats.map((s, i) => (
-            <span key={s.label} className={`stat-pill ${i === 0 ? 'lead' : ''}`}>
+          <VpPill
+            botVp={bot.vp}
+            buildingVp={bot.buildingVp}
+            timeTravelVp={Chronobot.timeTravelVp(bot)}
+            breakthroughVp={Chronobot.breakthroughVp(bot)}
+          />
+          {stats.map((s) => (
+            <span key={s.label} className="stat-pill">
               <b>{s.value}</b> {s.label}
             </span>
           ))}
@@ -354,6 +686,8 @@ function StatsBar({
 /** Short name of the Main-board Action space this action targets. */
 function spaceLabel(action: ChronobotActionId): string {
   if (action.startsWith('construct')) return 'Construct';
+  // The Recruit-Genius-Research mech gate is only reached via the Research fallback.
+  if (action === 'recruit-genius-research') return 'Research';
   return CHRONOBOT_ACTIONS[action].label;
 }
 
@@ -361,27 +695,63 @@ function DetailPanel({
   hotspot,
   pending,
   result,
+  selectedVP,
+  selectedResources,
+  selectedWorker,
+  rolledShape,
+  breakthroughs,
+  removeAnomaly,
+  mineOrder,
+  workerOrder,
   onConfirmPlace,
   onCannotPlace,
-  onSubmitBuildingVP,
+  onMineHasSpace,
+  onMineNoSpace,
+  onGeniusYes,
+  onGeniusNo,
+  onPickVP,
+  onToggleResource,
+  onPickWorker,
+  onStartTurn,
   onClose,
 }: {
   hotspot: Hotspot;
   pending: PendingStep;
   result: Instruction[];
+  selectedVP: number | null;
+  selectedResources: Resource[];
+  selectedWorker: Worker | null;
+  rolledShape: BreakthroughShape | null;
+  breakthroughs: Record<BreakthroughShape, number>;
+  removeAnomaly: { canRemove: boolean; discards: string; reason: string };
+  mineOrder: Resource[];
+  workerOrder: Worker[];
   onConfirmPlace: () => void;
   onCannotPlace: () => void;
-  onSubmitBuildingVP: (vp: number) => void;
+  onMineHasSpace: () => void;
+  onMineNoSpace: () => void;
+  onGeniusYes: () => void;
+  onGeniusNo: () => void;
+  onPickVP: (vp: number) => void;
+  onToggleResource: (r: Resource) => void;
+  onPickWorker: (w: Worker) => void;
+  onStartTurn: () => void;
   onClose: () => void;
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
   const [showMech, setShowMech] = useState(false);
+  const [showRule, setShowRule] = useState(false);
   const toggleMech = () => setShowMech((s) => !s);
+  const toggleRule = () => setShowRule((s) => !s);
 
   const paragraphs = def.rule.split('\n\n');
   const buildingLabel = def.label.replace('Construct — ', '');
   const isSuperproject = hotspot.action === 'construct-superproject';
+  const ruleLabel = hotspot.action.startsWith('construct')
+    ? 'Construct rules'
+    : `${def.label} rules`;
+  const failedInstr = result.find((ins) => /fail/i.test(ins.id));
 
   return (
     <div
@@ -418,7 +788,6 @@ function DetailPanel({
                 ✗ Cannot place
               </button>
             </div>
-            <MechRules />
           </div>
         )}
 
@@ -442,61 +811,351 @@ function DetailPanel({
               {(isSuperproject ? [3, 4, 5, 6, 7] : [1, 2, 3, 4]).map((n) => (
                 <button
                   key={n}
-                  className="vp-digit"
-                  onClick={() => onSubmitBuildingVP(n)}
+                  className={`vp-digit ${selectedVP === n ? 'selected' : ''}`}
+                  onClick={() => onPickVP(n)}
                 >
                   {n}
                 </button>
               ))}
             </div>
+            {selectedVP != null && (
+              <button className="start-turn" onClick={onStartTurn}>
+                ▶ Start Your Turn
+              </button>
+            )}
           </div>
         )}
 
-        {/* Resolved outcome. */}
-        {!pending && result.length > 0 && (
-          <div className="dp-result">
-            <p className="dp-result-title">This roll</p>
-            <ul>
-              {result.map((ins) => (
-                <li key={ins.id}>
-                  {ins.text}
-                  {ins.effect?.vp ? <span className="vp-chip">+{ins.effect.vp} VP</span> : null}
-                </li>
+        {/* Step 1 (Mine) — Mine spaces aren't Capital Action spaces: ask first. */}
+        {pending === 'mineOpen' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              <b>Is there one or more Mining Action space available?</b>
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onMineHasSpace}>
+                ✓ Yes — a Mining space is open
+              </button>
+              <button className="pp-cannot" onClick={onMineNoSpace}>
+                ✗ No open Mining space
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2 — Mine: place the mech in the matching space & pick Resources. */}
+        {pending === 'mineResources' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Place the Chronobot’s mech in an open <b>Mine</b> space granting
+              the best 2 Resources by priority order below, based on
+              lacking-first. Give it those <b>2 Resources</b> (pre-selected;
+              adjust to match the space — click a cube twice for <b>×2</b>),
+              then <b>discard those 2 Resource cubes from the board</b>.
+            </p>
+            <div className="resource-picks">
+              {mineOrder.map((r, i) => (
+                <Fragment key={r}>
+                  {i > 0 && <span className="pick-sep">&gt;</span>}
+                  <ResourceSwatch
+                    resource={r}
+                    count={selectedResources.filter((x) => x === r).length}
+                    onClick={() => onToggleResource(r)}
+                  />
+                </Fragment>
               ))}
-            </ul>
+            </div>
+            {selectedResources.length === 2 && (
+              <button className="start-turn" onClick={onStartTurn}>
+                ▶ Start Your Turn
+              </button>
+            )}
           </div>
         )}
 
-        {/* Verbatim rule text. */}
-        {paragraphs.map((para, i) => (
-          <p key={i} className="dp-rule">
-            {renderRule(para, toggleMech)}
-          </p>
-        ))}
+        {/* Step 2 — Recruit: pick which Worker type was recruited. */}
+        {pending === 'recruitWorker' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Recruit the highest-priority <b>Worker</b> the Chronobot lacks by
+              the priority order below (missing-first); if that type isn’t
+              available, take the next available one. Pick the recruited Worker
+              (+1 VP).
+            </p>
+            <div className="resource-picks worker-picks">
+              {workerOrder.map((w, i) => (
+                <Fragment key={w}>
+                  {i > 0 && <span className="pick-sep">&gt;</span>}
+                  <WorkerSwatch
+                    worker={w}
+                    selected={selectedWorker === w}
+                    onClick={() => onPickWorker(w)}
+                  />
+                </Fragment>
+              ))}
+            </div>
+            {selectedWorker && (
+              <button className="start-turn" onClick={onStartTurn}>
+                ▶ Start Your Turn
+              </button>
+            )}
+          </div>
+        )}
 
-        {/* When not gating, offer the mech rules on demand. */}
-        {!pending && def.placesExosuit && (
-          <>
-            <button className="mech-cta" onClick={toggleMech}>
-              🦾 How the Chronobot places its mech {showMech ? '▾' : '▸'}
+        {/* Recruit Genius / Research — Genius AND an open Recruit space available? */}
+        {pending === 'geniusQuestion' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Is a <b>Genius</b> available to recruit <b>and</b> an open Recruit
+              Action space (or World Council space)? If so, the Chronobot
+              recruits a Genius. If not, it performs a Research action instead.
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onGeniusYes}>
+                ✓ Yes — recruit a Genius
+              </button>
+              <button className="pp-alt" onClick={onGeniusNo}>
+                ✗ No — Research instead
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Recruit Genius / Research — Genius available → place mech + recruit a Genius. */}
+        {pending === 'geniusRecruit' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Place the Chronobot’s mech on the topmost available <b>Recruit</b>{' '}
+              Action space (or a World Council space if full) and recruit a{' '}
+              <b>Genius</b>, removing it from the board. The bot gains 1 VP.
+            </p>
+            <div className="resource-picks worker-picks">
+              <WorkerSwatch worker="genius" selected onClick={() => {}} />
+            </div>
+            <button className="start-turn" onClick={onStartTurn}>
+              ▶ Start Your Turn
             </button>
-            {showMech && <MechRules />}
-          </>
+          </div>
+        )}
+
+        {/* Research — the app rolled the shape die; take a Breakthrough of that shape. */}
+        {pending === 'research' && rolledShape && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              The shape die rolled <b>{rolledShape}</b> — the Chronobot keeps a{' '}
+              <b>{rolledShape}</b> Breakthrough.
+            </p>
+            <div className="shape-roll">
+              <ShapeIcon shape={rolledShape} size={52} />
+              <div className="shape-tally">
+                {SHAPE_ORDER.map((s) => (
+                  <span key={s} className="shape-count">
+                    <ShapeIcon shape={s} size={22} />
+                    {breakthroughs[s] + (s === rolledShape ? 1 : 0)}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <button className="start-turn" onClick={onStartTurn}>
+              ▶ Start Your Turn
+            </button>
+          </div>
+        )}
+
+        {/* Reboot — the Chronobot does nothing. */}
+        {pending === 'reboot' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">Reboot: Chronobot does nothing.</p>
+            <button className="start-turn" onClick={onStartTurn}>
+              ▶ Start Your Turn
+            </button>
+          </div>
+        )}
+
+        {/* Time Travel — the player physically removes a Warp tile & advances the marker. */}
+        {pending === 'timeTravel' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Remove one of the Chronobot’s <b>Warp tiles</b> from the past
+              Timeline tile where it has the most (oldest if tied).
+            </p>
+            <button className="start-turn" onClick={onStartTurn}>
+              ▶ Start Your Turn
+            </button>
+          </div>
+        )}
+
+        {/* Remove Anomaly — outcome is fully determined by the bot's state. */}
+        {pending === 'removeAnomaly' &&
+          (removeAnomaly.canRemove ? (
+            <div className="place-prompt">
+              <p className="pp-instruct">
+                Discard <b>{removeAnomaly.discards}</b> from the Chronobot and
+                remove 1 Anomaly. (Remove Anomaly places no mech.)
+              </p>
+              <button className="start-turn" onClick={onStartTurn}>
+                ▶ Start Your Turn
+              </button>
+            </div>
+          ) : (
+            <div className="place-prompt failed-note">
+              <p className="pp-instruct">
+                Failed Action: {removeAnomaly.reason} — the Chronobot takes +1 VP
+                instead (no mech placed).
+              </p>
+              <button className="start-turn" onClick={onStartTurn}>
+                ▶ Start Your Turn
+              </button>
+            </div>
+          ))}
+
+        {/* Failed Action notice — the only post-action detail we surface. */}
+        {!pending && failedInstr && (
+          <div className="place-prompt failed-note">
+            <p className="pp-instruct">{failedInstr.text}</p>
+          </div>
+        )}
+
+        {/* Once the bot's action has resolved, hand control back to the player. */}
+        {!pending && result.length > 0 && (
+          <button className="start-turn" onClick={onStartTurn}>
+            ▶ Start Your Turn
+          </button>
+        )}
+
+        {/* Verbatim action rule — a collapsed explanation, available in every
+            step: under the mech-placement box first, then by itself. */}
+        <RuleExplainer
+          label={ruleLabel}
+          paragraphs={paragraphs}
+          open={showRule}
+          onToggle={toggleRule}
+          onMechClick={toggleMech}
+        />
+
+        {/* Mech-placement rules — always below the orange boxes, on demand. */}
+        {def.placesExosuit && (
+          <MechRules open={showMech} onToggle={toggleMech} />
         )}
       </div>
     </div>
   );
 }
 
-function MechRules() {
+/** Collapsible verbatim rules for how the Chronobot places its mech. */
+function MechRules({ open, onToggle }: { open: boolean; onToggle: () => void }) {
   return (
     <div className="mech-rules">
-      <p className="mech-rules-title">Placing the Chronobot’s mech (Exosuit)</p>
-      <ul>
-        {MECH_PLACEMENT.map((line, i) => (
-          <li key={i}>{line}</li>
-        ))}
-      </ul>
+      <button className="mech-cta" onClick={onToggle}>
+        📖 Placing the Chronobot’s mech (Exosuit) {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <ul>
+          {MECH_PLACEMENT.map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** Display metadata per Resource: label + cropped cube art (transparent PNG). */
+const RESOURCE_META: Record<Resource, { label: string; img?: string }> = {
+  neutronium: { label: 'Neutronium', img: '/assets/solo/resources/neutronium.png' },
+  uranium: { label: 'Uranium', img: '/assets/solo/resources/uranium.png' },
+  gold: { label: 'Gold', img: '/assets/solo/resources/gold.png' },
+  titanium: { label: 'Titanium', img: '/assets/solo/resources/titanium.png' },
+  water: { label: 'Water' },
+};
+
+/** A selectable Resource cube. `count` is how many are picked (0, 1 or 2). */
+function ResourceSwatch({
+  resource,
+  count,
+  onClick,
+}: {
+  resource: Resource;
+  count: number;
+  onClick: () => void;
+}) {
+  const meta = RESOURCE_META[resource];
+  return (
+    <button
+      type="button"
+      className={`resource-swatch ${count > 0 ? 'selected' : ''}`}
+      onClick={onClick}
+      aria-pressed={count > 0}
+    >
+      <span className="resource-cube-wrap">
+        <img className="resource-cube" src={meta.img} alt="" />
+        {count === 2 && <span className="cube-x2">×2</span>}
+      </span>
+      <span className="resource-name">{meta.label}</span>
+    </button>
+  );
+}
+
+/** Display metadata per Worker: label + cropped figure art (transparent PNG). */
+const WORKER_META: Record<Worker, { label: string; img: string }> = {
+  genius: { label: 'Genius', img: '/assets/solo/workers/genius.png' },
+  administrator: { label: 'Administrator', img: '/assets/solo/workers/administrator.png' },
+  engineer: { label: 'Engineer', img: '/assets/solo/workers/engineer.png' },
+  scientist: { label: 'Scientist', img: '/assets/solo/workers/scientist.png' },
+};
+
+/** A selectable Worker figure (single-select). */
+function WorkerSwatch({
+  worker,
+  selected,
+  onClick,
+}: {
+  worker: Worker;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const meta = WORKER_META[worker];
+  return (
+    <button
+      type="button"
+      className={`resource-swatch worker-swatch ${selected ? 'selected' : ''}`}
+      onClick={onClick}
+      aria-pressed={selected}
+    >
+      <img className="worker-fig" src={meta.img} alt="" />
+      <span className="resource-name">{meta.label}</span>
+    </button>
+  );
+}
+
+/** Collapsible verbatim rule text for the action (defaults collapsed). */
+function RuleExplainer({
+  label,
+  paragraphs,
+  open,
+  onToggle,
+  onMechClick,
+}: {
+  label: string;
+  paragraphs: string[];
+  open: boolean;
+  onToggle: () => void;
+  onMechClick: () => void;
+}) {
+  return (
+    <div className="mech-rules">
+      <button className="mech-cta" onClick={onToggle}>
+        📖 {label} {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="rule-body">
+          {paragraphs.map((para, i) => (
+            <p key={i} className="dp-rule">
+              {renderRule(para, onMechClick)}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

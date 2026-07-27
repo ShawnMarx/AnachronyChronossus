@@ -82,6 +82,29 @@
   border-color: rgba(139, 92, 246, 0.6);
   opacity: 1;
 }
+/* Expandable VP pill */
+.vp-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+}
+.vp-caret {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+.vp-seg {
+  white-space: nowrap;
+}
+.vp-seg.vp-sub {
+  padding-left: 0.45rem;
+  border-left: 1px solid rgba(196, 181, 253, 0.4);
+  opacity: 0.85;
+  font-size: 0.76rem;
+}
 .outline-toggle {
   display: flex;
   align-items: center;
@@ -244,27 +267,71 @@
   background: rgba(139, 92, 246, 0.28);
 }
 .mech-rules {
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  border-radius: 8px;
-  background: rgba(139, 92, 246, 0.08);
-  padding: 0.5rem 0.75rem;
-}
-.mech-rules-title {
-  margin: 0 0 0.35rem;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #c4b5fd;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
 }
 .mech-rules ul {
   margin: 0;
-  padding-left: 1.1rem;
+  padding: 0.5rem 0.75rem 0.5rem 1.85rem;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.08);
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  align-self: stretch;
+}
+.rule-body {
+  align-self: stretch;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+.rule-body .dp-rule {
+  margin: 0;
 }
 .mech-rules li {
   font-size: clamp(0.74rem, 1.4vw, 0.88rem);
   line-height: 1.4;
+}
+
+/* Time Travel marker — a purple silhouette outline (follows the art) + shadow */
+.tt-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter:
+    drop-shadow(1.6px 0 0 #a855f7) drop-shadow(-1.6px 0 0 #a855f7)
+    drop-shadow(0 1.6px 0 #a855f7) drop-shadow(0 -1.6px 0 #a855f7)
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+}
+.tt-marker.cal-ghost {
+  opacity: 0.4;
+}
+.tt-marker.cal-selected {
+  opacity: 1;
+  filter:
+    drop-shadow(1.6px 0 0 #f0abfc) drop-shadow(-1.6px 0 0 #f0abfc)
+    drop-shadow(0 1.6px 0 #f0abfc) drop-shadow(0 -1.6px 0 #f0abfc)
+    drop-shadow(0 0 6px rgba(240, 171, 252, 0.9));
+}
+
+/* Marker-size slider in the calibration panel */
+.cal-size {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  margin: 0 0 0.5rem;
+}
+.cal-size input {
+  flex: 1 1 auto;
 }
 
 /* 0–3 building/superproject count badges on the board */
@@ -363,7 +430,7 @@
 .vp-digits {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.7rem;
 }
 .vp-digit {
   width: 2.2rem;
@@ -378,6 +445,158 @@
 }
 .vp-digit:hover {
   background: rgba(139, 92, 246, 0.38);
+}
+.vp-digit.selected {
+  background: #8b5cf6;
+  border-color: #c4b5fd;
+  color: white;
+  box-shadow: 0 0 0 2px rgba(196, 181, 253, 0.55);
+}
+
+/* Mine Resource — cube picker */
+.resource-picks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+.pick-sep {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #c4b5fd;
+  opacity: 0.8;
+}
+.resource-swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(139, 92, 246, 0.08);
+  color: inherit;
+  cursor: pointer;
+}
+.resource-swatch:hover {
+  background: rgba(139, 92, 246, 0.2);
+}
+.resource-swatch.selected {
+  border-color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.32);
+  box-shadow: 0 0 0 2px rgba(196, 181, 253, 0.55);
+}
+.resource-cube-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.resource-cube {
+  width: 2.6rem;
+  height: 2.6rem;
+  object-fit: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+}
+.cube-x2 {
+  position: absolute;
+  right: -0.35rem;
+  bottom: -0.3rem;
+  min-width: 1.15rem;
+  padding: 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.15rem;
+  text-align: center;
+  color: #fff;
+  background: #7c3aed;
+  border: 1px solid #c4b5fd;
+  border-radius: 999px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+.resource-name {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.worker-fig {
+  width: auto;
+  height: 3.4rem;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
+}
+
+/* Research — rolled Breakthrough shape + running per-shape tally */
+.shape-roll {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.shape-icon {
+  object-fit: contain;
+  box-sizing: border-box;
+  padding: 2px;
+  background: #d8d8de;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+.shape-tally {
+  display: flex;
+  gap: 0.7rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.shape-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+}
+
+/* Breakthroughs badge — click for the per-shape breakdown popover */
+.count-badge.clickable {
+  cursor: pointer;
+  pointer-events: auto;
+}
+.count-badge.clickable:hover {
+  box-shadow: 0 0 0 2px rgba(196, 181, 253, 0.7);
+}
+.bt-popover {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(20, 12, 34, 0.96);
+  border: 1px solid rgba(139, 92, 246, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+.bt-pop-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ede9fe;
+}
+
+/* "Start Your Turn" — closes the box and hands play back to the player */
+.start-turn {
+  align-self: stretch;
+  margin-top: 0.15rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 163, 74, 0.7);
+  background: #16a34a;
+  color: white;
+  cursor: pointer;
+}
+.start-turn:hover {
+  background: #15803d;
 }
 
 /* Mech placement gate */
@@ -426,38 +645,24 @@
 .pp-cannot:hover {
   background: rgba(220, 38, 38, 0.3);
 }
-
-/* Debug "this roll" result block */
-.dp-result {
-  border-top: 1px solid rgba(139, 92, 246, 0.35);
-  padding-top: 0.55rem;
-}
-.dp-result-title {
-  margin: 0 0 0.3rem;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #f59e0b;
-}
-.dp-result ul {
-  margin: 0;
-  padding-left: 1.1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.dp-result li {
-  font-size: clamp(0.74rem, 1.4vw, 0.88rem);
-  line-height: 1.4;
-}
-.vp-chip {
-  display: inline-block;
-  margin-left: 0.4rem;
-  font-size: 0.68rem;
+/* Neutral alternative choice (not a failure) */
+.pp-alt {
+  flex: 1 1 auto;
+  font-size: 0.85rem;
   font-weight: 700;
-  padding: 0.05rem 0.35rem;
-  border-radius: 999px;
-  background: #16a34a;
-  color: white;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  cursor: pointer;
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.55);
+  color: #c4b5fd;
+}
+.pp-alt:hover {
+  background: rgba(139, 92, 246, 0.32);
+}
+
+/* Failed Action notice — a red-tinted variant of the amber prompt box */
+.failed-note {
+  border-color: rgba(220, 38, 38, 0.55);
+  background: rgba(220, 38, 38, 0.1);
 }

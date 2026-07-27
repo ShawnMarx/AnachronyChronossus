@@ -39,14 +39,32 @@ const MINEABLE: Resource[] = ['uranium', 'gold', 'titanium'];
  * prioritise types it does NOT have, breaking ties by Neutronium > Uranium >
  * Gold > Titanium (restricted to mineable resources).
  */
-export function chooseMineResources(bot: ChronobotState): Resource[] {
-  const ranked = [...MINEABLE].sort((a, b) => {
+export function rankMineResources(bot: ChronobotState): Resource[] {
+  return [...MINEABLE].sort((a, b) => {
     const lackA = bot.resources[a] === 0 ? 0 : 1;
     const lackB = bot.resources[b] === 0 ? 0 : 1;
     if (lackA !== lackB) return lackA - lackB; // lacking first
     return MINE_PRIORITY.indexOf(a) - MINE_PRIORITY.indexOf(b);
   });
-  return ranked.slice(0, 2);
+}
+
+export function chooseMineResources(bot: ChronobotState): Resource[] {
+  return rankMineResources(bot).slice(0, 2);
+}
+
+/**
+ * All 4 tracked Resources in the order the dialog should present them: the
+ * Chronobot's full Mine priority (lacking-first, then Neutronium > Uranium >
+ * Gold > Titanium). Neutronium is shown for priority context even though Mine
+ * spaces don't normally yield it.
+ */
+export function mineResourceOrder(bot: ChronobotState): Resource[] {
+  return [...MINE_PRIORITY].sort((a, b) => {
+    const lackA = bot.resources[a] === 0 ? 0 : 1;
+    const lackB = bot.resources[b] === 0 ? 0 : 1;
+    if (lackA !== lackB) return lackA - lackB; // lacking first
+    return MINE_PRIORITY.indexOf(a) - MINE_PRIORITY.indexOf(b);
+  });
 }
 
 /** The Worker type the Chronobot targets when recruiting, or null if it has all 4. */
@@ -241,6 +259,16 @@ export interface ActionTurnInput {
    * the player took. It is added to the Chronobot's score and the tile discarded.
    */
   buildingVP?: number;
+  /**
+   * For a Mine Resource action: the 2 Resources the player granted from the Mine
+   * space actually used. Defaults to `chooseMineResources` when omitted.
+   */
+  minedResources?: Resource[];
+  /**
+   * For a Recruit action: the Worker type the player granted (board availability
+   * may differ from the priority target). Defaults to `chooseRecruitWorker`.
+   */
+  recruitedWorker?: Worker;
 }
 
 export interface ActionTurnResult {
@@ -315,7 +343,7 @@ export function takeActionTurn(
       break;
 
     case 'recruit':
-      resolveRecruit(bot, instr);
+      resolveRecruit(bot, instr, input.recruitedWorker);
       consumeExosuit(bot, def);
       break;
 
@@ -340,7 +368,7 @@ export function takeActionTurn(
       break;
 
     case 'mine-resource':
-      resolveMine(bot, instr);
+      resolveMine(bot, instr, input.minedResources);
       consumeExosuit(bot, def);
       break;
 
@@ -357,8 +385,8 @@ export function takeActionTurn(
         bot.timeTravelTrack += 1;
         instr.push({
           id: `tt-${bot.totalActions}`,
-          text: 'Remove one of the Chronobot’s Warp tiles from the past Timeline tile where it has the most (oldest if tied); advance it 1 step on the Time Travel track.',
-          detail: 'Time Travel places no Exosuit.',
+          text: 'Remove one of the Chronobot’s Warp tiles from the past Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot along the track.',
+          detail: `Time Travel places no Exosuit. The marker is now worth ${timeTravelVp(bot)} VP.`,
         });
       }
       break;
@@ -387,15 +415,16 @@ export function takeActionTurn(
     case 'construct-powerplant':
     case 'construct-support': {
       const type = input.actionId.replace('construct-', '') as keyof ChronobotState['buildings'];
+      const label = def.label.replace('Construct — ', '');
       if (bot.buildings[type] >= 3) {
-        failCantPerform(`it already has 3 ${type} buildings`);
+        failCantPerform(`it already has 3 ${label} buildings`);
       } else {
         bot.buildings[type] += 1;
         consumeExosuit(bot, def);
-        const label = def.label.replace('Construct — ', '');
         const vp = input.buildingVP ?? 0;
         if (vp > 0) {
           bot.vp += vp;
+          bot.buildingVp += vp;
           instr.push({
             id: `construct-${bot.totalActions}`,
             text: `Give the Chronobot the higher-VP ${label} (secondary stack if tied) — worth ${vp} VP. Add ${vp} to its score, then discard the tile.`,
@@ -425,6 +454,7 @@ export function takeActionTurn(
         const vp = input.buildingVP ?? 0;
         if (vp > 0) {
           bot.vp += vp;
+          bot.buildingVp += vp;
           instr.push({
             id: `superproject-${bot.totalActions}`,
             text: `Discard 1 ${discard} Breakthrough, then give the Chronobot the highest-VP face-up Superproject (oldest if tied) — worth ${vp} VP. Add ${vp} to its score.`,
@@ -494,50 +524,82 @@ function resolveResearch(
   }
 }
 
-function resolveRecruit(bot: ChronobotState, instr: Instruction[]): void {
-  const hasAll = RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0);
-  if (hasAll) {
-    for (const w of RECRUIT_PRIORITY) bot.workers[w] -= 1;
-    bot.vp += 5;
-    instr.push({
-      id: `recruit-set-${bot.totalActions}`,
-      text: 'The Chronobot already has all 4 Worker types — discard one of each and gain +5 VP.',
-      effect: { vp: 5 },
-    });
-    return;
-  }
-  const target = chooseRecruitWorker(bot);
+function resolveRecruit(bot: ChronobotState, instr: Instruction[], recruited?: Worker): void {
+  const target = recruited ?? chooseRecruitWorker(bot);
   if (target) bot.workers[target] += 1;
   bot.vp += 1;
   instr.push({
     id: `recruit-${bot.totalActions}`,
     text: `Recruit a ${target} for the Chronobot (+1 VP).`,
     detail:
-      `Priority: Genius > Administrator > Engineer > Scientist. If ${target} is unavailable, take the next available type by that order (still +1 VP). No Recruit bonus.`,
+      'Priority: Genius > Administrator > Engineer > Scientist. If unavailable, take the next available type by that order (still +1 VP). No Recruit bonus.',
     effect: { vp: 1 },
-    requiresInput: true,
+  });
+  // Set bonus: once it holds all 4 Worker types, discard one of each for +5 VP.
+  if (RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0)) {
+    for (const w of RECRUIT_PRIORITY) bot.workers[w] -= 1;
+    bot.vp += 5;
+    instr.push({
+      id: `recruit-set-${bot.totalActions}`,
+      text: 'The Chronobot now holds all 4 Worker types — discard one of each and add 5 VP to its score.',
+      effect: { vp: 5 },
+    });
+  }
+}
+
+/** VP scored for the Chronobot's Time Travel track position (start + 6 advances). */
+export const TIME_TRAVEL_VP: number[] = [0, 2, 4, 6, 8, 10, 12];
+
+/** The Time Travel track marker index (clamped to the last spot). */
+export function timeTravelSpot(bot: ChronobotState): number {
+  return Math.min(Math.max(bot.timeTravelTrack, 0), TIME_TRAVEL_VP.length - 1);
+}
+
+/** VP the Chronobot currently scores from its Time Travel track position. */
+export function timeTravelVp(bot: ChronobotState): number {
+  return TIME_TRAVEL_VP[timeTravelSpot(bot)];
+}
+
+/** VP from Breakthroughs: 1 per Breakthrough + 2 per complete shape set (one of each). */
+export function breakthroughVp(bot: ChronobotState): number {
+  const total = BREAKTHROUGH_SHAPES.reduce((n, s) => n + bot.breakthroughs[s], 0);
+  const completeSets = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
+  return total + completeSets * 2;
+}
+
+/**
+ * All 4 Worker types in the order the Recruit dialog presents them: missing-first,
+ * then Genius > Administrator > Engineer > Scientist.
+ */
+export function recruitWorkerOrder(bot: ChronobotState): Worker[] {
+  return [...RECRUIT_PRIORITY].sort((a, b) => {
+    const lackA = bot.workers[a] === 0 ? 0 : 1;
+    const lackB = bot.workers[b] === 0 ? 0 : 1;
+    if (lackA !== lackB) return lackA - lackB; // missing first
+    return RECRUIT_PRIORITY.indexOf(a) - RECRUIT_PRIORITY.indexOf(b);
   });
 }
 
-function resolveMine(bot: ChronobotState, instr: Instruction[]): void {
-  const [a, b] = chooseMineResources(bot);
-  bot.resources[a] += 1;
-  bot.resources[b] += 1;
+/** The 4 Resource types tracked toward the Chronobot's +5 VP set bonus. */
+export const SET_BONUS_RESOURCES: Resource[] = ['neutronium', 'uranium', 'gold', 'titanium'];
+
+function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource[]): void {
+  const gained = mined && mined.length ? mined : chooseMineResources(bot);
+  for (const r of gained) bot.resources[r] += 1;
   instr.push({
     id: `mine-${bot.totalActions}`,
-    text: `Mine: the Chronobot wants ${a} + ${b}. Take the topmost Mine space that yields both and give it those Resources.`,
+    text: `Mine: give the Chronobot ${gained.join(' + ')} from the Mine space you used.`,
     detail:
-      'It prioritises Resources it lacks; ties: Neutronium > Uranium > Gold > Titanium. Once it holds all 4 Resource types it discards one of each for +5 VP.',
-    requiresInput: true,
+      'It wants the 2 Resources it lacks; ties: Neutronium > Uranium > Gold > Titanium.',
   });
-  const distinctTypes = (['water', 'gold', 'titanium', 'uranium', 'neutronium'] as Resource[]).filter(
-    (r) => bot.resources[r] > 0,
-  );
-  if (distinctTypes.length >= 4) {
+  // Set bonus: once it holds all 4 tracked Resource types, discard one of each for +5 VP.
+  if (SET_BONUS_RESOURCES.every((r) => bot.resources[r] > 0)) {
+    for (const r of SET_BONUS_RESOURCES) bot.resources[r] -= 1;
+    bot.vp += 5;
     instr.push({
       id: `mine-set-${bot.totalActions}`,
-      text: 'The Chronobot may now hold all 4 Resource types — if so, discard one of each for +5 VP.',
-      requiresInput: true,
+      text: 'The Chronobot now holds all 4 Resource types — discard one of each and add 5 VP to its score.',
+      effect: { vp: 5 },
     });
   }
 }

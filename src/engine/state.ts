@@ -49,6 +49,8 @@ export interface ChronobotState {
   /** Powered-up Exosuits available to place this Era. */
   exosuitsAvailable: number;
   vp: number;
+  /** Portion of `vp` earned from Building + Superproject tiles (the rest is "token" VP). */
+  buildingVp: number;
   resources: Record<Resource, number>;
   workers: Record<Worker, number>;
   breakthroughs: Record<BreakthroughShape, number>;
@@ -88,6 +90,7 @@ export function emptyChronobotState(): ChronobotState {
     exosuitsTotal: 6,
     exosuitsAvailable: 0,
     vp: 0,
+    buildingVp: 0,
     resources: { water: 0, gold: 0, titanium: 0, uranium: 0, neutronium: 0 },
     workers: { genius: 0, administrator: 0, engineer: 0, scientist: 0 },
     breakthroughs: { circle: 0, triangle: 0, square: 0 },
