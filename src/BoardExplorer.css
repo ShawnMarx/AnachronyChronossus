@@ -115,6 +115,92 @@
   border-color: #a855f7;
 }
 
+/* Top-right ⚙ settings menu */
+.settings-menu {
+  position: relative;
+}
+.gear-btn {
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  color: #c4b5fd;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.32rem 0.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.gear-btn:hover,
+.gear-btn.on {
+  background: rgba(139, 92, 246, 0.32);
+}
+.gear-btn.debug-on {
+  background: #f59e0b;
+  border-color: #fbbf24;
+  color: #1a1207;
+}
+.settings-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  min-width: 210px;
+  background: #171226;
+  border: 1px solid #8b5cf6;
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+  padding: 0.35rem;
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.settings-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  background: none;
+  border: none;
+  color: #ddd6fe;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.settings-item:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.2);
+}
+.settings-item.sub {
+  padding-left: 1.1rem;
+  font-size: 0.8rem;
+  color: #c4b5fd;
+}
+.settings-item.danger {
+  color: #fca5a5;
+}
+.settings-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.settings-sep {
+  height: 1px;
+  background: rgba(139, 92, 246, 0.3);
+  margin: 0.2rem 0;
+}
+.sw {
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+.sw.on {
+  background: rgba(74, 222, 128, 0.28);
+  color: #4ade80;
+}
+
 /* History pane — right-docked column */
 .history-pane {
   position: fixed;
@@ -324,6 +410,8 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
+  /* Above all board overlays (markers/badges sit at z-index 4–6). */
+  z-index: 30;
 }
 .dp-head {
   flex: 0 0 auto;

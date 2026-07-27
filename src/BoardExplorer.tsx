@@ -1434,19 +1434,11 @@ function StatsBar({
   return (
     <div className="stats-bar">
       <div className="stats-left">
-        <button
-          type="button"
-          className={`debug-badge ${debug ? 'on' : 'off'}`}
-          onClick={onToggleDebug}
-          title={
-            debug
-              ? 'Debug ON — tap tiles to activate them; calibrate & outlines available'
-              : 'Play mode — tap tiles to read rules only. Click to enable Debug.'
-          }
-          aria-pressed={debug}
-        >
-          {debug ? '🛠 DEBUG' : '▶ PLAY'}
-        </button>
+        {debug && (
+          <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
+            🛠 DEBUG
+          </span>
+        )}
         <div className="stats-row">
           <VpPill
             botVp={bot.vp}
@@ -1499,18 +1491,6 @@ function StatsBar({
         </div>
       )}
       <div className="stats-controls">
-        {debug && (
-          <>
-            <label className="outline-toggle" title="Show the tappable tile outlines">
-              <input type="checkbox" checked={outline} onChange={onToggleOutline} />
-              outlines
-            </label>
-            <label className="outline-toggle" title="Calibrate badge positions">
-              <input type="checkbox" checked={calibrate} onChange={onToggleCalibrate} />
-              calibrate
-            </label>
-          </>
-        )}
         <button
           className="undo-btn"
           onClick={onUndo}
@@ -1527,10 +1507,106 @@ function StatsBar({
         >
           🕑 History
         </button>
-        <button className="reset-btn" onClick={onReset}>
-          ⟳ Reset Game
-        </button>
+        <SettingsMenu
+          debug={debug}
+          onToggleDebug={onToggleDebug}
+          outline={outline}
+          onToggleOutline={onToggleOutline}
+          calibrate={calibrate}
+          onToggleCalibrate={onToggleCalibrate}
+          onReset={onReset}
+        />
       </div>
+    </div>
+  );
+}
+
+/** Top-right ⚙ menu: play/debug, dev toggles (in debug), and Reset Game. */
+function SettingsMenu({
+  debug,
+  onToggleDebug,
+  outline,
+  onToggleOutline,
+  calibrate,
+  onToggleCalibrate,
+  onReset,
+}: {
+  debug: boolean;
+  onToggleDebug: () => void;
+  outline: boolean;
+  onToggleOutline: () => void;
+  calibrate: boolean;
+  onToggleCalibrate: () => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.settings-menu')) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="settings-menu">
+      <button
+        className={`gear-btn ${debug ? 'debug-on' : ''} ${open ? 'on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        title="Settings"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        ⚙
+      </button>
+      {open && (
+        <div className="settings-dropdown" role="menu">
+          <button
+            className="settings-item toggle"
+            onClick={onToggleDebug}
+            role="menuitemcheckbox"
+            aria-checked={debug}
+          >
+            <span>Debug mode</span>
+            <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
+          </button>
+          {debug && (
+            <>
+              <button
+                className="settings-item toggle sub"
+                onClick={onToggleOutline}
+                role="menuitemcheckbox"
+                aria-checked={outline}
+              >
+                <span>Tile outlines</span>
+                <span className={`sw ${outline ? 'on' : ''}`}>{outline ? 'ON' : 'OFF'}</span>
+              </button>
+              <button
+                className="settings-item toggle sub"
+                onClick={onToggleCalibrate}
+                role="menuitemcheckbox"
+                aria-checked={calibrate}
+              >
+                <span>Calibrate positions</span>
+                <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
+              </button>
+            </>
+          )}
+          <div className="settings-sep" />
+          <button className="settings-item danger" onClick={onReset} role="menuitem">
+            ⟳ Reset Game
+          </button>
+          <button className="settings-item disabled" disabled role="menuitem" title="Coming soon">
+            👤 Log in (soon)
+          </button>
+        </div>
+      )}
     </div>
   );
 }
