@@ -11,7 +11,7 @@ import {
   type ChronobotActionId,
   type ChronobotState,
   type CommandToken,
-  type CommandTokenPos,
+  type CommandTokensState,
   type GameState,
   type Instruction,
   type PathId,
@@ -161,7 +161,7 @@ export default function BoardExplorer() {
   const [passMsg, setPassMsg] = useState<string | null>(null);
 
   // --- Command tokens (2–5) travelling the two Action paths ---
-  const [tokens, setTokens] = useState<Record<CommandToken, CommandTokenPos>>(
+  const [tokens, setTokens] = useState<CommandTokensState>(
     Chronobot.initialCommandTokens,
   );
   const [botDie, setBotDie] = useState<number | null>(null);
@@ -246,7 +246,7 @@ export default function BoardExplorer() {
   const takeBotAction = () => {
     const die = rollAiDie();
     const token = die as CommandToken;
-    const pos = tokens[token];
+    const pos = tokens.positions[token];
     const action = Chronobot.tokenAction(pos);
     const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === action);
     if (!h) return;
@@ -298,7 +298,7 @@ export default function BoardExplorer() {
     // Die-driven turn: advance the activated Command token to its next path step.
     const tk = activeTokenRef.current;
     if (tk != null) {
-      setTokens((t) => ({ ...t, [tk]: Chronobot.advanceToken(t[tk]) }));
+      setTokens((t) => Chronobot.advanceActiveToken(t, tk));
       activeTokenRef.current = null;
     }
   };
@@ -550,16 +550,28 @@ export default function BoardExplorer() {
                 );
               })
             : Chronobot.COMMAND_TOKENS.map((tk) => {
-                const pos = tokens[tk];
+                const pos = tokens.positions[tk];
                 const [x, y] = positions[pathKey(pos.path, pos.index)] ??
                   PATH_SPOTS[pos.path][pos.index];
+                // When a pair shares a spot, split them: the bottom token shifts
+                // half a marker-width right, the top one half-width left, so the
+                // top marker stays visible. A solo marker sits dead-centre.
+                const stack = Chronobot.tokensAtPosition(tokens, pos.path, pos.index);
+                const rank = stack.indexOf(tk); // 0 = bottom of the stack
+                const half = cmdMarkerWidth / 2;
+                const dx = stack.length >= 2 ? (rank === 0 ? half : -half) : 0;
                 return (
                   <img
                     key={tk}
                     src={COMMAND_MARKER_IMG[tk]}
                     alt={`Command token ${tk}`}
                     className={`cmd-marker ${activeToken === tk ? 'active' : ''}`}
-                    style={{ left: `${x}%`, top: `${y}%`, width: `${cmdMarkerWidth}%` }}
+                    style={{
+                      left: `${x + dx}%`,
+                      top: `${y}%`,
+                      width: `${cmdMarkerWidth}%`,
+                      zIndex: 4 + rank,
+                    }}
                   />
                 );
               })}

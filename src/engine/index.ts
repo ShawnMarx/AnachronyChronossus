@@ -18,6 +18,7 @@ export * as Chronobot from './bots/chronobot';
 export type {
   CommandToken,
   CommandTokenPos,
+  CommandTokensState,
   PathId,
 } from './bots/chronobot';
 

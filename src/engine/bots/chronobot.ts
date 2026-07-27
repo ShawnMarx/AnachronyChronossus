@@ -173,13 +173,26 @@ export const TOKEN_START: Record<CommandToken, CommandTokenPos> = {
   5: { path: 'long', index: 7 },
 };
 
+/**
+ * The live state of all 4 Command tokens: where each sits, plus a global stacking
+ * order (bottom → top). Two tokens may share a position; the one appearing later
+ * in `order` is the one physically on top of the stack.
+ */
+export interface CommandTokensState {
+  positions: Record<CommandToken, CommandTokenPos>;
+  order: CommandToken[];
+}
+
 /** A fresh set of all 4 Command tokens at their starting positions. */
-export function initialCommandTokens(): Record<CommandToken, CommandTokenPos> {
+export function initialCommandTokens(): CommandTokensState {
   return {
-    2: { ...TOKEN_START[2] },
-    3: { ...TOKEN_START[3] },
-    4: { ...TOKEN_START[4] },
-    5: { ...TOKEN_START[5] },
+    positions: {
+      2: { ...TOKEN_START[2] },
+      3: { ...TOKEN_START[3] },
+      4: { ...TOKEN_START[4] },
+      5: { ...TOKEN_START[5] },
+    },
+    order: [...COMMAND_TOKENS],
   };
 }
 
@@ -196,6 +209,56 @@ export function nextTokenIndex(path: PathId, index: number): number {
 /** Advance a token one step along its path (returns a new position). */
 export function advanceToken(pos: CommandTokenPos): CommandTokenPos {
   return { path: pos.path, index: nextTokenIndex(pos.path, pos.index) };
+}
+
+function samePos(a: CommandTokenPos, b: CommandTokenPos): boolean {
+  return a.path === b.path && a.index === b.index;
+}
+
+/** Move a token to the top of the global stacking order. */
+function toTop(order: CommandToken[], t: CommandToken): CommandToken[] {
+  return [...order.filter((x) => x !== t), t];
+}
+
+/** The tokens occupying a position, ordered bottom → top. */
+export function tokensAtPosition(
+  state: CommandTokensState,
+  path: PathId,
+  index: number,
+): CommandToken[] {
+  return state.order.filter((t) => samePos(state.positions[t], { path, index }));
+}
+
+/**
+ * Advance the active Command token one step along its path, applying the stacking
+ * rule (Solo Opponents rulebook): a position holds at most two tokens. If the
+ * destination already has two, the top one is bumped forward one step *first*,
+ * then the active token moves onto the destination (landing on top).
+ *
+ * With only 3 tokens ever sharing the Long path, a single bump can never cascade
+ * (the bumped token's next position is always free), so no recursion is needed.
+ */
+export function advanceActiveToken(
+  state: CommandTokensState,
+  token: CommandToken,
+): CommandTokensState {
+  const positions = { ...state.positions };
+  let order = [...state.order];
+  const dest = advanceToken(positions[token]);
+
+  const atDest = COMMAND_TOKENS.filter(
+    (t) => t !== token && samePos(positions[t], dest),
+  );
+  if (atDest.length >= 2) {
+    // Bump the top token already at the destination forward one step first.
+    const top = [...order].reverse().find((t) => atDest.includes(t))!;
+    positions[top] = advanceToken(positions[top]);
+    order = toTop(order, top);
+  }
+
+  positions[token] = dest;
+  order = toTop(order, token);
+  return { positions, order };
 }
 
 // --------------------------------------------------------------------------

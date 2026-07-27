@@ -11,30 +11,27 @@ import type { PathId } from '../engine';
 /** A marker anchor for one step on a path: center [x, y] % of the board image. */
 export type PathSpot = [number, number];
 
-// Seed anchors from the hotspot tile grid (chronobotHotspots.ts): tile centers.
-// COLS top-left = [4.6, 16.0, 26.6, 38.1], TW = 9.6 → center = col + 4.8.
-// ROWS top-left = [15.0, 30.2, 62.6], TH = 8.1 → center = row + 4.05.
-const CX = [9.4, 20.8, 31.4, 42.9]; // column centers
-const CY = [19.05, 34.25, 66.65]; // row centers
+// Positions calibrated in-app against the board art (2026-07-27) — the printed
+// token circles above/below each Action tile.
 
 /** Short path: the board's top tile row (4 steps), left → right, loops. */
 export const SHORT_PATH: PathSpot[] = [
-  [CX[0], CY[0]], // Short-1 Construct Water
-  [CX[1], CY[0]], // Short-2 Time Travel
-  [CX[2], CY[0]], // Short-3 Construct Superproject
-  [CX[3], CY[0]], // Short-4 Remove Anomaly
+  [9.5, 9.7], // Short-1 construct-support (Water / Life Support)
+  [20.5, 9.7], // Short-2 time-travel
+  [31.5, 9.7], // Short-3 construct-superproject
+  [42.4, 9.7], // Short-4 remove-anomaly
 ];
 
 /** Long path: middle row left→right, then lower row right→left (8 steps), loops. */
 export const LONG_PATH: PathSpot[] = [
-  [CX[0], CY[1]], // Long-1 Mine
-  [CX[1], CY[1]], // Long-2 Construct Power Plant
-  [CX[2], CY[1]], // Long-3 Recruit
-  [CX[3], CY[1]], // Long-4 Construct Factory
-  [CX[3], CY[2]], // Long-5 Reboot
-  [CX[2], CY[2]], // Long-6 Recruit Genius / Research
-  [CX[1], CY[2]], // Long-7 Construct Lab
-  [CX[0], CY[2]], // Long-8 Research
+  [9.5, 42.5], // Long-1 mine-resource
+  [20.4, 42.5], // Long-2 construct-powerplant
+  [31.4, 42.5], // Long-3 recruit
+  [42.4, 42.5], // Long-4 construct-factory
+  [42.5, 57.9], // Long-5 reboot
+  [31.3, 57.9], // Long-6 recruit-genius-research
+  [20.4, 57.9], // Long-7 construct-lab
+  [9.3, 57.9], // Long-8 research
 ];
 
 /** All path spots for a given path id. */

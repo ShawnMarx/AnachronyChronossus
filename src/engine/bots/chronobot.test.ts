@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, emptyChronobotState, type GameState } from '../state';
 import {
   actionRoundsCanEnd,
+  advanceActiveToken,
   advanceToken,
   botPassDecision,
   CHRONOBOT_PATHS,
@@ -23,6 +24,7 @@ import {
   takeActionTurn,
   TOKEN_START,
   tokenAction,
+  tokensAtPosition,
 } from './chronobot';
 
 function gameWith(mut: (s: GameState) => void): GameState {
@@ -84,9 +86,60 @@ describe('Command tokens & Action paths', () => {
 
   it('initialCommandTokens returns independent copies', () => {
     const a = initialCommandTokens();
-    a[2].index = 99;
+    a.positions[2].index = 99;
     const b = initialCommandTokens();
-    expect(b[2]).toEqual(TOKEN_START[2]);
+    expect(b.positions[2]).toEqual(TOKEN_START[2]);
+  });
+});
+
+describe('Command-token stacking rule (max 2 per position)', () => {
+  it('advances the active token onto an empty destination', () => {
+    const s = initialCommandTokens();
+    // Token 4 starts at Long-2 (index 1) → advances to Long-3 (index 2), empty.
+    const r = advanceActiveToken(s, 4);
+    expect(r.positions[4]).toEqual({ path: 'long', index: 2 });
+    expect(tokensAtPosition(r, 'long', 2)).toEqual([4]);
+  });
+
+  it('bumps the top token forward when the destination already holds two', () => {
+    // Tokens 4 and 5 share Long index 2 (5 is on top); token 2 sits at index 1.
+    const s = {
+      positions: {
+        2: { path: 'long' as const, index: 1 },
+        3: { path: 'short' as const, index: 0 },
+        4: { path: 'long' as const, index: 2 },
+        5: { path: 'long' as const, index: 2 },
+      },
+      order: [3, 2, 4, 5] as (2 | 3 | 4 | 5)[],
+    };
+    const r = advanceActiveToken(s, 2);
+    // Destination (index 2) had 2 tokens → top (5) bumped to index 3 first...
+    expect(r.positions[5]).toEqual({ path: 'long', index: 3 });
+    expect(r.positions[4]).toEqual({ path: 'long', index: 2 }); // bottom stays
+    // ...then the active token 2 lands on index 2, on top of the remaining 4.
+    expect(r.positions[2]).toEqual({ path: 'long', index: 2 });
+    expect(tokensAtPosition(r, 'long', 2)).toEqual([4, 2]);
+    // No position ever holds more than two tokens.
+    for (let i = 0; i < CHRONOBOT_PATHS.long.length; i++) {
+      expect(tokensAtPosition(r, 'long', i).length).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('loops the bump across the end of the path', () => {
+    // Two tokens on the last Long step (index 7); active token advances into them.
+    const s = {
+      positions: {
+        2: { path: 'long' as const, index: 6 },
+        3: { path: 'short' as const, index: 0 },
+        4: { path: 'long' as const, index: 7 },
+        5: { path: 'long' as const, index: 7 },
+      },
+      order: [3, 2, 4, 5] as (2 | 3 | 4 | 5)[],
+    };
+    const r = advanceActiveToken(s, 2);
+    expect(r.positions[5]).toEqual({ path: 'long', index: 0 }); // top bumped, wraps
+    expect(r.positions[2]).toEqual({ path: 'long', index: 7 });
+    expect(tokensAtPosition(r, 'long', 7)).toEqual([4, 2]);
   });
 });
 
