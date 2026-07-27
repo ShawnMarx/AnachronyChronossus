@@ -531,16 +531,20 @@
     drop-shadow(0 1.6px 0 #a855f7) drop-shadow(0 -1.6px 0 #a855f7)
     drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
 }
+/* Match the boxed count-badge style used by every other tracker. */
 .warp-count {
-  min-width: 1.4em;
-  text-align: center;
+  min-width: 1.5em;
+  height: 1.5em;
+  padding: 0 0.15em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: clamp(0.7rem, 1.6vw, 1rem);
   font-weight: 800;
   color: #fff;
   background: rgba(20, 15, 34, 0.85);
   border: 2px solid #8b5cf6;
   border-radius: 6px;
-  padding: 0 0.2em;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
 .warp-marker.cal-selected .warp-img {

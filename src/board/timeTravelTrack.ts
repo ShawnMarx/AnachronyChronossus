@@ -33,6 +33,6 @@ export interface WarpMarkerLayout {
 }
 
 export const WARP_MARKER: WarpMarkerLayout = {
-  pos: [50, 30],
-  width: 6,
+  pos: [85, 59],
+  width: 5.9,
 };
