@@ -40,11 +40,11 @@ order. Mark `[x]` as completed; note deviations inline.
 
 ## Feature 4 — History right pane
 
-- [ ] 4.1 `HistoryPane` component rendering the snapshot list newest-first
+- [x] 4.1 `HistoryPane` component rendering the snapshot list newest-first
       (Era · die · action · effect summary).
-- [ ] 4.2 Toggle button in the top-right; right-docked pane; open/closed state.
-- [ ] 4.3 CSS for the pane + toggle.
-- [ ] 4.4 build + test + lint clean.
+- [x] 4.2 Toggle button in the top-right; right-docked pane; open/closed state.
+- [x] 4.3 CSS for the pane + toggle.
+- [x] 4.4 build + test + lint clean.
 
 ## Feature 5 — Persistence + Reset Game
 

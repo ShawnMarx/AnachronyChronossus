@@ -221,6 +221,7 @@ export default function BoardExplorer() {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   const [showBreakthroughs, setShowBreakthroughs] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
@@ -629,6 +630,8 @@ export default function BoardExplorer() {
         onPlayerPass={playerPass}
         canUndo={undoStack.length > 0}
         onUndo={undo}
+        historyOpen={showHistory}
+        onToggleHistory={() => setShowHistory((v) => !v)}
       />
 
       <div className="board-stage">
@@ -805,6 +808,10 @@ export default function BoardExplorer() {
         <EndOfActionsBar state={state} passMsg={passMsg} />
       )}
 
+      {showHistory && (
+        <HistoryPane entries={undoStack} onClose={() => setShowHistory(false)} />
+      )}
+
       {calibrate && (
         <CalibrationPanel
           positions={positions}
@@ -873,6 +880,39 @@ function EndOfActionsBar({
       <div className="eoa-buttons">
         {canEnd && <span className="eoa-end">✓ Action Rounds Phase ends</span>}
       </div>
+    </div>
+  );
+}
+
+/** Right-docked pane listing the committed turns newest-first (from the undo stack). */
+function HistoryPane({
+  entries,
+  onClose,
+}: {
+  entries: UndoEntry[];
+  onClose: () => void;
+}) {
+  const rows = [...entries].reverse(); // newest first
+  return (
+    <div className="history-pane">
+      <div className="history-head">
+        <h3>History</h3>
+        <button className="history-close" onClick={onClose} aria-label="Close history">
+          ×
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="history-empty">No turns taken yet.</p>
+      ) : (
+        <ol className="history-list">
+          {rows.map((e, i) => (
+            <li key={entries.length - i} className="history-row">
+              <span className="history-num">{entries.length - i}</span>
+              <span className="history-label">{e.label}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
@@ -1071,6 +1111,8 @@ function StatsBar({
   onPlayerPass,
   canUndo,
   onUndo,
+  historyOpen,
+  onToggleHistory,
 }: {
   bot: ChronobotState;
   debug: boolean;
@@ -1089,6 +1131,8 @@ function StatsBar({
   onPlayerPass: () => void;
   canUndo: boolean;
   onUndo: () => void;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
@@ -1173,6 +1217,14 @@ function StatsBar({
           title="Undo the last step (restores the same die roll)"
         >
           ↶ Undo
+        </button>
+        <button
+          className={`history-btn ${historyOpen ? 'on' : ''}`}
+          onClick={onToggleHistory}
+          title="Show the turn history"
+          aria-pressed={historyOpen}
+        >
+          🕑 History
         </button>
         <button className="reset-btn" onClick={onReset}>
           ⟳ Reset
