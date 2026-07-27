@@ -15,6 +15,11 @@ export * from './rules/chronobotActions';
 
 // Chronobot guided engine (pure phase functions).
 export * as Chronobot from './bots/chronobot';
+export type {
+  CommandToken,
+  CommandTokenPos,
+  PathId,
+} from './bots/chronobot';
 
 // --------------------------------------------------------------------------
 // Dice — the app rolls all bot randomness. These live in the engine boundary
@@ -27,10 +32,11 @@ export function rollAiDie(faces: number[] = AI_DIE_FACES): number {
 }
 
 /**
- * The AI die (= Anachrony Flux die) faces. NOTE: to be confirmed against the
- * physical die — kept here as data so it's a one-line fix once verified.
+ * The AI die (= Anachrony Flux die) faces: a D6 showing 2, 3, 3, 4, 4, 5 — one
+ * face per Command token, with 3 and 4 twice as likely. Rolling a number
+ * activates the Command token bearing it.
  */
-export const AI_DIE_FACES: number[] = [1, 2, 3, 4, 5, 6];
+export const AI_DIE_FACES: number[] = [2, 3, 3, 4, 4, 5];
 
 /**
  * Roll the Paradox die: returns the number of Paradoxes (0..3). Approximate

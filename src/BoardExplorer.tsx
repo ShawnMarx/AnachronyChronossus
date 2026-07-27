@@ -1,15 +1,20 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import './BoardExplorer.css';
 import {
+  AI_DIE_FACES,
   CHRONOBOT_ACTIONS,
   Chronobot,
   DEFAULT_CONFIG,
   MECH_PLACEMENT,
+  rollAiDie,
   rollShapeDie,
   type ChronobotActionId,
   type ChronobotState,
+  type CommandToken,
+  type CommandTokenPos,
   type GameState,
   type Instruction,
+  type PathId,
   type Resource,
   type Worker,
   type BreakthroughShape,
@@ -20,12 +25,26 @@ import {
   type Hotspot,
 } from './board/chronobotHotspots';
 import { TIME_TRAVEL_TRACK } from './board/timeTravelTrack';
+import {
+  COMMAND_MARKER_IMG,
+  MARKER_WIDTH,
+  PATH_SPOTS,
+} from './board/chronobotPaths';
 import { ActionIcon } from './board/ActionIcon';
 
 /** Time Travel marker spot keys used in the calibration flow (tt0 = start). */
 const TT_KEYS = TIME_TRAVEL_TRACK.spots.map((_, i) => `tt${i}`);
-/** Every calibratable point: count badges then the 7 Time Travel spots. */
-const CAL_KEYS: string[] = [...BOARD_COUNTERS.map((c) => c.key), ...TT_KEYS];
+/** Command-path step keys for calibration, e.g. "short0" / "long7". */
+const pathKey = (path: PathId, index: number) => `${path}${index}`;
+const SHORT_KEYS = PATH_SPOTS.short.map((_, i) => pathKey('short', i));
+const LONG_KEYS = PATH_SPOTS.long.map((_, i) => pathKey('long', i));
+const PATH_KEYS = [...SHORT_KEYS, ...LONG_KEYS];
+/** Every calibratable point: count badges, the 7 Time Travel spots, path steps. */
+const CAL_KEYS: string[] = [
+  ...BOARD_COUNTERS.map((c) => c.key),
+  ...TT_KEYS,
+  ...PATH_KEYS,
+];
 
 type PendingStep =
   | null
@@ -141,15 +160,29 @@ export default function BoardExplorer() {
   const [outline, setOutline] = useState(true);
   const [passMsg, setPassMsg] = useState<string | null>(null);
 
+  // --- Command tokens (2–5) travelling the two Action paths ---
+  const [tokens, setTokens] = useState<Record<CommandToken, CommandTokenPos>>(
+    Chronobot.initialCommandTokens,
+  );
+  const [botDie, setBotDie] = useState<number | null>(null);
+  const [activeToken, setActiveToken] = useState<CommandToken | null>(null);
+  // Refs mirror the die/token for the synchronous immediate-resolve path
+  // (state updates are async, so `resolve` reads these instead).
+  const botDieRef = useRef<number | null>(null);
+  const activeTokenRef = useRef<CommandToken | null>(null);
+
   // --- Badge / Time Travel spot position calibration ---
   const [calibrate, setCalibrate] = useState(false);
   const [positions, setPositions] = useState<Record<string, [number, number]>>(
     () => ({
       ...Object.fromEntries(BOARD_COUNTERS.map((c) => [c.key, c.pos])),
       ...Object.fromEntries(TIME_TRAVEL_TRACK.spots.map((p, i) => [`tt${i}`, p])),
+      ...Object.fromEntries(SHORT_KEYS.map((k, i) => [k, PATH_SPOTS.short[i]])),
+      ...Object.fromEntries(LONG_KEYS.map((k, i) => [k, PATH_SPOTS.long[i]])),
     }),
   );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
+  const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
   const [selected, setSelected] = useState<string>(BOARD_COUNTERS[0].key);
 
   useEffect(() => {
@@ -193,13 +226,35 @@ export default function BoardExplorer() {
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
+    setBotDie(null);
+    setActiveToken(null);
+    botDieRef.current = null;
+    activeTokenRef.current = null;
   };
 
   const reset = () => {
     setState(initDebugState());
+    setTokens(Chronobot.initialCommandTokens());
     setShowBreakthroughs(false);
     setPassMsg(null);
     closePanel();
+  };
+
+  // "Take Bot Action": roll the AI die, activate the matching Command token, and
+  // open the dialog for the Action on its current path step. On commit, `resolve`
+  // advances that token one step along its path (see the refs above).
+  const takeBotAction = () => {
+    const die = rollAiDie();
+    const token = die as CommandToken;
+    const pos = tokens[token];
+    const action = Chronobot.tokenAction(pos);
+    const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === action);
+    if (!h) return;
+    botDieRef.current = die;
+    activeTokenRef.current = token;
+    setBotDie(die);
+    setActiveToken(token);
+    onTileClick(h);
   };
 
   // "Passing and End of Actions" (rulebook p. 6). The player passes; the engine
@@ -228,7 +283,7 @@ export default function BoardExplorer() {
     },
   ) => {
     const { state: next, instructions } = Chronobot.takeActionTurn(state, {
-      dieRoll: Math.floor(Math.random() * 6) + 1,
+      dieRoll: botDieRef.current ?? rollAiDie(),
       actionId: h.action,
       shape: opts.shape ?? rollShapeDie(),
       geniusAvailable: opts.geniusAvailable ?? false,
@@ -240,6 +295,12 @@ export default function BoardExplorer() {
     setState(next);
     setResult(instructions);
     setPending(null);
+    // Die-driven turn: advance the activated Command token to its next path step.
+    const tk = activeTokenRef.current;
+    if (tk != null) {
+      setTokens((t) => ({ ...t, [tk]: Chronobot.advanceToken(t[tk]) }));
+      activeTokenRef.current = null;
+    }
   };
 
   const onTileClick = (h: Hotspot) => {
@@ -380,6 +441,9 @@ export default function BoardExplorer() {
           setShowBreakthroughs(false);
           setCalibrate((c) => !c);
         }}
+        botDie={botDie}
+        canTakeAction={!calibrate && active == null}
+        onTakeBotAction={takeBotAction}
       />
 
       <div className="board-stage">
@@ -402,7 +466,14 @@ export default function BoardExplorer() {
                 key={h.id}
                 className={`hotspot ${outline ? 'outlined' : ''} ${isActive ? 'active' : ''}`}
                 style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${hgt}%` }}
-                onClick={() => onTileClick(h)}
+                onClick={() => {
+                  // Free-tap (debug): not a die-driven turn, so it advances no token.
+                  botDieRef.current = null;
+                  activeTokenRef.current = null;
+                  setBotDie(null);
+                  setActiveToken(null);
+                  onTileClick(h);
+                }}
                 aria-label={def.label}
                 title={def.label}
               />
@@ -464,6 +535,35 @@ export default function BoardExplorer() {
                 );
               })()}
 
+          {/* Command-token markers. Calibrating: all 12 path steps as ghosts. */}
+          {calibrate
+            ? PATH_KEYS.map((key) => {
+                const [x, y] = positions[key];
+                return (
+                  <div
+                    key={key}
+                    className={`cmd-spot ${selected === key ? 'cal-selected' : ''}`}
+                    style={{ left: `${x}%`, top: `${y}%` }}
+                  >
+                    {selected === key ? '◎' : '·'}
+                  </div>
+                );
+              })
+            : Chronobot.COMMAND_TOKENS.map((tk) => {
+                const pos = tokens[tk];
+                const [x, y] = positions[pathKey(pos.path, pos.index)] ??
+                  PATH_SPOTS[pos.path][pos.index];
+                return (
+                  <img
+                    key={tk}
+                    src={COMMAND_MARKER_IMG[tk]}
+                    alt={`Command token ${tk}`}
+                    className={`cmd-marker ${activeToken === tk ? 'active' : ''}`}
+                    style={{ left: `${x}%`, top: `${y}%`, width: `${cmdMarkerWidth}%` }}
+                  />
+                );
+              })}
+
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
@@ -519,6 +619,8 @@ export default function BoardExplorer() {
           onSelect={setSelected}
           markerWidth={markerWidth}
           onMarkerWidth={setMarkerWidth}
+          cmdMarkerWidth={cmdMarkerWidth}
+          onCmdMarkerWidth={setCmdMarkerWidth}
         />
       )}
     </div>
@@ -605,12 +707,16 @@ function CalibrationPanel({
   onSelect,
   markerWidth,
   onMarkerWidth,
+  cmdMarkerWidth,
+  onCmdMarkerWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
   onSelect: (k: string) => void;
   markerWidth: number;
   onMarkerWidth: (w: number) => void;
+  cmdMarkerWidth: number;
+  onCmdMarkerWidth: (w: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -626,8 +732,22 @@ function CalibrationPanel({
       return `    [${x}, ${y}],`;
     }).join('\n') +
     `\n  ],\n  markerWidth: ${markerWidth},\n};`;
+  const pathBody = (path: PathId) =>
+    PATH_SPOTS[path]
+      .map((seed, i) => {
+        const [x, y] = positions[pathKey(path, i)] ?? seed;
+        const action = Chronobot.CHRONOBOT_PATHS[path][i];
+        return `  [${x}, ${y}], // ${path[0].toUpperCase()}${path.slice(1)}-${i + 1} ${action}`;
+      })
+      .join('\n');
+  const pathLiteral =
+    `export const SHORT_PATH: PathSpot[] = [\n${pathBody('short')}\n];\n\n` +
+    `export const LONG_PATH: PathSpot[] = [\n${pathBody('long')}\n];\n\n` +
+    `export const MARKER_WIDTH = ${cmdMarkerWidth};`;
   const ttLabel = (i: number) =>
     i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
+  const pathLabel = (path: PathId, i: number) =>
+    `${path === 'short' ? 'S' : 'L'}${i + 1} ${Chronobot.CHRONOBOT_PATHS[path][i]}`;
   return (
     <div className="cal-panel">
       <p className="cal-hint">
@@ -635,7 +755,7 @@ function CalibrationPanel({
         nudge (0.2% / Shift = 1%). Copy the result to me when done.
       </p>
       <label className="cal-size">
-        Marker width: <b>{markerWidth}%</b>
+        TT marker width: <b>{markerWidth}%</b>
         <input
           type="range"
           min={1}
@@ -643,6 +763,17 @@ function CalibrationPanel({
           step={0.1}
           value={markerWidth}
           onChange={(e) => onMarkerWidth(+e.target.value)}
+        />
+      </label>
+      <label className="cal-size">
+        Command marker width: <b>{cmdMarkerWidth}%</b>
+        <input
+          type="range"
+          min={1}
+          max={12}
+          step={0.1}
+          value={cmdMarkerWidth}
+          onChange={(e) => onCmdMarkerWidth(+e.target.value)}
         />
       </label>
       <div className="cal-list">
@@ -670,9 +801,27 @@ function CalibrationPanel({
             </span>
           </button>
         ))}
+        {(['short', 'long'] as PathId[]).flatMap((path) =>
+          PATH_SPOTS[path].map((seed, i) => {
+            const key = pathKey(path, i);
+            return (
+              <button
+                key={key}
+                className={`cal-item path ${selected === key ? 'on' : ''}`}
+                onClick={() => onSelect(key)}
+              >
+                {pathLabel(path, i)}{' '}
+                <span className="cal-xy">
+                  {(positions[key] ?? seed).join(', ')}
+                </span>
+              </button>
+            );
+          }),
+        )}
       </div>
       <textarea className="cal-out" readOnly value={literal} />
       <textarea className="cal-out" readOnly value={ttLiteral} />
+      <textarea className="cal-out" readOnly value={pathLiteral} />
     </div>
   );
 }
@@ -735,6 +884,9 @@ function StatsBar({
   onReset,
   calibrate,
   onToggleCalibrate,
+  botDie,
+  canTakeAction,
+  onTakeBotAction,
 }: {
   bot: ChronobotState;
   outline: boolean;
@@ -742,6 +894,9 @@ function StatsBar({
   onReset: () => void;
   calibrate: boolean;
   onToggleCalibrate: () => void;
+  botDie: number | null;
+  canTakeAction: boolean;
+  onTakeBotAction: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
@@ -765,6 +920,23 @@ function StatsBar({
           ))}
         </div>
       </div>
+      {!calibrate && (
+        <div className="bot-turn">
+          <button
+            className="take-bot-action"
+            onClick={onTakeBotAction}
+            disabled={!canTakeAction}
+            title={`Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`}
+          >
+            🎲 Take Bot Action
+          </button>
+          {botDie != null && (
+            <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
+              {botDie}
+            </span>
+          )}
+        </div>
+      )}
       <div className="stats-controls">
         <label className="outline-toggle" title="Show the tappable tile outlines">
           <input type="checkbox" checked={outline} onChange={onToggleOutline} />

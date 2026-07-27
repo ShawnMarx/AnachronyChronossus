@@ -113,6 +113,92 @@ export function chooseBreakthroughDiscard(
 }
 
 // --------------------------------------------------------------------------
+// Command tokens & Action paths (Solo Opponents rulebook)
+// --------------------------------------------------------------------------
+//
+// The Chronobot has 4 Command tokens numbered 2–5, moving along two looping
+// Action paths on the Solo board. The AI die (the Flux die: faces 2,3,3,4,4,5)
+// selects which token activates: it performs the Action on its current path
+// step, then advances one step along its path (looping back to the start).
+//
+// This module owns only the sequences + advancement (pure, testable). The board
+// %-coordinates for each step live in `src/board/chronobotPaths.ts` (UI layer).
+
+/** The 4 Chronobot Command tokens, matching the AI die faces. */
+export type CommandToken = 2 | 3 | 4 | 5;
+export const COMMAND_TOKENS: CommandToken[] = [2, 3, 4, 5];
+
+/** The two Action paths the Command tokens travel. */
+export type PathId = 'short' | 'long';
+
+/** A token's location: which path and which step index along it. */
+export interface CommandTokenPos {
+  path: PathId;
+  index: number;
+}
+
+/**
+ * The ordered Actions on each looping path (Solo Opponents rulebook). The Short
+ * path is the board's top tile row; the Long path serpentines the middle + lower
+ * rows. Both loop back to index 0 after the last step.
+ */
+export const CHRONOBOT_PATHS: Record<PathId, ChronobotActionId[]> = {
+  short: [
+    'construct-support', // Short-1 (Construct Water / Life Support)
+    'time-travel', // Short-2
+    'construct-superproject', // Short-3
+    'remove-anomaly', // Short-4
+  ],
+  long: [
+    'mine-resource', // Long-1
+    'construct-powerplant', // Long-2
+    'recruit', // Long-3
+    'construct-factory', // Long-4
+    'reboot', // Long-5
+    'recruit-genius-research', // Long-6
+    'construct-lab', // Long-7
+    'research', // Long-8
+  ],
+};
+
+/**
+ * Where each Command token starts the game (rulebook starting positions):
+ *  - 3 → Short-1 (Construct Water)     - 4 → Long-2 (Construct Power Plant)
+ *  - 2 → Long-4 (Construct Factory)    - 5 → Long-8 (Research)
+ */
+export const TOKEN_START: Record<CommandToken, CommandTokenPos> = {
+  2: { path: 'long', index: 3 },
+  3: { path: 'short', index: 0 },
+  4: { path: 'long', index: 1 },
+  5: { path: 'long', index: 7 },
+};
+
+/** A fresh set of all 4 Command tokens at their starting positions. */
+export function initialCommandTokens(): Record<CommandToken, CommandTokenPos> {
+  return {
+    2: { ...TOKEN_START[2] },
+    3: { ...TOKEN_START[3] },
+    4: { ...TOKEN_START[4] },
+    5: { ...TOKEN_START[5] },
+  };
+}
+
+/** The Action the token at `pos` currently performs. */
+export function tokenAction(pos: CommandTokenPos): ChronobotActionId {
+  return CHRONOBOT_PATHS[pos.path][pos.index];
+}
+
+/** The next step along a path, looping back to the start after the last step. */
+export function nextTokenIndex(path: PathId, index: number): number {
+  return (index + 1) % CHRONOBOT_PATHS[path].length;
+}
+
+/** Advance a token one step along its path (returns a new position). */
+export function advanceToken(pos: CommandTokenPos): CommandTokenPos {
+  return { path: pos.path, index: nextTokenIndex(pos.path, pos.index) };
+}
+
+// --------------------------------------------------------------------------
 // Setup
 // --------------------------------------------------------------------------
 

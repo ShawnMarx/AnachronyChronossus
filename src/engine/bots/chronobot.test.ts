@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, emptyChronobotState, type GameState } from '../state';
 import {
   actionRoundsCanEnd,
+  advanceToken,
   botPassDecision,
+  CHRONOBOT_PATHS,
   chooseBreakthroughDiscard,
   chooseMineResources,
   chooseRecruitWorker,
   chooseRemoveAnomalyDiscards,
   chronobotMinActions,
+  COMMAND_TOKENS,
   DIFFICULTY_MIN_ACTIONS_6,
+  initialCommandTokens,
+  nextTokenIndex,
   resolveBotPass,
   resolveParadox,
   resolvePowerUp,
@@ -16,6 +21,8 @@ import {
   scoreChronobot,
   setup,
   takeActionTurn,
+  TOKEN_START,
+  tokenAction,
 } from './chronobot';
 
 function gameWith(mut: (s: GameState) => void): GameState {
@@ -35,6 +42,51 @@ describe('Mine priority', () => {
   it('breaks ties by Uranium > Gold > Titanium when it has none', () => {
     const bot = emptyChronobotState();
     expect(chooseMineResources(bot)).toEqual(['uranium', 'gold']);
+  });
+});
+
+describe('Command tokens & Action paths', () => {
+  it('starts each token on its rulebook step', () => {
+    expect(tokenAction(TOKEN_START[3])).toBe('construct-support'); // Short-1 Water
+    expect(tokenAction(TOKEN_START[2])).toBe('construct-factory'); // Long-4
+    expect(tokenAction(TOKEN_START[4])).toBe('construct-powerplant'); // Long-2
+    expect(tokenAction(TOKEN_START[5])).toBe('research'); // Long-8
+  });
+
+  it('has 4 tokens matching the AI die numbers', () => {
+    expect(COMMAND_TOKENS).toEqual([2, 3, 4, 5]);
+  });
+
+  it('advances along a path and loops back to the start', () => {
+    // Short path has 4 steps; from the last step it wraps to index 0.
+    expect(nextTokenIndex('short', 3)).toBe(0);
+    expect(nextTokenIndex('long', 7)).toBe(0);
+    const last = { path: 'long' as const, index: 7 };
+    expect(advanceToken(last)).toEqual({ path: 'long', index: 0 });
+  });
+
+  it('token 3 walks the full Short loop of Actions', () => {
+    let pos = TOKEN_START[3];
+    const seen = CHRONOBOT_PATHS.short.map(() => {
+      const a = tokenAction(pos);
+      pos = advanceToken(pos);
+      return a;
+    });
+    expect(seen).toEqual([
+      'construct-support',
+      'time-travel',
+      'construct-superproject',
+      'remove-anomaly',
+    ]);
+    // Back to the start after a full loop.
+    expect(pos).toEqual(TOKEN_START[3]);
+  });
+
+  it('initialCommandTokens returns independent copies', () => {
+    const a = initialCommandTokens();
+    a[2].index = 99;
+    const b = initialCommandTokens();
+    expect(b[2]).toEqual(TOKEN_START[2]);
   });
 });
 
