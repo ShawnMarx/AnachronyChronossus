@@ -243,6 +243,14 @@
   align-items: center;
   justify-content: center;
   padding: 0.5rem;
+  transition: padding-right 0.2s ease;
+}
+/* When the History pane is open and there's room, reserve space so the board
+   shifts left instead of being covered. Narrow screens keep the overlay. */
+@media (min-width: 760px) {
+  .board-stage.with-history {
+    padding-right: calc(min(340px, 88vw) + 0.5rem);
+  }
 }
 .board-wrap {
   position: relative;
@@ -914,6 +922,75 @@
 }
 
 /* ---- Passing / End of Actions strip (bottom of the explorer) ---- */
+/* Top-bar status chip (opens the End-of-Actions popover) */
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.status-chip:hover,
+.status-chip.on {
+  background: rgba(139, 92, 246, 0.3);
+}
+.sc-dot {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+.sc-dot.passed {
+  background: rgba(74, 222, 128, 0.28);
+  color: #4ade80;
+}
+.sc-count {
+  font-variant-numeric: tabular-nums;
+  color: #ddd6fe;
+}
+
+/* End-of-Actions popover (the old bottom bar, now a dismissible tooltip) */
+.eoa-popover {
+  position: fixed;
+  top: 3.4rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(460px, 92vw);
+  z-index: 62;
+  background: #171226;
+  border: 1px solid #8b5cf6;
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+  padding: 0.7rem 0.9rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.eoa-pop-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.eoa-pop-title {
+  font-weight: 800;
+  color: #e9d5ff;
+}
+.eoa-pop-close {
+  background: none;
+  border: none;
+  color: #c4b5fd;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
 .eoa-bar {
   flex: 0 0 auto;
   display: flex;

@@ -272,6 +272,12 @@ export default function BoardExplorer() {
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   const [showBreakthroughs, setShowBreakthroughs] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  // True only for a play-mode free-tap (the read-only rule view), never for a
+  // die-driven bot turn (which resolves even in play mode).
+  const [ruleView, setRuleView] = useState(false);
+  // The End-of-Actions details show as a dismissible popover (opened from a top
+  // status chip), closing whenever a top action fires.
+  const [showStatus, setShowStatus] = useState(false);
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
@@ -349,6 +355,26 @@ export default function BoardExplorer() {
     savePersisted({ state, tokens, undoStack, debug });
   }, [state, tokens, undoStack, debug]);
 
+  // Dismiss the status popover on Escape or a click outside it (and its chip).
+  useEffect(() => {
+    if (!showStatus) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.eoa-popover') && !t.closest('.status-chip')) {
+        setShowStatus(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowStatus(false);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [showStatus]);
+
   const closePanel = () => {
     setActive(null);
     setPending(null);
@@ -359,6 +385,7 @@ export default function BoardExplorer() {
     setRolledShape(null);
     setBotDie(null);
     setActiveToken(null);
+    setRuleView(false);
     botDieRef.current = null;
     activeTokenRef.current = null;
     passTimeTravelRef.current = false;
@@ -448,6 +475,7 @@ export default function BoardExplorer() {
   // Otherwise it rolls the AI die, activates the matching Command token, and opens
   // that Action's dialog; on commit, `resolve` advances the token along its path.
   const takeBotAction = () => {
+    setShowStatus(false);
     const decision = Chronobot.botPassDecision(state);
     if (decision === 'time-travel-then-pass') {
       // Out of Exosuits: its final turn is a Time Travel, then it passes. Show
@@ -462,7 +490,7 @@ export default function BoardExplorer() {
       const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === 'time-travel');
       if (h && bot.warpTilesOnTimeline > 0) {
         passTimeTravelRef.current = true;
-        onTileClick(h);
+        onTileClick(h, true);
       } else {
         const { state: next, instructions } = Chronobot.resolveBotPass(state);
         commit(next, tokens, `Era ${state.era} · Bot: Time Travel + pass`);
@@ -493,13 +521,14 @@ export default function BoardExplorer() {
     activeTokenRef.current = token;
     setBotDie(die);
     setActiveToken(token);
-    onTileClick(h);
+    onTileClick(h, true);
   };
 
   // "Passing and End of Actions" (rulebook p. 6): the player passes. The engine
   // then decides (on the next Take Bot Action) whether the phase ends, the bot
   // must keep going to its minimum, or it owes a final Time Travel before passing.
   const playerPass = () => {
+    setShowStatus(false);
     commit(Chronobot.markPlayerPassed(state), tokens, `Era ${state.era} · You passed`);
     setPassMsg(null);
     closePanel();
@@ -535,15 +564,20 @@ export default function BoardExplorer() {
     activeTokenRef.current = null;
   };
 
-  const onTileClick = (h: Hotspot) => {
+  // `force` bypasses play-mode read-only: the die-driven bot turn always resolves,
+  // even in play mode. Only a player free-tap respects the Debug/play flag.
+  const onTileClick = (h: Hotspot, force = false) => {
+    setShowStatus(false);
     setActive(h);
     setResult([]);
     setSelectedVP(null);
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
-    if (!debug) {
-      // Play mode: show the rule reference only, no engine activation.
+    const showRuleOnly = !debug && !force;
+    setRuleView(showRuleOnly);
+    if (showRuleOnly) {
+      // Play mode free-tap: show the rule reference only, no engine activation.
       setPending(null);
       return;
     }
@@ -699,9 +733,12 @@ export default function BoardExplorer() {
         onUndo={undo}
         historyOpen={showHistory}
         onToggleHistory={() => setShowHistory((v) => !v)}
+        minActions={Chronobot.chronobotMinActions(state)}
+        statusOpen={showStatus}
+        onToggleStatus={() => setShowStatus((v) => !v)}
       />
 
-      <div className="board-stage">
+      <div className={`board-stage ${showHistory ? 'with-history' : ''}`}>
         <div
           className={`board-wrap ${calibrate ? 'calibrating' : ''}`}
           onClick={onBoardClick}
@@ -834,7 +871,7 @@ export default function BoardExplorer() {
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
-              readOnly={!debug}
+              readOnly={ruleView}
               pending={pending}
               result={result}
               selectedVP={selectedVP}
@@ -871,8 +908,13 @@ export default function BoardExplorer() {
         </div>
       </div>
 
-      {!calibrate && (
-        <EndOfActionsBar state={state} passMsg={passMsg} />
+      {!calibrate && showStatus && (
+        <EndOfActionsBar
+          state={state}
+          passMsg={passMsg}
+          minActions={Chronobot.chronobotMinActions(state)}
+          onClose={() => setShowStatus(false)}
+        />
       )}
 
       {showHistory && (
@@ -916,20 +958,33 @@ function describeDecision(
  * lets the player pass, and drives the Chronobot's pass decision through the
  * engine (immediate end / keep going / final Time Travel then pass).
  */
+/**
+ * The "End of Actions" details, shown as a dismissible popover anchored under the
+ * top-bar status chip (rulebook p. 6 pass state + minimum Actions).
+ */
 function EndOfActionsBar({
   state,
   passMsg,
+  minActions,
+  onClose,
 }: {
   state: GameState;
   passMsg: string | null;
+  minActions: number;
+  onClose: () => void;
 }) {
   const bot = state.chronobot;
-  const min = Chronobot.chronobotMinActions(state);
   const decision = Chronobot.botPassDecision(state);
   const canEnd = Chronobot.actionRoundsCanEnd(state);
 
   return (
-    <div className="eoa-bar">
+    <div className="eoa-popover">
+      <div className="eoa-pop-head">
+        <span className="eoa-pop-title">End of Actions</span>
+        <button className="eoa-pop-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
       <div className="eoa-flags">
         <span className={`eoa-flag ${state.playerPassed ? 'on' : ''}`}>
           You: {state.playerPassed ? 'passed' : 'active'}
@@ -938,15 +993,17 @@ function EndOfActionsBar({
           Bot: {bot.passed ? 'passed' : 'active'}
         </span>
         <span className="eoa-count">
-          Actions <b>{bot.actionsThisEra}</b> / min {min}
+          Actions <b>{bot.actionsThisEra}</b> / min {minActions}
         </span>
       </div>
 
-      <p className="eoa-hint">{passMsg ?? describeDecision(decision, min)}</p>
+      <p className="eoa-hint">{passMsg ?? describeDecision(decision, minActions)}</p>
 
-      <div className="eoa-buttons">
-        {canEnd && <span className="eoa-end">✓ Action Rounds Phase ends</span>}
-      </div>
+      {canEnd && (
+        <div className="eoa-buttons">
+          <span className="eoa-end">✓ Action Rounds Phase ends</span>
+        </div>
+      )}
     </div>
   );
 }
@@ -1180,6 +1237,9 @@ function StatsBar({
   onUndo,
   historyOpen,
   onToggleHistory,
+  minActions,
+  statusOpen,
+  onToggleStatus,
 }: {
   bot: ChronobotState;
   debug: boolean;
@@ -1200,6 +1260,9 @@ function StatsBar({
   onUndo: () => void;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  minActions: number;
+  statusOpen: boolean;
+  onToggleStatus: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
@@ -1261,6 +1324,18 @@ function StatsBar({
             title="Pass for the Action Rounds phase"
           >
             {playerPassed ? '✓ You passed' : '🛑 You Pass'}
+          </button>
+          <button
+            className={`status-chip ${statusOpen ? 'on' : ''}`}
+            onClick={onToggleStatus}
+            title="End of Actions — pass status & minimum Actions"
+            aria-pressed={statusOpen}
+          >
+            <span className={`sc-dot ${playerPassed ? 'passed' : ''}`}>You</span>
+            <span className={`sc-dot ${botPassed ? 'passed' : ''}`}>Bot</span>
+            <span className="sc-count">
+              {bot.actionsThisEra}/{minActions}
+            </span>
           </button>
         </div>
       )}

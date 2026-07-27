@@ -63,15 +63,21 @@ order. Mark `[x]` as completed; note deviations inline.
 
 ## Feature 7 — Bottom bar → dismissible tooltip
 
-- [ ] 7.1 Replace the always-on `EndOfActionsBar` with a top-bar status chip that
+- [x] 7.1 Replace the always-on `EndOfActionsBar` with a top-bar status chip that
       toggles a large popover holding the same details.
-- [ ] 7.2 Dismiss the popover when a top action fires (Take Bot Action / You Pass /
+- [x] 7.2 Dismiss the popover when a top action fires (Take Bot Action / You Pass /
       tile click) and on outside-click / Esc.
-- [ ] 7.3 CSS for the chip + popover.
-- [ ] 7.4 build + test + lint clean.
+- [x] 7.3 CSS for the chip + popover.
+- [x] 7.4 build + test + lint clean.
 
 ---
 
 ## Deviations / decisions during execution
 
 _(record here as steps are executed)_
+
+- Enhancement (requested mid-build): the History pane now **shifts the board left**
+  when there's room (≥760px) instead of overlaying it; narrow screens keep the overlay.
+- Bug fixed during F7: in play mode, Take Bot Action was opening the read-only rule
+  view. Added a `force` flag / `ruleView` state so a die-driven bot turn always
+  resolves (read-only applies only to a player free-tap).
