@@ -170,6 +170,10 @@ export default function BoardExplorer() {
   // (state updates are async, so `resolve` reads these instead).
   const botDieRef = useRef<number | null>(null);
   const activeTokenRef = useRef<CommandToken | null>(null);
+  // Marks the open Time Travel dialog as the bot's forced final Time Travel
+  // before passing (out of Exosuits): committing it resolves the pass, not a
+  // normal Action turn.
+  const passTimeTravelRef = useRef<boolean>(false);
 
   // --- Badge / Time Travel spot position calibration ---
   const [calibrate, setCalibrate] = useState(false);
@@ -230,6 +234,7 @@ export default function BoardExplorer() {
     setActiveToken(null);
     botDieRef.current = null;
     activeTokenRef.current = null;
+    passTimeTravelRef.current = false;
   };
 
   const reset = () => {
@@ -250,7 +255,28 @@ export default function BoardExplorer() {
   // that Action's dialog; on commit, `resolve` advances the token along its path.
   const takeBotAction = () => {
     const decision = Chronobot.botPassDecision(state);
-    if (decision === 'pass' || decision === 'time-travel-then-pass') {
+    if (decision === 'time-travel-then-pass') {
+      // Out of Exosuits: its final turn is a Time Travel, then it passes. Show
+      // the Time Travel box just as if that space activated; committing it (via
+      // startTurn) resolves the pass. If no Warp tiles remain there is nothing to
+      // remove, so resolve the (failed) Time Travel + pass straight away.
+      botDieRef.current = null;
+      activeTokenRef.current = null;
+      setBotDie(null);
+      setActiveToken(null);
+      setPassMsg(null);
+      const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === 'time-travel');
+      if (h && bot.warpTilesOnTimeline > 0) {
+        passTimeTravelRef.current = true;
+        onTileClick(h);
+      } else {
+        const { state: next, instructions } = Chronobot.resolveBotPass(state);
+        setState(next);
+        setPassMsg(instructions.map((i) => i.text).join(' '));
+      }
+      return;
+    }
+    if (decision === 'pass') {
       const { state: next, instructions } = Chronobot.resolveBotPass(state);
       setState(next);
       setPassMsg(instructions.map((i) => i.text).join(' '));
@@ -437,7 +463,15 @@ export default function BoardExplorer() {
     } else if (pending === 'reboot' && active) {
       resolve(active, {});
     } else if (pending === 'timeTravel' && active) {
-      resolve(active, {});
+      if (passTimeTravelRef.current) {
+        // The bot's forced final Time Travel before passing — resolve the pass
+        // (does the Time Travel effect, then marks the bot passed).
+        const { state: next, instructions } = Chronobot.resolveBotPass(state);
+        setState(next);
+        setPassMsg(instructions.map((i) => i.text).join(' '));
+      } else {
+        resolve(active, {});
+      }
     }
     closePanel();
   };
@@ -455,6 +489,7 @@ export default function BoardExplorer() {
           setCalibrate((c) => !c);
         }}
         botDie={botDie}
+        botPassed={bot.passed}
         canTakeAction={!calibrate && active == null && !bot.passed}
         onTakeBotAction={takeBotAction}
         playerPassed={state.playerPassed}
@@ -891,6 +926,7 @@ function StatsBar({
   calibrate,
   onToggleCalibrate,
   botDie,
+  botPassed,
   canTakeAction,
   onTakeBotAction,
   playerPassed,
@@ -904,6 +940,7 @@ function StatsBar({
   calibrate: boolean;
   onToggleCalibrate: () => void;
   botDie: number | null;
+  botPassed: boolean;
   canTakeAction: boolean;
   onTakeBotAction: () => void;
   playerPassed: boolean;
@@ -935,12 +972,16 @@ function StatsBar({
       {!calibrate && (
         <div className="bot-turn">
           <button
-            className="take-bot-action"
+            className={`take-bot-action ${botPassed ? 'passed' : ''}`}
             onClick={onTakeBotAction}
             disabled={!canTakeAction}
-            title={`Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`}
+            title={
+              botPassed
+                ? 'The Chronobot has passed for this Era'
+                : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
+            }
           >
-            🎲 Take Bot Action
+            {botPassed ? '✓ Bot Passed' : '🎲 Take Bot Action'}
           </button>
           {botDie != null && (
             <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
