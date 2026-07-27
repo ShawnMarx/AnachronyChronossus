@@ -76,6 +76,81 @@ interface Snapshot {
 interface UndoEntry {
   snap: Snapshot;
   label: string;
+  /** Concise per-turn change-list (mech placed, cubes gained, +5 set, etc.). */
+  effects: string[];
+}
+
+const BUILDING_LABEL: Record<string, string> = {
+  factory: 'Factory',
+  lab: 'Lab',
+  powerplant: 'Power Plant',
+  support: 'Life Support',
+};
+
+/**
+ * Summarize the concrete board/virtual changes of a turn from the pre→post
+ * Chronobot state (using instruction ids only to spot the +5 VP set bonuses).
+ * These are the things the player physically applies: mech placed, tile taken for
+ * X VP, cubes gained/discarded, Warp tile removed, etc.
+ */
+function summarizeTurn(
+  pre: ChronobotState,
+  post: ChronobotState,
+  instructions: Instruction[],
+): string[] {
+  const out: string[] = [];
+  const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
+
+  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('🤖 Mech placed');
+  if (hasId('fail')) out.push('⚠️ Failed action (+1 VP)');
+
+  (['factory', 'lab', 'powerplant', 'support'] as const).forEach((t) => {
+    if (post.buildings[t] > pre.buildings[t]) {
+      const vp = post.buildingVps[t][post.buildingVps[t].length - 1];
+      out.push(`🏛 ${BUILDING_LABEL[t]} taken (${vp} VP)`);
+    }
+  });
+  if (post.superprojects > pre.superprojects) {
+    const vp = post.superprojectVps[post.superprojectVps.length - 1];
+    out.push(`🏗 Superproject taken (${vp} VP) · Breakthrough discarded`);
+  }
+
+  (['circle', 'triangle', 'square'] as const).forEach((s) => {
+    if (post.breakthroughs[s] > pre.breakthroughs[s]) {
+      out.push(`🔷 Breakthrough taken (${s})`);
+    }
+  });
+
+  if (hasId('recruit-set')) {
+    out.push('♻️ Worker set completed — discard one of each (+5 VP)');
+  } else {
+    (['genius', 'administrator', 'engineer', 'scientist'] as const).forEach((w) => {
+      if (post.workers[w] > pre.workers[w]) out.push(`👤 Recruited ${w}`);
+    });
+  }
+
+  const resTypes = ['neutronium', 'uranium', 'gold', 'titanium'] as const;
+  if (hasId('mine-set')) {
+    out.push('♻️ Resource set completed — discard one of each (+5 VP)');
+  } else {
+    resTypes.forEach((r) => {
+      const d = post.resources[r] - pre.resources[r];
+      if (d > 0) out.push(`⛏ Gained ${d > 1 ? d + ' ' : ''}${r}`);
+    });
+    resTypes.forEach((r) => {
+      const d = pre.resources[r] - post.resources[r];
+      if (d > 0) out.push(`➖ Discarded ${d > 1 ? d + ' ' : ''}${r}`);
+    });
+  }
+
+  if (post.anomalies < pre.anomalies) out.push('☢️ Removed 1 Anomaly');
+  if (
+    post.warpTilesOnTimeline < pre.warpTilesOnTimeline ||
+    post.timeTravelTrack > pre.timeTravelTrack
+  ) {
+    out.push('⏳ Warp tile removed → Time Travel advances');
+  }
+  return out;
 }
 
 /** Cap the undo/history depth so persisted state stays bounded. */
@@ -398,9 +473,10 @@ export default function BoardExplorer() {
     next: GameState,
     nextTokens: CommandTokensState,
     label: string,
+    effects: string[] = [],
   ) => {
     const pre: Snapshot = { state, tokens, botDie, activeToken };
-    setUndoStack((s) => [...s, { snap: pre, label }].slice(-UNDO_CAP));
+    setUndoStack((s) => [...s, { snap: pre, label, effects }].slice(-UNDO_CAP));
     setState(next);
     setTokens(nextTokens);
   };
@@ -493,7 +569,12 @@ export default function BoardExplorer() {
         onTileClick(h, true);
       } else {
         const { state: next, instructions } = Chronobot.resolveBotPass(state);
-        commit(next, tokens, `Era ${state.era} · Bot: Time Travel + pass`);
+        commit(
+          next,
+          tokens,
+          `Era ${state.era} · Bot: Time Travel + pass`,
+          summarizeTurn(state.chronobot, next.chronobot, instructions),
+        );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       }
       return;
@@ -558,7 +639,12 @@ export default function BoardExplorer() {
     // Die-driven turn: advance the activated Command token to its next path step.
     const tk = activeTokenRef.current;
     const nextTokens = tk != null ? Chronobot.advanceActiveToken(tokens, tk) : tokens;
-    commit(next, nextTokens, turnLabel(instructions, botDie, CHRONOBOT_ACTIONS[h.action].label));
+    commit(
+      next,
+      nextTokens,
+      turnLabel(instructions, botDie, CHRONOBOT_ACTIONS[h.action].label),
+      summarizeTurn(state.chronobot, next.chronobot, instructions),
+    );
     setResult(instructions);
     setPending(null);
     activeTokenRef.current = null;
@@ -699,7 +785,12 @@ export default function BoardExplorer() {
         // The bot's forced final Time Travel before passing — resolve the pass
         // (does the Time Travel effect, then marks the bot passed).
         const { state: next, instructions } = Chronobot.resolveBotPass(state);
-        commit(next, tokens, `Era ${state.era} · Bot: Time Travel + pass`);
+        commit(
+          next,
+          tokens,
+          `Era ${state.era} · Bot: Time Travel + pass`,
+          summarizeTurn(state.chronobot, next.chronobot, instructions),
+        );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       } else {
         resolve(active, {});
@@ -733,7 +824,6 @@ export default function BoardExplorer() {
         onUndo={undo}
         historyOpen={showHistory}
         onToggleHistory={() => setShowHistory((v) => !v)}
-        minActions={Chronobot.chronobotMinActions(state)}
         statusOpen={showStatus}
         onToggleStatus={() => setShowStatus((v) => !v)}
       />
@@ -1032,7 +1122,16 @@ function HistoryPane({
           {rows.map((e, i) => (
             <li key={entries.length - i} className="history-row">
               <span className="history-num">{entries.length - i}</span>
-              <span className="history-label">{e.label}</span>
+              <span className="history-main">
+                <span className="history-label">{e.label}</span>
+                {e.effects.length > 0 && (
+                  <ul className="history-effects">
+                    {e.effects.map((eff, j) => (
+                      <li key={j}>{eff}</li>
+                    ))}
+                  </ul>
+                )}
+              </span>
             </li>
           ))}
         </ol>
@@ -1237,7 +1336,6 @@ function StatsBar({
   onUndo,
   historyOpen,
   onToggleHistory,
-  minActions,
   statusOpen,
   onToggleStatus,
 }: {
@@ -1260,13 +1358,11 @@ function StatsBar({
   onUndo: () => void;
   historyOpen: boolean;
   onToggleHistory: () => void;
-  minActions: number;
   statusOpen: boolean;
   onToggleStatus: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
-    { label: 'Actions', value: bot.totalActions },
   ];
   return (
     <div className="stats-bar">
@@ -1326,16 +1422,12 @@ function StatsBar({
             {playerPassed ? '✓ You passed' : '🛑 You Pass'}
           </button>
           <button
-            className={`status-chip ${statusOpen ? 'on' : ''}`}
+            className={`stat-pill status-chip ${statusOpen ? 'on' : ''}`}
             onClick={onToggleStatus}
             title="End of Actions — pass status & minimum Actions"
             aria-pressed={statusOpen}
           >
-            <span className={`sc-dot ${playerPassed ? 'passed' : ''}`}>You</span>
-            <span className={`sc-dot ${botPassed ? 'passed' : ''}`}>Bot</span>
-            <span className="sc-count">
-              {bot.actionsThisEra}/{minActions}
-            </span>
+            <b>{bot.actionsThisEra}</b> Actions
           </button>
         </div>
       )}

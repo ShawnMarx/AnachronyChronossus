@@ -14,10 +14,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.4rem 0.9rem;
   border-bottom: 1px solid rgba(139, 92, 246, 0.35);
   background: #120e1c;
+}
+.bot-turn {
+  flex-wrap: wrap;
 }
 .stats-left {
   display: flex;
@@ -173,8 +177,28 @@
   min-width: 1.5em;
   text-align: right;
 }
+.history-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
 .history-label {
   color: #ddd6fe;
+  font-weight: 600;
+}
+.history-effects {
+  list-style: none;
+  margin: 0.1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+.history-effects li {
+  font-size: 0.78rem;
+  color: #a5b4fc;
+  line-height: 1.3;
 }
 .stats-row {
   display: flex;
@@ -480,6 +504,11 @@
   border: 2px solid #8b5cf6;
   border-radius: 6px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  /* Receive hover so the native `title` tooltip shows (see counterTooltip). */
+  pointer-events: auto;
+}
+/* During calibration, let clicks pass through to the board for placement. */
+.board-wrap.calibrating .count-badge {
   pointer-events: none;
 }
 
@@ -922,38 +951,16 @@
 }
 
 /* ---- Passing / End of Actions strip (bottom of the explorer) ---- */
-/* Top-bar status chip (opens the End-of-Actions popover) */
+/* Top-bar status chip — styled as a stat pill that opens the End-of-Actions popover */
 .status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.35rem 0.55rem;
-  border-radius: 8px;
-  background: rgba(139, 92, 246, 0.14);
-  border: 1px solid rgba(139, 92, 246, 0.4);
-  color: #c4b5fd;
-  font-size: 0.72rem;
-  font-weight: 700;
   cursor: pointer;
-  white-space: nowrap;
+  color: inherit;
+  font: inherit;
 }
 .status-chip:hover,
 .status-chip.on {
-  background: rgba(139, 92, 246, 0.3);
-}
-.sc-dot {
-  padding: 0.05rem 0.3rem;
-  border-radius: 4px;
-  background: rgba(148, 163, 184, 0.25);
-  color: #cbd5e1;
-}
-.sc-dot.passed {
-  background: rgba(74, 222, 128, 0.28);
-  color: #4ade80;
-}
-.sc-count {
-  font-variant-numeric: tabular-nums;
-  color: #ddd6fe;
+  background: rgba(139, 92, 246, 0.32);
+  border-color: rgba(139, 92, 246, 0.6);
 }
 
 /* End-of-Actions popover (the old bottom bar, now a dismissible tooltip) */
@@ -1074,8 +1081,9 @@
 
 /* --- Small screens: dialogs fill the viewport ------------------------------ */
 /* The detail panel positions itself with an inline style (% of the board), so
-   the overrides need !important to win on small screens. */
-@media (max-width: 640px) {
+   the overrides need !important to win on small screens. The max-height clause
+   also catches landscape phones (wide but short). */
+@media (max-width: 640px), (max-height: 480px) {
   .detail-panel {
     position: fixed !important;
     inset: 0 !important;
