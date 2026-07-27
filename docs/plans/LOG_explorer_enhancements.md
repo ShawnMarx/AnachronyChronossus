@@ -56,10 +56,10 @@ order. Mark `[x]` as completed; note deviations inline.
 
 ## Feature 6 — Full-screen dialogs on small screens
 
-- [ ] 6.1 CSS media query (~640px): `.detail-panel` fills the viewport
+- [x] 6.1 CSS media query (~640px): `.detail-panel` fills the viewport
       (`position: fixed; inset: 0`), scrollable body, larger close target.
-- [ ] 6.2 Ensure desktop `hotspot.panel` positions still win above the breakpoint.
-- [ ] 6.3 build + lint; manual check at a narrow width.
+- [x] 6.2 Ensure desktop `hotspot.panel` positions still win above the breakpoint.
+- [x] 6.3 build + lint; manual check at a narrow width.
 
 ## Feature 7 — Bottom bar → dismissible tooltip
 
