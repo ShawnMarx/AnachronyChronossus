@@ -74,6 +74,13 @@ export const MECH_PLACEMENT: string[] = [
   'If there are no available spaces on a Capital Action the Chronobot rolled, it places on a World Council Action space instead, always taking the First Player spot if possible.',
 ];
 
+/**
+ * Verbatim "PASSING AND END OF ACTIONS" rule (rulebook p. 7). Paragraphs are
+ * separated by blank lines. Shown in the End-of-Actions popover.
+ */
+export const PASSING_RULE =
+  'Once the Chronobot has run out of Exosuits, it takes a Time Travel Action on its next turn (if able), then passes. However, if you pass first, and the Chronobot has taken at least 3 Actions, the Action Rounds Phase ends immediately. If the Chronobot has not yet taken 3 Actions, it will continue taking turns until it has, at which point the Action Rounds Phase would end.\n\nNOTE: You can use an unused Path’s Exosuits to track the number of Actions the Chronobot takes, especially if you decide to raise the number of Actions to 6.\n\nNOTE: The Chronobot will never take fewer than 3 Actions.';
+
 /** Verbatim "FAILED ACTIONS" rule (rulebook p. 5). */
 export const FAILED_ACTIONS =
   'If an Action cannot be taken because there are no available Action spaces, it does not place an Exosuit and receives 1 VP instead. If an Action can be taken but cannot be performed (examples are given in each Action’s section), the Chronobot places the Exosuit and receives the 1 VP instead of the normal effect of the Action.';

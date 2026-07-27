@@ -1044,6 +1044,39 @@
   line-height: 1;
   cursor: pointer;
 }
+.eoa-rule-cta {
+  background: rgba(139, 92, 246, 0.14);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  color: #c4b5fd;
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+.eoa-rule-cta:hover {
+  background: rgba(139, 92, 246, 0.28);
+}
+.eoa-rule-body {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.06);
+  max-height: 40vh;
+  overflow-y: auto;
+}
+.eoa-rule-body p {
+  margin: 0 0 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #ddd6fe;
+}
+.eoa-rule-body p:last-child {
+  margin-bottom: 0;
+}
 
 .eoa-bar {
   flex: 0 0 auto;

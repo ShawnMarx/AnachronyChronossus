@@ -6,6 +6,7 @@ import {
   Chronobot,
   DEFAULT_CONFIG,
   MECH_PLACEMENT,
+  PASSING_RULE,
   rollAiDie,
   rollShapeDie,
   type ChronobotActionId,
@@ -1060,7 +1061,7 @@ function describeDecision(
 ): string {
   switch (d) {
     case 'continue':
-      return 'The Chronobot still has Exosuits — keep alternating turns.';
+      return `Continue taking bot turns until ${min} have been taken.`;
     case 'must-continue-min3':
       return `The Chronobot is out of Exosuits but has not taken ${min} Actions yet — it keeps taking turns (Time Travel / Reboot) until it reaches ${min}.`;
     case 'time-travel-then-pass':
@@ -1093,6 +1094,7 @@ function EndOfActionsBar({
   const bot = state.chronobot;
   const decision = Chronobot.botPassDecision(state);
   const canEnd = Chronobot.actionRoundsCanEnd(state);
+  const [showRule, setShowRule] = useState(false);
 
   return (
     <div className="eoa-popover">
@@ -1121,6 +1123,19 @@ function EndOfActionsBar({
           <span className="eoa-end">✓ Action Rounds Phase ends</span>
         </div>
       )}
+
+      <div className="eoa-rule">
+        <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
+          📖 Passing &amp; End of Actions rules {showRule ? '▾' : '▸'}
+        </button>
+        {showRule && (
+          <div className="eoa-rule-body">
+            {PASSING_RULE.split('\n\n').map((para, i) => (
+              <p key={i}>{para}</p>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
