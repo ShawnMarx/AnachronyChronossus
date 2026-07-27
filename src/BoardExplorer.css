@@ -359,7 +359,10 @@
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  filter:
+    drop-shadow(1.4px 0 0 #a855f7) drop-shadow(-1.4px 0 0 #a855f7)
+    drop-shadow(0 1.4px 0 #a855f7) drop-shadow(0 -1.4px 0 #a855f7)
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
   z-index: 4;
   transition:
     left 0.35s ease,
@@ -367,8 +370,9 @@
 }
 .cmd-marker.active {
   filter:
-    drop-shadow(0 0 3px #fde047) drop-shadow(0 0 8px #fde047)
-    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+    drop-shadow(1.4px 0 0 #f0abfc) drop-shadow(-1.4px 0 0 #f0abfc)
+    drop-shadow(0 1.4px 0 #f0abfc) drop-shadow(0 -1.4px 0 #f0abfc)
+    drop-shadow(0 0 6px #fde047) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
 }
 /* Calibration ghost dot for a path step */
 .cmd-spot {
@@ -420,6 +424,30 @@
 .take-bot-action:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+.you-pass {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fee2e2;
+  background: linear-gradient(180deg, #b91c1c, #991b1b);
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+.you-pass:hover:not(:disabled) {
+  background: linear-gradient(180deg, #dc2626, #b91c1c);
+}
+.you-pass:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: linear-gradient(180deg, #3f3f46, #27272a);
+  border-color: #52525b;
+  color: #a1a1aa;
 }
 /* The AI die: black face, red numeral */
 .bot-die {

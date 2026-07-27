@@ -240,16 +240,34 @@ export default function BoardExplorer() {
     closePanel();
   };
 
-  // "Take Bot Action": roll the AI die, activate the matching Command token, and
-  // open the dialog for the Action on its current path step. On commit, `resolve`
-  // advances that token one step along its path (see the refs above).
+  // "Take Bot Action": the bot's turn. First consult the "Passing and End of
+  // Actions" rule (rulebook p. 6). On a terminal decision the bot passes instead
+  // of taking a normal Action:
+  //  - out of Exosuits (and not preempted by your pass) → one final Time Travel,
+  //    then it passes;
+  //  - you passed first and it has met its minimum → the phase ends immediately.
+  // Otherwise it rolls the AI die, activates the matching Command token, and opens
+  // that Action's dialog; on commit, `resolve` advances the token along its path.
   const takeBotAction = () => {
+    const decision = Chronobot.botPassDecision(state);
+    if (decision === 'pass' || decision === 'time-travel-then-pass') {
+      const { state: next, instructions } = Chronobot.resolveBotPass(state);
+      setState(next);
+      setPassMsg(instructions.map((i) => i.text).join(' '));
+      setBotDie(null);
+      setActiveToken(null);
+      botDieRef.current = null;
+      activeTokenRef.current = null;
+      return;
+    }
+    // 'continue' / 'must-continue-min3' → take a normal die-driven Action turn.
     const die = rollAiDie();
     const token = die as CommandToken;
     const pos = tokens.positions[token];
     const action = Chronobot.tokenAction(pos);
     const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === action);
     if (!h) return;
+    setPassMsg(null);
     botDieRef.current = die;
     activeTokenRef.current = token;
     setBotDie(die);
@@ -257,18 +275,13 @@ export default function BoardExplorer() {
     onTileClick(h);
   };
 
-  // "Passing and End of Actions" (rulebook p. 6). The player passes; the engine
-  // decides whether the Action Rounds Phase ends, the bot must keep going, or it
-  // owes a final Time Travel before passing.
+  // "Passing and End of Actions" (rulebook p. 6): the player passes. The engine
+  // then decides (on the next Take Bot Action) whether the phase ends, the bot
+  // must keep going to its minimum, or it owes a final Time Travel before passing.
   const playerPass = () => {
     setState((s) => Chronobot.markPlayerPassed(s));
     setPassMsg(null);
     closePanel();
-  };
-  const resolveBotPass = () => {
-    const { state: next, instructions } = Chronobot.resolveBotPass(state);
-    setState(next);
-    setPassMsg(instructions.map((i) => i.text).join(' '));
   };
 
   const resolve = (
@@ -442,8 +455,11 @@ export default function BoardExplorer() {
           setCalibrate((c) => !c);
         }}
         botDie={botDie}
-        canTakeAction={!calibrate && active == null}
+        canTakeAction={!calibrate && active == null && !bot.passed}
         onTakeBotAction={takeBotAction}
+        playerPassed={state.playerPassed}
+        canPass={!calibrate && active == null}
+        onPlayerPass={playerPass}
       />
 
       <div className="board-stage">
@@ -616,12 +632,7 @@ export default function BoardExplorer() {
       </div>
 
       {!calibrate && (
-        <EndOfActionsBar
-          state={state}
-          passMsg={passMsg}
-          onPlayerPass={playerPass}
-          onResolveBotPass={resolveBotPass}
-        />
+        <EndOfActionsBar state={state} passMsg={passMsg} />
       )}
 
       {calibrate && (
@@ -664,21 +675,14 @@ function describeDecision(
 function EndOfActionsBar({
   state,
   passMsg,
-  onPlayerPass,
-  onResolveBotPass,
 }: {
   state: GameState;
   passMsg: string | null;
-  onPlayerPass: () => void;
-  onResolveBotPass: () => void;
 }) {
   const bot = state.chronobot;
   const min = Chronobot.chronobotMinActions(state);
   const decision = Chronobot.botPassDecision(state);
   const canEnd = Chronobot.actionRoundsCanEnd(state);
-  // The bot only resolves a pass on a terminal decision, and only once.
-  const showResolve =
-    !bot.passed && (decision === 'pass' || decision === 'time-travel-then-pass');
 
   return (
     <div className="eoa-bar">
@@ -697,16 +701,6 @@ function EndOfActionsBar({
       <p className="eoa-hint">{passMsg ?? describeDecision(decision, min)}</p>
 
       <div className="eoa-buttons">
-        {!state.playerPassed && (
-          <button className="eoa-pass" onClick={onPlayerPass}>
-            🛑 I pass
-          </button>
-        )}
-        {showResolve && (
-          <button className="eoa-resolve" onClick={onResolveBotPass}>
-            ▶ Resolve the Chronobot’s pass
-          </button>
-        )}
         {canEnd && <span className="eoa-end">✓ Action Rounds Phase ends</span>}
       </div>
     </div>
@@ -899,6 +893,9 @@ function StatsBar({
   botDie,
   canTakeAction,
   onTakeBotAction,
+  playerPassed,
+  canPass,
+  onPlayerPass,
 }: {
   bot: ChronobotState;
   outline: boolean;
@@ -909,6 +906,9 @@ function StatsBar({
   botDie: number | null;
   canTakeAction: boolean;
   onTakeBotAction: () => void;
+  playerPassed: boolean;
+  canPass: boolean;
+  onPlayerPass: () => void;
 }) {
   const stats: { label: string; value: string | number }[] = [
     { label: 'Warp', value: bot.warpTilesOnTimeline },
@@ -947,6 +947,14 @@ function StatsBar({
               {botDie}
             </span>
           )}
+          <button
+            className="you-pass"
+            onClick={onPlayerPass}
+            disabled={!canPass || playerPassed}
+            title="Pass for the Action Rounds phase"
+          >
+            {playerPassed ? '✓ You passed' : '🛑 You Pass'}
+          </button>
         </div>
       )}
       <div className="stats-controls">
