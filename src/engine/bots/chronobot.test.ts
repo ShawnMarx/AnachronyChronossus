@@ -143,6 +143,43 @@ describe('Command-token stacking rule (max 2 per position)', () => {
   });
 });
 
+describe('Constructed tile VP tracking', () => {
+  function actionsReady(): GameState {
+    const s = setup({ ...DEFAULT_CONFIG, bot: 'chronobot' });
+    return { ...s, chronobot: { ...s.chronobot, exosuitsAvailable: 6 } };
+  }
+
+  it('records each constructed building VP under its type', () => {
+    const r1 = takeActionTurn(actionsReady(), {
+      dieRoll: 4,
+      actionId: 'construct-factory',
+      buildingVP: 3,
+    });
+    const r2 = takeActionTurn(r1.state, {
+      dieRoll: 4,
+      actionId: 'construct-factory',
+      buildingVP: 5,
+    });
+    expect(r2.state.chronobot.buildingVps.factory).toEqual([3, 5]);
+    expect(r2.state.chronobot.buildingVps.lab).toEqual([]);
+    // Aggregate still tracks the total.
+    expect(r2.state.chronobot.buildingVp).toBe(8);
+  });
+
+  it('records constructed Superproject VPs and does not mutate prior state', () => {
+    const s = actionsReady();
+    s.chronobot = { ...s.chronobot, breakthroughs: { circle: 1, triangle: 0, square: 0 } };
+    const r = takeActionTurn(s, {
+      dieRoll: 2,
+      actionId: 'construct-superproject',
+      buildingVP: 7,
+    });
+    expect(r.state.chronobot.superprojectVps).toEqual([7]);
+    // The original state's list is untouched (no shared array reference).
+    expect(s.chronobot.superprojectVps).toEqual([]);
+  });
+});
+
 describe('Recruit priority', () => {
   it('targets the highest-priority worker it lacks', () => {
     const bot = emptyChronobotState();

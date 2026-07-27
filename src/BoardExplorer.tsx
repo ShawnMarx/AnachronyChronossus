@@ -127,6 +127,49 @@ function counterValue(
   }
 }
 
+/** Building-tracker keys whose tooltip lists the specific VP of each tile. */
+const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
+
+/** Tooltip text for a board tracker badge. */
+function counterTooltip(
+  bot: ChronobotState,
+  c: (typeof BOARD_COUNTERS)[number],
+): string {
+  const count = counterValue(bot, c.key);
+  if (c.key === 'superproject') {
+    const vps = bot.superprojectVps;
+    return vps.length
+      ? `${c.label} ×${count} — VP: ${vps.join(', ')}`
+      : `${c.label}: 0`;
+  }
+  if ((BUILDING_KEYS as readonly string[]).includes(c.key)) {
+    const vps = bot.buildingVps[c.key as (typeof BUILDING_KEYS)[number]];
+    return vps.length
+      ? `${c.label} ×${count} — VP: ${vps.join(', ')} (max 3 of a type)`
+      : `${c.label}: 0 (max 3 of a type)`;
+  }
+  switch (c.key) {
+    case 'breakthrough':
+      return `${c.label}: ${count} — click for per-shape counts`;
+    case 'mech':
+      return `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+    case 'anomaly':
+      return `${c.label}: ${count} (max 3)`;
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return `${c.label}: ${count} cube${count === 1 ? '' : 's'}`;
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist':
+      return `${c.label}: ${count}`;
+    default:
+      return `${c.label}: ${count}`;
+  }
+}
+
 /**
  * Board-first explorer + debug harness. Tapping an action tile treats it as the
  * rolled action. Because "can a mech be placed?" depends on board state the app
@@ -157,8 +200,11 @@ export default function BoardExplorer() {
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   const [showBreakthroughs, setShowBreakthroughs] = useState(false);
-  const [outline, setOutline] = useState(true);
+  const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
+  // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
+  // and the calibrate/outline dev controls are hidden. Defaults OFF.
+  const [debug, setDebug] = useState(false);
 
   // --- Command tokens (2–5) travelling the two Action paths ---
   const [tokens, setTokens] = useState<CommandTokensState>(
@@ -242,6 +288,20 @@ export default function BoardExplorer() {
     setTokens(Chronobot.initialCommandTokens());
     setShowBreakthroughs(false);
     setPassMsg(null);
+    closePanel();
+  };
+
+  // Debug toggle. Turning it OFF (play mode) also forces the dev-only outline and
+  // calibrate controls off; any open panel is closed so the mode switch is clean.
+  const toggleDebug = () => {
+    setDebug((d) => {
+      const next = !d;
+      if (!next) {
+        setOutline(false);
+        setCalibrate(false);
+      }
+      return next;
+    });
     closePanel();
   };
 
@@ -349,6 +409,11 @@ export default function BoardExplorer() {
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
+    if (!debug) {
+      // Play mode: show the rule reference only, no engine activation.
+      setPending(null);
+      return;
+    }
     if (h.action === 'mine-resource') {
       setPending('mineOpen'); // Mine uses a Mine space — first ask if one is open
     } else if (h.action === 'recruit-genius-research') {
@@ -480,6 +545,8 @@ export default function BoardExplorer() {
     <div className="explorer">
       <StatsBar
         bot={state.chronobot}
+        debug={debug}
+        onToggleDebug={toggleDebug}
         outline={outline}
         onToggleOutline={() => setOutline((o) => !o)}
         onReset={reset}
@@ -541,7 +608,7 @@ export default function BoardExplorer() {
                 key={c.key}
                 className={`count-badge ${sel ? 'cal-selected' : ''} ${breakdown ? 'clickable' : ''}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
-                title={breakdown ? 'Breakthroughs — click for shapes' : `${c.label}: ${count}`}
+                title={calibrate ? c.label : counterTooltip(bot, c)}
                 onClick={breakdown ? () => setShowBreakthroughs((v) => !v) : undefined}
               >
                 {calibrate ? (sel ? '◎' : '·') : count}
@@ -630,6 +697,7 @@ export default function BoardExplorer() {
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
+              readOnly={!debug}
               pending={pending}
               result={result}
               selectedVP={selectedVP}
@@ -920,6 +988,8 @@ function VpPill({
 
 function StatsBar({
   bot,
+  debug,
+  onToggleDebug,
   outline,
   onToggleOutline,
   onReset,
@@ -934,6 +1004,8 @@ function StatsBar({
   onPlayerPass,
 }: {
   bot: ChronobotState;
+  debug: boolean;
+  onToggleDebug: () => void;
   outline: boolean;
   onToggleOutline: () => void;
   onReset: () => void;
@@ -954,7 +1026,19 @@ function StatsBar({
   return (
     <div className="stats-bar">
       <div className="stats-left">
-        <span className="debug-badge">DEBUG</span>
+        <button
+          type="button"
+          className={`debug-badge ${debug ? 'on' : 'off'}`}
+          onClick={onToggleDebug}
+          title={
+            debug
+              ? 'Debug ON — tap tiles to activate them; calibrate & outlines available'
+              : 'Play mode — tap tiles to read rules only. Click to enable Debug.'
+          }
+          aria-pressed={debug}
+        >
+          {debug ? '🛠 DEBUG' : '▶ PLAY'}
+        </button>
         <div className="stats-row">
           <VpPill
             botVp={bot.vp}
@@ -999,14 +1083,18 @@ function StatsBar({
         </div>
       )}
       <div className="stats-controls">
-        <label className="outline-toggle" title="Show the tappable tile outlines">
-          <input type="checkbox" checked={outline} onChange={onToggleOutline} />
-          outlines
-        </label>
-        <label className="outline-toggle" title="Calibrate badge positions">
-          <input type="checkbox" checked={calibrate} onChange={onToggleCalibrate} />
-          calibrate
-        </label>
+        {debug && (
+          <>
+            <label className="outline-toggle" title="Show the tappable tile outlines">
+              <input type="checkbox" checked={outline} onChange={onToggleOutline} />
+              outlines
+            </label>
+            <label className="outline-toggle" title="Calibrate badge positions">
+              <input type="checkbox" checked={calibrate} onChange={onToggleCalibrate} />
+              calibrate
+            </label>
+          </>
+        )}
         <button className="reset-btn" onClick={onReset}>
           ⟳ Reset
         </button>
@@ -1025,6 +1113,7 @@ function spaceLabel(action: ChronobotActionId): string {
 
 function DetailPanel({
   hotspot,
+  readOnly,
   pending,
   result,
   selectedVP,
@@ -1048,6 +1137,7 @@ function DetailPanel({
   onClose,
 }: {
   hotspot: Hotspot;
+  readOnly: boolean;
   pending: PendingStep;
   result: Instruction[];
   selectedVP: number | null;
@@ -1073,7 +1163,8 @@ function DetailPanel({
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
   const [showMech, setShowMech] = useState(false);
-  const [showRule, setShowRule] = useState(false);
+  // In play mode the rule opens expanded (mech placement stays collapsed).
+  const [showRule, setShowRule] = useState(readOnly);
   const toggleMech = () => setShowMech((s) => !s);
   const toggleRule = () => setShowRule((s) => !s);
 
@@ -1103,6 +1194,13 @@ function DetailPanel({
       </div>
       <div className="dp-body">
         {hotspot.note && <p className="dp-note">{hotspot.note}</p>}
+
+        {readOnly && (
+          <p className="pp-instruct read-only-note">
+            📖 Rule reference (view only). Turn on <b>Debug</b> to activate spaces
+            by tapping.
+          </p>
+        )}
 
         {/* Step 1 — placement gate for any mech-placing action. */}
         {pending === 'mech' && (

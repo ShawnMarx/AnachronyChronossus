@@ -30,10 +30,28 @@
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.08em;
-  padding: 0.18rem 0.45rem;
+  padding: 0.28rem 0.5rem;
   border-radius: 5px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.debug-badge.on {
   background: #f59e0b;
   color: #1a1207;
+  border-color: #fbbf24;
+}
+.debug-badge.off {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.5);
+}
+.debug-badge:hover {
+  filter: brightness(1.1);
+}
+.read-only-note {
+  color: #c4b5fd;
+  font-style: italic;
+  opacity: 0.9;
 }
 .stats-controls {
   display: flex;

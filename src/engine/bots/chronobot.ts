@@ -444,6 +444,13 @@ export function takeActionTurn(
     workers: { ...state.chronobot.workers },
     breakthroughs: { ...state.chronobot.breakthroughs },
     buildings: { ...state.chronobot.buildings },
+    buildingVps: {
+      factory: [...state.chronobot.buildingVps.factory],
+      lab: [...state.chronobot.buildingVps.lab],
+      powerplant: [...state.chronobot.buildingVps.powerplant],
+      support: [...state.chronobot.buildingVps.support],
+    },
+    superprojectVps: [...state.chronobot.superprojectVps],
   };
   const def = actionDef(input.actionId);
   const instr: Instruction[] = [];
@@ -559,6 +566,7 @@ export function takeActionTurn(
         if (vp > 0) {
           bot.vp += vp;
           bot.buildingVp += vp;
+          bot.buildingVps[type].push(vp);
           instr.push({
             id: `construct-${bot.totalActions}`,
             text: `Give the Chronobot the higher-VP ${label} (secondary stack if tied) — worth ${vp} VP. Add ${vp} to its score, then discard the tile.`,
@@ -589,6 +597,7 @@ export function takeActionTurn(
         if (vp > 0) {
           bot.vp += vp;
           bot.buildingVp += vp;
+          bot.superprojectVps.push(vp);
           instr.push({
             id: `superproject-${bot.totalActions}`,
             text: `Discard 1 ${discard} Breakthrough, then give the Chronobot the highest-VP face-up Superproject (oldest if tied) — worth ${vp} VP. Add ${vp} to its score.`,

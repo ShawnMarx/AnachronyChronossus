@@ -55,7 +55,11 @@ export interface ChronobotState {
   workers: Record<Worker, number>;
   breakthroughs: Record<BreakthroughShape, number>;
   buildings: Record<BuildingType, number>;
+  /** The printed VP of each constructed building, per type (order built). */
+  buildingVps: Record<BuildingType, number[]>;
   superprojects: number;
+  /** The printed VP of each constructed Superproject (order built). */
+  superprojectVps: number[];
   anomalies: number;
   /** Total Warp tiles still on the Timeline (per-tile split lives on the table). */
   warpTilesOnTimeline: number;
@@ -95,7 +99,9 @@ export function emptyChronobotState(): ChronobotState {
     workers: { genius: 0, administrator: 0, engineer: 0, scientist: 0 },
     breakthroughs: { circle: 0, triangle: 0, square: 0 },
     buildings: { factory: 0, lab: 0, powerplant: 0, support: 0 },
+    buildingVps: { factory: [], lab: [], powerplant: [], support: [] },
     superprojects: 0,
+    superprojectVps: [],
     anomalies: 0,
     warpTilesOnTimeline: 0,
     warpTilesTotal: 8,
