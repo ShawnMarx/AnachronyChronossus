@@ -36,3 +36,20 @@ export const WARP_MARKER: WarpMarkerLayout = {
   pos: [87.1, 57.9],
   width: 5.9,
 };
+
+// The Chronobot's 3 Paradox slots (filled 0–3 during the Paradox phase). Each
+// `slots[i]` is an image center [x, y] %; the middle slot is drawn pointing left,
+// the outer two pointing right. Calibrate in-app and paste the literal back.
+export interface ParadoxLayout {
+  slots: [number, number][];
+  width: number;
+}
+
+export const PARADOX_SLOTS: ParadoxLayout = {
+  slots: [
+    [40, 30],
+    [45, 30],
+    [50, 30],
+  ],
+  width: 5,
+};

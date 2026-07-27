@@ -25,7 +25,11 @@ import {
   CHRONOBOT_HOTSPOTS,
   type Hotspot,
 } from './board/chronobotHotspots';
-import { TIME_TRAVEL_TRACK, WARP_MARKER } from './board/timeTravelTrack';
+import {
+  PARADOX_SLOTS,
+  TIME_TRAVEL_TRACK,
+  WARP_MARKER,
+} from './board/timeTravelTrack';
 import {
   COMMAND_MARKER_IMG,
   MARKER_WIDTH,
@@ -42,12 +46,15 @@ const LONG_KEYS = PATH_SPOTS.long.map((_, i) => pathKey('long', i));
 const PATH_KEYS = [...SHORT_KEYS, ...LONG_KEYS];
 /** Calibration key for the Warp-tile marker (image + count). */
 const WARP_KEY = 'warp';
-/** Every calibratable point: count badges, the 7 Time Travel spots, path steps, warp. */
+/** Calibration keys for the 3 Paradox slots. */
+const PARADOX_KEYS = PARADOX_SLOTS.slots.map((_, i) => `paradox${i}`);
+/** Every calibratable point: count badges, 7 TT spots, path steps, warp, paradox. */
 const CAL_KEYS: string[] = [
   ...BOARD_COUNTERS.map((c) => c.key),
   ...TT_KEYS,
   ...PATH_KEYS,
   WARP_KEY,
+  ...PARADOX_KEYS,
 ];
 
 type PendingStep =
@@ -165,7 +172,7 @@ const UNDO_CAP = 50;
 // (engine state, tokens, undo/history, debug flag) — transient UI (open dialog,
 // shown die, calibrate positions) is not persisted. A version guards the schema.
 const PERSIST_KEY = 'anachrony:chronobot';
-const PERSIST_VERSION = 2;
+const PERSIST_VERSION = 3;
 
 interface PersistedGame {
   version: number;
@@ -173,6 +180,7 @@ interface PersistedGame {
   tokens: CommandTokensState;
   undoStack: UndoEntry[];
   debug: boolean;
+  paradoxes: number;
 }
 
 function loadPersisted(): PersistedGame | null {
@@ -362,6 +370,9 @@ export default function BoardExplorer() {
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF.
   const [debug, setDebug] = useState(() => persisted?.debug ?? false);
+  // Paradoxes placed this game (0–3). Set via the debug P +/- control for now;
+  // the Paradox phase will drive it later.
+  const [paradoxes, setParadoxes] = useState<number>(() => persisted?.paradoxes ?? 0);
 
   // --- Command tokens (2–5) travelling the two Action paths ---
   const [tokens, setTokens] = useState<CommandTokensState>(
@@ -391,11 +402,13 @@ export default function BoardExplorer() {
       ...Object.fromEntries(SHORT_KEYS.map((k, i) => [k, PATH_SPOTS.short[i]])),
       ...Object.fromEntries(LONG_KEYS.map((k, i) => [k, PATH_SPOTS.long[i]])),
       [WARP_KEY]: WARP_MARKER.pos,
+      ...Object.fromEntries(PARADOX_KEYS.map((k, i) => [k, PARADOX_SLOTS.slots[i]])),
     }),
   );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
   const [warpMarkerWidth, setWarpMarkerWidth] = useState<number>(WARP_MARKER.width);
+  const [paradoxWidth, setParadoxWidth] = useState<number>(PARADOX_SLOTS.width);
   const [selected, setSelected] = useState<string>(BOARD_COUNTERS[0].key);
 
   useEffect(() => {
@@ -433,8 +446,8 @@ export default function BoardExplorer() {
 
   // Persist the committed game whenever it changes (transient UI is excluded).
   useEffect(() => {
-    savePersisted({ state, tokens, undoStack, debug });
-  }, [state, tokens, undoStack, debug]);
+    savePersisted({ state, tokens, undoStack, debug, paradoxes });
+  }, [state, tokens, undoStack, debug, paradoxes]);
 
   // Dismiss the status popover on Escape or a click outside it (and its chip).
   useEffect(() => {
@@ -528,6 +541,7 @@ export default function BoardExplorer() {
     setState(initDebugState());
     setTokens(Chronobot.initialCommandTokens());
     setUndoStack([]);
+    setParadoxes(0);
     setShowBreakthroughs(false);
     setShowHistory(false);
     setPassMsg(null);
@@ -832,6 +846,8 @@ export default function BoardExplorer() {
         onToggleHistory={() => setShowHistory((v) => !v)}
         statusOpen={showStatus}
         onToggleStatus={() => setShowStatus((v) => !v)}
+        paradoxes={paradoxes}
+        onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
       />
 
       <div className={`board-stage ${showHistory ? 'with-history' : ''}`}>
@@ -984,6 +1000,28 @@ export default function BoardExplorer() {
             );
           })()}
 
+          {/* Paradox slots (0–3). Middle points left, outer two point right. */}
+          {PARADOX_KEYS.map((key, i) => {
+            const [px, py] = positions[key] ?? PARADOX_SLOTS.slots[i];
+            const filled = i < paradoxes;
+            const sel = calibrate && selected === key;
+            const rot = i === 1 ? -90 : 90; // middle left, outer right
+            return (
+              <img
+                key={key}
+                src="/assets/solo/paradox.png"
+                alt={`Paradox slot ${i + 1}`}
+                className={`paradox-slot ${filled ? 'filled' : 'empty'} ${sel ? 'cal-selected' : ''}`}
+                style={{
+                  left: `${px}%`,
+                  top: `${py}%`,
+                  width: `${paradoxWidth}%`,
+                  transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                }}
+              />
+            );
+          })}
+
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
@@ -1048,6 +1086,8 @@ export default function BoardExplorer() {
           onCmdMarkerWidth={setCmdMarkerWidth}
           warpMarkerWidth={warpMarkerWidth}
           onWarpMarkerWidth={setWarpMarkerWidth}
+          paradoxWidth={paradoxWidth}
+          onParadoxWidth={setParadoxWidth}
         />
       )}
     </div>
@@ -1192,6 +1232,8 @@ function CalibrationPanel({
   onCmdMarkerWidth,
   warpMarkerWidth,
   onWarpMarkerWidth,
+  paradoxWidth,
+  onParadoxWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -1202,6 +1244,8 @@ function CalibrationPanel({
   onCmdMarkerWidth: (w: number) => void;
   warpMarkerWidth: number;
   onWarpMarkerWidth: (w: number) => void;
+  paradoxWidth: number;
+  onParadoxWidth: (w: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -1232,6 +1276,13 @@ function CalibrationPanel({
   const [wx, wy] = positions[WARP_KEY] ?? WARP_MARKER.pos;
   const warpLiteral =
     `export const WARP_MARKER: WarpMarkerLayout = {\n  pos: [${wx}, ${wy}],\n  width: ${warpMarkerWidth},\n};`;
+  const paradoxLiteral =
+    'export const PARADOX_SLOTS: ParadoxLayout = {\n  slots: [\n' +
+    PARADOX_KEYS.map((key, i) => {
+      const [x, y] = positions[key] ?? PARADOX_SLOTS.slots[i];
+      return `    [${x}, ${y}],`;
+    }).join('\n') +
+    `\n  ],\n  width: ${paradoxWidth},\n};`;
   const ttLabel = (i: number) =>
     i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
   const pathLabel = (path: PathId, i: number) =>
@@ -1273,6 +1324,17 @@ function CalibrationPanel({
           step={0.1}
           value={warpMarkerWidth}
           onChange={(e) => onWarpMarkerWidth(+e.target.value)}
+        />
+      </label>
+      <label className="cal-size">
+        Paradox width: <b>{paradoxWidth}%</b>
+        <input
+          type="range"
+          min={1}
+          max={14}
+          step={0.1}
+          value={paradoxWidth}
+          onChange={(e) => onParadoxWidth(+e.target.value)}
         />
       </label>
       <div className="cal-list">
@@ -1324,11 +1386,24 @@ function CalibrationPanel({
           Warp tile{' '}
           <span className="cal-xy">{(positions[WARP_KEY] ?? WARP_MARKER.pos).join(', ')}</span>
         </button>
+        {PARADOX_KEYS.map((key, i) => (
+          <button
+            key={key}
+            className={`cal-item paradox ${selected === key ? 'on' : ''}`}
+            onClick={() => onSelect(key)}
+          >
+            Paradox {i + 1} {i === 1 ? '(◀)' : '(▶)'}{' '}
+            <span className="cal-xy">
+              {(positions[key] ?? PARADOX_SLOTS.slots[i]).join(', ')}
+            </span>
+          </button>
+        ))}
       </div>
       <textarea className="cal-out" readOnly value={literal} />
       <textarea className="cal-out" readOnly value={ttLiteral} />
       <textarea className="cal-out" readOnly value={pathLiteral} />
       <textarea className="cal-out" readOnly value={warpLiteral} />
+      <textarea className="cal-out" readOnly value={paradoxLiteral} />
     </div>
   );
 }
@@ -1406,6 +1481,8 @@ function StatsBar({
   onToggleHistory,
   statusOpen,
   onToggleStatus,
+  paradoxes,
+  onParadox,
 }: {
   bot: ChronobotState;
   debug: boolean;
@@ -1428,6 +1505,8 @@ function StatsBar({
   onToggleHistory: () => void;
   statusOpen: boolean;
   onToggleStatus: () => void;
+  paradoxes: number;
+  onParadox: (delta: number) => void;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -1439,13 +1518,18 @@ function StatsBar({
             🛠 DEBUG
           </span>
         )}
+        {debug && (
+          <div className="paradox-ctl" title="Set the number of Paradoxes (0–3)">
+            <button onClick={() => onParadox(-1)} disabled={paradoxes <= 0} aria-label="Fewer paradoxes">
+              −
+            </button>
+            <span className="paradox-ctl-val">P {paradoxes}</span>
+            <button onClick={() => onParadox(1)} disabled={paradoxes >= 3} aria-label="More paradoxes">
+              +
+            </button>
+          </div>
+        )}
         <div className="stats-row">
-          <VpPill
-            botVp={bot.vp}
-            buildingVp={bot.buildingVp}
-            timeTravelVp={Chronobot.timeTravelVp(bot)}
-            breakthroughVp={Chronobot.breakthroughVp(bot)}
-          />
           {stats.map((s) => (
             <span key={s.label} className="stat-pill">
               <b>{s.value}</b> {s.label}
@@ -1455,31 +1539,40 @@ function StatsBar({
       </div>
       {!calibrate && (
         <div className="bot-turn">
-          <button
-            className={`take-bot-action ${botPassed ? 'passed' : ''}`}
-            onClick={onTakeBotAction}
-            disabled={!canTakeAction}
-            title={
-              botPassed
-                ? 'The Chronobot has passed for this Era'
-                : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
-            }
-          >
-            {botPassed ? '✓ Bot Passed' : '🎲 Take Bot Action'}
-          </button>
-          {botDie != null && (
-            <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
-              {botDie}
-            </span>
-          )}
-          <button
-            className="you-pass"
-            onClick={onPlayerPass}
-            disabled={!canPass || playerPassed}
-            title="Pass for the Action Rounds phase"
-          >
-            {playerPassed ? '✓ You passed' : '🛑 You Pass'}
-          </button>
+          <VpPill
+            botVp={bot.vp}
+            buildingVp={bot.buildingVp}
+            timeTravelVp={Chronobot.timeTravelVp(bot)}
+            breakthroughVp={Chronobot.breakthroughVp(bot)}
+          />
+          {/* Primary turn controls — kept together on the top row when wrapping. */}
+          <div className="turn-core">
+            <button
+              className={`take-bot-action ${botPassed ? 'passed' : ''}`}
+              onClick={onTakeBotAction}
+              disabled={!canTakeAction}
+              title={
+                botPassed
+                  ? 'The Chronobot has passed for this Era'
+                  : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
+              }
+            >
+              {botPassed ? '✓ Bot Passed' : '🎲 Take Bot Action'}
+            </button>
+            {botDie != null && (
+              <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
+                {botDie}
+              </span>
+            )}
+            <button
+              className="you-pass"
+              onClick={onPlayerPass}
+              disabled={!canPass || playerPassed}
+              title="Pass for the Action Rounds phase"
+            >
+              {playerPassed ? '✓ You passed' : '🛑 You Pass'}
+            </button>
+          </div>
           <button
             className={`stat-pill status-chip ${statusOpen ? 'on' : ''}`}
             onClick={onToggleStatus}

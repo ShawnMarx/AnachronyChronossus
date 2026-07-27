@@ -21,7 +21,35 @@
   background: #120e1c;
 }
 .bot-turn {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   flex-wrap: wrap;
+  justify-content: center;
+}
+/* The primary turn buttons stay together and never split across lines. */
+.turn-core {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: nowrap;
+}
+/* When the top bar is cramped, keep Take Bot Action + You Pass on their own top
+   row; VP, status chip, and the right-hand controls wrap below. */
+@media (max-width: 760px) {
+  .bot-turn {
+    order: -1;
+    flex-basis: 100%;
+  }
+  .bot-turn .turn-core {
+    order: -1;
+    flex-basis: 100%;
+    justify-content: center;
+  }
+  .stats-left,
+  .stats-controls {
+    justify-content: center;
+  }
 }
 .stats-left {
   display: flex;
@@ -645,6 +673,69 @@
   background: #f59e0b;
   border-color: #fff;
   color: #1a1207;
+}
+
+/* Paradox slots (3 triangles; middle points left, outer two right) */
+.paradox-slot {
+  position: absolute;
+  pointer-events: none;
+  z-index: 4;
+  filter:
+    drop-shadow(1.4px 0 0 #a855f7) drop-shadow(-1.4px 0 0 #a855f7)
+    drop-shadow(0 1.4px 0 #a855f7) drop-shadow(0 -1.4px 0 #a855f7)
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+.paradox-slot.empty {
+  opacity: 0.22;
+  filter:
+    drop-shadow(1.4px 0 0 #a855f7) drop-shadow(-1.4px 0 0 #a855f7)
+    drop-shadow(0 1.4px 0 #a855f7) drop-shadow(0 -1.4px 0 #a855f7);
+}
+.paradox-slot.cal-selected {
+  opacity: 1;
+  filter:
+    drop-shadow(1.4px 0 0 #f0abfc) drop-shadow(-1.4px 0 0 #f0abfc)
+    drop-shadow(0 1.4px 0 #f0abfc) drop-shadow(0 -1.4px 0 #f0abfc)
+    drop-shadow(0 0 6px rgba(240, 171, 252, 0.9));
+}
+
+/* Debug-only Paradox +/- control */
+.paradox-ctl {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.paradox-ctl button {
+  width: 1.5rem;
+  height: 1.5rem;
+  line-height: 1;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ddd6fe;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.paradox-ctl button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.paradox-ctl-val {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fbbf24;
+  min-width: 2.2em;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.cal-item.paradox {
+  background: rgba(251, 146, 60, 0.12);
+  border-color: rgba(251, 146, 60, 0.35);
+}
+.cal-item.paradox.on {
+  background: #f59e0b;
+  border-color: #fff;
 }
 
 /* Command-token markers on the two Action paths */
