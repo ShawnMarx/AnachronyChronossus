@@ -1,0 +1,42 @@
+name: Deploy Anachrony to Production
+
+# Static Vite/React site. Pushing to `main` (or a manual run) SSHes to the shared
+# BoardGameEdge Droplet, pulls the latest code, and rebuilds `dist/`, which nginx
+# serves directly. No systemd service and no `sudo` — nothing to restart.
+#
+# Requires two repo secrets (Settings → Secrets and variables → Actions):
+#   PROD_HOST       the Droplet IP (the deploy host)
+#   DEPLOY_SSH_KEY  the existing fleet deploy private key (public half already in
+#                   the server's authorized_keys)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to production server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "==> Pulling latest code..."
+            cd /var/www/anachrony
+            git fetch origin main
+            git reset --hard origin/main
+
+            echo "==> Installing dependencies (incl. devDeps for the build)..."
+            npm ci
+
+            echo "==> Building static site..."
+            npm run build
+
+            echo "==> Done. Anachrony deployed — nginx serves /var/www/anachrony/dist."
