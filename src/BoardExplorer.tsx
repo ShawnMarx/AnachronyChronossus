@@ -139,6 +139,7 @@ export default function BoardExplorer() {
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   const [showBreakthroughs, setShowBreakthroughs] = useState(false);
   const [outline, setOutline] = useState(true);
+  const [passMsg, setPassMsg] = useState<string | null>(null);
 
   // --- Badge / Time Travel spot position calibration ---
   const [calibrate, setCalibrate] = useState(false);
@@ -197,7 +198,22 @@ export default function BoardExplorer() {
   const reset = () => {
     setState(initDebugState());
     setShowBreakthroughs(false);
+    setPassMsg(null);
     closePanel();
+  };
+
+  // "Passing and End of Actions" (rulebook p. 6). The player passes; the engine
+  // decides whether the Action Rounds Phase ends, the bot must keep going, or it
+  // owes a final Time Travel before passing.
+  const playerPass = () => {
+    setState((s) => Chronobot.markPlayerPassed(s));
+    setPassMsg(null);
+    closePanel();
+  };
+  const resolveBotPass = () => {
+    const { state: next, instructions } = Chronobot.resolveBotPass(state);
+    setState(next);
+    setPassMsg(instructions.map((i) => i.text).join(' '));
   };
 
   const resolve = (
@@ -487,6 +503,15 @@ export default function BoardExplorer() {
         </div>
       </div>
 
+      {!calibrate && (
+        <EndOfActionsBar
+          state={state}
+          passMsg={passMsg}
+          onPlayerPass={playerPass}
+          onResolveBotPass={resolveBotPass}
+        />
+      )}
+
       {calibrate && (
         <CalibrationPanel
           positions={positions}
@@ -496,6 +521,80 @@ export default function BoardExplorer() {
           onMarkerWidth={setMarkerWidth}
         />
       )}
+    </div>
+  );
+}
+
+/** Human-readable summary of the bot's pass decision (rulebook p. 6). */
+function describeDecision(
+  d: ReturnType<typeof Chronobot.botPassDecision>,
+  min: number,
+): string {
+  switch (d) {
+    case 'continue':
+      return 'The Chronobot still has Exosuits — keep alternating turns.';
+    case 'must-continue-min3':
+      return `The Chronobot is out of Exosuits but has not taken ${min} Actions yet — it keeps taking turns (Time Travel / Reboot) until it reaches ${min}.`;
+    case 'time-travel-then-pass':
+      return 'The Chronobot is out of Exosuits — it takes a final Time Travel Action (if able), then passes.';
+    case 'pass':
+      return 'The Chronobot passes for this Era.';
+  }
+}
+
+/**
+ * The "Passing and End of Actions" strip (rulebook p. 6). Shows the pass state,
+ * lets the player pass, and drives the Chronobot's pass decision through the
+ * engine (immediate end / keep going / final Time Travel then pass).
+ */
+function EndOfActionsBar({
+  state,
+  passMsg,
+  onPlayerPass,
+  onResolveBotPass,
+}: {
+  state: GameState;
+  passMsg: string | null;
+  onPlayerPass: () => void;
+  onResolveBotPass: () => void;
+}) {
+  const bot = state.chronobot;
+  const min = Chronobot.chronobotMinActions(state);
+  const decision = Chronobot.botPassDecision(state);
+  const canEnd = Chronobot.actionRoundsCanEnd(state);
+  // The bot only resolves a pass on a terminal decision, and only once.
+  const showResolve =
+    !bot.passed && (decision === 'pass' || decision === 'time-travel-then-pass');
+
+  return (
+    <div className="eoa-bar">
+      <div className="eoa-flags">
+        <span className={`eoa-flag ${state.playerPassed ? 'on' : ''}`}>
+          You: {state.playerPassed ? 'passed' : 'active'}
+        </span>
+        <span className={`eoa-flag ${bot.passed ? 'on' : ''}`}>
+          Bot: {bot.passed ? 'passed' : 'active'}
+        </span>
+        <span className="eoa-count">
+          Actions <b>{bot.actionsThisEra}</b> / min {min}
+        </span>
+      </div>
+
+      <p className="eoa-hint">{passMsg ?? describeDecision(decision, min)}</p>
+
+      <div className="eoa-buttons">
+        {!state.playerPassed && (
+          <button className="eoa-pass" onClick={onPlayerPass}>
+            🛑 I pass
+          </button>
+        )}
+        {showResolve && (
+          <button className="eoa-resolve" onClick={onResolveBotPass}>
+            ▶ Resolve the Chronobot’s pass
+          </button>
+        )}
+        {canEnd && <span className="eoa-end">✓ Action Rounds Phase ends</span>}
+      </div>
     </div>
   );
 }

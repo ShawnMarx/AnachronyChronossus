@@ -666,3 +666,85 @@
   border-color: rgba(220, 38, 38, 0.55);
   background: rgba(220, 38, 38, 0.1);
 }
+
+/* ---- Passing / End of Actions strip (bottom of the explorer) ---- */
+.eoa-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex-wrap: wrap;
+  padding: 0.5rem 0.9rem;
+  background: #120e1c;
+  border-top: 1px solid #2a2140;
+  color: #ece8f5;
+}
+.eoa-flags {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.eoa-flag {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #1c1630;
+  border: 1px solid #2a2140;
+  color: #9c93b8;
+}
+.eoa-flag.on {
+  background: rgba(139, 92, 246, 0.2);
+  border-color: #8b5cf6;
+  color: #c4b5fd;
+}
+.eoa-count {
+  font-size: 0.78rem;
+  color: #9c93b8;
+}
+.eoa-count b {
+  color: #ece8f5;
+}
+.eoa-hint {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.35;
+  color: #c4b5fd;
+}
+.eoa-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.eoa-pass,
+.eoa-resolve {
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.45rem 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.eoa-pass {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: rgba(220, 38, 38, 0.6);
+  color: #fca5a5;
+}
+.eoa-pass:hover {
+  background: rgba(220, 38, 38, 0.3);
+}
+.eoa-resolve {
+  background: #16a34a;
+  color: #fff;
+  border-color: rgba(16, 163, 74, 0.7);
+}
+.eoa-resolve:hover {
+  background: #15803d;
+}
+.eoa-end {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #4ade80;
+}

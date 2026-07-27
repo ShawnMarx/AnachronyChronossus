@@ -73,14 +73,44 @@ closes the panel. Full-rules 📖 collapsibles render *outside/below* the orange
 - **Calibrate mode** now covers badges **+ the 7 Time Travel spots + a marker-width
   slider**, and emits BOTH the `BOARD_COUNTERS` and `TIME_TRAVEL_TRACK` literals.
 
+## Passing & End of Actions (done this session — rulebook p. 6)
+
+Implemented the "Passing and End of Actions" rule in the engine and surfaced it in
+BoardExplorer (the default view).
+
+- `botPassDecision` **corrected**: rule 2 ("if you pass first and the bot has met its
+  minimum, the Action Rounds Phase ends immediately") is now checked *before* the
+  out-of-Exosuits branch, so a player pass **preempts** the owed final Time Travel of
+  rule 1. Returns the same 4 tags as before (`continue` / `must-continue-min3` /
+  `time-travel-then-pass` / `pass`), typed as `BotPassDecision`.
+- **Minimum Actions is now config-driven**: `chronobotMinActions(state)` returns 3, or 6
+  when `config.difficulty` includes `DIFFICULTY_MIN_ACTIONS_6` (`CHRONOBOT_MIN_ACTIONS`
+  const). The rulebook's "Increasing the Difficulty" list confirms 3→6 is a hard-mode
+  toggle. `actionRoundsCanEnd` uses this minimum.
+- New `Chronobot.resolveBotPass(state) → ActionTurnResult`: orchestrates the terminal
+  outcomes — plain `pass` marks the bot passed (with an "ends immediately" instruction
+  when applicable); `time-travel-then-pass` takes one Time Travel turn (counts as an
+  Action) then passes; the "keep going" tags return an explanatory instruction and leave
+  state unchanged. The Time Travel effect was factored into a shared `resolveTimeTravel`.
+- **BoardExplorer** gained an `EndOfActionsBar` footer strip: You/Bot pass chips, an
+  `Actions N / min M` counter, a **🛑 I pass** button, a decision hint, and a green
+  **▶ Resolve the Chronobot's pass** button on terminal decisions, plus a
+  "✓ Action Rounds Phase ends" note when `actionRoundsCanEnd`.
+- Tests: 8 new engine cases (rule-2 precedence, the out-of-Exosuits preemption, min-6
+  difficulty, `resolveBotPass` outcomes). `npm test` = **29 green**; build + lint clean.
+- Note: difficulty flags (`min-actions-6`, "extra turn after you pass") are **defined but
+  not yet wired into any setup UI** — the engine honors `min-actions-6`; the extra-turn
+  option is unimplemented.
+
 ## Next up (new session): Phase & turn tracking
 
 The app currently runs **single action turns** only (debug harness). Next: build the
 **per-Era phase/turn structure** on top of the engine's existing phase functions
 (`Chronobot.setup`, power-up, Action Rounds, `botPassDecision`, `actionRoundsCanEnd`,
-`markBotPassed` / `markPlayerPassed`, Era advance, `scoreChronobot`). Goal: guide the
-player through a full Chronobot turn/Era — AI-die roll picking the active Command token,
-action-round flow, pass logic, and Era clean-up — rather than free-tapping tiles.
+`resolveBotPass`, `markBotPassed` / `markPlayerPassed`, Era advance, `scoreChronobot`).
+Goal: guide the player through a full Chronobot turn/Era — AI-die roll picking the active
+Command token, action-round flow, pass logic, and Era clean-up — rather than free-tapping
+tiles.
 
 ## Gotchas / decisions locked
 

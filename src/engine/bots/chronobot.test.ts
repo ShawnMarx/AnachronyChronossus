@@ -7,6 +7,9 @@ import {
   chooseMineResources,
   chooseRecruitWorker,
   chooseRemoveAnomalyDiscards,
+  chronobotMinActions,
+  DIFFICULTY_MIN_ACTIONS_6,
+  resolveBotPass,
   resolveParadox,
   resolvePowerUp,
   resolveWarp,
@@ -188,6 +191,98 @@ describe('Pass logic', () => {
       g.chronobot.actionsThisEra = 3;
     });
     expect(actionRoundsCanEnd(s)).toBe(true);
+  });
+
+  it('ends immediately when you pass first and the bot has met its minimum, even with Exosuits left', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 4; // still has Exosuits
+      g.chronobot.actionsThisEra = 3;
+    });
+    expect(botPassDecision(s)).toBe('pass');
+  });
+
+  it('a player pass preempts the out-of-Exosuits final Time Travel once the minimum is met', () => {
+    // Rule 2's "ends immediately" wins over rule 1's owed Time Travel.
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 0; // out of Exosuits → would normally Time Travel
+      g.chronobot.actionsThisEra = 4;
+    });
+    expect(botPassDecision(s)).toBe('pass');
+  });
+
+  it('still owes a final Time Travel when out of Exosuits and you have NOT passed', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = false;
+      g.chronobot.exosuitsAvailable = 0;
+      g.chronobot.actionsThisEra = 5;
+    });
+    expect(botPassDecision(s)).toBe('time-travel-then-pass');
+  });
+
+  it('keeps taking turns to reach the minimum even after you pass', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 2;
+      g.chronobot.actionsThisEra = 1; // below the minimum
+    });
+    expect(botPassDecision(s)).toBe('continue');
+  });
+
+  it('honours the "minimum 6 Actions" difficulty flag', () => {
+    const s = setup({ ...DEFAULT_CONFIG, bot: 'chronobot', difficulty: [DIFFICULTY_MIN_ACTIONS_6] });
+    s.phase = 'actions';
+    s.playerPassed = true;
+    s.chronobot.exosuitsAvailable = 3;
+    s.chronobot.actionsThisEra = 3; // meets the base 3 but not 6
+    expect(chronobotMinActions(s)).toBe(6);
+    expect(botPassDecision(s)).toBe('continue');
+    s.chronobot.actionsThisEra = 6;
+    expect(botPassDecision(s)).toBe('pass');
+  });
+});
+
+describe('resolveBotPass', () => {
+  it('takes a final Time Travel then passes when out of Exosuits (has Warp tiles)', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.chronobot.exosuitsAvailable = 0;
+      g.chronobot.actionsThisEra = 4;
+      g.chronobot.warpTilesOnTimeline = 2;
+    });
+    const { state } = resolveBotPass(s);
+    expect(state.chronobot.passed).toBe(true);
+    expect(state.chronobot.warpTilesOnTimeline).toBe(1); // removed one
+    expect(state.chronobot.timeTravelTrack).toBe(1); // advanced
+    expect(state.chronobot.actionsThisEra).toBe(5); // the Time Travel counted as a turn
+  });
+
+  it('marks passed without a turn on a plain pass', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 3;
+      g.chronobot.actionsThisEra = 3;
+    });
+    const { state } = resolveBotPass(s);
+    expect(state.chronobot.passed).toBe(true);
+    expect(state.chronobot.actionsThisEra).toBe(3); // no extra turn taken
+  });
+
+  it('leaves state unchanged (not passed) while it must keep going', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.chronobot.exosuitsAvailable = 2;
+      g.chronobot.actionsThisEra = 1;
+    });
+    const { state } = resolveBotPass(s);
+    expect(state.chronobot.passed).toBe(false);
+    expect(state.currentInstructions.length).toBeGreaterThan(0);
   });
 });
 

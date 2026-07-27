@@ -373,22 +373,7 @@ export function takeActionTurn(
       break;
 
     case 'time-travel':
-      if (bot.warpTilesOnTimeline <= 0) {
-        instr.push({
-          id: `tt-fail-${bot.totalActions}`,
-          text: 'No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronobot takes +1 VP (no Exosuit).',
-          effect: { vp: 1 },
-        });
-        bot.vp += 1;
-      } else {
-        bot.warpTilesOnTimeline -= 1;
-        bot.timeTravelTrack += 1;
-        instr.push({
-          id: `tt-${bot.totalActions}`,
-          text: 'Remove one of the Chronobot’s Warp tiles from the past Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot along the track.',
-          detail: `Time Travel places no Exosuit. The marker is now worth ${timeTravelVp(bot)} VP.`,
-        });
-      }
+      resolveTimeTravel(bot, instr);
       break;
 
     case 'remove-anomaly': {
@@ -504,6 +489,31 @@ function consumeExosuit(bot: ChronobotState, def: { placesExosuit: boolean }): v
   }
 }
 
+/**
+ * Apply a Time Travel Action to `bot`, pushing the player instruction. If it has
+ * no Warp tiles on the Timeline the Action is Failed (+1 VP); otherwise it removes
+ * one and advances the track. Time Travel never places an Exosuit. Shared by the
+ * rolled Action turn and the out-of-Exosuits pass sequence.
+ */
+function resolveTimeTravel(bot: ChronobotState, instr: Instruction[]): void {
+  if (bot.warpTilesOnTimeline <= 0) {
+    instr.push({
+      id: `tt-fail-${bot.totalActions}`,
+      text: 'No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronobot takes +1 VP (no Exosuit).',
+      effect: { vp: 1 },
+    });
+    bot.vp += 1;
+  } else {
+    bot.warpTilesOnTimeline -= 1;
+    bot.timeTravelTrack += 1;
+    instr.push({
+      id: `tt-${bot.totalActions}`,
+      text: 'Remove one of the Chronobot’s Warp tiles from the past Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot along the track.',
+      detail: `Time Travel places no Exosuit. The marker is now worth ${timeTravelVp(bot)} VP.`,
+    });
+  }
+}
+
 function resolveResearch(
   bot: ChronobotState,
   instr: Instruction[],
@@ -604,31 +614,136 @@ function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource
   }
 }
 
-/** Whether the Action Rounds phase can end (both passed and bot took ≥3 actions). */
+// --------------------------------------------------------------------------
+// Passing and end of Actions (rulebook p. 6)
+// --------------------------------------------------------------------------
+
+/** The Chronobot never takes fewer than this many Actions per Era (rulebook p. 6). */
+export const CHRONOBOT_MIN_ACTIONS = 3;
+
+/**
+ * Difficulty flag (rulebook p. 6, "Increasing the Difficulty"): raise the
+ * Chronobot's minimum Actions per Era from 3 to 6.
+ */
+export const DIFFICULTY_MIN_ACTIONS_6 = 'min-actions-6';
+
+/** The minimum Actions the Chronobot must take this Era — 3, or 6 on hard. */
+export function chronobotMinActions(state: GameState): number {
+  return state.config.difficulty.includes(DIFFICULTY_MIN_ACTIONS_6)
+    ? 6
+    : CHRONOBOT_MIN_ACTIONS;
+}
+
+export type BotPassDecision =
+  | 'continue'
+  | 'must-continue-min3'
+  | 'time-travel-then-pass'
+  | 'pass';
+
+/**
+ * Whether the Action Rounds phase can end: both players have passed AND the
+ * Chronobot has taken at least its minimum Actions for the Era.
+ */
 export function actionRoundsCanEnd(state: GameState): boolean {
   const bot = state.chronobot;
-  return state.playerPassed && bot.passed && bot.actionsThisEra >= 3;
+  return (
+    state.playerPassed && bot.passed && bot.actionsThisEra >= chronobotMinActions(state)
+  );
 }
 
 /**
- * Decide what the Chronobot does when it is out of Exosuits or the player has
- * passed.
+ * Decide what the Chronobot does on its next turn, per "Passing and End of
+ * Actions" (rulebook p. 6):
+ *
+ *  1. Once it has run out of Exosuits, it takes a Time Travel Action on its next
+ *     turn (if able), then passes.
+ *  2. However, if you pass *first* (before it has passed) and it has taken at
+ *     least its minimum Actions, the Action Rounds Phase ends immediately — this
+ *     exception preempts the owed Time Travel of rule 1.
+ *  3. If it has not yet reached its minimum, it keeps taking turns until it has.
  */
-export function botPassDecision(
-  state: GameState,
-): 'continue' | 'must-continue-min3' | 'time-travel-then-pass' | 'pass' {
+export function botPassDecision(state: GameState): BotPassDecision {
   const bot = state.chronobot;
+  const min = chronobotMinActions(state);
   if (bot.passed) return 'pass';
-  if (botHasExosuit(bot)) {
-    if (state.playerPassed && bot.actionsThisEra >= 3) return 'pass';
-    return 'continue';
-  }
-  if (bot.actionsThisEra < 3) return 'must-continue-min3';
+  // Rule 2 (the "However" exception) is checked first: it ends the phase even
+  // when the bot is out of Exosuits and would otherwise owe a final Time Travel.
+  if (state.playerPassed && bot.actionsThisEra >= min) return 'pass';
+  // Still has Exosuits → keep taking normal Action turns.
+  if (botHasExosuit(bot)) return 'continue';
+  // Rule 3: below the minimum, it must keep taking turns until it reaches it.
+  if (bot.actionsThisEra < min) return 'must-continue-min3';
+  // Rule 1: out of Exosuits and at/above the minimum → one Time Travel, then pass.
   return 'time-travel-then-pass';
 }
 
 export function markBotPassed(state: GameState): GameState {
   return { ...state, chronobot: { ...state.chronobot, passed: true } };
+}
+
+/**
+ * Resolve the Chronobot's turn when it is passing (or continuing toward its
+ * minimum), driven by `botPassDecision`. The two terminal outcomes mutate state:
+ *
+ *  - `pass`: mark the bot passed and explain why (met its minimum / immediate end).
+ *  - `time-travel-then-pass`: take one Time Travel Action (counts as a turn),
+ *    then mark the bot passed.
+ *
+ * For the "keep going" outcomes (`continue`, `must-continue-min3`) it leaves
+ * state unchanged and returns an explanatory instruction — the caller keeps
+ * taking normal Action turns via `takeActionTurn`.
+ */
+export function resolveBotPass(state: GameState): ActionTurnResult {
+  const decision = botPassDecision(state);
+  const min = chronobotMinActions(state);
+
+  if (decision === 'continue' || decision === 'must-continue-min3') {
+    const instr: Instruction[] = [
+      {
+        id: `pass-continue-${state.chronobot.totalActions}`,
+        text:
+          decision === 'continue'
+            ? 'The Chronobot still has Exosuits — it keeps taking turns. Roll the AI die for its next Action.'
+            : `The Chronobot has taken ${state.chronobot.actionsThisEra} of its minimum ${min} Actions — it keeps taking turns until it reaches ${min}.`,
+      },
+    ];
+    return { state: { ...state, currentInstructions: instr }, instructions: instr };
+  }
+
+  if (decision === 'time-travel-then-pass') {
+    const bot: ChronobotState = {
+      ...state.chronobot,
+      resources: { ...state.chronobot.resources },
+      workers: { ...state.chronobot.workers },
+      breakthroughs: { ...state.chronobot.breakthroughs },
+      buildings: { ...state.chronobot.buildings },
+    };
+    const instr: Instruction[] = [
+      {
+        id: `pass-tt-${bot.totalActions}`,
+        text: 'The Chronobot is out of Exosuits — it takes one final Time Travel Action, then passes.',
+      },
+    ];
+    resolveTimeTravel(bot, instr);
+    bot.passed = true;
+    // finishTurn bumps actionsThisEra / totalActions (the Time Travel counts as a turn).
+    return finishTurn(state, bot, instr);
+  }
+
+  // decision === 'pass'
+  const already = state.chronobot.passed;
+  const instr: Instruction[] = [
+    {
+      id: `pass-${state.chronobot.totalActions}`,
+      text: already
+        ? 'The Chronobot has already passed for this Era.'
+        : state.playerPassed
+          ? `You passed and the Chronobot has taken its minimum ${min} Actions — the Action Rounds Phase ends immediately.`
+          : 'The Chronobot passes for this Era.',
+    },
+  ];
+  const next = markBotPassed({ ...state, currentInstructions: instr });
+  return { state: next, instructions: instr };
 }
 
 export function markPlayerPassed(state: GameState): GameState {
