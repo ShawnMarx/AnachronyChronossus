@@ -48,11 +48,11 @@ order. Mark `[x]` as completed; note deviations inline.
 
 ## Feature 5 — Persistence + Reset Game
 
-- [ ] 5.1 `persist.ts` (or inline): versioned `localStorage` save/load of
+- [x] 5.1 `persist.ts` (or inline): versioned `localStorage` save/load of
       `{ current, undo stack, history, debug }`.
-- [ ] 5.2 Load-on-mount (schema-version guarded); save-on-change effect.
-- [ ] 5.3 Relabel Reset → "Reset Game" with a confirm that clears storage + re-inits.
-- [ ] 5.4 build + test + lint clean; manual refresh-persistence check.
+- [x] 5.2 Load-on-mount (schema-version guarded); save-on-change effect.
+- [x] 5.3 Relabel Reset → "Reset Game" with a confirm that clears storage + re-inits.
+- [x] 5.4 build + test + lint clean; manual refresh-persistence check.
 
 ## Feature 6 — Full-screen dialogs on small screens
 

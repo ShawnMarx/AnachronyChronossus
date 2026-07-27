@@ -114,12 +114,13 @@
 /* History pane — right-docked column */
 .history-pane {
   position: fixed;
-  top: 0;
+  top: 3.4rem; /* sit below the top bar so its controls stay reachable */
   right: 0;
   bottom: 0;
   width: min(340px, 88vw);
   background: #140f22;
   border-left: 1px solid #8b5cf6;
+  border-top: 1px solid rgba(139, 92, 246, 0.4);
   box-shadow: -6px 0 20px rgba(0, 0, 0, 0.5);
   z-index: 60;
   display: flex;

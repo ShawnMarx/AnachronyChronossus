@@ -81,6 +81,52 @@ interface UndoEntry {
 /** Cap the undo/history depth so persisted state stays bounded. */
 const UNDO_CAP = 50;
 
+// --- Persistence (localStorage) ---------------------------------------------
+// Survives refresh and browser restart. Only the committed game shape is saved
+// (engine state, tokens, undo/history, debug flag) — transient UI (open dialog,
+// shown die, calibrate positions) is not persisted. A version guards the schema.
+const PERSIST_KEY = 'anachrony:chronobot';
+const PERSIST_VERSION = 2;
+
+interface PersistedGame {
+  version: number;
+  state: GameState;
+  tokens: CommandTokensState;
+  undoStack: UndoEntry[];
+  debug: boolean;
+}
+
+function loadPersisted(): PersistedGame | null {
+  try {
+    const raw = localStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as PersistedGame;
+    if (data?.version !== PERSIST_VERSION || !data.state || !data.tokens) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+function savePersisted(p: Omit<PersistedGame, 'version'>): void {
+  try {
+    localStorage.setItem(
+      PERSIST_KEY,
+      JSON.stringify({ version: PERSIST_VERSION, ...p }),
+    );
+  } catch {
+    /* quota / disabled storage — ignore */
+  }
+}
+
+function clearPersisted(): void {
+  try {
+    localStorage.removeItem(PERSIST_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Describe a Resource-cube discard list, e.g. "2 titanium + 1 gold". */
 function describeCubes(cubes: Resource[]): string {
   const order: Resource[] = ['neutronium', 'titanium', 'gold', 'uranium', 'water'];
@@ -212,7 +258,11 @@ function initDebugState(): GameState {
 }
 
 export default function BoardExplorer() {
-  const [state, setState] = useState<GameState>(initDebugState);
+  // Rehydrate a saved game once on mount (null → fresh game).
+  const [persisted] = useState(loadPersisted);
+  const [state, setState] = useState<GameState>(
+    () => persisted?.state ?? initDebugState(),
+  );
   const [active, setActive] = useState<Hotspot | null>(null);
   const [pending, setPending] = useState<PendingStep>(null);
   const [result, setResult] = useState<Instruction[]>([]);
@@ -226,16 +276,18 @@ export default function BoardExplorer() {
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF.
-  const [debug, setDebug] = useState(false);
+  const [debug, setDebug] = useState(() => persisted?.debug ?? false);
 
   // --- Command tokens (2–5) travelling the two Action paths ---
   const [tokens, setTokens] = useState<CommandTokensState>(
-    Chronobot.initialCommandTokens,
+    () => persisted?.tokens ?? Chronobot.initialCommandTokens(),
   );
   const [botDie, setBotDie] = useState<number | null>(null);
   const [activeToken, setActiveToken] = useState<CommandToken | null>(null);
   // Undo/history stack: each entry is the snapshot *before* a committed step.
-  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>(
+    () => persisted?.undoStack ?? [],
+  );
   // Refs mirror the die/token for the synchronous immediate-resolve path
   // (state updates are async, so `resolve` reads these instead).
   const botDieRef = useRef<number | null>(null);
@@ -291,6 +343,11 @@ export default function BoardExplorer() {
   };
 
   const bot = state.chronobot;
+
+  // Persist the committed game whenever it changes (transient UI is excluded).
+  useEffect(() => {
+    savePersisted({ state, tokens, undoStack, debug });
+  }, [state, tokens, undoStack, debug]);
 
   const closePanel = () => {
     setActive(null);
@@ -349,11 +406,21 @@ export default function BoardExplorer() {
     setUndoStack((s) => s.slice(0, -1));
   };
 
+  // "Reset Game" — confirm, clear saved state, and start a brand-new game.
   const reset = () => {
+    if (
+      !window.confirm(
+        'Start a new game? This clears the current Chronobot game and its history.',
+      )
+    ) {
+      return;
+    }
+    clearPersisted();
     setState(initDebugState());
     setTokens(Chronobot.initialCommandTokens());
     setUndoStack([]);
     setShowBreakthroughs(false);
+    setShowHistory(false);
     setPassMsg(null);
     closePanel();
   };
@@ -1227,7 +1294,7 @@ function StatsBar({
           🕑 History
         </button>
         <button className="reset-btn" onClick={onReset}>
-          ⟳ Reset
+          ⟳ Reset Game
         </button>
       </div>
     </div>
