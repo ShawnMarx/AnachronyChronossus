@@ -24,7 +24,7 @@ import {
   CHRONOBOT_HOTSPOTS,
   type Hotspot,
 } from './board/chronobotHotspots';
-import { TIME_TRAVEL_TRACK } from './board/timeTravelTrack';
+import { TIME_TRAVEL_TRACK, WARP_MARKER } from './board/timeTravelTrack';
 import {
   COMMAND_MARKER_IMG,
   MARKER_WIDTH,
@@ -39,11 +39,14 @@ const pathKey = (path: PathId, index: number) => `${path}${index}`;
 const SHORT_KEYS = PATH_SPOTS.short.map((_, i) => pathKey('short', i));
 const LONG_KEYS = PATH_SPOTS.long.map((_, i) => pathKey('long', i));
 const PATH_KEYS = [...SHORT_KEYS, ...LONG_KEYS];
-/** Every calibratable point: count badges, the 7 Time Travel spots, path steps. */
+/** Calibration key for the Warp-tile marker (image + count). */
+const WARP_KEY = 'warp';
+/** Every calibratable point: count badges, the 7 Time Travel spots, path steps, warp. */
 const CAL_KEYS: string[] = [
   ...BOARD_COUNTERS.map((c) => c.key),
   ...TT_KEYS,
   ...PATH_KEYS,
+  WARP_KEY,
 ];
 
 type PendingStep =
@@ -386,10 +389,12 @@ export default function BoardExplorer() {
       ...Object.fromEntries(TIME_TRAVEL_TRACK.spots.map((p, i) => [`tt${i}`, p])),
       ...Object.fromEntries(SHORT_KEYS.map((k, i) => [k, PATH_SPOTS.short[i]])),
       ...Object.fromEntries(LONG_KEYS.map((k, i) => [k, PATH_SPOTS.long[i]])),
+      [WARP_KEY]: WARP_MARKER.pos,
     }),
   );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
+  const [warpMarkerWidth, setWarpMarkerWidth] = useState<number>(WARP_MARKER.width);
   const [selected, setSelected] = useState<string>(BOARD_COUNTERS[0].key);
 
   useEffect(() => {
@@ -958,6 +963,26 @@ export default function BoardExplorer() {
                 );
               })}
 
+          {/* Warp-tile marker (image + count underneath), calibratable. */}
+          {(() => {
+            const [wx, wy] = positions[WARP_KEY] ?? WARP_MARKER.pos;
+            const sel = calibrate && selected === WARP_KEY;
+            return (
+              <div
+                className={`warp-marker ${sel ? 'cal-selected' : ''}`}
+                style={{ left: `${wx}%`, top: `${wy}%`, width: `${warpMarkerWidth}%` }}
+                title={`Chronobot Warp tiles on the Timeline: ${bot.warpTilesOnTimeline}`}
+              >
+                <img
+                  className="warp-img"
+                  src="/assets/solo/warp-tile.png"
+                  alt="Chronobot Warp tile"
+                />
+                <span className="warp-count">{bot.warpTilesOnTimeline}</span>
+              </div>
+            );
+          })()}
+
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
@@ -1020,6 +1045,8 @@ export default function BoardExplorer() {
           onMarkerWidth={setMarkerWidth}
           cmdMarkerWidth={cmdMarkerWidth}
           onCmdMarkerWidth={setCmdMarkerWidth}
+          warpMarkerWidth={warpMarkerWidth}
+          onWarpMarkerWidth={setWarpMarkerWidth}
         />
       )}
     </div>
@@ -1148,6 +1175,8 @@ function CalibrationPanel({
   onMarkerWidth,
   cmdMarkerWidth,
   onCmdMarkerWidth,
+  warpMarkerWidth,
+  onWarpMarkerWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -1156,6 +1185,8 @@ function CalibrationPanel({
   onMarkerWidth: (w: number) => void;
   cmdMarkerWidth: number;
   onCmdMarkerWidth: (w: number) => void;
+  warpMarkerWidth: number;
+  onWarpMarkerWidth: (w: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -1183,6 +1214,9 @@ function CalibrationPanel({
     `export const SHORT_PATH: PathSpot[] = [\n${pathBody('short')}\n];\n\n` +
     `export const LONG_PATH: PathSpot[] = [\n${pathBody('long')}\n];\n\n` +
     `export const MARKER_WIDTH = ${cmdMarkerWidth};`;
+  const [wx, wy] = positions[WARP_KEY] ?? WARP_MARKER.pos;
+  const warpLiteral =
+    `export const WARP_MARKER: WarpMarkerLayout = {\n  pos: [${wx}, ${wy}],\n  width: ${warpMarkerWidth},\n};`;
   const ttLabel = (i: number) =>
     i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
   const pathLabel = (path: PathId, i: number) =>
@@ -1213,6 +1247,17 @@ function CalibrationPanel({
           step={0.1}
           value={cmdMarkerWidth}
           onChange={(e) => onCmdMarkerWidth(+e.target.value)}
+        />
+      </label>
+      <label className="cal-size">
+        Warp marker width: <b>{warpMarkerWidth}%</b>
+        <input
+          type="range"
+          min={1}
+          max={14}
+          step={0.1}
+          value={warpMarkerWidth}
+          onChange={(e) => onWarpMarkerWidth(+e.target.value)}
         />
       </label>
       <div className="cal-list">
@@ -1257,10 +1302,18 @@ function CalibrationPanel({
             );
           }),
         )}
+        <button
+          className={`cal-item warp ${selected === WARP_KEY ? 'on' : ''}`}
+          onClick={() => onSelect(WARP_KEY)}
+        >
+          Warp tile{' '}
+          <span className="cal-xy">{(positions[WARP_KEY] ?? WARP_MARKER.pos).join(', ')}</span>
+        </button>
       </div>
       <textarea className="cal-out" readOnly value={literal} />
       <textarea className="cal-out" readOnly value={ttLiteral} />
       <textarea className="cal-out" readOnly value={pathLiteral} />
+      <textarea className="cal-out" readOnly value={warpLiteral} />
     </div>
   );
 }
@@ -1361,9 +1414,8 @@ function StatsBar({
   statusOpen: boolean;
   onToggleStatus: () => void;
 }) {
-  const stats: { label: string; value: string | number }[] = [
-    { label: 'Warp', value: bot.warpTilesOnTimeline },
-  ];
+  // Warp is now tracked on the board (see the Warp-tile marker), not here.
+  const stats: { label: string; value: string | number }[] = [];
   return (
     <div className="stats-bar">
       <div className="stats-left">

@@ -23,3 +23,16 @@ export const TIME_TRAVEL_TRACK: TimeTravelTrackLayout = {
   ],
   markerWidth: 5,
 };
+
+// The Chronobot's Warp-tile marker on the board (image + count underneath).
+// `pos` is the image center [x, y] %; `width` is its % of the board width.
+// Calibrate in-app and paste the emitted literal back here.
+export interface WarpMarkerLayout {
+  pos: [number, number];
+  width: number;
+}
+
+export const WARP_MARKER: WarpMarkerLayout = {
+  pos: [50, 30],
+  width: 6,
+};
