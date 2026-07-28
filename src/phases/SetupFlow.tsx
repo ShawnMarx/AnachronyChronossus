@@ -150,7 +150,7 @@ export default function SetupFlow({
 
           {step === 'setup' && (
             <>
-              <RulesBox label="Setup — rulebook text" defaultOpen={false}>
+              <RulesBox label="Setup — rulebook text" defaultOpen showPreamble>
                 <p>
                   Set up a 2-player game, with the Chronobot as one of the players. Use
                   the Chronobot side of the Solo board. In addition to using the

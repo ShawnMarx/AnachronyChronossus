@@ -139,6 +139,64 @@
   line-height: 1.5;
 }
 
+/* Paradox tracker readout + roll log. */
+.paradox-status {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.paradox-status span {
+  padding: 0.4rem 0.8rem;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 999px;
+  background: #16112a;
+  font-size: 0.9rem;
+  color: #cbc0ea;
+}
+.paradox-status b {
+  color: #fff;
+}
+.paradox-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid #7c3aed;
+  border-radius: 0 8px 8px 0;
+  background: #140f22;
+}
+.paradox-log .phase-note {
+  color: #d6cdf0;
+}
+
+/* Dice-roll result (Warp / Paradox phases). */
+.warp-roll-result {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(139, 92, 246, 0.45);
+  border-radius: 10px;
+  background: #16112a;
+}
+.warp-roll-num {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  border-radius: 10px;
+  background: #7c3aed;
+  color: #fff;
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+.warp-roll-result .phase-note {
+  margin: 0;
+  color: #d6cdf0;
+}
+
 /* Status tab holds the full board explorer (read-only). */
 .phase-status {
   flex: 1 1 auto;
@@ -223,6 +281,79 @@
   margin-bottom: 0.3rem;
 }
 
+/* ---- End of Action Rounds: banner + First-Player prompt ---- */
+.end-phase-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1rem;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(92vw, 720px);
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(34, 197, 94, 0.6);
+  border-radius: 12px;
+  background: #12241a;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  color: #dcf5e6;
+  font-weight: 600;
+}
+.end-phase-banner .phase-primary {
+  padding: 0.5rem 1rem;
+  border-radius: 9px;
+  border: none;
+  background: #22c55e;
+  color: #04210f;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fp-dialog {
+  width: 100%;
+  max-width: 440px;
+  background: #17122a;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+.fp-dialog h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.2rem;
+}
+.fp-dialog p {
+  margin: 0 0 1.1rem;
+  line-height: 1.55;
+  color: #cfc6e6;
+}
+.fp-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.fp-actions .phase-primary,
+.fp-actions .phase-secondary {
+  padding: 0.6rem 1rem;
+  border-radius: 9px;
+  font-weight: 700;
+  font-size: 0.98rem;
+  cursor: pointer;
+}
+.fp-actions .phase-primary {
+  border: none;
+  background: #22c55e;
+  color: #04210f;
+}
+.fp-actions .phase-secondary {
+  background: #241a3d;
+  color: #e6def7;
+  border: 1px solid rgba(139, 92, 246, 0.55);
+}
+
 /* ---- Rules box (verbatim rulebook text) ---- */
 .rules-box {
   border: 1px solid rgba(139, 92, 246, 0.35);
@@ -250,17 +381,6 @@
 }
 .rules-box-label {
   flex: 1 1 auto;
-}
-.rules-box-tag {
-  flex: 0 0 auto;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #9d8bd0;
-  border: 1px solid rgba(139, 92, 246, 0.5);
-  border-radius: 999px;
-  padding: 0.1rem 0.45rem;
 }
 .rules-box-body {
   padding: 0 0.9rem 0.9rem;

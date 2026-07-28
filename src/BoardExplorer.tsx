@@ -11,6 +11,7 @@ import {
   PHASE_NUMBER,
   PLAYER_SCORING_RULE,
   rollAiDie,
+  rollParadoxDie,
   rollShapeDie,
   type ChronobotActionId,
   type ChronobotState,
@@ -42,7 +43,7 @@ import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import SetupFlow from './phases/SetupFlow';
 import RulesBox from './phases/RulesBox';
-import { PHASE_META, type PhaseMeta } from './phases/phaseMeta';
+import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import { ActionIcon } from './board/ActionIcon';
 
@@ -391,6 +392,11 @@ export default function BoardExplorer({
   // Endgame: confirm dialog + the final score screen.
   const [showEndgameConfirm, setShowEndgameConfirm] = useState(false);
   const [showScore, setShowScore] = useState(false);
+  // End of Action Rounds: the "did you take the First Player spot?" prompt that
+  // sets the next Era's first player and advances to Clean Up (Phase 6).
+  const [showFirstPlayer, setShowFirstPlayer] = useState(false);
+  // Which Era's Action-Rounds intro splash has been dismissed (shows once/Era).
+  const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
@@ -891,10 +897,31 @@ export default function BoardExplorer({
   const isActionsPhase = state.phase === 'actions';
   const boardReadOnly = readOnly || (!isActionsPhase && !calibrate);
   const meta = PHASE_META[state.phase];
+  // The Action Rounds phase can end once both players have passed and the bot has
+  // met its minimum Actions — then we ask about First Player and move to Clean Up.
+  const canEndActions = isActionsPhase && Chronobot.actionRoundsCanEnd(state);
+
+  // Answer the First-Player question and advance to Clean Up (Phase 6). Whoever
+  // took the First Player spot leads the next Era's Warp + Action Rounds.
+  const proceedToCleanup = (playerFirst: boolean) => {
+    setShowFirstPlayer(false);
+    setShowStatus(false);
+    setState((s) =>
+      Chronobot.resolveCleanUp({ ...s, firstPlayer: playerFirst ? 'player' : 'bot' }),
+    );
+  };
 
   // Seed the chosen difficulty and enter Era 1, Phase 1 (Preparation).
   const beginWithDifficulty = (difficulty: string[]) =>
     setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
+
+  // Paradox phase: apply one Paradox-die roll to the tracker and return the
+  // outcome (so the body knows whether the bot must keep rolling).
+  const rollBotParadox = (rolled: number) => {
+    const res = Chronobot.rollParadox(state, rolled);
+    setState(res.state);
+    return res;
+  };
 
   // Advance out of the current non-Action phase (calls the matching resolver).
   const advancePhase = () =>
@@ -1232,6 +1259,19 @@ export default function BoardExplorer({
     );
   }
 
+  // End Game: the final score screen (reached after the last Era's Clean Up).
+  if (state.phase === 'endgame') {
+    return (
+      <div className="explorer">
+        <ScoreScreen
+          state={state}
+          onClose={() => onHome?.()}
+          onNewGame={reset}
+        />
+      </div>
+    );
+  }
+
   // Non-Action phases (1–4, 6): the splash-banner shell with the board on a tab.
   if (meta && !isActionsPhase && !calibrate) {
     return (
@@ -1252,7 +1292,24 @@ export default function BoardExplorer({
           }
           statusView={boardStage}
         >
-          <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
+          {state.phase === 'warp' ? (
+            <WarpPhaseBody
+              state={state}
+              meta={meta}
+              onCommit={(paradoxes) =>
+                setState((s) => Chronobot.resolveWarp(s, paradoxes))
+              }
+            />
+          ) : state.phase === 'paradox' ? (
+            <ParadoxPhaseBody
+              state={state}
+              meta={meta}
+              onRoll={rollBotParadox}
+              onAdvance={advancePhase}
+            />
+          ) : (
+            <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
+          )}
         </PhaseScreen>
         {modals}
       </div>
@@ -1264,7 +1321,100 @@ export default function BoardExplorer({
     <div className="explorer">
       {topBar}
       {boardStage}
+      {isActionsPhase &&
+        !calibrate &&
+        bot.actionsThisEra === 0 &&
+        !bot.passed &&
+        !state.playerPassed &&
+        actionsIntroEra !== state.era && (
+          <ActionsIntro
+            firstPlayer={state.firstPlayer}
+            era={state.era}
+            onDismiss={() => setActionsIntroEra(state.era)}
+          />
+        )}
+      {canEndActions && !showFirstPlayer && (
+        <div className="end-phase-banner">
+          <span>✓ Everyone has passed — the Action Rounds Phase is complete.</span>
+          <button className="phase-primary" onClick={() => setShowFirstPlayer(true)}>
+            Continue to Clean Up ▶
+          </button>
+        </div>
+      )}
+      {showFirstPlayer && (
+        <FirstPlayerPrompt
+          onAnswer={proceedToCleanup}
+          onCancel={() => setShowFirstPlayer(false)}
+        />
+      )}
       {modals}
+    </div>
+  );
+}
+
+/**
+ * Asked at the end of the Action Rounds phase: who took the First Player spot?
+ * The answer sets who leads the next Era's Warp + Action Rounds, then advances to
+ * Clean Up (Phase 6).
+ */
+/**
+ * The "Ready to begin?" splash at the start of each Era's Action Rounds. If you
+ * are First Player you take your turn first, then run the bot; otherwise the
+ * Chronobot begins.
+ */
+function ActionsIntro({
+  firstPlayer,
+  era,
+  onDismiss,
+}: {
+  firstPlayer: 'bot' | 'player';
+  era: number;
+  onDismiss: () => void;
+}) {
+  const botFirst = firstPlayer === 'bot';
+  return (
+    <div className="modal-overlay" onClick={onDismiss}>
+      <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
+        <h3>Ready to begin — Era {era}</h3>
+        <p>
+          {botFirst
+            ? 'The Chronobot is First Player this Era. Press “Take Bot Action” to begin the Action Rounds.'
+            : 'You are First Player this Era. Take your turn on the Main board first, then press “Take Bot Action” for the Chronobot’s turn.'}
+        </p>
+        <div className="fp-actions">
+          <button className="phase-primary" onClick={onDismiss}>
+            {botFirst ? 'Take the first bot turn' : 'Your turn first — got it'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FirstPlayerPrompt({
+  onAnswer,
+  onCancel,
+}: {
+  onAnswer: (playerFirst: boolean) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
+        <h3>First Player next Era</h3>
+        <p>
+          Did you take the First Player spot this Era? Whoever is First Player leads
+          the next Era's Warp and Action Rounds.
+        </p>
+        <div className="fp-actions">
+          <button className="phase-primary" onClick={() => onAnswer(true)}>
+            Yes, I took it
+          </button>
+          <button className="phase-secondary" onClick={() => onAnswer(false)}>
+            No — the Chronobot did
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1299,7 +1449,7 @@ function PhaseBody({
       {phase === 'powerup' && (
         <p className="phase-note">
           Power up <b>{powered}</b> of the Chronobot's Exosuits (Eras 1–4 → 6,
-          Eras 5–7 → 4). Pile the powered-up markers on the upper-right hex slot;
+          Eras 5–7 → 4). Collect those Exosuits to place when the app prompts you;
           it neither gains nor spends Energy Cores or Water.
         </p>
       )}
@@ -1317,6 +1467,147 @@ function PhaseBody({
       <button className="phase-primary" onClick={onAdvance}>
         {continueLabel}
       </button>
+    </>
+  );
+}
+
+/**
+ * Phase 4 (Warp) body: Warping happens in player order. You place your own 0–2
+ * Warp tiles; the app rolls the Paradox die for the Chronobot and places that
+ * many Warp tiles for it (0, 1, or 2 — it gains nothing and any tile will do).
+ * The roll is always shown, even when it's zero, before you can continue.
+ */
+function WarpPhaseBody({
+  state,
+  meta,
+  onCommit,
+}: {
+  state: GameState;
+  meta: PhaseMeta;
+  onCommit: (paradoxes: number) => void;
+}) {
+  const [rolled, setRolled] = useState<number | null>(null);
+  const botFirst = state.firstPlayer === 'bot';
+  return (
+    <>
+      <p className="phase-note">
+        Warping occurs in player order.{' '}
+        {botFirst
+          ? 'The Chronobot is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.'
+          : 'You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the Chronobot.'}
+      </p>
+
+      {meta.rules && (
+        <RulesBox label={`${meta.name} — rulebook text`}>
+          <p>{meta.rules}</p>
+        </RulesBox>
+      )}
+
+      {rolled == null ? (
+        <button className="phase-primary" onClick={() => setRolled(rollParadoxDie())}>
+          🎲 Roll for the Chronobot's Warp
+        </button>
+      ) : (
+        <>
+          <div className="warp-roll-result">
+            <span className="warp-roll-num">{rolled}</span>
+            <p className="phase-note">
+              {rolled === 0
+                ? 'The Chronobot rolled no Paradoxes — it places no Warp tiles this phase.'
+                : `The Chronobot rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on the current Timeline tile. Any tiles will do; the Chronobot gains nothing from them.`}
+            </p>
+          </div>
+          <button className="phase-primary" onClick={() => onCommit(rolled)}>
+            Continue ▶
+          </button>
+        </>
+      )}
+    </>
+  );
+}
+
+/**
+ * Phase 2 (Paradox) body. The Chronobot rolls for Paradoxes only if it has at
+ * least as many Warp tiles on the Timeline as you do — the app can't see your
+ * tiles, so you confirm the gate. Once rolling, it keeps rolling (accumulating
+ * on its tracker) until it gains an Anomaly, then stops.
+ */
+function ParadoxPhaseBody({
+  state,
+  meta,
+  onRoll,
+  onAdvance,
+}: {
+  state: GameState;
+  meta: PhaseMeta;
+  onRoll: (rolled: number) => ReturnType<typeof Chronobot.rollParadox>;
+  onAdvance: () => void;
+}) {
+  const [started, setStarted] = useState(false);
+  const [stopped, setStopped] = useState(false);
+  const [rolls, setRolls] = useState<string[]>([]);
+  const bot = state.chronobot;
+
+  const doRoll = () => {
+    const rolled = rollParadoxDie();
+    const res = onRoll(rolled);
+    setRolls((r) => [...r, res.instructions[0]?.text ?? `Rolled +${rolled}.`]);
+    if (res.stop) setStopped(true);
+  };
+
+  return (
+    <>
+      <p className="phase-note">
+        The Chronobot rolls for Paradoxes only if it has at least as many Warp tiles on
+        the Timeline as you (it currently has <b>{bot.warpTilesOnTimeline}</b>). It has
+        no choice — it keeps rolling until it gains an Anomaly.
+      </p>
+      <div className="paradox-status">
+        <span>
+          Paradox tracker <b>{bot.paradoxes}</b>/3
+        </span>
+        <span>
+          Anomalies <b>{bot.anomalies}</b>/3
+        </span>
+      </div>
+
+      {meta.rules && (
+        <RulesBox label={`${meta.name} — rulebook text`}>
+          <p>{meta.rules}</p>
+        </RulesBox>
+      )}
+
+      {!started ? (
+        <div className="setup-actions">
+          <button className="phase-primary" onClick={() => setStarted(true)}>
+            The Chronobot ties or leads — roll
+          </button>
+          <button className="phase-secondary" onClick={onAdvance}>
+            I have more Warp tiles — skip
+          </button>
+        </div>
+      ) : (
+        <>
+          {rolls.length > 0 && (
+            <div className="paradox-log">
+              {rolls.map((t, i) => (
+                <p key={i} className="phase-note">
+                  {t}
+                </p>
+              ))}
+            </div>
+          )}
+          {stopped ? (
+            <button className="phase-primary" onClick={onAdvance}>
+              Continue to Power Up ▶
+            </button>
+          ) : (
+            <button className="phase-primary" onClick={doRoll}>
+              🎲 Roll the Paradox die
+            </button>
+          )}
+        </>
+      )}
     </>
   );
 }
@@ -1558,6 +1849,11 @@ function ScoreScreen({
             <li className="score-sum"><span>Total</span><b>{s.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{bot.totalActions}</b></li>
           </ul>
+          <div className="score-rules">
+            <RulesBox label="End Game scoring — rulebook text">
+              <p>{ENDGAME_RULES}</p>
+            </RulesBox>
+          </div>
         </div>
 
         {/* Player score */}
@@ -2259,6 +2555,12 @@ function DetailPanel({
       </div>
       <div className="dp-body">
         {hotspot.note && <p className="dp-note">{hotspot.note}</p>}
+
+        {PHASE_META.actions?.rules && (
+          <RulesBox label="Chronobot's turn — rulebook text">
+            <p>{PHASE_META.actions.rules}</p>
+          </RulesBox>
+        )}
 
         {readOnly && (
           <p className="pp-instruct read-only-note">

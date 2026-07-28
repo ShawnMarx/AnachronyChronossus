@@ -86,36 +86,54 @@ note deviations/decisions inline. `npm run build` + `npm test` must stay green.
 - Action Rounds → Clean Up hand-off (and the first-player prompt) is Feature 9; until then
   the loop is walkable up to the Action Rounds board.
 
-## Feature 5 — Phase 1 Preparation
-- [ ] 5.1 Preparation screen (overview + "No changes for Chronobot") → Phase 2/3.
+## Feature 5 — Phase 1 Preparation ✅ COMPLETE
+- [x] 5.1 Preparation screen (overview + "No changes for Chronobot") → advances via
+      `advanceFromPreparation` to Phase 2, or Phase 3 in Era 1 (Paradox skipped).
 
-## Feature 6 — Phase 2 Paradox
-- [ ] 6.1 Era-1 skip with note.
-- [ ] 6.2 Warp-count gate prompt (bot ties/leads your Warp tiles).
-- [ ] 6.3 Roll loop: paradox die + symbols, accumulate tracker, until Anomaly (reset,
-      −3 VP, remove Warp; capped at 3 Anomalies), then Confirm → Phase 3.
-- [ ] 6.4 Verbatim rules box.
+## Feature 6 — Phase 2 Paradox ✅ COMPLETE
+- [x] 6.1 Era-1 skip handled at the flow level (`advanceFromPreparation`).
+- [x] 6.2 `ParadoxPhaseBody` warp-count gate: "The Chronobot ties or leads — roll" vs
+      "I have more Warp tiles — skip".
+- [x] 6.3 Roll loop: 🎲 Roll → `rollParadox` accumulates the tracker (readout shown),
+      until Anomaly (reset, −3 VP line, Warp removed; capped at 3), then "Continue to
+      Power Up". Verified Era 2 roll → anomaly at 3.
+- [x] 6.4 Verbatim rules box.
 
-## Feature 7 — Phase 3 Power Up
-- [ ] 7.1 Power Up screen: N Exosuits (6/4), pile note, `resolvePowerUp`, verbatim box.
+## Feature 7 — Phase 3 Power Up ✅ COMPLETE
+- [x] 7.1 Power Up body: N Exosuits (6/4), "collect to place when prompted" note,
+      `resolvePowerUp`, verbatim box.
 
-## Feature 8 — Phase 4 Warp
-- [ ] 8.1 Turn-order note; player places 0–2; "Roll for Bot's Warp" → place N;
-      `resolveWarp`; verbatim box.
-- [ ] 8.2 **Checkpoint:** walk Era 1 Prep→Warp end to end.
+## Feature 8 — Phase 4 Warp ✅ COMPLETE
+- [x] 8.1 `WarpPhaseBody`: turn-order note driven by `firstPlayer`, verbatim box,
+      "🎲 Roll for the Chronobot's Warp" → shows the rolled Paradox count (die badge),
+      states placement (or "no Warp tiles" on 0), then Continue → `resolveWarp(n)`.
+- [x] 8.2 Verified Era 1 Prep → Power Up → Warp (roll + result + continue) via Playwright.
 
-## Feature 9 — Phase 5 Action Rounds integration
-- [ ] 9.1 Begin-phase splash: "Your Turn First" / "Take Bot Action to begin."
-- [ ] 9.2 Verbatim AI-die rules box inside the Actions popout.
-- [ ] 9.3 On Action Rounds end, ask "Did you take the First Player spot?" → set
-      `firstPlayer`; advance to Phase 6.
-- [ ] 9.4 **Checkpoint:** play an Era's action rounds within the flow.
+### Note
+- Feature 8 pulled ahead of Features 5–7 in response to user testing (Phase 4 needed the
+  real roll UI). Rules-box preamble reworded (Setup-only, no "verbatim" tag), and the
+  Power Up note now says "collect Exosuits to place when prompted" instead of the hex-pile.
 
-## Feature 10 — Phase 6 Clean Up + End-Game
-- [ ] 10.1 Clean Up screen: verbatim box, retrieve, mark Impact, `resolveCleanUp`.
-- [ ] 10.2 Continue → next Era Phase 1, unless End-Game → scoring screen with verbatim
-      End-Game stats box + win/lose.
-- [ ] 10.3 **Checkpoint:** full multi-Era game to final score.
+## Feature 9 — Phase 5 Action Rounds integration ✅ COMPLETE
+- [x] 9.1 `ActionsIntro` begin-phase splash (once per Era): "Take Bot Action to begin"
+      (bot First Player) or "Your turn first" (player First Player).
+- [x] 9.2 Verbatim AI-die rules box (`PHASE_META.actions.rules`) inside the Actions popout
+      (DetailPanel).
+- [x] 9.3 End-of-actions banner when `actionRoundsCanEnd` → `FirstPlayerPrompt` sets
+      `firstPlayer` → `resolveCleanUp` advances to Phase 6.
+- [x] 9.4 Verified via injected near-end state: banner → prompt → Clean Up.
+
+## Feature 10 — Phase 6 Clean Up + End-Game ✅ COMPLETE
+- [x] 10.1 Clean Up body (in `PhaseBody`): overview + verbatim box; "End the Era".
+- [x] 10.2 "End the Era" → `finishEra`: next Era Phase 1, or `endgame` → `ScoreScreen`
+      (now rendered for the `endgame` phase) with the verbatim `ENDGAME_RULES` box and
+      the Anomalies (−3) line; win/lose vs your entered score.
+- [x] 10.3 Verified endgame score screen via injected Era-7 state.
+
+### Note
+- Impact is not yet a Clean Up prompt (Power Up is Era-based per the locked decision, so
+  it isn't needed for the count); the `impact` flag remains available if we later want the
+  Collapsing-Capital timing. Deferred as a minor follow-up.
 
 ---
 

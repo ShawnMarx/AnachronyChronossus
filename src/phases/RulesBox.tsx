@@ -10,10 +10,13 @@ export default function RulesBox({
   label = 'Rulebook text',
   children,
   defaultOpen = false,
+  showPreamble = false,
 }: {
   label?: string;
   children: React.ReactNode;
   defaultOpen?: boolean;
+  /** Show the one-time explanation of what these boxes are (Setup screen only). */
+  showPreamble?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -27,14 +30,15 @@ export default function RulesBox({
         <span className="rules-box-caret">{open ? '▾' : '▸'}</span>
         <span className="rules-box-icon">📖</span>
         <span className="rules-box-label">{label}</span>
-        <span className="rules-box-tag">verbatim</span>
       </button>
       {open && (
         <div className="rules-box-body">
-          <p className="rules-box-preamble">
-            The exact rules as written in the rulebook. This app applies the
-            modified version described alongside.
-          </p>
+          {showPreamble && (
+            <p className="rules-box-preamble">
+              When you see these boxes, they contain the exact rules as written in
+              the rulebook.
+            </p>
+          )}
           <div className="rules-box-text">{children}</div>
         </div>
       )}
