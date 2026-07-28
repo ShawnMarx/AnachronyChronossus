@@ -28,6 +28,7 @@ export interface Instruction {
 /** The ordered phases of a solo Era. */
 export type Phase =
   | 'setup'
+  | 'preparation'
   | 'paradox'
   | 'powerup'
   | 'warp'
@@ -36,6 +37,7 @@ export type Phase =
   | 'endgame';
 
 export const PHASE_ORDER: Phase[] = [
+  'preparation',
   'paradox',
   'powerup',
   'warp',
@@ -45,6 +47,7 @@ export const PHASE_ORDER: Phase[] = [
 
 /** Rulebook phase numbers (Solo Opponents): Action Rounds is Phase 5. */
 export const PHASE_NUMBER: Partial<Record<Phase, number>> = {
+  preparation: 1,
   paradox: 2,
   powerup: 3,
   warp: 4,
@@ -69,6 +72,11 @@ export interface ChronobotState {
   superprojects: number;
   /** The printed VP of each constructed Superproject (order built). */
   superprojectVps: number[];
+  /**
+   * Paradoxes on the Chronobot's tracker (0–2). Rolling in the Paradox phase
+   * accumulates here; reaching 3 resets to 0 and gains an Anomaly.
+   */
+  paradoxes: number;
   anomalies: number;
   /** Total Warp tiles still on the Timeline (per-tile split lives on the table). */
   warpTilesOnTimeline: number;
@@ -89,8 +97,15 @@ export interface GameState {
   /** Whether the Impact has occurred (player toggles when it happens). */
   impact: boolean;
   phase: Phase;
+  /** Who is First Player this Era (drives Warp/Action turn order). Era 1 = 'bot'. */
+  firstPlayer: 'bot' | 'player';
   /** Whether the human player has already passed this Era's Action Rounds. */
   playerPassed: boolean;
+  /**
+   * "Bot takes one additional turn after you pass" difficulty: whether that extra
+   * turn has already been spent this Era. Reset each Era.
+   */
+  extraTurnAfterPassUsed: boolean;
   /** Set when the player triggers the End Game (Era 5–6); game ends after the Era. */
   endgameTriggered: boolean;
   chronobot: ChronobotState;
@@ -113,6 +128,7 @@ export function emptyChronobotState(): ChronobotState {
     buildingVps: { factory: [], lab: [], powerplant: [], support: [] },
     superprojects: 0,
     superprojectVps: [],
+    paradoxes: 0,
     anomalies: 0,
     warpTilesOnTimeline: 0,
     warpTilesTotal: 8,
@@ -129,7 +145,9 @@ export function createInitialState(config: GameConfig): GameState {
     era: 1,
     impact: false,
     phase: 'setup',
+    firstPlayer: 'bot',
     playerPassed: false,
+    extraTurnAfterPassUsed: false,
     endgameTriggered: false,
     chronobot: emptyChronobotState(),
     currentInstructions: [],

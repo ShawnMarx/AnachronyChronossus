@@ -241,6 +241,7 @@ export function tokensAtPosition(
 export function advanceActiveToken(
   state: CommandTokensState,
   token: CommandToken,
+  rebootAdvances = false,
 ): CommandTokensState {
   const positions = { ...state.positions };
   let order = [...state.order];
@@ -258,7 +259,15 @@ export function advanceActiveToken(
 
   positions[token] = dest;
   order = toTop(order, token);
-  return { positions, order };
+  const result = { positions, order };
+
+  // Difficulty (reboot-advance): if the token just landed on Reboot, advance it
+  // once more so it never idles there. Reboot appears once per path, so a single
+  // extra step always moves it off — no cascade.
+  if (rebootAdvances && tokenAction(dest) === 'reboot') {
+    return advanceActiveToken(result, token, false);
+  }
+  return result;
 }
 
 // --------------------------------------------------------------------------
@@ -310,9 +319,89 @@ function setupInstructions(): Instruction[] {
 // Phase: Paradox
 // --------------------------------------------------------------------------
 
+/** Outcome of a single Paradox-die roll during the Paradox phase. */
+export interface ParadoxRollResult {
+  state: GameState;
+  instructions: Instruction[];
+  /** The updated Paradox-tracker value after this roll (0–2). */
+  paradoxes: number;
+  /** True if this roll pushed the tracker to 3, gaining an Anomaly (or would have). */
+  gainedAnomaly: boolean;
+  /** True once the Chronobot must stop rolling (gained an Anomaly, or capped at 3). */
+  stop: boolean;
+}
+
 /**
- * Resolve the Chronobot's Paradox phase. `gainedAnomaly` is what the app rolled
- * (the Chronobot rolls last; on an Anomaly it stops).
+ * Apply a single Paradox-die roll to the Chronobot's tracker. `rolled` is the
+ * number the app rolled on the Paradox die (0, 1, or 2). Paradoxes accumulate;
+ * reaching 3 resets the tracker to 0 and gains an Anomaly (removing one Warp
+ * tile), at which point the Chronobot stops rolling. If it already has 3
+ * Anomalies it gains no more (and removes no Warp tile), and also stops.
+ *
+ * The Chronobot rolls *last* and, unlike you, has no choice — it keeps rolling
+ * until it gains an Anomaly (see the phase loop in the UI).
+ */
+export function rollParadox(state: GameState, rolled: number): ParadoxRollResult {
+  const bot = { ...state.chronobot };
+  const instructions: Instruction[] = [];
+  const gain = Math.max(0, rolled);
+  let total = bot.paradoxes + gain;
+  let gainedAnomaly = false;
+  let stop = false;
+
+  if (total >= 3) {
+    gainedAnomaly = true;
+    stop = true;
+    total -= 3;
+    bot.paradoxes = total;
+    if (bot.anomalies >= 3) {
+      instructions.push({
+        id: 'paradox-capped',
+        text: 'The Chronobot already has 3 Anomalies — it gains no Anomaly and removes no Warp tile. It stops rolling.',
+      });
+    } else {
+      bot.anomalies += 1;
+      const removed = bot.warpTilesOnTimeline > 0;
+      if (removed) bot.warpTilesOnTimeline -= 1;
+      instructions.push({
+        id: 'paradox-anomaly',
+        text: `The Chronobot rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
+        detail: removed
+          ? 'Remove one of the Chronobot’s Warp tiles from the Timeline tile where it has the most (oldest if tied). Its Paradox tracker resets' +
+            (total > 0 ? ` to ${total}.` : ' to 0.')
+          : 'It has no Warp tiles on the Timeline to remove.',
+      });
+    }
+  } else {
+    bot.paradoxes = total;
+    instructions.push({
+      id: 'paradox-roll',
+      text:
+        gain === 0
+          ? 'The Chronobot rolls a blank — no Paradox this roll. It keeps rolling.'
+          : `The Chronobot rolls +${gain} Paradox — its tracker is now ${total}. It keeps rolling.`,
+    });
+  }
+
+  const next: GameState = {
+    ...state,
+    chronobot: bot,
+    currentInstructions: instructions,
+    log: [...state.log, `Paradox roll (Era ${state.era}): +${gain} → tracker ${bot.paradoxes}.`],
+  };
+  return { state: next, instructions, paradoxes: bot.paradoxes, gainedAnomaly, stop };
+}
+
+/** Advance out of the Paradox phase to Power Up (call after rolling resolves). */
+export function endParadoxPhase(state: GameState): GameState {
+  return advance(state, { ...state.chronobot }, 'powerup', [], `Paradox phase done (Era ${state.era}).`);
+}
+
+/**
+ * Compatibility one-shot Paradox resolution (used by the legacy guided runner):
+ * `gainedAnomaly` collapses the whole phase to a single outcome — gain an Anomaly
+ * (removing a Warp tile, capped at 3) or not — then advance to Power Up. The
+ * guided phase flow uses {@link rollParadox} + {@link endParadoxPhase} instead.
  */
 export function resolveParadox(state: GameState, gainedAnomaly: boolean): GameState {
   const bot = { ...state.chronobot };
@@ -788,11 +877,28 @@ function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource
 /** The Chronobot never takes fewer than this many Actions per Era (rulebook p. 6). */
 export const CHRONOBOT_MIN_ACTIONS = 3;
 
-/**
- * Difficulty flag (rulebook p. 6, "Increasing the Difficulty"): raise the
- * Chronobot's minimum Actions per Era from 3 to 6.
- */
+// --------------------------------------------------------------------------
+// Difficulty flags (rulebook p. 6, "Increasing the Difficulty"). Stored in
+// GameConfig.difficulty; meaning is defined here.
+// --------------------------------------------------------------------------
+
+/** Raise the Chronobot's minimum Actions per Era from 3 to 6. */
 export const DIFFICULTY_MIN_ACTIONS_6 = 'min-actions-6';
+
+/**
+ * Immediately advance the Command token when it moves onto the Reboot Action,
+ * so it performs a real Action on every turn (never idles on Reboot).
+ */
+export const DIFFICULTY_REBOOT_ADVANCE = 'reboot-advance';
+
+/**
+ * Play without your Leader power. Informational only — the app never runs your
+ * turn — so it carries no engine effect; shown as a house-rule reminder.
+ */
+export const DIFFICULTY_NO_LEADER = 'no-leader';
+
+/** The Chronobot takes one additional turn after you have passed. */
+export const DIFFICULTY_BOT_EXTRA_TURN = 'bot-extra-turn';
 
 /** The minimum Actions the Chronobot must take this Era — 3, or 6 on hard. */
 export function chronobotMinActions(state: GameState): number {
@@ -803,6 +909,7 @@ export function chronobotMinActions(state: GameState): number {
 
 export type BotPassDecision =
   | 'continue'
+  | 'continue-extra'
   | 'must-continue-min3'
   | 'time-travel-then-pass'
   | 'pass';
@@ -829,13 +936,31 @@ export function actionRoundsCanEnd(state: GameState): boolean {
  *     exception preempts the owed Time Travel of rule 1.
  *  3. If it has not yet reached its minimum, it keeps taking turns until it has.
  */
+/**
+ * The "bot takes one additional turn after you pass" difficulty applies only in
+ * the moment the Chronobot would otherwise pass right after you did — it needs an
+ * Exosuit to take a real Action, and only fires once per Era.
+ */
+function extraTurnApplies(state: GameState): boolean {
+  return (
+    state.config.difficulty.includes(DIFFICULTY_BOT_EXTRA_TURN) &&
+    state.playerPassed &&
+    !state.extraTurnAfterPassUsed &&
+    botHasExosuit(state.chronobot)
+  );
+}
+
 export function botPassDecision(state: GameState): BotPassDecision {
   const bot = state.chronobot;
   const min = chronobotMinActions(state);
   if (bot.passed) return 'pass';
   // Rule 2 (the "However" exception) is checked first: it ends the phase even
   // when the bot is out of Exosuits and would otherwise owe a final Time Travel.
-  if (state.playerPassed && bot.actionsThisEra >= min) return 'pass';
+  if (state.playerPassed && bot.actionsThisEra >= min) {
+    // Difficulty: grant one additional real turn before it passes.
+    if (extraTurnApplies(state)) return 'continue-extra';
+    return 'pass';
+  }
   // Still has Exosuits → keep taking normal Action turns.
   if (botHasExosuit(bot)) return 'continue';
   // Rule 3: below the minimum, it must keep taking turns until it reaches it.
@@ -864,17 +989,26 @@ export function resolveBotPass(state: GameState): ActionTurnResult {
   const decision = botPassDecision(state);
   const min = chronobotMinActions(state);
 
-  if (decision === 'continue' || decision === 'must-continue-min3') {
+  if (
+    decision === 'continue' ||
+    decision === 'must-continue-min3' ||
+    decision === 'continue-extra'
+  ) {
+    const text =
+      decision === 'continue'
+        ? 'The Chronobot still has Exosuits — it keeps taking turns. Roll the AI die for its next Action.'
+        : decision === 'must-continue-min3'
+          ? `The Chronobot has taken ${state.chronobot.actionsThisEra} of its minimum ${min} Actions — it keeps taking turns until it reaches ${min}.`
+          : 'Difficulty: the Chronobot takes one additional turn after you passed. Roll the AI die for that Action.';
     const instr: Instruction[] = [
-      {
-        id: `pass-continue-${state.chronobot.totalActions}`,
-        text:
-          decision === 'continue'
-            ? 'The Chronobot still has Exosuits — it keeps taking turns. Roll the AI die for its next Action.'
-            : `The Chronobot has taken ${state.chronobot.actionsThisEra} of its minimum ${min} Actions — it keeps taking turns until it reaches ${min}.`,
-      },
+      { id: `pass-continue-${state.chronobot.totalActions}`, text },
     ];
-    return { state: { ...state, currentInstructions: instr }, instructions: instr };
+    // Mark the extra turn spent so it only happens once per Era.
+    const next =
+      decision === 'continue-extra'
+        ? { ...state, extraTurnAfterPassUsed: true, currentInstructions: instr }
+        : { ...state, currentInstructions: instr };
+    return { state: next, instructions: instr };
   }
 
   if (decision === 'time-travel-then-pass') {
@@ -946,8 +1080,9 @@ export function startNextEra(state: GameState): GameState {
   return {
     ...state,
     era: state.era + 1,
-    phase: 'paradox',
+    phase: 'preparation',
     playerPassed: false,
+    extraTurnAfterPassUsed: false,
     chronobot: { ...state.chronobot, passed: false, actionsThisEra: 0 },
     currentInstructions: [],
     log: [...state.log, `— Era ${state.era + 1} begins —`],
@@ -958,10 +1093,15 @@ export function startNextEra(state: GameState): GameState {
 // End of game scoring
 // --------------------------------------------------------------------------
 
+/** VP lost per Anomaly the Chronobot still holds at game end. */
+export const ANOMALY_VP = -3;
+
 export interface ChronobotScore {
   duringGameVP: number;
   breakthroughVP: number;
   shapeSetBonus: number;
+  /** Negative: −3 per remaining Anomaly. */
+  anomalyVP: number;
   total: number;
 }
 
@@ -972,11 +1112,13 @@ export function scoreChronobot(bot: ChronobotState): ChronobotScore {
   );
   const completeSets = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
   const shapeSetBonus = completeSets * 2;
+  const anomalyVP = bot.anomalies * ANOMALY_VP;
   return {
     duringGameVP: bot.vp,
     breakthroughVP: breakthroughTotal,
     shapeSetBonus,
-    total: bot.vp + breakthroughTotal + shapeSetBonus,
+    anomalyVP,
+    total: bot.vp + breakthroughTotal + shapeSetBonus + anomalyVP,
   };
 }
 

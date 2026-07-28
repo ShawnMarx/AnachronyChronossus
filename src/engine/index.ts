@@ -40,13 +40,12 @@ export function rollAiDie(faces: number[] = AI_DIE_FACES): number {
 export const AI_DIE_FACES: number[] = [2, 3, 3, 4, 4, 5];
 
 /**
- * Roll the Paradox die: returns the number of Paradoxes (0..3). Approximate
- * distribution for the base game; the app shows the result for the player to
- * confirm against the physical die.
+ * Roll the Paradox die: returns the number of Paradoxes gained (0, 1, or 2).
+ * The physical die has 6 faces: 1 blank (0), 4 single-Paradox (1), and 1
+ * double-Paradox (2). Used by both the Paradox phase and the Chronobot's Warp.
  */
 export function rollParadoxDie(): number {
-  // Faces roughly: 0,0,1,1,2,3 — mild bias toward low numbers.
-  const faces = [0, 0, 1, 1, 2, 3];
+  const faces = [0, 1, 1, 1, 1, 2];
   return faces[Math.floor(Math.random() * faces.length)];
 }
 

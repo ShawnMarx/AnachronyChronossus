@@ -12,13 +12,16 @@ import {
   chooseRemoveAnomalyDiscards,
   chronobotMinActions,
   COMMAND_TOKENS,
+  DIFFICULTY_BOT_EXTRA_TURN,
   DIFFICULTY_MIN_ACTIONS_6,
+  endParadoxPhase,
   initialCommandTokens,
   nextTokenIndex,
   resolveBotPass,
   resolveParadox,
   resolvePowerUp,
   resolveWarp,
+  rollParadox,
   scoreChronobot,
   setup,
   takeActionTurn,
@@ -26,6 +29,7 @@ import {
   tokenAction,
   tokensAtPosition,
 } from './chronobot';
+import { rollParadoxDie } from '../index';
 
 function gameWith(mut: (s: GameState) => void): GameState {
   const s = setup({ ...DEFAULT_CONFIG, bot: 'chronobot' });
@@ -227,16 +231,16 @@ describe('Breakthrough discard', () => {
 });
 
 describe('Power Up', () => {
-  it('powers up 6 pre-Impact and 4 post-Impact', () => {
-    const pre = resolvePowerUp(gameWith((s) => (s.phase = 'powerup')));
-    expect(pre.chronobot.exosuitsAvailable).toBe(6);
-    const post = resolvePowerUp(
+  it('powers up 6 in Eras 1–4 and 4 in Eras 5–7', () => {
+    const early = resolvePowerUp(gameWith((s) => (s.phase = 'powerup')));
+    expect(early.chronobot.exosuitsAvailable).toBe(6);
+    const late = resolvePowerUp(
       gameWith((s) => {
         s.phase = 'powerup';
-        s.impact = true;
+        s.era = 5;
       }),
     );
-    expect(post.chronobot.exosuitsAvailable).toBe(4);
+    expect(late.chronobot.exosuitsAvailable).toBe(4);
   });
 });
 
@@ -438,5 +442,121 @@ describe('Scoring', () => {
     expect(score.breakthroughVP).toBe(5);
     expect(score.shapeSetBonus).toBe(2);
     expect(score.total).toBe(17);
+  });
+
+  it('subtracts 3 VP per remaining Anomaly', () => {
+    const bot = emptyChronobotState();
+    bot.vp = 12;
+    bot.anomalies = 2;
+    const score = scoreChronobot(bot);
+    expect(score.anomalyVP).toBe(-6);
+    expect(score.total).toBe(6);
+  });
+});
+
+describe('Paradox die', () => {
+  it('yields only 0, 1, or 2, with 1 most common (faces 0,1,1,1,1,2)', () => {
+    const counts: Record<number, number> = { 0: 0, 1: 0, 2: 0 };
+    for (let i = 0; i < 6000; i++) counts[rollParadoxDie()] += 1;
+    expect(Object.keys(counts).map(Number).sort()).toEqual([0, 1, 2]);
+    // 1 (4/6) should clearly beat 0 and 2 (1/6 each).
+    expect(counts[1]).toBeGreaterThan(counts[0]);
+    expect(counts[1]).toBeGreaterThan(counts[2]);
+  });
+});
+
+describe('Paradox phase (rollParadox tracker)', () => {
+  it('accumulates on the tracker without an anomaly below 3', () => {
+    const s = gameWith((g) => {
+      g.phase = 'paradox';
+      g.chronobot.paradoxes = 1;
+    });
+    const r = rollParadox(s, 1);
+    expect(r.paradoxes).toBe(2);
+    expect(r.gainedAnomaly).toBe(false);
+    expect(r.stop).toBe(false);
+  });
+
+  it('gains an anomaly, resets the tracker, and removes a warp tile at 3', () => {
+    const s = gameWith((g) => {
+      g.phase = 'paradox';
+      g.chronobot.paradoxes = 2;
+      g.chronobot.warpTilesOnTimeline = 2;
+    });
+    const r = rollParadox(s, 1); // 2 + 1 = 3
+    expect(r.gainedAnomaly).toBe(true);
+    expect(r.stop).toBe(true);
+    expect(r.state.chronobot.anomalies).toBe(1);
+    expect(r.state.chronobot.paradoxes).toBe(0);
+    expect(r.state.chronobot.warpTilesOnTimeline).toBe(1);
+  });
+
+  it('carries the overflow when a double roll overshoots 3', () => {
+    const s = gameWith((g) => {
+      g.phase = 'paradox';
+      g.chronobot.paradoxes = 2;
+    });
+    const r = rollParadox(s, 2); // 2 + 2 = 4 → anomaly, tracker resets to 1
+    expect(r.gainedAnomaly).toBe(true);
+    expect(r.state.chronobot.paradoxes).toBe(1);
+  });
+
+  it('gains no anomaly and removes no warp when already at 3 anomalies', () => {
+    const s = gameWith((g) => {
+      g.phase = 'paradox';
+      g.chronobot.paradoxes = 2;
+      g.chronobot.anomalies = 3;
+      g.chronobot.warpTilesOnTimeline = 2;
+    });
+    const r = rollParadox(s, 1);
+    expect(r.stop).toBe(true);
+    expect(r.state.chronobot.anomalies).toBe(3);
+    expect(r.state.chronobot.warpTilesOnTimeline).toBe(2);
+  });
+
+  it('endParadoxPhase advances to Power Up', () => {
+    const s = gameWith((g) => (g.phase = 'paradox'));
+    expect(endParadoxPhase(s).phase).toBe('powerup');
+  });
+});
+
+describe('Difficulty: reboot-advance', () => {
+  it('skips off Reboot so the token lands on a real Action', () => {
+    // Token 2 at Long-4 (index 3). Advancing normally: 4→Reboot(index 4).
+    let tokens = initialCommandTokens();
+    tokens = { positions: { ...tokens.positions, 2: { path: 'long', index: 3 } }, order: [2, 3, 4, 5] };
+    const normal = advanceActiveToken(tokens, 2);
+    expect(tokenAction(normal.positions[2])).toBe('reboot');
+    const skipped = advanceActiveToken(tokens, 2, true);
+    expect(tokenAction(skipped.positions[2])).not.toBe('reboot');
+  });
+});
+
+describe('Difficulty: bot takes one extra turn after you pass', () => {
+  const hardConfig = { ...DEFAULT_CONFIG, bot: 'chronobot' as const, difficulty: [DIFFICULTY_BOT_EXTRA_TURN] };
+
+  it('grants one additional turn, then passes', () => {
+    const s = gameWith((g) => {
+      g.config = hardConfig;
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 3;
+      g.chronobot.actionsThisEra = 3; // at minimum
+    });
+    expect(botPassDecision(s)).toBe('continue-extra');
+    const { state: after } = resolveBotPass(s);
+    expect(after.extraTurnAfterPassUsed).toBe(true);
+    // With the extra spent, it now passes.
+    expect(botPassDecision(after)).toBe('pass');
+  });
+
+  it('does not grant an extra turn without the difficulty', () => {
+    const s = gameWith((g) => {
+      g.phase = 'actions';
+      g.playerPassed = true;
+      g.chronobot.exosuitsAvailable = 3;
+      g.chronobot.actionsThisEra = 3;
+    });
+    expect(botPassDecision(s)).toBe('pass');
   });
 });

@@ -427,6 +427,8 @@ function describeDecision(
   switch (d) {
     case 'continue':
       return 'The Chronobot still has Exosuits — keep alternating turns.';
+    case 'continue-extra':
+      return 'Difficulty: the Chronobot takes one additional turn after you passed.';
     case 'must-continue-min3':
       return 'The Chronobot is out of Exosuits but has not taken 3 Actions yet — it keeps taking turns (Time Travel / Reboot) until it reaches 3.';
     case 'time-travel-then-pass':

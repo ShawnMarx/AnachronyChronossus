@@ -68,7 +68,7 @@ describe('Full-era playthrough', () => {
 
     s = startNextEra(s);
     expect(s.era).toBe(2);
-    expect(s.phase).toBe('paradox');
+    expect(s.phase).toBe('preparation');
     expect(s.chronobot.passed).toBe(false);
 
     const score = scoreChronobot(s.chronobot);

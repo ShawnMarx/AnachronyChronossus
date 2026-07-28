@@ -38,6 +38,12 @@ import {
   MARKER_WIDTH,
   PATH_SPOTS,
 } from './board/chronobotPaths';
+import './phases/phases.css';
+import PhaseScreen from './phases/PhaseScreen';
+import SetupFlow from './phases/SetupFlow';
+import RulesBox from './phases/RulesBox';
+import { PHASE_META, type PhaseMeta } from './phases/phaseMeta';
+import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import { ActionIcon } from './board/ActionIcon';
 
 /** Time Travel marker spot keys used in the calibration flow (tt0 = start). */
@@ -175,7 +181,10 @@ const UNDO_CAP = 50;
 // (engine state, tokens, undo/history, debug flag) — transient UI (open dialog,
 // shown die, calibrate positions) is not persisted. A version guards the schema.
 const PERSIST_KEY = 'anachrony:chronobot';
-const PERSIST_VERSION = 5;
+// v6: full phase flow now lives in GameState (phase/era/firstPlayer/impact/
+// config.difficulty + the paradox tracker on chronobot), so the UI-only
+// `paradoxes` field is gone. Bumping invalidates pre-flow saves.
+const PERSIST_VERSION = 6;
 
 interface PersistedGame {
   version: number;
@@ -183,7 +192,6 @@ interface PersistedGame {
   tokens: CommandTokensState;
   undoStack: UndoEntry[];
   debug: boolean;
-  paradoxes: number;
   /** Epoch ms of the last committed save — drives the "last played" prompt. */
   savedAt: number;
 }
@@ -351,20 +359,19 @@ function counterTooltip(
 const DEFAULT_PANEL: [number, number, number, number] = [48.5, 2, 50.5, 78];
 
 /** Debug starting state: powered up, 2 Warp tiles on the Timeline, mid-Action-Rounds. */
-function initDebugState(): GameState {
-  const s = Chronobot.setup({ ...DEFAULT_CONFIG, bot: 'chronobot' });
-  return {
-    ...s,
-    phase: 'actions',
-    chronobot: { ...s.chronobot, warpTilesOnTimeline: 2, exosuitsAvailable: 6 },
-  };
+/** A fresh game at the Setup phase (Start → Difficulty → Setup → Era 1). */
+function initNewGame(): GameState {
+  return Chronobot.setup({ ...DEFAULT_CONFIG, bot: 'chronobot' });
 }
 
-export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) {
+export default function BoardExplorer({
+  onHome,
+  readOnly = false,
+}: { onHome?: () => void; readOnly?: boolean } = {}) {
   // Rehydrate a saved game once on mount (null → fresh game).
   const [persisted] = useState(loadPersisted);
   const [state, setState] = useState<GameState>(
-    () => persisted?.state ?? initDebugState(),
+    () => persisted?.state ?? initNewGame(),
   );
   const [active, setActive] = useState<Hotspot | null>(null);
   const [pending, setPending] = useState<PendingStep>(null);
@@ -389,9 +396,22 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF.
   const [debug, setDebug] = useState(() => persisted?.debug ?? false);
-  // Paradoxes placed this game (0–3). Set via the debug P +/- control for now;
-  // the Paradox phase will drive it later.
-  const [paradoxes, setParadoxes] = useState<number>(() => persisted?.paradoxes ?? 0);
+  // Paradoxes are tracked on the engine state (chronobot.paradoxes, 0–2; the
+  // Paradox phase drives it, resetting to 0 on gaining an Anomaly). The debug
+  // P +/- control below nudges the same value for testing.
+  const paradoxes = state.chronobot.paradoxes;
+  const setParadoxes = (updater: number | ((n: number) => number)) =>
+    setState((s) => {
+      const nextVal =
+        typeof updater === 'function' ? updater(s.chronobot.paradoxes) : updater;
+      return {
+        ...s,
+        chronobot: {
+          ...s.chronobot,
+          paradoxes: Math.max(0, Math.min(3, nextVal)),
+        },
+      };
+    });
 
   // --- Command tokens (2–5) travelling the two Action paths ---
   const [tokens, setTokens] = useState<CommandTokensState>(
@@ -465,8 +485,8 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
 
   // Persist the committed game whenever it changes (transient UI is excluded).
   useEffect(() => {
-    savePersisted({ state, tokens, undoStack, debug, paradoxes });
-  }, [state, tokens, undoStack, debug, paradoxes]);
+    savePersisted({ state, tokens, undoStack, debug });
+  }, [state, tokens, undoStack, debug]);
 
   // Dismiss the status popover on Escape or a click outside it (and its chip).
   useEffect(() => {
@@ -557,10 +577,9 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
       return;
     }
     clearPersisted();
-    setState(initDebugState());
+    setState(initNewGame());
     setTokens(Chronobot.initialCommandTokens());
     setUndoStack([]);
-    setParadoxes(0);
     setShowBreakthroughs(false);
     setShowHistory(false);
     setShowScore(false);
@@ -867,8 +886,36 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
     closePanel();
   };
 
-  return (
-    <div className="explorer">
+  // Which phase view to render. Non-Action phases show the PhaseScreen shell; the
+  // board is read-only whenever it's not the Action Rounds phase (or forced R/O).
+  const isActionsPhase = state.phase === 'actions';
+  const boardReadOnly = readOnly || (!isActionsPhase && !calibrate);
+  const meta = PHASE_META[state.phase];
+
+  // Seed the chosen difficulty and enter Era 1, Phase 1 (Preparation).
+  const beginWithDifficulty = (difficulty: string[]) =>
+    setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
+
+  // Advance out of the current non-Action phase (calls the matching resolver).
+  const advancePhase = () =>
+    setState((s) => {
+      switch (s.phase) {
+        case 'preparation':
+          return advanceFromPreparation(s);
+        case 'paradox':
+          return Chronobot.endParadoxPhase(s);
+        case 'powerup':
+          return Chronobot.resolvePowerUp(s);
+        case 'warp':
+          return Chronobot.resolveWarp(s, 0);
+        case 'cleanup':
+          return finishEra(s);
+        default:
+          return s;
+      }
+    });
+
+  const topBar = (
       <StatsBar
         onHome={onHome}
         bot={state.chronobot}
@@ -884,10 +931,10 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
         }}
         botDie={botDie}
         botPassed={bot.passed}
-        canTakeAction={!calibrate && active == null && !bot.passed}
+        canTakeAction={!boardReadOnly && !calibrate && active == null && !bot.passed}
         onTakeBotAction={takeBotAction}
         playerPassed={state.playerPassed}
-        canPass={!calibrate && active == null}
+        canPass={!boardReadOnly && !calibrate && active == null}
         onPlayerPass={playerPass}
         canUndo={undoStack.length > 0}
         onUndo={undo}
@@ -903,7 +950,9 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
         onTriggerEndgame={() => setShowEndgameConfirm(true)}
         onFinishGame={finishGame}
       />
+  );
 
+  const boardStage = (
       <div className={`board-stage ${showHistory ? 'with-history' : ''}`}>
         <div
           className={`board-wrap ${calibrate ? 'calibrating' : ''}`}
@@ -924,7 +973,9 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
                 key={h.id}
                 className={`hotspot ${outline ? 'outlined' : ''} ${isActive ? 'active' : ''}`}
                 style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${hgt}%` }}
+                disabled={boardReadOnly}
                 onClick={() => {
+                  if (boardReadOnly) return;
                   // Free-tap (debug): not a die-driven turn, so it advances no token.
                   botDieRef.current = null;
                   activeTokenRef.current = null;
@@ -1120,7 +1171,10 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
           )}
         </div>
       </div>
+  );
 
+  const modals = (
+    <>
       {!calibrate && showStatus && (
         <EndOfActionsBar
           state={state}
@@ -1165,7 +1219,105 @@ export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) 
           onParadoxWidth={setParadoxWidth}
         />
       )}
+    </>
+  );
+
+  // Pre-game: Start → Difficulty → Setup.
+  if (state.phase === 'setup') {
+    return (
+      <div className="explorer">
+        <SetupFlow onHome={onHome} onBegin={beginWithDifficulty} />
+        {modals}
+      </div>
+    );
+  }
+
+  // Non-Action phases (1–4, 6): the splash-banner shell with the board on a tab.
+  if (meta && !isActionsPhase && !calibrate) {
+    return (
+      <div className="explorer">
+        <PhaseScreen
+          era={state.era}
+          phaseNumber={meta.number}
+          phaseName={meta.name}
+          overview={meta.overview}
+          onHome={onHome}
+          headerRight={
+            <VpPill
+              botVp={bot.vp}
+              buildingVp={bot.buildingVp}
+              timeTravelVp={Chronobot.timeTravelVp(bot)}
+              breakthroughVp={Chronobot.breakthroughVp(bot)}
+            />
+          }
+          statusView={boardStage}
+        >
+          <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
+        </PhaseScreen>
+        {modals}
+      </div>
+    );
+  }
+
+  // Action Rounds (Phase 5) — the full board — plus the calibrate/debug harness.
+  return (
+    <div className="explorer">
+      {topBar}
+      {boardStage}
+      {modals}
     </div>
+  );
+}
+
+/**
+ * The body shown inside a non-Action PhaseScreen: a short per-phase note, the
+ * verbatim rulebook box, and a Continue button that advances the phase. Fuller
+ * per-phase controls (Paradox rolling, Warp placement, etc.) arrive with their
+ * own features; this is the shared skeleton.
+ */
+function PhaseBody({
+  state,
+  meta,
+  onAdvance,
+}: {
+  state: GameState;
+  meta: PhaseMeta;
+  onAdvance: () => void;
+}) {
+  const phase = state.phase;
+  const era = state.era;
+  const powered = Chronobot.chronobotPoweredExosuits(era);
+  const continueLabel = phase === 'cleanup' ? 'End the Era ▶' : 'Continue ▶';
+  return (
+    <>
+      {phase === 'preparation' && (
+        <p className="phase-note">
+          No changes for the Chronobot this phase — set up the Era as normal, then
+          continue.
+        </p>
+      )}
+      {phase === 'powerup' && (
+        <p className="phase-note">
+          Power up <b>{powered}</b> of the Chronobot's Exosuits (Eras 1–4 → 6,
+          Eras 5–7 → 4). Pile the powered-up markers on the upper-right hex slot;
+          it neither gains nor spends Energy Cores or Water.
+        </p>
+      )}
+      {phase === 'cleanup' && (
+        <p className="phase-note">
+          Retrieve the Chronobot's Exosuits along with your own. After the Impact,
+          follow the usual procedure for flipping Collapsing Capital tiles.
+        </p>
+      )}
+      {meta.rules && (
+        <RulesBox label={`${meta.name} — rulebook text`}>
+          <p>{meta.rules}</p>
+        </RulesBox>
+      )}
+      <button className="phase-primary" onClick={onAdvance}>
+        {continueLabel}
+      </button>
+    </>
   );
 }
 
@@ -1177,6 +1329,8 @@ function describeDecision(
   switch (d) {
     case 'continue':
       return `Continue taking bot turns until ${min} have been taken.`;
+    case 'continue-extra':
+      return 'Difficulty: the Chronobot takes one additional turn after you passed — roll the AI die for it.';
     case 'must-continue-min3':
       return `The Chronobot is out of Exosuits but has not taken ${min} Actions yet — it keeps taking turns (Time Travel / Reboot) until it reaches ${min}.`;
     case 'time-travel-then-pass':
@@ -1398,6 +1552,9 @@ function ScoreScreen({
             <li><span>During-game VP</span><b>{s.duringGameVP}</b></li>
             <li><span>Breakthroughs (1 each)</span><b>{s.breakthroughVP}</b></li>
             <li><span>Breakthrough sets (+2 each)</span><b>{s.shapeSetBonus}</b></li>
+            {bot.anomalies > 0 && (
+              <li><span>Anomalies (−3 each)</span><b>{s.anomalyVP}</b></li>
+            )}
             <li className="score-sum"><span>Total</span><b>{s.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{bot.totalActions}</b></li>
           </ul>
