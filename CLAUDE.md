@@ -26,7 +26,7 @@ Chronossus base → Chronossus + Fractures of Time.
 npm install
 npm run dev      # Vite dev server (default port 5173; a session may run it on 5199)
 npm run build    # tsc -b + vite build  (must stay clean)
-npm test         # vitest run  (29 tests; keep green)
+npm test         # vitest run  (39 tests; keep green)
 npm run lint     # oxlint
 ```
 
@@ -54,56 +54,94 @@ inside; callers pass in rolled dice / player answers.
 src/
   engine/
     types.ts                  resources, workers, buildings, breakthrough shapes
-    state.ts                  GameState + ChronobotState + Phase machine + Instruction
+    state.ts                  GameState + ChronobotState + Phase machine + Instruction;
+                              PHASE_NUMBER (rulebook: Action Rounds = Phase 5), endgameTriggered
     rules/chronobotActions.ts action catalog; `rule` = VERBATIM rulebook text;
-                              MECH_PLACEMENT / FAILED_ACTIONS; priority arrays
+                              MECH_PLACEMENT / FAILED_ACTIONS / PASSING_RULE /
+                              ENDGAME_TRIGGER_RULE / PLAYER_SCORING_RULE; priority arrays
     bots/
-      chronobot.ts            the automa: pure phase fns + exported decision helpers
+      chronobot.ts            the automa: pure phase fns + decision helpers; Command-token
+                              paths + stacking rule; MAX_ERA; chronobotPoweredExosuits(era)
       chronobotMeta.ts        registry descriptor (id/name/implemented)
       chronossus.ts           scaffold (implemented:false)
       BotModule.ts            metadata-only registry
-    index.ts                  public API: `Chronobot.*`, dice rollers, AI_DIE_FACES
+    index.ts                  public API: `Chronobot.*`, dice rollers, AI_DIE_FACES=[2,3,3,4,4,5]
   board/
-    chronobotHotspots.ts      CHRONOBOT_HOTSPOTS (tap tiles) + BOARD_COUNTERS (badges:
-                              8 counters + 4 resource + 4 worker trackers), % positions
-    timeTravelTrack.ts        TIME_TRAVEL_TRACK: 7 marker spots + markerWidth (% points)
+    chronobotHotspots.ts      CHRONOBOT_HOTSPOTS (tap tiles) + BOARD_COUNTERS (badges), % pos
+    chronobotPaths.ts         SHORT_PATH/LONG_PATH marker anchors (%), command-marker art
+    timeTravelTrack.ts        TIME_TRAVEL_TRACK (7 spots) + WARP_MARKER + PARADOX_SLOTS layouts
     ActionIcon.tsx            renders one icon from the sprite sheet
-  BoardExplorer.tsx           DEFAULT VIEW (wired in main.tsx) — see below
-  App.tsx                     guided game runner (built earlier; NOT the current view)
+  AppRoot.tsx                 view switch: Landing (home) → BoardExplorer (wired in main.tsx)
+  Landing.tsx                 home screen: pick a Solo opponent (Chronobot ready; Chronossus soon)
+  BoardExplorer.tsx           the Chronobot play view — see below
+  App.tsx                     older guided game runner (NOT wired; kept for reference)
   useGame.ts                  React hook over the engine (used by App.tsx)
 public/assets/solo/           board art + chronobot-icons.png sprite sheet;
                               resources/ workers/ breakthroughs/ (cube/figure/shape art),
-                              timetravel-marker.png
+                              commands/marker-{2,3,4,5}.png (Command tokens),
+                              timetravel-marker.png, warp-tile.png, paradox.png
+public/                       favicon.ico + favicon-{16,32,512}.png + apple-touch-icon.png +
+                              anachrony-logo.png (impossible-triangle; for the landing page)
 ```
 
-### BoardExplorer (current default view)
+### BoardExplorer (the Chronobot play view)
 
-Board-first: the Chronobot solo board fills the viewport. Tap an action tile → a
-dark, purple-bordered detail panel overlays the board's right zone. Every one of the
-**8 base actions** resolves through `Chronobot.takeActionTurn` via a guided per-action
-dialog, each ending with a green **▶ Start Your Turn** that commits + closes the panel.
-Full-rules 📖 collapsibles (verbatim `rule` text) render *outside/below* the orange
-action boxes. Still a debug harness (top stats, Reset, seeded 2 Warp + 6 Exosuits).
+Board-first: the Chronobot solo board fills the viewport, top-aligned (shrinks in
+place when the top bar wraps). The **8 base actions** resolve through
+`Chronobot.takeActionTurn` via guided per-action dialogs, each ending with **▶ Start
+Your Turn**. Full-rules 📖 collapsibles (verbatim `rule` text) render below the boxes.
+Terminology: the physical piece is an **Exosuit** (not "mech") in all displayed text.
 
-Per-action flows (see `docs/HANDOFF.md` for the full list):
-- **Mech-placement gate** (Confirm placed / Cannot place) precedes Exosuit-spending
-  Capital actions; Cannot place → no-space failed action (+1 VP, no Exosuit).
-- **Construct**: gate → tap the tile's printed VP (buildings 1–4, superprojects 3–7;
-  engine input `buildingVP`, tracked in `buildingVp`); max 3/type → Failed Action.
-- **Mine** (not Capital): "mining space open?" → cube picker (all 4 in priority order,
-  ×2 by double-click, `minedResources`). **Recruit**: gate → worker picker
-  (`recruitedWorker`). Both auto-fire the **+5 VP set bonus** on completing all 4 types.
-- **Recruit Genius / Research**: Genius+space? → recruit Genius, else the Research flow.
-  **Research**: app rolls the shape die (`shape`) → shows the shape + per-shape tally.
-- **Remove Anomaly**: never places a mech, no player choice (state-determined).
-  **Time Travel**: no mech; removes a Warp tile + advances the marker. **Reboot**: nothing.
-- **VP pill** (top bar) is expandable: total · token · bldg · time travel · breakthrough.
-- **Board overlays** (`BOARD_COUNTERS`): 8 count badges + 4 resource + 4 worker trackers;
-  the Breakthroughs badge is **clickable** → per-shape popover. A **Time Travel marker**
-  rides its 7-spot track (`TIME_TRAVEL_TRACK`), scoring 0/2/4/6/8/10/12 VP.
-- **Calibrate mode** (top-bar toggle): click board to place the selected badge, arrow-keys
-  nudge (0.2% / Shift 1%); also covers the 7 Time Travel spots + a marker-width slider.
-  The panel emits ready-to-paste `BOARD_COUNTERS` **and** `TIME_TRAVEL_TRACK` literals.
+**Command tokens + the turn loop (the core mechanic).** The 4 Command tokens (2–5)
+travel two looping Action paths — **Short** (Water · Time Travel · Superproject ·
+Remove Anomaly) and **Long** (Mine · Power Plant · Recruit · Factory · Reboot ·
+Recruit-Genius/Research · Lab · Research). Token 3 rides the Short path; 2/4/5 ride the
+Long path. **🎲 Take Bot Action** rolls the AI die (`AI_DIE_FACES=[2,3,3,4,4,5]`, shown
+black-with-red-numeral), activates that token at its current step, opens that Action's
+dialog, and on commit **advances the token** one step (`Chronobot.advanceActiveToken`,
+which enforces the max-two-per-spot **stacking/bump rule**). Paired markers split
+(bottom shifts right, top left). Sequences/advancement are engine-side and tested;
+the %-anchors live in `board/chronobotPaths.ts`.
+
+Per-action flows: **gate** (Confirm placed / Cannot place) precedes Exosuit-placing
+Capital actions. **Construct** → tap the tile's printed VP (`buildingVP`; per-type
+lists in `buildingVps`/`superprojectVps` for tooltips). **Mine**/**Recruit** auto-fire
+the **+5 VP set bonus**. **Research** rolls the shape die. **Remove Anomaly**/**Time
+Travel**/**Reboot** place no Exosuit.
+
+**Passing & endgame.** **You Pass** + **Take Bot Action** drive `botPassDecision` /
+`resolveBotPass` (out of Exosuits → final Time Travel then pass; you-pass preempts once
+the min is met). The **Actions status chip** opens a popover titled **"Era N · Phase M"**
+(`PHASE_NUMBER`) with pass state + a collapsible verbatim `PASSING_RULE`. **Eras 5–7**
+the bot powers up **4** Exosuits (`chronobotPoweredExosuits`), else 6. In **Eras 5–6** a
+**⚑ Trigger End Game** button shows a confirm with the verbatim `ENDGAME_TRIGGER_RULE`;
+**Era 7** (or once triggered) shows **🏁 Finish & Score** → the **score screen**
+(`scoreChronobot` total + breakdown + bot turns; player score via number or a tally
+sheet from `PLAYER_SCORING_RULE`; win/lose).
+
+**Undo / History / Persistence** share one serializable **Snapshot** stack: `commit()`
+pushes the prior snapshot + a per-turn change-list; **↶ Undo** restores it (re-showing
+the same die, reused by the next Take Bot Action); **🕑 History** (in the ⚙ menu) renders
+the list newest-first and pushes the board left when docked. State auto-saves to
+`localStorage` (versioned) and rehydrates on mount.
+
+**Top bar**: expandable **VP pill** (total · token · bldg · time travel · breakthrough,
+centered left of Take Bot Action); **⚙ settings menu** (top-right) holds History, the
+**Debug** toggle, dev toggles (outlines/calibrate, debug-only), **Reset Game** (confirm),
+and a "Log in (soon)" placeholder. **Debug OFF = play mode** (tap tiles → read-only rule
+panel only; dev controls hidden). Debug adds **Era −/+** and **Paradox (P) −/+** modifiers.
+
+**Board overlays**: `BOARD_COUNTERS` badges (counts + resource/worker trackers, hover
+tooltips; building tooltips list per-tile VP); the Breakthroughs badge → per-shape
+popover; the **Time Travel marker** on its 7-spot track (0/2/4/6/8/10/12 VP); the
+**Warp-tile marker** (image + count); **3 Paradox slots** (0–3, outer ▶ / middle ◀,
+"Paradox N" tooltip) driven by the debug P control.
+
+**Calibrate mode** (⚙ → Debug → calibrate): click the board to place the selected
+overlay, arrow-keys nudge (0.2% / Shift 1%); covers badges, the 7 TT spots, the 12
+path steps, the Warp marker, and the 3 Paradox slots, with width sliders. The panel
+emits ready-to-paste literals for each (`BOARD_COUNTERS`, `TIME_TRAVEL_TRACK`,
+`SHORT_PATH`/`LONG_PATH`, `WARP_MARKER`, `PARADOX_SLOTS`).
 
 ## Positioning board overlays
 
@@ -128,8 +166,11 @@ new positions; use this script to verify.
 - `Rules/The-Chronobot-PnP.pdf` — older PnP Chronobot (different: 6 tokens + D6). Not
   our target, but a component reference.
 - Other rulebooks (Essential, Fractures, Future-Imperfect, Classic).
-- `TTS Mod/*.ttsmod` — a ZIP; art extracted from `Mods/Images/` (hash-named). Read
-  PDFs/art with **PyMuPDF** (`import fitz`) — native Python, use `C:/…` paths.
+- `TTS Mod/*.ttsmod` — a ZIP; art in `Mods/Images/` (hash-named). To find a specific
+  piece, parse `Mods/Workshop/*.json` for the object's `Nickname` (e.g. "Paradoxes"),
+  read its `CustomImage.ImageURL` / `CustomMesh.DiffuseURL`, and match the URL's hash
+  to the `Mods/Images/…<HASH>.jpg` file. Read PDFs/art with **PyMuPDF** (`import fitz`);
+  flatten `.pdn` (Paint.NET) with **pypdn** — native Python, use `C:/…` paths.
 
 ## Conventions
 

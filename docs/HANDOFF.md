@@ -1,133 +1,64 @@
-# Handoff — 2026-07-27 (deployed to production)
+# Handoff — 2026-07-27 (Chronobot play view, feature-complete for Phase 5)
 
-Snapshot for continuing without this chat's context. Read `CLAUDE.md` first, then
-this. Longer history is in `docs/BUILD-LOG.md`.
+Snapshot for continuing without chat context. Read `CLAUDE.md` first (it now
+describes the whole BoardExplorer), then this. Longer history: `docs/BUILD-LOG.md`.
 
 ## Where things are
 
-- **🚀 LIVE at https://anachrony.boardgameedge.com** — public static site on the shared
-  BGE Droplet; **push to `main` auto-deploys** (GitHub Actions). See `docs/DEPLOYMENT.md`
-  and the archived plan `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
-- **Default view = `src/BoardExplorer.tsx`** — board-first explorer + debug harness.
-  All **eight base Chronobot actions** resolve through the engine with guided,
-  per-action dialogs (below), plus the **Passing & End of Actions** flow (an
-  `EndOfActionsBar` footer). `App.tsx` (guided game runner) still exists but is not
-  the current view.
-- `npm run build`, `npm test` (29), `oxlint` all clean.
-- **Working tree is clean and everything is committed + deployed.** Latest commits:
-  the deploy setup + the End-of-Actions feature + the deploy log.
+- **🚀 LIVE at https://anachrony.boardgameedge.com** — push to `main` auto-deploys
+  (GitHub Actions). See `docs/DEPLOYMENT.md`.
+- **Entry = `src/AppRoot.tsx`** (wired in `main.tsx`): a **Landing/home screen**
+  (`src/Landing.tsx`) picks a Solo opponent → the **Chronobot** opens
+  `src/BoardExplorer.tsx`. Chronossus card is "coming soon".
+- `npm run build`, `npm test` (**39**), `oxlint` all clean. Working tree committed.
 
-## Actions implemented this session (BoardExplorer dialogs)
+## What the Chronobot view does now (all shipped this session)
 
-Every action ends with a green **▶ Start Your Turn** that commits to the engine and
-closes the panel. Full-rules 📖 collapsibles render *outside/below* the orange boxes.
+The **Action Rounds phase (Phase 5)** is complete as an interactive board:
 
-- **Construct** (`construct-*`, superproject): mech gate → tap the tile's printed VP
-  (highlights; re-pickable) → Start. Max 3 of a type / no Breakthrough (superproject)
-  → **Failed Action** notice (still places an Exosuit, +1 VP). VP goes to `buildingVp`.
-- **Mine Resource** (NOT a Capital action): Q "Is there one or more Mining Action
-  space available?" → **Yes**: pick the 2 gained cubes — all 4 shown in priority order
-  **Neutronium > Uranium > Gold > Titanium** (lacking-first), top-2 pre-selected,
-  **click a cube twice for ×2**; instruction says place the mech in the matching Mine
-  space + discard those cubes from the board. **No** → no-space Failed (+1 VP, no mech).
-  **+5 VP** set bonus auto-fires when all 4 resource types are held.
-- **Recruit** (Capital): mech gate → single-select **Worker** — 4 figures in priority
-  **Genius > Administrator > Engineer > Scientist** (missing-first), top pre-selected.
-  **+5 VP** set bonus auto-fires on completing all 4 worker types (discard one of each).
-- **Recruit Genius / Research** (branch check, no mech gate first): Q "Genius available
-  **and** an open Recruit space (or World Council)?" → **Yes**: place mech on Recruit
-  space + recruit a Genius (+1 VP, remove from board). **No**: the *exact* Research flow
-  (mech gate labelled **Research** → shape roll).
-- **Research** (Capital): mech gate → app **rolls the shape die** → shows the rolled
-  Breakthrough icon + running per-shape tally → Start. Only the shape matters.
-- **Remove Anomaly** (**never places a mech**, no player choice): determined by state —
-  has an Anomaly AND ≥2 cube-value (Neutronium = 2)? **Yes**: discard the determined
-  cubes + remove 1 Anomaly. **No**: Failed Action, +1 VP (no Exosuit).
-- **Time Travel** (no mech): Warp tiles left → orange box "remove one Warp tile…" →
-  Start advances the marker 1 spot + decrements Warp. No Warp → Failed (+1 VP).
-- **Reboot**: "Reboot: Chronobot does nothing." → Start.
+- **Command tokens + Take Bot Action**: 4 tokens ride two looping Action paths;
+  **🎲 Take Bot Action** rolls the AI die (`[2,3,3,4,4,5]`), activates the matching
+  token, runs that Action's dialog, and advances the token (with the max-two-per-spot
+  stacking/bump rule). All engine-side + tested.
+- **Passing & endgame**: You Pass / Take Bot Action → `botPassDecision`/`resolveBotPass`;
+  status popover titled **"Era N · Phase M"** with the verbatim passing rule. Eras 5–7
+  power up **4** Exosuits. **Trigger End Game** (Eras 5–6, verbatim-rule confirm) / auto
+  in Era 7 → **Finish & Score** → score screen (bot total + breakdown + turns; player
+  score by number or tally sheet; win/lose).
+- **Undo / History / localStorage persistence** (shared Snapshot stack); **⚙ settings
+  menu** (History, Debug toggle, dev toggles, Reset Game, Log-in-soon); **Debug OFF =
+  play mode** (tiles show rules only). Debug adds **Era −/+** and **Paradox −/+**.
+- **Board trackers**: Time Travel marker, **Warp-tile marker**, **3 Paradox slots**,
+  resource/worker/building counters (with tooltips) — all calibratable.
 
-## Engine additions (`src/engine`)
+Terminology: the physical piece is an **Exosuit** everywhere now (not "mech").
 
-- `ChronobotState.buildingVp` — Construct/Superproject tile VP tracked apart from `vp`.
-- `ActionTurnInput`: `minedResources`, `recruitedWorker`, `shape` (now honored),
-  `geniusAvailable` (now honored).
-- Decision/scoring helpers (all exported via `Chronobot.*`): `rankMineResources`,
-  `mineResourceOrder`, `recruitWorkerOrder`, `TIME_TRAVEL_VP`, `timeTravelSpot`,
-  `timeTravelVp`, `breakthroughVp`, `SET_BONUS_RESOURCES`.
-- Mine & Recruit **set bonuses now fire on completion** (add, then check all 4).
-- `remove-anomaly` def → `placesExosuit: false` (never spends an Exosuit, even on fail).
+## Next up — the full per-Era phase loop
 
-## Assets + board data (new)
+The app still runs **single Action turns** (Phase 5 only). The next milestone is the
+**guided phase-by-phase Era loop** (Preparation → Paradox → Power Up → Warp → Action
+Rounds → Clean Up, ×7 Eras, then scoring). Active plan + log:
 
-- `public/assets/solo/resources/{neutronium,uranium,gold,titanium}.png` (cubes)
-- `public/assets/solo/workers/{genius,administrator,engineer,scientist}.png` (figures)
-- `public/assets/solo/breakthroughs/{circle,triangle,square}.png` (shape tiles)
-- `public/assets/solo/timetravel-marker.png` (hex marker)
-- `src/board/timeTravelTrack.ts` — `TIME_TRAVEL_TRACK` = 7 calibrated `spots` + `markerWidth`.
-- `BOARD_COUNTERS` gained 4 resource + 4 worker trackers (positions calibrated in-app).
+- `docs/plans/PLAN_chronobot_full_phases.md`
+- `docs/plans/LOG_chronobot_full_phases.md`
 
-## UI features (new)
-
-- **VP pill is expandable** (top bar): collapsed = total; expands to
-  **token · bldg · time travel · breakthrough**. `total = token + bldg + tt + bt`.
-- **Breakthroughs badge is clickable** → popover with per-shape counts (circle/tri/sq).
-- **Time Travel marker** rides its track (purple silhouette outline + drop shadow);
-  advances one spot per Time Travel; position scores 0/2/4/6/8/10/12 VP.
-- **Calibrate mode** now covers badges **+ the 7 Time Travel spots + a marker-width
-  slider**, and emits BOTH the `BOARD_COUNTERS` and `TIME_TRAVEL_TRACK` literals.
-
-## Passing & End of Actions (done this session — rulebook p. 6)
-
-Implemented the "Passing and End of Actions" rule in the engine and surfaced it in
-BoardExplorer (the default view).
-
-- `botPassDecision` **corrected**: rule 2 ("if you pass first and the bot has met its
-  minimum, the Action Rounds Phase ends immediately") is now checked *before* the
-  out-of-Exosuits branch, so a player pass **preempts** the owed final Time Travel of
-  rule 1. Returns the same 4 tags as before (`continue` / `must-continue-min3` /
-  `time-travel-then-pass` / `pass`), typed as `BotPassDecision`.
-- **Minimum Actions is now config-driven**: `chronobotMinActions(state)` returns 3, or 6
-  when `config.difficulty` includes `DIFFICULTY_MIN_ACTIONS_6` (`CHRONOBOT_MIN_ACTIONS`
-  const). The rulebook's "Increasing the Difficulty" list confirms 3→6 is a hard-mode
-  toggle. `actionRoundsCanEnd` uses this minimum.
-- New `Chronobot.resolveBotPass(state) → ActionTurnResult`: orchestrates the terminal
-  outcomes — plain `pass` marks the bot passed (with an "ends immediately" instruction
-  when applicable); `time-travel-then-pass` takes one Time Travel turn (counts as an
-  Action) then passes; the "keep going" tags return an explanatory instruction and leave
-  state unchanged. The Time Travel effect was factored into a shared `resolveTimeTravel`.
-- **BoardExplorer** gained an `EndOfActionsBar` footer strip: You/Bot pass chips, an
-  `Actions N / min M` counter, a **🛑 I pass** button, a decision hint, and a green
-  **▶ Resolve the Chronobot's pass** button on terminal decisions, plus a
-  "✓ Action Rounds Phase ends" note when `actionRoundsCanEnd`.
-- Tests: 8 new engine cases (rule-2 precedence, the out-of-Exosuits preemption, min-6
-  difficulty, `resolveBotPass` outcomes). `npm test` = **29 green**; build + lint clean.
-- Note: difficulty flags (`min-actions-6`, "extra turn after you pass") are **defined but
-  not yet wired into any setup UI** — the engine honors `min-actions-6`; the extra-turn
-  option is unimplemented.
-
-## Next up (new session): Phase & turn tracking
-
-The app currently runs **single action turns** only (debug harness). Next: build the
-**per-Era phase/turn structure** on top of the engine's existing phase functions
-(`Chronobot.setup`, power-up, Action Rounds, `botPassDecision`, `actionRoundsCanEnd`,
-`resolveBotPass`, `markBotPassed` / `markPlayerPassed`, Era advance, `scoreChronobot`).
-Goal: guide the player through a full Chronobot turn/Era — AI-die roll picking the active
-Command token, action-round flow, pass logic, and Era clean-up — rather than free-tapping
-tiles.
+Foundations already in the engine for it: `Chronobot.setup`, `resolveParadox`,
+`resolvePowerUp` (era-based Exosuits), `resolveWarp`, Action-Rounds fns,
+`resolveCleanUp`, `startNextEra`, `scoreChronobot`, `PHASE_NUMBER`, `MAX_ERA`,
+`endgameTriggered`.
 
 ## Gotchas / decisions locked
 
 - Chronobot = the **"Solo Opponents" rulebook** version (4 Command tokens 2–5 + the AI
-  die / Flux die), not the older PnP. Board art = `public/assets/solo/board-chronobot.jpg`.
-- Overlay positions are **% of the board image** (1500×1110); marker width is % of board
-  width. Don't switch to pixel positioning. Calibrate in-app, paste the literal back.
-- `AI_DIE_FACES` in `engine/index.ts` is still a placeholder `[1..6]` — verify vs the
-  physical die when wiring turn tracking.
-- `pw-validate.mjs` hardcodes the cached Chromium path (`chromium_headless_shell-1217`).
-- Reference PDFs/art live outside the repo (see `CLAUDE.md`); read with PyMuPDF.
-- Open question: an extra `Operator.png` sits in the crop temp folder — not one of the 4
-  engine worker types; left unused pending clarification.
+  die). Board art = `public/assets/solo/board-chronobot.jpg` (1500×1110).
+- Overlay positions are **% of the board image**; calibrate in-app (⚙ → Debug →
+  calibrate), paste the emitted literal back into the `board/*.ts` data files.
+- Power Up Exosuit count is **Era-based** (`chronobotPoweredExosuits`); the old
+  "pre/post-Impact" test now asserts the Era-based behavior.
+- Reference PDFs/TTS art live outside the repo (see `CLAUDE.md`).
+- **Deploy key exposure**: the CI `the deploy key` SSH private key was printed
+  to a tool output earlier — **rotate it** (regen keypair, update the Droplet
+  `authorized_keys` + repo secret `DEPLOY_SSH_KEY`).
 
 ## Paths
 

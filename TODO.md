@@ -16,7 +16,15 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
 ## App
 - [ ] Wire the **difficulty flags** into a setup UI (engine already honors
       `min-actions-6`; the "extra turn after you pass" option is unimplemented).
-- [ ] Verify `AI_DIE_FACES` (`engine/index.ts`) against the physical die — still a
-      placeholder `[1..6]`.
-- [ ] Build the full **per-Era phase/turn structure** on top of the engine (the app is
-      still a single-action debug harness). See `docs/HANDOFF.md` "Next up".
+- [ ] Build the full **per-Era phase/turn structure** on top of the engine (the app
+      still runs single Action turns via **Take Bot Action**). Active plan:
+      `docs/plans/PLAN_chronobot_full_phases.md`. The endgame flags
+      (`endgameTriggered`, `chronobotPoweredExosuits(era)`, score screen) are already
+      wired and will hook in.
+- [ ] **Player play-history + overall stats** — needs the backend + BGE auth; the
+      ⚙ menu already has a "Log in (soon)" placeholder.
+
+Done this session: AI_DIE_FACES confirmed `[2,3,3,4,4,5]`; Command-token paths +
+Take Bot Action; Warp + Paradox board trackers; Undo/History/persistence; settings
+gear menu; endgame trigger + score screen; Era/Phase display; Exosuit rename; favicon;
+landing/home screen. See `docs/complete/20260727_EXPLORER_ENHANCEMENTS_COMPLETED.md`.
