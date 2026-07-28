@@ -1738,6 +1738,12 @@ function EndOfActionsBar({
         </div>
       )}
 
+      {PHASE_META.actions?.rules && (
+        <RulesBox label="Chronobot's turn — rulebook text">
+          <p>{PHASE_META.actions.rules}</p>
+        </RulesBox>
+      )}
+
       <div className="eoa-rule">
         <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
           📖 Passing &amp; End of Actions rules {showRule ? '▾' : '▸'}
@@ -2553,12 +2559,6 @@ function DetailPanel({
       </div>
       <div className="dp-body">
         {hotspot.note && <p className="dp-note">{hotspot.note}</p>}
-
-        {PHASE_META.actions?.rules && (
-          <RulesBox label="Chronobot's turn — rulebook text">
-            <p>{PHASE_META.actions.rules}</p>
-          </RulesBox>
-        )}
 
 
         {/* Step 1 — placement gate for any mech-placing action. */}
