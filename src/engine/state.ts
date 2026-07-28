@@ -43,6 +43,15 @@ export const PHASE_ORDER: Phase[] = [
   'cleanup',
 ];
 
+/** Rulebook phase numbers (Solo Opponents): Action Rounds is Phase 5. */
+export const PHASE_NUMBER: Partial<Record<Phase, number>> = {
+  paradox: 2,
+  powerup: 3,
+  warp: 4,
+  actions: 5,
+  cleanup: 6,
+};
+
 /** Everything the app tracks about the Chronobot itself. */
 export interface ChronobotState {
   exosuitsTotal: number;

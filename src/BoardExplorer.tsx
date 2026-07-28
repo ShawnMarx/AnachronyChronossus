@@ -7,6 +7,7 @@ import {
   DEFAULT_CONFIG,
   MECH_PLACEMENT,
   PASSING_RULE,
+  PHASE_NUMBER,
   rollAiDie,
   rollShapeDie,
   type ChronobotActionId,
@@ -1144,7 +1145,9 @@ function EndOfActionsBar({
   return (
     <div className="eoa-popover">
       <div className="eoa-pop-head">
-        <span className="eoa-pop-title">End of Actions</span>
+        <span className="eoa-pop-title">
+          Era {state.era} · Phase {PHASE_NUMBER[state.phase] ?? '—'}
+        </span>
         <button className="eoa-pop-close" onClick={onClose} aria-label="Close">
           ×
         </button>
