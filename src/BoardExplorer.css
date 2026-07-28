@@ -675,21 +675,22 @@
   color: #1a1207;
 }
 
-/* Paradox slots (3 triangles; middle points left, outer two right) */
+/* Paradox slots (triangles; middle points left, outer two right) */
 .paradox-slot {
   position: absolute;
-  pointer-events: none;
+  pointer-events: auto; /* receive hover for the "Paradox N" tooltip */
   z-index: 4;
   filter:
     drop-shadow(1.4px 0 0 #a855f7) drop-shadow(-1.4px 0 0 #a855f7)
     drop-shadow(0 1.4px 0 #a855f7) drop-shadow(0 -1.4px 0 #a855f7)
     drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
 }
-.paradox-slot.empty {
-  opacity: 0.22;
-  filter:
-    drop-shadow(1.4px 0 0 #a855f7) drop-shadow(-1.4px 0 0 #a855f7)
-    drop-shadow(0 1.4px 0 #a855f7) drop-shadow(0 -1.4px 0 #a855f7);
+/* Calibration ghost (unplaced slot) — visible only to position it. */
+.paradox-slot.cal-ghost {
+  opacity: 0.3;
+}
+.board-wrap.calibrating .paradox-slot {
+  pointer-events: none;
 }
 .paradox-slot.cal-selected {
   opacity: 1;

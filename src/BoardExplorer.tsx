@@ -1000,10 +1000,12 @@ export default function BoardExplorer() {
             );
           })()}
 
-          {/* Paradox slots (0–3). Middle points left, outer two point right. */}
+          {/* Paradox slots. Only the ones actually placed are shown (none at 0);
+              in calibrate mode all 3 show as ghosts so they can be positioned. */}
           {PARADOX_KEYS.map((key, i) => {
-            const [px, py] = positions[key] ?? PARADOX_SLOTS.slots[i];
             const filled = i < paradoxes;
+            if (!calibrate && !filled) return null;
+            const [px, py] = positions[key] ?? PARADOX_SLOTS.slots[i];
             const sel = calibrate && selected === key;
             const rot = i === 1 ? -90 : 90; // middle left, outer right
             return (
@@ -1011,7 +1013,10 @@ export default function BoardExplorer() {
                 key={key}
                 src="/assets/solo/paradox.png"
                 alt={`Paradox slot ${i + 1}`}
-                className={`paradox-slot ${filled ? 'filled' : 'empty'} ${sel ? 'cal-selected' : ''}`}
+                title={`Paradox ${paradoxes}`}
+                className={`paradox-slot ${sel ? 'cal-selected' : ''} ${
+                  calibrate && !filled ? 'cal-ghost' : ''
+                }`}
                 style={{
                   left: `${px}%`,
                   top: `${py}%`,
