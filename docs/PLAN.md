@@ -5,6 +5,12 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
+> **Status (2026-07-28): Chronobot is complete and live** — the full guided Era
+> loop shipped (see `docs/complete/20260728_CHRONOBOT_FULL_PHASES_COMPLETED.md`).
+> The next open build is **Chronossus** (Phase 2 below), then modules and optional
+> login/stats. The Chronossus knowledge, references, and design decisions in this
+> doc remain the source material for that plan. Loose ends live in `TODO.md`.
+
 ## 1. What the app is (and isn't)
 
 - **Is:** a step-by-step "automa runner." Each Era it walks the player through the
@@ -144,27 +150,26 @@ Per-Era phases:
   that teaches + decides + does the randomness, works for a first-time automa player,
   supports both bots + modules, and offers optional login/stats.
 
-## 6. Proposed build phases
+## 6. Build phases
 
-- **Phase 0 — Knowledge capture (in progress).** Render all solo-rulebook pages to
-  PNG; transcribe into structured data: Action definitions & priorities, AI-die faces,
-  Chronossus board layout (slots, arrows, number↔action map), Action tiles C01–C14
-  (A/B), Solo Objectives, module deltas. Output: `docs/rules/*.md` + JSON tables.
-- **Phase 1 — Chronobot engine.** Implement the simpler automa end-to-end in
-  `src/engine/bots/chronobot.ts` with unit tests (it's the foundation and validates
-  the `BotModule`/instruction model).
-- **Phase 2 — Chronossus base engine.** Energy Pool bag draws, phases, Action tiles
-  C01A–C03A, Autoleap, failed-action penalty, Solo Objective scoring.
-- **Phase 3 — Guided web UI.** Render instructions one-at-a-time, show the relevant
-  component art (from the TTS asset library), track minimal game state, end-of-game
-  scoring screen.
+- **Phase 0 — Knowledge capture. ✅ done** for Chronobot (rules transcribed into
+  `chronobotActions.ts` + `phaseMeta.ts`). Chronossus icon/tile capture (§Open
+  verification items) still pending when Phase 2 begins.
+- **Phase 1 — Chronobot engine. ✅ done.** Pure phase functions + decision helpers in
+  `src/engine/bots/chronobot.ts`, fully unit-tested.
+- **Phase 3 — Guided web UI. ✅ done** (for Chronobot). The full per-Era phase loop
+  (Landing → Start/Difficulty/Setup → Phases 1–6 → End Game) ships in `BoardExplorer`
+  + `src/phases/` + `src/game/flow.ts`. Deployed to Digital Ocean.
+- **Phase 2 — Chronossus base engine. ← NEXT.** Energy Pool bag draws, phases, Action
+  tiles C01A–C03A, Autoleap, failed-action penalty, Solo Objective scoring. Own `/plan`.
 - **Phase 4 — Modules/expansions.** Fractures of Time, Doomsday, Pioneers, Guardians,
   Hypersync — via the C04–C14 tile table + per-module setup/gameplay deltas.
 - **Phase 5 — Optional login + stats.** Shared-auth (staging) integration; persist
-  results only when logged in. Deploy to Digital Ocean.
+  results only when logged in. (Chronobot already deploys to Digital Ocean.)
 - **Cross-cutting — Asset pipeline.** Script to extract TTS images, render thumbnails,
   and hand-map hash→component into an asset manifest the UI imports.
 
-## 7. Remaining open item
-- Confirm the **shared-auth** integration contract (staging endpoints / SDK) before
-  Phase 5.
+## 7. Remaining open items
+- Everything Chronobot-specific is **done** (see the completed archive). Open work is
+  **Chronossus** and beyond; loose ends are tracked in `TODO.md` (incl. confirming the
+  **shared-auth** integration contract before Phase 5).

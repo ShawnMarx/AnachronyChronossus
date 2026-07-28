@@ -2,6 +2,25 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-07-28 — Full guided Era loop + landing page (Chronobot complete)
+
+Chronobot is feature-complete and live. Details in
+`docs/complete/20260728_CHRONOBOT_FULL_PHASES_COMPLETED.md`.
+
+- **Landing/home screen** (`AppRoot` → `Landing` → `BoardExplorer`): pick a Solo
+  opponent (Chronobot ready; Chronossus "Coming Soon"); a home icon returns here, and
+  a cached game prompts Continue-vs-New.
+- **Full phase flow**: `BoardExplorer` renders the whole Era loop by switching on
+  `state.phase` — Setup (`SetupFlow`: flavor → difficulty → verbatim/app-modified
+  setup) → Phases 1–6 via the `PhaseScreen` splash shell (`src/phases/`, sequencing in
+  `src/game/flow.ts`) → End Game score screen. Paradox/Warp dice flows, First-Player
+  handling, and game-end decided in Clean Up (Eras 5–6 flip Collapsing Capital tiles).
+- **Engine**: `preparation` phase, paradox tracker, `firstPlayer`, difficulty flags
+  (`reboot-advance`/`bot-extra-turn`/`min-actions-6`/`no-leader`), corrected Paradox die
+  `[0,1,1,1,1,2]`, `rollParadox`/`endParadoxPhase`, Anomaly scoring (−3). Persistence v6.
+- **Removed** the unwired legacy runner (`App.tsx`/`useGame.ts`) + `resolveParadox` shim.
+- Button theming via `--act` (yellow-green) / `--pass` (pink) CSS vars.
+
 ## 2026-07-25 — Board Explorer (current default view)
 
 Pivoted the default view to a board-first **BoardExplorer** (`src/BoardExplorer.tsx`,
