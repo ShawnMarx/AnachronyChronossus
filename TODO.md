@@ -14,17 +14,21 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
 - [ ] **Saved stats / optional login** — needs a backend; not started.
 
 ## App
-- [ ] Wire the **difficulty flags** into a setup UI (engine already honors
-      `min-actions-6`; the "extra turn after you pass" option is unimplemented).
-- [ ] Build the full **per-Era phase/turn structure** on top of the engine (the app
-      still runs single Action turns via **Take Bot Action**). Active plan:
-      `docs/plans/PLAN_chronobot_full_phases.md`. The endgame flags
-      (`endgameTriggered`, `chronobotPoweredExosuits(era)`, score screen) are already
-      wired and will hook in.
 - [ ] **Player play-history + overall stats** — needs the backend + BGE auth; the
       ⚙ menu already has a "Log in (soon)" placeholder.
+- [ ] **`impact` flag** is reminder-only (Era-4 Clean Up note); no logic reads it.
+      Wire it if Collapsing-Capital timing/automation is ever wanted.
+- [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
+      could tighten button sizing/gaps if desired).
+- [ ] **Chronossus** automa — the advanced Solo opponent (Coming Soon on the landing
+      page). Its own `/plan` when picked up.
 
-Done this session: AI_DIE_FACES confirmed `[2,3,3,4,4,5]`; Command-token paths +
-Take Bot Action; Warp + Paradox board trackers; Undo/History/persistence; settings
-gear menu; endgame trigger + score screen; Era/Phase display; Exosuit rename; favicon;
-landing/home screen. See `docs/complete/20260727_EXPLORER_ENHANCEMENTS_COMPLETED.md`.
+Done: the full **guided Era loop** (Landing → Start/Difficulty/Setup → Phases 1–6 →
+End Game) with per-phase splash shells, verbatim rulebook boxes, the Paradox/Warp
+dice flows, First-Player handling, game-end in Clean Up, and difficulty flags. See
+`docs/complete/20260728_CHRONOBOT_FULL_PHASES_COMPLETED.md`.
+
+Earlier: AI_DIE_FACES `[2,3,3,4,4,5]`; Command-token paths + Take Bot Action; Warp +
+Paradox board trackers; Undo/History/persistence; settings gear menu; Era/Phase
+display; Exosuit rename; favicon; landing/home screen. See
+`docs/complete/20260727_EXPLORER_ENHANCEMENTS_COMPLETED.md`.
