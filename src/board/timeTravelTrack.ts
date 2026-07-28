@@ -47,9 +47,9 @@ export interface ParadoxLayout {
 
 export const PARADOX_SLOTS: ParadoxLayout = {
   slots: [
-    [40, 30],
-    [45, 30],
-    [50, 30],
+    [93.8, 52.1],
+    [94.4, 58.7],
+    [93.8, 65.1],
   ],
-  width: 5,
+  width: 6.2,
 };
