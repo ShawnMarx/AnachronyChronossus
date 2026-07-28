@@ -37,18 +37,27 @@
 /* When the top bar is cramped, keep Take Bot Action + You Pass on their own top
    row; VP, status chip, and the right-hand controls wrap below. */
 @media (max-width: 760px) {
+  /* Flatten .bot-turn into the top bar's flex flow so the home button and ⚙
+     menu land on the SAME row as VP + Actions (row 2) — not a third row.
+     Row 1: the primary turn buttons (turn-core, full width). */
   .bot-turn {
-    order: -1;
-    flex-basis: 100%;
+    display: contents;
   }
-  .bot-turn .turn-core {
+  .turn-core {
     order: -1;
     flex-basis: 100%;
     justify-content: center;
   }
-  .stats-left,
+  .stats-left {
+    order: 1;
+  }
+  .vp-pill,
+  .status-chip,
+  .endgame-btn {
+    order: 2;
+  }
   .stats-controls {
-    justify-content: center;
+    order: 3;
   }
 }
 .stats-left {
@@ -56,6 +65,27 @@
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
+}
+/* Home button — the app icon, returns to the landing screen. */
+.home-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 8px;
+  background: #1a1330;
+  cursor: pointer;
+  line-height: 0;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.home-btn:hover {
+  border-color: rgba(167, 139, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
+.home-btn img {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
 }
 .debug-badge {
   flex: 0 0 auto;

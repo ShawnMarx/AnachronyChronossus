@@ -175,7 +175,7 @@ const UNDO_CAP = 50;
 // (engine state, tokens, undo/history, debug flag) — transient UI (open dialog,
 // shown die, calibrate positions) is not persisted. A version guards the schema.
 const PERSIST_KEY = 'anachrony:chronobot';
-const PERSIST_VERSION = 4;
+const PERSIST_VERSION = 5;
 
 interface PersistedGame {
   version: number;
@@ -184,6 +184,8 @@ interface PersistedGame {
   undoStack: UndoEntry[];
   debug: boolean;
   paradoxes: number;
+  /** Epoch ms of the last committed save — drives the "last played" prompt. */
+  savedAt: number;
 }
 
 function loadPersisted(): PersistedGame | null {
@@ -198,11 +200,11 @@ function loadPersisted(): PersistedGame | null {
   }
 }
 
-function savePersisted(p: Omit<PersistedGame, 'version'>): void {
+function savePersisted(p: Omit<PersistedGame, 'version' | 'savedAt'>): void {
   try {
     localStorage.setItem(
       PERSIST_KEY,
-      JSON.stringify({ version: PERSIST_VERSION, ...p }),
+      JSON.stringify({ version: PERSIST_VERSION, savedAt: Date.now(), ...p }),
     );
   } catch {
     /* quota / disabled storage — ignore */
@@ -215,6 +217,17 @@ function clearPersisted(): void {
   } catch {
     /* ignore */
   }
+}
+
+/** Landing-page helper: the saved Chronobot game's timestamp, or null if none. */
+export function peekSavedChronobot(): { savedAt: number } | null {
+  const p = loadPersisted();
+  return p ? { savedAt: p.savedAt } : null;
+}
+
+/** Landing-page helper: discard any saved Chronobot game (for "New game"). */
+export function clearSavedChronobot(): void {
+  clearPersisted();
 }
 
 /** Describe a Resource-cube discard list, e.g. "2 titanium + 1 gold". */
@@ -347,7 +360,7 @@ function initDebugState(): GameState {
   };
 }
 
-export default function BoardExplorer() {
+export default function BoardExplorer({ onHome }: { onHome?: () => void } = {}) {
   // Rehydrate a saved game once on mount (null → fresh game).
   const [persisted] = useState(loadPersisted);
   const [state, setState] = useState<GameState>(
@@ -857,6 +870,7 @@ export default function BoardExplorer() {
   return (
     <div className="explorer">
       <StatsBar
+        onHome={onHome}
         bot={state.chronobot}
         debug={debug}
         onToggleDebug={toggleDebug}
@@ -1694,6 +1708,7 @@ function VpPill({
 }
 
 function StatsBar({
+  onHome,
   bot,
   debug,
   onToggleDebug,
@@ -1723,6 +1738,7 @@ function StatsBar({
   onTriggerEndgame,
   onFinishGame,
 }: {
+  onHome?: () => void;
   bot: ChronobotState;
   debug: boolean;
   onToggleDebug: () => void;
@@ -1757,6 +1773,16 @@ function StatsBar({
   return (
     <div className="stats-bar">
       <div className="stats-left">
+        {onHome && (
+          <button
+            className="home-btn"
+            onClick={onHome}
+            title="Back to the home screen"
+            aria-label="Back to the home screen"
+          >
+            <img src="/favicon-512.png" alt="" />
+          </button>
+        )}
         {debug && (
           <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
             🛠 DEBUG
@@ -1812,7 +1838,7 @@ function StatsBar({
                   : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
               }
             >
-              {botPassed ? '✓ Bot Passed' : '🎲 Take Bot Action'}
+              {botPassed ? '✓ Bot Passed' : 'Take Bot Action'}
             </button>
             {botDie != null && (
               <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
