@@ -34,30 +34,39 @@
   gap: 0.6rem;
   flex-wrap: nowrap;
 }
-/* When the top bar is cramped, keep Take Bot Action + You Pass on their own top
-   row; VP, status chip, and the right-hand controls wrap below. */
+/* When the top bar is cramped, keep the home icon + Take Bot Action + You Pass +
+   the ⚙ menu together on the top row; Undo (and VP + Actions) wrap below. */
 @media (max-width: 760px) {
-  /* Flatten .bot-turn into the top bar's flex flow so the home button and ⚙
-     menu land on the SAME row as VP + Actions (row 2) — not a third row.
-     Row 1: the primary turn buttons (turn-core, full width). */
-  .bot-turn {
-    display: contents;
-  }
+  /* Flatten .bot-turn AND .turn-core so home / the turn buttons / settings all
+     participate directly in the top-bar flex and can be individually ordered. */
+  .bot-turn,
   .turn-core {
-    order: -1;
-    flex-basis: 100%;
-    justify-content: center;
+    display: contents;
   }
   .stats-left {
     order: 1;
   }
+  .take-bot-action {
+    order: 2;
+  }
+  .bot-die {
+    order: 3;
+  }
+  .you-pass {
+    order: 4;
+  }
+  /* ⚙ hugs the right edge, which forces Undo onto the next row. */
+  .stats-controls {
+    order: 5;
+    margin-left: auto;
+  }
+  .undo-btn {
+    order: 6;
+  }
   .vp-pill,
   .status-chip,
   .endgame-btn {
-    order: 2;
-  }
-  .stats-controls {
-    order: 3;
+    order: 7;
   }
 }
 .stats-left {
@@ -818,11 +827,6 @@
 }
 
 /* "Take Bot Action" control + AI die readout */
-.bot-turn {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
 .take-bot-action {
   display: inline-flex;
   align-items: center;
@@ -830,15 +834,15 @@
   padding: 0.5rem 0.9rem;
   font-size: 0.95rem;
   font-weight: 800;
-  color: #f0fdf4;
-  background: linear-gradient(180deg, #16a34a, #15803d);
-  border: 1px solid #22c55e;
+  color: var(--act-text);
+  background: linear-gradient(180deg, var(--act), var(--act-2));
+  border: 1px solid var(--act-border);
   border-radius: 8px;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 .take-bot-action:hover:not(:disabled) {
-  background: linear-gradient(180deg, #22c55e, #16a34a);
+  background: linear-gradient(180deg, var(--act-hover), var(--act));
 }
 .take-bot-action:disabled {
   opacity: 0.45;
@@ -856,15 +860,15 @@
   padding: 0.5rem 0.8rem;
   font-size: 0.9rem;
   font-weight: 800;
-  color: #fee2e2;
-  background: linear-gradient(180deg, #b91c1c, #991b1b);
-  border: 1px solid #ef4444;
+  color: var(--pass-text);
+  background: linear-gradient(180deg, var(--pass), var(--pass-2));
+  border: 1px solid var(--pass-border);
   border-radius: 8px;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
 }
 .you-pass:hover:not(:disabled) {
-  background: linear-gradient(180deg, #dc2626, #b91c1c);
+  background: linear-gradient(180deg, var(--pass-hover), var(--pass));
 }
 .you-pass:disabled {
   opacity: 0.5;
@@ -1134,13 +1138,13 @@
   letter-spacing: 0.02em;
   padding: 0.6rem 0.8rem;
   border-radius: 10px;
-  border: 1px solid rgba(16, 163, 74, 0.7);
-  background: #16a34a;
-  color: white;
+  border: 1px solid var(--act-border);
+  background: var(--act);
+  color: var(--act-text);
   cursor: pointer;
 }
 .start-turn:hover {
-  background: #15803d;
+  background: var(--act-hover);
 }
 
 /* Mech placement gate */
@@ -1175,11 +1179,11 @@
   border: 1px solid transparent;
 }
 .pp-confirm {
-  background: #16a34a;
-  color: white;
+  background: var(--act);
+  color: var(--act-text);
 }
 .pp-confirm:hover {
-  background: #15803d;
+  background: var(--act-hover);
 }
 .pp-cannot {
   background: rgba(220, 38, 38, 0.15);
@@ -1360,12 +1364,12 @@
   background: rgba(220, 38, 38, 0.3);
 }
 .eoa-resolve {
-  background: #16a34a;
-  color: #fff;
-  border-color: rgba(16, 163, 74, 0.7);
+  background: var(--act);
+  color: var(--act-text);
+  border-color: var(--act-border);
 }
 .eoa-resolve:hover {
-  background: #15803d;
+  background: var(--act-hover);
 }
 .eoa-end {
   font-size: 0.85rem;
@@ -1472,14 +1476,14 @@
 .modal-yes {
   padding: 0.55rem 0.9rem;
   font-weight: 800;
-  color: #fff;
-  background: #16a34a;
-  border: 1px solid #22c55e;
+  color: var(--act-text);
+  background: var(--act);
+  border: 1px solid var(--act-border);
   border-radius: 8px;
   cursor: pointer;
 }
 .modal-yes:hover {
-  background: #15803d;
+  background: var(--act-hover);
 }
 .modal-no {
   padding: 0.55rem 0.9rem;

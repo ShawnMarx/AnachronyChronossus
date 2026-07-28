@@ -55,7 +55,8 @@ src/
   engine/
     types.ts                  resources, workers, buildings, breakthrough shapes
     state.ts                  GameState + ChronobotState + Phase machine + Instruction;
-                              PHASE_NUMBER (rulebook: Action Rounds = Phase 5), endgameTriggered
+                              phases preparation(1)…cleanup(6) + PHASE_NUMBER; firstPlayer,
+                              chronobot.paradoxes tracker (0–2), extraTurnAfterPassUsed
     rules/chronobotActions.ts action catalog; `rule` = VERBATIM rulebook text;
                               MECH_PLACEMENT / FAILED_ACTIONS / PASSING_RULE /
                               ENDGAME_TRIGGER_RULE / PLAYER_SCORING_RULE; priority arrays
@@ -71,9 +72,16 @@ src/
     chronobotPaths.ts         SHORT_PATH/LONG_PATH marker anchors (%), command-marker art
     timeTravelTrack.ts        TIME_TRAVEL_TRACK (7 spots) + WARP_MARKER + PARADOX_SLOTS layouts
     ActionIcon.tsx            renders one icon from the sprite sheet
+  game/
+    flow.ts                   pure phase-flow: Era sequence, Era-1 Paradox skip, End-Game exit
+  phases/
+    PhaseScreen.tsx           splash-banner shell (Era N · Phase M) + This-Phase/Status tab
+    RulesBox.tsx              collapsible VERBATIM rulebook-text box (preamble on Setup only)
+    SetupFlow.tsx             Start flavor → Difficulty (4 opts) → Setup instructions
+    phaseMeta.ts              per-phase name/overview/verbatim rules + ENDGAME_RULES
   AppRoot.tsx                 view switch: Landing (home) → BoardExplorer (wired in main.tsx)
   Landing.tsx                 home screen: pick a Solo opponent (Chronobot ready; Chronossus soon)
-  BoardExplorer.tsx           the Chronobot play view — see below
+  BoardExplorer.tsx           the Chronobot play view — renders the full phase flow; see below
   App.tsx                     older guided game runner (NOT wired; kept for reference)
   useGame.ts                  React hook over the engine (used by App.tsx)
 public/assets/solo/           board art + chronobot-icons.png sprite sheet;
@@ -86,11 +94,24 @@ public/                       favicon.ico + favicon-{16,32,512}.png + apple-touc
 
 ### BoardExplorer (the Chronobot play view)
 
-Board-first: the Chronobot solo board fills the viewport, top-aligned (shrinks in
-place when the top bar wraps). The **8 base actions** resolve through
-`Chronobot.takeActionTurn` via guided per-action dialogs, each ending with **▶ Start
-Your Turn**. Full-rules 📖 collapsibles (verbatim `rule` text) render below the boxes.
-Terminology: the physical piece is an **Exosuit** (not "mech") in all displayed text.
+**Renders the whole guided Era loop**, switching on `state.phase`:
+Setup → **1 Preparation → 2 Paradox → 3 Power Up → 4 Warp → 5 Action Rounds →
+6 Clean Up** → next Era, or **End Game**. Non-Action phases use the `PhaseScreen`
+shell (Chronobot splash banner, verbatim rulebook `RulesBox`, per-phase body) with a
+**Chronobot Status** tab flipping to the read-only board; **Phase 5** is the board
+itself. Phase transitions call the pure engine resolvers via `src/game/flow.ts`
+(`startFirstEra`, `advanceFromPreparation` — Era 1 skips Paradox — `finishEra`).
+Per-phase bodies live in `BoardExplorer.tsx`: **Setup** (`SetupFlow`: flavor →
+difficulty → verbatim + app-modified setup), **Paradox** (answer "ties/leads" → rolls
+`rollParadox`, per past Timeline tile up to Era−1×, stop on Anomaly / 0 Warp),
+**Warp** (roll the Paradox die → place N), **Power Up**/**Preparation** (note + Continue),
+**Clean Up** (retrieve; Eras 5–6 flip Collapsing Capital tiles → game-continues vs ended).
+
+The board fills the viewport, top-aligned (shrinks in place when the top bar wraps). The
+**8 base actions** resolve through `Chronobot.takeActionTurn` via guided per-action
+dialogs, each ending with **▶ Start Your Turn**; the dialog also shows a verbatim
+AI-die `RulesBox`. Full-rules 📖 collapsibles (verbatim `rule` text) render below the
+boxes. Terminology: the physical piece is an **Exosuit** (not "mech") in all displayed text.
 
 **Command tokens + the turn loop (the core mechanic).** The 4 Command tokens (2–5)
 travel two looping Action paths — **Short** (Water · Time Travel · Superproject ·
@@ -109,15 +130,17 @@ lists in `buildingVps`/`superprojectVps` for tooltips). **Mine**/**Recruit** aut
 the **+5 VP set bonus**. **Research** rolls the shape die. **Remove Anomaly**/**Time
 Travel**/**Reboot** place no Exosuit.
 
-**Passing & endgame.** **You Pass** + **Take Bot Action** drive `botPassDecision` /
-`resolveBotPass` (out of Exosuits → final Time Travel then pass; you-pass preempts once
-the min is met). The **Actions status chip** opens a popover titled **"Era N · Phase M"**
-(`PHASE_NUMBER`) with pass state + a collapsible verbatim `PASSING_RULE`. **Eras 5–7**
-the bot powers up **4** Exosuits (`chronobotPoweredExosuits`), else 6. In **Eras 5–6** a
-**⚑ Trigger End Game** button shows a confirm with the verbatim `ENDGAME_TRIGGER_RULE`;
-**Era 7** (or once triggered) shows **🏁 Finish & Score** → the **score screen**
-(`scoreChronobot` total + breakdown + bot turns; player score via number or a tally
-sheet from `PLAYER_SCORING_RULE`; win/lose).
+**Passing, First Player & endgame.** Each Action Rounds phase opens with a **Ready to
+begin** intro (fires the first **Take Bot Action** when the bot is First Player).
+**You Pass** + **Take Bot Action** drive `botPassDecision` / `resolveBotPass` (out of
+Exosuits → final Time Travel then pass; you-pass preempts once the min is met; the
+`bot-extra-turn` difficulty grants one more). When both have passed and the min is met, a
+banner → the **First-Player prompt** (sets next Era's `firstPlayer`) → **Clean Up**.
+**Eras 5–7** the bot powers up **4** Exosuits (`chronobotPoweredExosuits`), else 6.
+**Game end is decided in Clean Up** (not the top bar): Eras 5–6 flip Collapsing Capital
+tiles → *game continues* vs *game ended*; Era 7 always ends → the **score screen**
+(`scoreChronobot` total + breakdown incl. Anomalies −3 + bot turns; verbatim
+`ENDGAME_RULES`; player score via number or a `PLAYER_SCORING_RULE` tally; win/lose).
 
 **Undo / History / Persistence** share one serializable **Snapshot** stack: `commit()`
 pushes the prior snapshot + a per-turn change-list; **↶ Undo** restores it (re-showing

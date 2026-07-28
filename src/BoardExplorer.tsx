@@ -1544,7 +1544,7 @@ function WarpPhaseBody({
 
       {rolled == null ? (
         <button className="phase-primary" onClick={() => setRolled(rollParadoxDie())}>
-          🎲 Roll for the Chronobot's Warp
+          Roll for the Chronobot's Warp
         </button>
       ) : (
         <>
@@ -2319,7 +2319,7 @@ function StatsBar({
               disabled={!canPass || playerPassed}
               title="Pass for the Action Rounds phase"
             >
-              {playerPassed ? '✓ You passed' : '🛑 You Pass'}
+              {playerPassed ? '✓ You passed' : 'You Pass'}
             </button>
             <button
               className="undo-btn"
@@ -2560,12 +2560,6 @@ function DetailPanel({
           </RulesBox>
         )}
 
-        {readOnly && (
-          <p className="pp-instruct read-only-note">
-            📖 Rule reference (view only). Turn on <b>Debug</b> to activate spaces
-            by tapping.
-          </p>
-        )}
 
         {/* Step 1 — placement gate for any mech-placing action. */}
         {pending === 'mech' && (

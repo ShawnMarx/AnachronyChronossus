@@ -1,6 +1,20 @@
 :root {
   color-scheme: light dark;
   font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Bot-action buttons — pale yellow-green (complements the violet theme). */
+  --act: #b9d65f;
+  --act-2: #a1c247;
+  --act-hover: #cbe57f;
+  --act-text: #232f06;
+  --act-border: #cbe57f;
+
+  /* "You Pass" — soft pink. */
+  --pass: #e07fa8;
+  --pass-2: #c85f8d;
+  --pass-hover: #ec97ba;
+  --pass-text: #360a20;
+  --pass-border: #ec97ba;
 }
 
 body {

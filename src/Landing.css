@@ -144,8 +144,8 @@
   align-self: flex-start;
   padding: 0.45rem 0.9rem;
   border-radius: 8px;
-  background: #22c55e;
-  color: #04210f;
+  background: var(--act);
+  color: var(--act-text);
   font-weight: 800;
   font-size: 0.95rem;
 }
@@ -214,8 +214,8 @@
   border: 1px solid transparent;
 }
 .resume-continue {
-  background: #22c55e;
-  color: #04210f;
+  background: var(--act);
+  color: var(--act-text);
 }
 .resume-new {
   background: #241a3d;
