@@ -18,7 +18,6 @@ import {
   initialCommandTokens,
   nextTokenIndex,
   resolveBotPass,
-  resolveParadox,
   resolvePowerUp,
   resolveWarp,
   rollParadox,
@@ -252,31 +251,6 @@ describe('Warp', () => {
   });
 });
 
-describe('Paradox', () => {
-  it('gains an anomaly and removes a warp tile', () => {
-    const s = resolveParadox(
-      gameWith((g) => {
-        g.phase = 'paradox';
-        g.chronobot.warpTilesOnTimeline = 2;
-      }),
-      true,
-    );
-    expect(s.chronobot.anomalies).toBe(1);
-    expect(s.chronobot.warpTilesOnTimeline).toBe(1);
-  });
-  it('does nothing at 3 anomalies', () => {
-    const s = resolveParadox(
-      gameWith((g) => {
-        g.phase = 'paradox';
-        g.chronobot.anomalies = 3;
-        g.chronobot.warpTilesOnTimeline = 2;
-      }),
-      true,
-    );
-    expect(s.chronobot.anomalies).toBe(3);
-    expect(s.chronobot.warpTilesOnTimeline).toBe(2);
-  });
-});
 
 describe('Action turns', () => {
   it('Reboot does nothing and costs no exosuit', () => {

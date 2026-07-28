@@ -82,8 +82,6 @@ src/
   AppRoot.tsx                 view switch: Landing (home) → BoardExplorer (wired in main.tsx)
   Landing.tsx                 home screen: pick a Solo opponent (Chronobot ready; Chronossus soon)
   BoardExplorer.tsx           the Chronobot play view — renders the full phase flow; see below
-  App.tsx                     older guided game runner (NOT wired; kept for reference)
-  useGame.ts                  React hook over the engine (used by App.tsx)
 public/assets/solo/           board art + chronobot-icons.png sprite sheet;
                               resources/ workers/ breakthroughs/ (cube/figure/shape art),
                               commands/marker-{2,3,4,5}.png (Command tokens),

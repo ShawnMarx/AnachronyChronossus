@@ -397,40 +397,6 @@ export function endParadoxPhase(state: GameState): GameState {
   return advance(state, { ...state.chronobot }, 'powerup', [], `Paradox phase done (Era ${state.era}).`);
 }
 
-/**
- * Compatibility one-shot Paradox resolution (used by the legacy guided runner):
- * `gainedAnomaly` collapses the whole phase to a single outcome — gain an Anomaly
- * (removing a Warp tile, capped at 3) or not — then advance to Power Up. The
- * guided phase flow uses {@link rollParadox} + {@link endParadoxPhase} instead.
- */
-export function resolveParadox(state: GameState, gainedAnomaly: boolean): GameState {
-  const bot = { ...state.chronobot };
-  const instructions: Instruction[] = [];
-  if (gainedAnomaly && bot.anomalies >= 3) {
-    instructions.push({
-      id: 'paradox-capped',
-      text: 'The Chronobot already has 3 Anomalies — it gains no Anomaly and removes no Warp tile.',
-    });
-  } else if (gainedAnomaly) {
-    bot.anomalies += 1;
-    const removed = bot.warpTilesOnTimeline > 0;
-    if (removed) bot.warpTilesOnTimeline -= 1;
-    instructions.push({
-      id: 'paradox-anomaly',
-      text: 'The Chronobot gains 1 Anomaly and stops rolling.',
-      detail: removed
-        ? 'Remove one of the Chronobot’s Warp tiles from the Timeline tile where it has the most (oldest if tied).'
-        : 'It has no Warp tiles on the Timeline to remove.',
-    });
-  } else {
-    instructions.push({
-      id: 'paradox-none',
-      text: 'The Chronobot gains no Anomaly this Era.',
-    });
-  }
-  return advance(state, bot, 'powerup', instructions, `Paradox phase (Era ${state.era}).`);
-}
-
 // --------------------------------------------------------------------------
 // Phase: Power Up
 // --------------------------------------------------------------------------

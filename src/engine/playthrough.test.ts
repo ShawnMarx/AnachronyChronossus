@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG } from './state';
 import {
   actionRoundsCanEnd,
+  endParadoxPhase,
   markBotPassed,
   markPlayerPassed,
   resolveCleanUp,
-  resolveParadox,
   resolvePowerUp,
   resolveWarp,
   scoreChronobot,
@@ -28,7 +28,7 @@ describe('Full-era playthrough', () => {
 
     // Begin Era 1
     s = { ...s, phase: 'paradox' };
-    s = resolveParadox(s, false);
+    s = endParadoxPhase(s);
     expect(s.phase).toBe('powerup');
 
     s = resolvePowerUp(s);

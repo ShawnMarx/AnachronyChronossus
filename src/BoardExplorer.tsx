@@ -1477,6 +1477,12 @@ function CleanUpPhaseBody({
       <p className="phase-note">
         Retrieve the Chronobot's Exosuits along with your own.
       </p>
+      {era === 4 && (
+        <p className="phase-note">
+          <b>The Impact occurs now</b> — resolve it using the usual procedure at the
+          end of Era 4. From Era 5 on, the Chronobot powers up 4 Exosuits instead of 6.
+        </p>
+      )}
       {postImpact && (
         <p className="phase-note">
           Flip using the usual procedure the Collapsing Capital tiles, then check
@@ -1671,7 +1677,7 @@ function describeDecision(
 ): string {
   switch (d) {
     case 'continue':
-      return `Continue taking bot turns until ${min} have been taken.`;
+      return `The bot alternates turns with you and only passes once either you have passed and it has taken at least its minimum of ${min} turns, or it has used all its Exosuits and taken one additional Time Travel action.`;
     case 'continue-extra':
       return 'Difficulty: the Chronobot takes one additional turn after you passed — roll the AI die for it.';
     case 'must-continue-min3':
