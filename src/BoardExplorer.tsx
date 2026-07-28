@@ -5,7 +5,6 @@ import {
   CHRONOBOT_ACTIONS,
   Chronobot,
   DEFAULT_CONFIG,
-  ENDGAME_TRIGGER_RULE,
   MECH_PLACEMENT,
   PASSING_RULE,
   PHASE_NUMBER,
@@ -389,9 +388,6 @@ export default function BoardExplorer({
   // The End-of-Actions details show as a dismissible popover (opened from a top
   // status chip), closing whenever a top action fires.
   const [showStatus, setShowStatus] = useState(false);
-  // Endgame: confirm dialog + the final score screen.
-  const [showEndgameConfirm, setShowEndgameConfirm] = useState(false);
-  const [showScore, setShowScore] = useState(false);
   // End of Action Rounds: the "did you take the First Player spot?" prompt that
   // sets the next Era's first player and advances to Clean Up (Phase 6).
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
@@ -588,8 +584,6 @@ export default function BoardExplorer({
     setUndoStack([]);
     setShowBreakthroughs(false);
     setShowHistory(false);
-    setShowScore(false);
-    setShowEndgameConfirm(false);
     setPassMsg(null);
     closePanel();
   };
@@ -610,16 +604,12 @@ export default function BoardExplorer({
     });
   };
 
-  // Player triggers the End Game (Era 5–6). The game ends after this Era.
-  const triggerEndgame = () => {
-    setState((s) => ({ ...s, endgameTriggered: true }));
-    setShowEndgameConfirm(false);
-  };
-  // Finish the game and show the score screen (Era 7, or after a triggered end).
-  const finishGame = () => {
-    setState((s) => ({ ...s, finished: true }));
-    setShowScore(true);
-  };
+  // Clean Up (Phase 6) → start the next Era at Preparation (Phase 1).
+  const startNextEraNow = () => setState((s) => Chronobot.startNextEra(s));
+  // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
+  // 5–6 when flipping Collapsing Capital tiles). Show the final score.
+  const endGameNow = () =>
+    setState((s) => ({ ...s, phase: 'endgame', finished: true }));
 
   // Debug toggle. Turning it OFF (play mode) also forces the dev-only outline and
   // calibrate controls off; any open panel is closed so the mode switch is clean.
@@ -973,9 +963,6 @@ export default function BoardExplorer({
         onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
         era={state.era}
         onEra={changeEra}
-        endgameTriggered={state.endgameTriggered}
-        onTriggerEndgame={() => setShowEndgameConfirm(true)}
-        onFinishGame={finishGame}
       />
   );
 
@@ -1215,22 +1202,6 @@ export default function BoardExplorer({
         <HistoryPane entries={undoStack} onClose={() => setShowHistory(false)} />
       )}
 
-      {showEndgameConfirm && (
-        <EndgameConfirm
-          era={state.era}
-          onYes={triggerEndgame}
-          onNo={() => setShowEndgameConfirm(false)}
-        />
-      )}
-
-      {showScore && (
-        <ScoreScreen
-          state={state}
-          onClose={() => setShowScore(false)}
-          onNewGame={reset}
-        />
-      )}
-
       {calibrate && (
         <CalibrationPanel
           positions={positions}
@@ -1307,6 +1278,13 @@ export default function BoardExplorer({
               onRoll={rollBotParadox}
               onAdvance={advancePhase}
             />
+          ) : state.phase === 'cleanup' ? (
+            <CleanUpPhaseBody
+              state={state}
+              meta={meta}
+              onNextEra={startNextEraNow}
+              onEndGame={endGameNow}
+            />
           ) : (
             <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
           )}
@@ -1331,6 +1309,10 @@ export default function BoardExplorer({
             firstPlayer={state.firstPlayer}
             era={state.era}
             onDismiss={() => setActionsIntroEra(state.era)}
+            onTakeBotAction={() => {
+              setActionsIntroEra(state.era);
+              takeBotAction();
+            }}
           />
         )}
       {canEndActions && !showFirstPlayer && (
@@ -1366,10 +1348,12 @@ function ActionsIntro({
   firstPlayer,
   era,
   onDismiss,
+  onTakeBotAction,
 }: {
   firstPlayer: 'bot' | 'player';
   era: number;
   onDismiss: () => void;
+  onTakeBotAction: () => void;
 }) {
   const botFirst = firstPlayer === 'bot';
   return (
@@ -1378,13 +1362,19 @@ function ActionsIntro({
         <h3>Ready to begin — Era {era}</h3>
         <p>
           {botFirst
-            ? 'The Chronobot is First Player this Era. Press “Take Bot Action” to begin the Action Rounds.'
+            ? 'The Chronobot is First Player this Era — it takes the first turn. Press “Take Bot Action” to roll the AI die and resolve it.'
             : 'You are First Player this Era. Take your turn on the Main board first, then press “Take Bot Action” for the Chronobot’s turn.'}
         </p>
         <div className="fp-actions">
-          <button className="phase-primary" onClick={onDismiss}>
-            {botFirst ? 'Take the first bot turn' : 'Your turn first — got it'}
-          </button>
+          {botFirst ? (
+            <button className="phase-primary" onClick={onTakeBotAction}>
+              Take Bot Action
+            </button>
+          ) : (
+            <button className="phase-primary" onClick={onDismiss}>
+              Your turn first — got it
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -1435,9 +1425,7 @@ function PhaseBody({
   onAdvance: () => void;
 }) {
   const phase = state.phase;
-  const era = state.era;
-  const powered = Chronobot.chronobotPoweredExosuits(era);
-  const continueLabel = phase === 'cleanup' ? 'End the Era ▶' : 'Continue ▶';
+  const powered = Chronobot.chronobotPoweredExosuits(state.era);
   return (
     <>
       {phase === 'preparation' && (
@@ -1453,10 +1441,46 @@ function PhaseBody({
           it neither gains nor spends Energy Cores or Water.
         </p>
       )}
-      {phase === 'cleanup' && (
+      {meta.rules && (
+        <RulesBox label={`${meta.name} — rulebook text`}>
+          <p>{meta.rules}</p>
+        </RulesBox>
+      )}
+      <button className="phase-primary" onClick={onAdvance}>
+        Continue ▶
+      </button>
+    </>
+  );
+}
+
+/**
+ * Phase 6 (Clean Up) body. Retrieve Exosuits; in post-Impact Eras (5–6) flip the
+ * Collapsing Capital tiles — the step that decides whether the game ends. Era 7
+ * always ends. Otherwise start the next Era.
+ */
+function CleanUpPhaseBody({
+  state,
+  meta,
+  onNextEra,
+  onEndGame,
+}: {
+  state: GameState;
+  meta: PhaseMeta;
+  onNextEra: () => void;
+  onEndGame: () => void;
+}) {
+  const era = state.era;
+  const postImpact = era === 5 || era === 6;
+  const finalEra = era >= Chronobot.MAX_ERA;
+  return (
+    <>
+      <p className="phase-note">
+        Retrieve the Chronobot's Exosuits along with your own.
+      </p>
+      {postImpact && (
         <p className="phase-note">
-          Retrieve the Chronobot's Exosuits along with your own. After the Impact,
-          follow the usual procedure for flipping Collapsing Capital tiles.
+          Flip using the usual procedure the Collapsing Capital tiles, then check
+          for game end.
         </p>
       )}
       {meta.rules && (
@@ -1464,9 +1488,24 @@ function PhaseBody({
           <p>{meta.rules}</p>
         </RulesBox>
       )}
-      <button className="phase-primary" onClick={onAdvance}>
-        {continueLabel}
-      </button>
+      {finalEra ? (
+        <button className="phase-primary" onClick={onEndGame}>
+          🏁 Finish &amp; Score ▶
+        </button>
+      ) : postImpact ? (
+        <div className="setup-actions">
+          <button className="phase-primary" onClick={onNextEra}>
+            Game continues — start Era {era + 1} ▶
+          </button>
+          <button className="phase-secondary" onClick={onEndGame}>
+            The game ended — Finish &amp; Score
+          </button>
+        </div>
+      ) : (
+        <button className="phase-primary" onClick={onNextEra}>
+          End the Era — start Era {era + 1} ▶
+        </button>
+      )}
     </>
   );
 }
@@ -1527,10 +1566,10 @@ function WarpPhaseBody({
 }
 
 /**
- * Phase 2 (Paradox) body. The Chronobot rolls for Paradoxes only if it has at
- * least as many Warp tiles on the Timeline as you do — the app can't see your
- * tiles, so you confirm the gate. Once rolling, it keeps rolling (accumulating
- * on its tracker) until it gains an Anomaly, then stops.
+ * Phase 2 (Paradox) body. The Chronobot checks each past Timeline tile (up to
+ * Era − 1 of them): on any where it has the most (or tied-most) Warp tiles it
+ * rolls the Paradox die — answering "yes" rolls immediately, no separate button.
+ * It stops early if it gains an Anomaly or has no Warp tiles left on the Timeline.
  */
 function ParadoxPhaseBody({
   state,
@@ -1543,24 +1582,30 @@ function ParadoxPhaseBody({
   onRoll: (rolled: number) => ReturnType<typeof Chronobot.rollParadox>;
   onAdvance: () => void;
 }) {
-  const [started, setStarted] = useState(false);
+  const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
   const [rolls, setRolls] = useState<string[]>([]);
   const bot = state.chronobot;
 
-  const doRoll = () => {
-    const rolled = rollParadoxDie();
-    const res = onRoll(rolled);
-    setRolls((r) => [...r, res.instructions[0]?.text ?? `Rolled +${rolled}.`]);
+  const maxChecks = Math.max(0, state.era - 1);
+  const noWarp = bot.warpTilesOnTimeline === 0;
+  const done = stopped || noWarp || asked >= maxChecks;
+
+  const answerYes = () => {
+    const res = onRoll(rollParadoxDie());
+    setRolls((r) => [...r, res.instructions[0]?.text ?? '']);
+    setAsked((a) => a + 1);
     if (res.stop) setStopped(true);
   };
+  const answerNo = () => setAsked((a) => a + 1);
 
   return (
     <>
       <p className="phase-note">
-        The Chronobot rolls for Paradoxes only if it has at least as many Warp tiles on
-        the Timeline as you (it currently has <b>{bot.warpTilesOnTimeline}</b>). It has
-        no choice — it keeps rolling until it gains an Anomaly.
+        The Chronobot rolls for Paradoxes on each past Timeline tile where it has the
+        most (or tied-most) Warp tiles. It has <b>{bot.warpTilesOnTimeline}</b> Warp
+        tile{bot.warpTilesOnTimeline === 1 ? '' : 's'} on the Timeline and keeps checking
+        until it gains an Anomaly.
       </p>
       <div className="paradox-status">
         <span>
@@ -1577,36 +1622,43 @@ function ParadoxPhaseBody({
         </RulesBox>
       )}
 
-      {!started ? (
-        <div className="setup-actions">
-          <button className="phase-primary" onClick={() => setStarted(true)}>
-            The Chronobot ties or leads — roll
-          </button>
-          <button className="phase-secondary" onClick={onAdvance}>
-            I have more Warp tiles — skip
-          </button>
+      {rolls.length > 0 && (
+        <div className="paradox-log">
+          {rolls.map((t, i) => (
+            <p key={i} className="phase-note">
+              {t}
+            </p>
+          ))}
         </div>
-      ) : (
+      )}
+
+      {done ? (
         <>
-          {rolls.length > 0 && (
-            <div className="paradox-log">
-              {rolls.map((t, i) => (
-                <p key={i} className="phase-note">
-                  {t}
-                </p>
-              ))}
-            </div>
+          {noWarp && asked === 0 && (
+            <p className="phase-note">
+              The Chronobot has no Warp tiles on the Timeline — it rolls no Paradoxes
+              this phase.
+            </p>
           )}
-          {stopped ? (
-            <button className="phase-primary" onClick={onAdvance}>
-              Continue to Power Up ▶
-            </button>
-          ) : (
-            <button className="phase-primary" onClick={doRoll}>
-              🎲 Roll the Paradox die
-            </button>
-          )}
+          <button className="phase-primary" onClick={onAdvance}>
+            Continue to Power Up ▶
+          </button>
         </>
+      ) : (
+        <div className="paradox-question">
+          <p className="phase-note">
+            Past Timeline tile {asked + 1} of {maxChecks}: does the Chronobot have the
+            most (or tied-most) Warp tiles on it?
+          </p>
+          <div className="setup-actions">
+            <button className="phase-primary" onClick={answerYes}>
+              Yes — it ties or leads (roll)
+            </button>
+            <button className="phase-secondary" onClick={answerNo}>
+              No
+            </button>
+          </div>
+        </div>
       )}
     </>
   );
@@ -1740,37 +1792,6 @@ function HistoryPane({
           ))}
         </ol>
       )}
-    </div>
-  );
-}
-
-/** Confirm dialog for triggering the End Game (shows the verbatim rule). */
-function EndgameConfirm({
-  era,
-  onYes,
-  onNo,
-}: {
-  era: number;
-  onYes: () => void;
-  onNo: () => void;
-}) {
-  return (
-    <div className="modal-overlay" onClick={onNo}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>Trigger End Game?</h3>
-        <p className="modal-rule">{ENDGAME_TRIGGER_RULE}</p>
-        <p className="modal-note">
-          You are in Era {era}. If triggered, the game ends after this Era completes.
-        </p>
-        <div className="modal-actions">
-          <button className="modal-yes" onClick={onYes}>
-            Yes — Trigger End Game
-          </button>
-          <button className="modal-no" onClick={onNo}>
-            No
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2187,9 +2208,6 @@ function StatsBar({
   onParadox,
   era,
   onEra,
-  endgameTriggered,
-  onTriggerEndgame,
-  onFinishGame,
 }: {
   onHome?: () => void;
   bot: ChronobotState;
@@ -2217,9 +2235,6 @@ function StatsBar({
   onParadox: (delta: number) => void;
   era: number;
   onEra: (delta: number) => void;
-  endgameTriggered: boolean;
-  onTriggerEndgame: () => void;
-  onFinishGame: () => void;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -2323,23 +2338,6 @@ function StatsBar({
           >
             <b>{bot.actionsThisEra}</b> Actions
           </button>
-          {era === 7 || endgameTriggered ? (
-            <button
-              className="endgame-btn finish"
-              onClick={onFinishGame}
-              title="Finish the game and show the final score"
-            >
-              🏁 Finish &amp; Score
-            </button>
-          ) : era === 5 || era === 6 ? (
-            <button
-              className="endgame-btn"
-              onClick={onTriggerEndgame}
-              title="Trigger the End Game (ends after this Era)"
-            >
-              ⚑ Trigger End Game
-            </button>
-          ) : null}
         </div>
       )}
       <div className="stats-controls">

@@ -138,4 +138,15 @@ note deviations/decisions inline. `npm run build` + `npm test` must stay green.
 ---
 
 ### Deviations & decisions
-- (record here as execution proceeds)
+- **Game-end moved to Clean Up (post-review tweak).** Removed the Phase-5 top-bar
+  "Trigger End Game" / "Finish & Score" buttons (and `EndgameConfirm` + the score
+  modal). Game end is now decided in Clean Up: Eras 5–6 show "Flip using the usual
+  procedure the Collapsing Capital tiles, then check for game end" with
+  "Game continues — start Era N+1" vs "The game ended — Finish & Score"; Era 7 always
+  ends; Eras 1–4 just start the next Era. `CleanUpPhaseBody` added; `endGameNow` sets
+  `phase:'endgame'`.
+- **Paradox flow reworked (post-review tweak).** No separate roll button — answering
+  "Yes — it ties or leads" rolls immediately. Asks per past Timeline tile, up to
+  Era − 1 times, stopping early on an Anomaly or when the bot has 0 Warp tiles.
+- **Actions intro (bot first).** When the Chronobot is First Player, the intro's button
+  is a real "Take Bot Action" that fires the bot turn (not just a dismiss).
