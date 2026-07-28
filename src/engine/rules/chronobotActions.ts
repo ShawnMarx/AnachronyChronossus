@@ -81,6 +81,14 @@ export const MECH_PLACEMENT: string[] = [
 export const PASSING_RULE =
   'Once the Chronobot has run out of Exosuits, it takes a Time Travel Action on its next turn (if able), then passes. However, if you pass first, and the Chronobot has taken at least 3 Actions, the Action Rounds Phase ends immediately. If the Chronobot has not yet taken 3 Actions, it will continue taking turns until it has, at which point the Action Rounds Phase would end.\n\nNOTE: You can use an unused Path’s Exosuits to track the number of Actions the Chronobot takes, especially if you decide to raise the number of Actions to 6.\n\nNOTE: The Chronobot will never take fewer than 3 Actions.';
 
+/** Verbatim End-Game trigger rule (rulebook). */
+export const ENDGAME_TRIGGER_RULE =
+  'The game ends at the end of the Era when the last Capital Action space becomes unavailable or if the final Era (7th) is finished.';
+
+/** Verbatim player End-Game scoring rule (rulebook). */
+export const PLAYER_SCORING_RULE =
+  'Tally up points from buildings, Anomalies, Superprojects, Time Travel, Morale, Victory Point tokens, Timeline penalties and Endgame Conditions using the scoring pad provided. Each individual Breakthrough is worth 1 VP. In addition, a set of three Breakthroughs with different shapes (i.e. Circle, Triangle, Square; the icons do NOT have to match) is worth an additional 2 VP/set.';
+
 /** Verbatim "FAILED ACTIONS" rule (rulebook p. 5). */
 export const FAILED_ACTIONS =
   'If an Action cannot be taken because there are no available Action spaces, it does not place an Exosuit and receives 1 VP instead. If an Action can be taken but cannot be performed (examples are given in each Action’s section), the Chronobot places the Exosuit and receives the 1 VP instead of the normal effect of the Action.';

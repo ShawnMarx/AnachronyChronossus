@@ -346,9 +346,20 @@ export function resolveParadox(state: GameState, gainedAnomaly: boolean): GameSt
 // Phase: Power Up
 // --------------------------------------------------------------------------
 
+/** The final Era; the game ends after it (7). */
+export const MAX_ERA = 7;
+
+/**
+ * Powered Exosuits the Chronobot gets per Era: 6 in Eras 1–4, and 4 in Eras 5–7
+ * (fewer late-game, per the rulebook). All its other rules are unchanged.
+ */
+export function chronobotPoweredExosuits(era: number): number {
+  return era >= 5 ? 4 : 6;
+}
+
 export function resolvePowerUp(state: GameState): GameState {
   const bot = { ...state.chronobot };
-  const count = state.impact ? 4 : 6;
+  const count = chronobotPoweredExosuits(state.era);
   bot.exosuitsAvailable = Math.min(count, bot.exosuitsTotal);
   bot.actionsThisEra = 0;
   bot.passed = false;
@@ -357,10 +368,8 @@ export function resolvePowerUp(state: GameState): GameState {
       id: 'powerup',
       text: `Power up ${bot.exosuitsAvailable} of the Chronobot's Exosuits.`,
       detail:
-        (state.impact ? 'Post-Impact' : 'Pre-Impact') +
-        ': the Chronobot powers up ' +
-        (state.impact ? '4' : '6') +
-        ' Exosuits. It neither gains nor spends Energy Cores or Water. Pile the powered-up Exosuit markers on the upper-right hex slot.',
+        `Eras 1–4 power up 6 Exosuits; Eras 5–7 power up 4 (this is Era ${state.era}).` +
+        ' It neither gains nor spends Energy Cores or Water. Pile the powered-up Exosuit markers on the upper-right hex slot.',
     },
   ];
   return advance(state, bot, 'warp', instructions, `Power Up phase (${bot.exosuitsAvailable} Exosuits).`);

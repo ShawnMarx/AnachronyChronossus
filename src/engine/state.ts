@@ -91,6 +91,8 @@ export interface GameState {
   phase: Phase;
   /** Whether the human player has already passed this Era's Action Rounds. */
   playerPassed: boolean;
+  /** Set when the player triggers the End Game (Era 5–6); game ends after the Era. */
+  endgameTriggered: boolean;
   chronobot: ChronobotState;
   /** Instructions produced for the step currently being resolved. */
   currentInstructions: Instruction[];
@@ -128,6 +130,7 @@ export function createInitialState(config: GameConfig): GameState {
     impact: false,
     phase: 'setup',
     playerPassed: false,
+    endgameTriggered: false,
     chronobot: emptyChronobotState(),
     currentInstructions: [],
     finished: false,

@@ -5,9 +5,11 @@ import {
   CHRONOBOT_ACTIONS,
   Chronobot,
   DEFAULT_CONFIG,
+  ENDGAME_TRIGGER_RULE,
   MECH_PLACEMENT,
   PASSING_RULE,
   PHASE_NUMBER,
+  PLAYER_SCORING_RULE,
   rollAiDie,
   rollShapeDie,
   type ChronobotActionId,
@@ -113,7 +115,7 @@ function summarizeTurn(
   const out: string[] = [];
   const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
 
-  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('🤖 Mech placed');
+  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('🤖 Exosuit placed');
   if (hasId('fail')) out.push('⚠️ Failed action (+1 VP)');
 
   (['factory', 'lab', 'powerplant', 'support'] as const).forEach((t) => {
@@ -173,7 +175,7 @@ const UNDO_CAP = 50;
 // (engine state, tokens, undo/history, debug flag) — transient UI (open dialog,
 // shown die, calibrate positions) is not persisted. A version guards the schema.
 const PERSIST_KEY = 'anachrony:chronobot';
-const PERSIST_VERSION = 3;
+const PERSIST_VERSION = 4;
 
 interface PersistedGame {
   version: number;
@@ -366,6 +368,9 @@ export default function BoardExplorer() {
   // The End-of-Actions details show as a dismissible popover (opened from a top
   // status chip), closing whenever a top action fires.
   const [showStatus, setShowStatus] = useState(false);
+  // Endgame: confirm dialog + the final score screen.
+  const [showEndgameConfirm, setShowEndgameConfirm] = useState(false);
+  const [showScore, setShowScore] = useState(false);
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
@@ -545,8 +550,37 @@ export default function BoardExplorer() {
     setParadoxes(0);
     setShowBreakthroughs(false);
     setShowHistory(false);
+    setShowScore(false);
+    setShowEndgameConfirm(false);
     setPassMsg(null);
     closePanel();
+  };
+
+  // Debug Era modifier: set the Era (1–MAX) and match powered Exosuits to it
+  // (Eras 5–7 → 4, else 6) so the late-game rule is testable in the harness.
+  const changeEra = (delta: number) => {
+    setState((s) => {
+      const era = Math.max(1, Math.min(Chronobot.MAX_ERA, s.era + delta));
+      return {
+        ...s,
+        era,
+        chronobot: {
+          ...s.chronobot,
+          exosuitsAvailable: Chronobot.chronobotPoweredExosuits(era),
+        },
+      };
+    });
+  };
+
+  // Player triggers the End Game (Era 5–6). The game ends after this Era.
+  const triggerEndgame = () => {
+    setState((s) => ({ ...s, endgameTriggered: true }));
+    setShowEndgameConfirm(false);
+  };
+  // Finish the game and show the score screen (Era 7, or after a triggered end).
+  const finishGame = () => {
+    setState((s) => ({ ...s, finished: true }));
+    setShowScore(true);
   };
 
   // Debug toggle. Turning it OFF (play mode) also forces the dev-only outline and
@@ -849,6 +883,11 @@ export default function BoardExplorer() {
         onToggleStatus={() => setShowStatus((v) => !v)}
         paradoxes={paradoxes}
         onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
+        era={state.era}
+        onEra={changeEra}
+        endgameTriggered={state.endgameTriggered}
+        onTriggerEndgame={() => setShowEndgameConfirm(true)}
+        onFinishGame={finishGame}
       />
 
       <div className={`board-stage ${showHistory ? 'with-history' : ''}`}>
@@ -1081,6 +1120,22 @@ export default function BoardExplorer() {
         <HistoryPane entries={undoStack} onClose={() => setShowHistory(false)} />
       )}
 
+      {showEndgameConfirm && (
+        <EndgameConfirm
+          era={state.era}
+          onYes={triggerEndgame}
+          onNo={() => setShowEndgameConfirm(false)}
+        />
+      )}
+
+      {showScore && (
+        <ScoreScreen
+          state={state}
+          onClose={() => setShowScore(false)}
+          onNewGame={reset}
+        />
+      )}
+
       {calibrate && (
         <CalibrationPanel
           positions={positions}
@@ -1226,6 +1281,177 @@ function HistoryPane({
           ))}
         </ol>
       )}
+    </div>
+  );
+}
+
+/** Confirm dialog for triggering the End Game (shows the verbatim rule). */
+function EndgameConfirm({
+  era,
+  onYes,
+  onNo,
+}: {
+  era: number;
+  onYes: () => void;
+  onNo: () => void;
+}) {
+  return (
+    <div className="modal-overlay" onClick={onNo}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <h3>Trigger End Game?</h3>
+        <p className="modal-rule">{ENDGAME_TRIGGER_RULE}</p>
+        <p className="modal-note">
+          You are in Era {era}. If triggered, the game ends after this Era completes.
+        </p>
+        <div className="modal-actions">
+          <button className="modal-yes" onClick={onYes}>
+            Yes — Trigger End Game
+          </button>
+          <button className="modal-no" onClick={onNo}>
+            No
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Player score tally categories (rulebook). Timeline penalties subtract. */
+const TALLY_FIELDS: {
+  key: string;
+  label: string;
+  mult: number;
+  sub?: boolean;
+}[] = [
+  { key: 'buildings', label: 'Buildings', mult: 1 },
+  { key: 'anomalies', label: 'Anomalies', mult: 1 },
+  { key: 'superprojects', label: 'Superprojects', mult: 1 },
+  { key: 'timeTravel', label: 'Time Travel', mult: 1 },
+  { key: 'morale', label: 'Morale', mult: 1 },
+  { key: 'vpTokens', label: 'Victory Point tokens', mult: 1 },
+  { key: 'endgame', label: 'Endgame Conditions', mult: 1 },
+  { key: 'breakthroughs', label: 'Breakthroughs (×1 each)', mult: 1 },
+  { key: 'breakthroughSets', label: 'Breakthrough sets (×2 each)', mult: 2 },
+  { key: 'timelinePenalties', label: 'Timeline penalties (−)', mult: 1, sub: true },
+];
+
+/** Final score screen: bot tally + turns, and the player's score (number or tally). */
+function ScoreScreen({
+  state,
+  onClose,
+  onNewGame,
+}: {
+  state: GameState;
+  onClose: () => void;
+  onNewGame: () => void;
+}) {
+  const bot = state.chronobot;
+  const s = Chronobot.scoreChronobot(bot);
+  const [mode, setMode] = useState<'number' | 'tally'>('number');
+  const [num, setNum] = useState('');
+  const [tally, setTally] = useState<Record<string, number>>({});
+
+  const tallyTotal = TALLY_FIELDS.reduce((sum, f) => {
+    const v = (tally[f.key] ?? 0) * f.mult;
+    return sum + (f.sub ? -v : v);
+  }, 0);
+  const playerScore =
+    mode === 'number' ? (num.trim() === '' ? null : Number(num)) : tallyTotal;
+  const result =
+    playerScore == null || Number.isNaN(playerScore)
+      ? null
+      : playerScore > s.total
+        ? 'win'
+        : 'lose';
+
+  return (
+    <div className="modal-overlay">
+      <div className="score-screen" onClick={(e) => e.stopPropagation()}>
+        <div className="score-head">
+          <h2>Final Score — Era {state.era}</h2>
+          <button className="dp-close" onClick={onClose} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        {/* Bot total + breakdown */}
+        <div className="score-bot">
+          <div className="score-total">
+            <span className="score-total-num">{s.total}</span>
+            <span className="score-total-label">Chronobot VP</span>
+          </div>
+          <ul className="score-breakdown">
+            <li><span>During-game VP</span><b>{s.duringGameVP}</b></li>
+            <li><span>Breakthroughs (1 each)</span><b>{s.breakthroughVP}</b></li>
+            <li><span>Breakthrough sets (+2 each)</span><b>{s.shapeSetBonus}</b></li>
+            <li className="score-sum"><span>Total</span><b>{s.total}</b></li>
+            <li className="score-turns"><span>Bot turns taken</span><b>{bot.totalActions}</b></li>
+          </ul>
+        </div>
+
+        {/* Player score */}
+        <div className="score-player">
+          <div className="score-player-head">
+            <h3>Your score</h3>
+            <div className="score-mode">
+              <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
+                Number
+              </button>
+              <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
+                Tally sheet
+              </button>
+            </div>
+          </div>
+
+          {mode === 'number' ? (
+            <input
+              className="score-num-input"
+              type="number"
+              placeholder="Enter your total VP"
+              value={num}
+              onChange={(e) => setNum(e.target.value)}
+            />
+          ) : (
+            <>
+              <p className="score-rule">{PLAYER_SCORING_RULE}</p>
+              <div className="tally-grid">
+                {TALLY_FIELDS.map((f) => (
+                  <label key={f.key} className="tally-row">
+                    <span>{f.label}</span>
+                    <input
+                      type="number"
+                      value={tally[f.key] ?? ''}
+                      onChange={(e) =>
+                        setTally((t) => ({ ...t, [f.key]: Number(e.target.value) || 0 }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="tally-total">
+                Your total: <b>{tallyTotal}</b>
+              </div>
+            </>
+          )}
+        </div>
+
+        {result && (
+          <div className={`score-result ${result}`}>
+            {result === 'win'
+              ? '🎉 You win! (more points than the Chronobot)'
+              : 'You lose — the Chronobot has at least as many points.'}
+          </div>
+        )}
+
+        <div className="score-actions">
+          <button className="modal-no" onClick={onClose}>
+            Close
+          </button>
+          <button className="modal-yes" onClick={onNewGame}>
+            ⟳ New Game
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1491,6 +1717,11 @@ function StatsBar({
   onToggleStatus,
   paradoxes,
   onParadox,
+  era,
+  onEra,
+  endgameTriggered,
+  onTriggerEndgame,
+  onFinishGame,
 }: {
   bot: ChronobotState;
   debug: boolean;
@@ -1515,6 +1746,11 @@ function StatsBar({
   onToggleStatus: () => void;
   paradoxes: number;
   onParadox: (delta: number) => void;
+  era: number;
+  onEra: (delta: number) => void;
+  endgameTriggered: boolean;
+  onTriggerEndgame: () => void;
+  onFinishGame: () => void;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -1525,6 +1761,17 @@ function StatsBar({
           <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
             🛠 DEBUG
           </span>
+        )}
+        {debug && (
+          <div className="paradox-ctl" title="Set the Era (1–7)">
+            <button onClick={() => onEra(-1)} disabled={era <= 1} aria-label="Previous era">
+              −
+            </button>
+            <span className="paradox-ctl-val">Era {era}</span>
+            <button onClick={() => onEra(1)} disabled={era >= 7} aria-label="Next era">
+              +
+            </button>
+          </div>
         )}
         {debug && (
           <div className="paradox-ctl" title="Set the number of Paradoxes (0–3)">
@@ -1580,6 +1827,14 @@ function StatsBar({
             >
               {playerPassed ? '✓ You passed' : '🛑 You Pass'}
             </button>
+            <button
+              className="undo-btn"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo the last step (restores the same die roll)"
+            >
+              ↶ Undo
+            </button>
           </div>
           <button
             className={`stat-pill status-chip ${statusOpen ? 'on' : ''}`}
@@ -1589,25 +1844,26 @@ function StatsBar({
           >
             <b>{bot.actionsThisEra}</b> Actions
           </button>
+          {era === 7 || endgameTriggered ? (
+            <button
+              className="endgame-btn finish"
+              onClick={onFinishGame}
+              title="Finish the game and show the final score"
+            >
+              🏁 Finish &amp; Score
+            </button>
+          ) : era === 5 || era === 6 ? (
+            <button
+              className="endgame-btn"
+              onClick={onTriggerEndgame}
+              title="Trigger the End Game (ends after this Era)"
+            >
+              ⚑ Trigger End Game
+            </button>
+          ) : null}
         </div>
       )}
       <div className="stats-controls">
-        <button
-          className="undo-btn"
-          onClick={onUndo}
-          disabled={!canUndo}
-          title="Undo the last step (restores the same die roll)"
-        >
-          ↶ Undo
-        </button>
-        <button
-          className={`history-btn ${historyOpen ? 'on' : ''}`}
-          onClick={onToggleHistory}
-          title="Show the turn history"
-          aria-pressed={historyOpen}
-        >
-          🕑 History
-        </button>
         <SettingsMenu
           debug={debug}
           onToggleDebug={onToggleDebug}
@@ -1616,6 +1872,8 @@ function StatsBar({
           calibrate={calibrate}
           onToggleCalibrate={onToggleCalibrate}
           onReset={onReset}
+          historyOpen={historyOpen}
+          onToggleHistory={onToggleHistory}
         />
       </div>
     </div>
@@ -1631,6 +1889,8 @@ function SettingsMenu({
   calibrate,
   onToggleCalibrate,
   onReset,
+  historyOpen,
+  onToggleHistory,
 }: {
   debug: boolean;
   onToggleDebug: () => void;
@@ -1639,6 +1899,8 @@ function SettingsMenu({
   calibrate: boolean;
   onToggleCalibrate: () => void;
   onReset: () => void;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
 }) {
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -1668,6 +1930,17 @@ function SettingsMenu({
       </button>
       {open && (
         <div className="settings-dropdown" role="menu">
+          <button
+            className={`settings-item ${historyOpen ? 'active' : ''}`}
+            onClick={() => {
+              onToggleHistory();
+              setOpen(false);
+            }}
+            role="menuitem"
+          >
+            🕑 History
+          </button>
+          <div className="settings-sep" />
           <button
             className="settings-item toggle"
             onClick={onToggleDebug}
@@ -1815,7 +2088,7 @@ function DetailPanel({
         {pending === 'mech' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s mech on the topmost available{' '}
+              Place the Chronobot’s Exosuit on the topmost available{' '}
               <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
               space if none are free).
             </p>
@@ -1886,7 +2159,7 @@ function DetailPanel({
         {pending === 'mineResources' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s mech in an open <b>Mine</b> space granting
+              Place the Chronobot’s Exosuit in an open <b>Mine</b> space granting
               the best 2 Resources by priority order below, based on
               lacking-first. Give it those <b>2 Resources</b> (pre-selected;
               adjust to match the space — click a cube twice for <b>×2</b>),
@@ -1964,7 +2237,7 @@ function DetailPanel({
         {pending === 'geniusRecruit' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s mech on the topmost available <b>Recruit</b>{' '}
+              Place the Chronobot’s Exosuit on the topmost available <b>Recruit</b>{' '}
               Action space (or a World Council space if full) and recruit a{' '}
               <b>Genius</b>, removing it from the board. The bot gains 1 VP.
             </p>
@@ -2030,7 +2303,7 @@ function DetailPanel({
             <div className="place-prompt">
               <p className="pp-instruct">
                 Discard <b>{removeAnomaly.discards}</b> from the Chronobot and
-                remove 1 Anomaly. (Remove Anomaly places no mech.)
+                remove 1 Anomaly. (Remove Anomaly places no Exosuit.)
               </p>
               <button className="start-turn" onClick={onStartTurn}>
                 ▶ Start Your Turn
@@ -2040,7 +2313,7 @@ function DetailPanel({
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
                 Failed Action: {removeAnomaly.reason} — the Chronobot takes +1 VP
-                instead (no mech placed).
+                instead (no Exosuit placed).
               </p>
               <button className="start-turn" onClick={onStartTurn}>
                 ▶ Start Your Turn
@@ -2086,7 +2359,7 @@ function MechRules({ open, onToggle }: { open: boolean; onToggle: () => void }) 
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={onToggle}>
-        📖 Placing the Chronobot’s mech (Exosuit) {open ? '▾' : '▸'}
+        📖 Placing the Chronobot’s Exosuit {open ? '▾' : '▸'}
       </button>
       {open && (
         <ul>
