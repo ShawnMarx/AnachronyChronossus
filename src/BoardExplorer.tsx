@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import './BoardExplorer.css';
+import { useAuth } from './auth/useAuth';
 import {
   AI_DIE_FACES,
   CHRONOBOT_ACTIONS,
@@ -2536,6 +2537,7 @@ function SettingsMenu({
   onToggleHistory: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { user, loading, login, logout } = useAuth();
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -2609,9 +2611,20 @@ function SettingsMenu({
           <button className="settings-item danger" onClick={onReset} role="menuitem">
             ⟳ Reset Game
           </button>
-          <button className="settings-item disabled" disabled role="menuitem" title="Coming soon">
-            👤 Log in (soon)
-          </button>
+          <div className="settings-sep" />
+          {loading ? (
+            <button className="settings-item disabled" disabled role="menuitem">
+              👤 …
+            </button>
+          ) : user ? (
+            <button className="settings-item" onClick={logout} role="menuitem" title={`Signed in as ${user.username}`}>
+              👤 Sign out ({user.username})
+            </button>
+          ) : (
+            <button className="settings-item" onClick={login} role="menuitem">
+              👤 Log in with BoardGameEdge
+            </button>
+          )}
         </div>
       )}
     </div>

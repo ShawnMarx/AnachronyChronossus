@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
+import { useAuth } from './auth/useAuth';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -51,6 +52,34 @@ function BotCard({ name, image, tagline, description, status, onLaunch }: BotCar
   );
 }
 
+/** Top-right optional-login control on the home screen. */
+function LandingAuth() {
+  const { user, loading, login, logout } = useAuth();
+  if (loading) {
+    return (
+      <div className="landing-auth" aria-hidden>
+        <span className="landing-auth-loading">👤 …</span>
+      </div>
+    );
+  }
+  return (
+    <div className="landing-auth">
+      {user ? (
+        <>
+          <span className="landing-auth-who">👤 {user.username}</span>
+          <button className="landing-auth-btn" onClick={logout}>
+            Sign out
+          </button>
+        </>
+      ) : (
+        <button className="landing-auth-btn primary" onClick={login}>
+          Log in with BoardGameEdge
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function Landing({ onStartChronobot }: { onStartChronobot: () => void }) {
   // When a saved Chronobot game exists, launching prompts continue-vs-new.
   const [prompt, setPrompt] = useState<{ savedAt: number } | null>(null);
@@ -63,6 +92,7 @@ export default function Landing({ onStartChronobot }: { onStartChronobot: () => 
 
   return (
     <div className="landing">
+      <LandingAuth />
       <header className="landing-header">
         <img className="landing-logo" src="/favicon-512.png" alt="" />
         <div>
