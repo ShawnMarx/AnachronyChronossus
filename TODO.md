@@ -11,7 +11,11 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
       `auth_request` against `auth.boardgameedge.com` (shared `bge_session` cookie).
 - [ ] **Landing-page listing** — add Anachrony to the `boardgameedge.com` landing
       service's app registry (`boardgameedge/services/landing/`).
-- [ ] **Saved stats / optional login** — needs a backend; not started.
+- [ ] **Saved stats / optional login** — needs a backend; not started. Also confirm the
+      **shared-auth integration contract** (staging endpoints / SDK) first.
+- [ ] **Security: rotate the CI deploy key** — the `the deploy key` SSH
+      private key was printed to a tool output during an earlier session. Regenerate the
+      keypair, update the Droplet `authorized_keys` + repo secret `DEPLOY_SSH_KEY`.
 
 ## App
 - [ ] **Player play-history + overall stats** — needs the backend + BGE auth; the
