@@ -866,6 +866,13 @@ export const DIFFICULTY_NO_LEADER = 'no-leader';
 /** The Chronobot takes one additional turn after you have passed. */
 export const DIFFICULTY_BOT_EXTRA_TURN = 'bot-extra-turn';
 
+/**
+ * Base-game variant: cover the right World Council space with a Hex Unavailable
+ * tile. Informational only — it constrains the human's board, which the app
+ * never runs — so it carries no engine effect; shown as a setup reminder.
+ */
+export const DIFFICULTY_HEX_UNAVAILABLE = 'hex-unavailable';
+
 /** The minimum Actions the Chronobot must take this Era — 3, or 6 on hard. */
 export function chronobotMinActions(state: GameState): number {
   return state.config.difficulty.includes(DIFFICULTY_MIN_ACTIONS_6)

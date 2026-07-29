@@ -117,6 +117,7 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   [Chronobot.DIFFICULTY_NO_LEADER]: 'Play without your Leader power',
   [Chronobot.DIFFICULTY_BOT_EXTRA_TURN]: 'One extra Chronobot turn after you pass',
   [Chronobot.DIFFICULTY_MIN_ACTIONS_6]: 'Minimum Actions raised to 6',
+  [Chronobot.DIFFICULTY_HEX_UNAVAILABLE]: 'Right World Council space covered (Hex Unavailable)',
 };
 
 /**
@@ -183,6 +184,29 @@ function summarizeTurn(
     out.push('⏳ Warp tile removed → Time Travel advances');
   }
   return out;
+}
+
+/**
+ * Summarize a Paradox-phase die roll from the pre→post Chronobot state: the
+ * tracker movement, and — when the roll hit 3 — the Anomaly gained (−3 VP) and
+ * the Warp tile pulled off the Timeline.
+ */
+function summarizeParadox(pre: ChronobotState, post: ChronobotState): string[] {
+  const out: string[] = [];
+  if (post.paradoxes !== pre.paradoxes) {
+    out.push(`Paradox tracker → ${post.paradoxes}/3`);
+  }
+  if (post.anomalies > pre.anomalies) out.push('Gained 1 Anomaly (−3 VP)');
+  if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline) {
+    out.push('Warp tile removed from the Timeline');
+  }
+  return out;
+}
+
+/** Summarize the Warp phase: how many Warp tiles the Chronobot placed. */
+function summarizeWarp(pre: ChronobotState, post: ChronobotState): string[] {
+  const d = post.warpTilesOnTimeline - pre.warpTilesOnTimeline;
+  return d > 0 ? [`Placed ${d} Warp tile${d === 1 ? '' : 's'} on the Timeline`] : [];
 }
 
 /** Cap the undo/history depth so persisted state stays bounded. */
@@ -392,7 +416,11 @@ export default function BoardExplorer({
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
-  const [showBreakthroughs, setShowBreakthroughs] = useState(false);
+  // Which board track box has its tap-to-reveal info popover open (its counter
+  // `key`, e.g. 'neutronium' / 'breakthrough'), or null. Mirrors the native
+  // `title` tooltip so the info is reachable on touch. Dismissed by any tap
+  // outside a badge (or Escape) via the effect below.
+  const [tappedBadge, setTappedBadge] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   // True only for a play-mode free-tap (the read-only rule view), never for a
   // die-driven bot turn (which resolves even in play mode).
@@ -532,6 +560,26 @@ export default function BoardExplorer({
     };
   }, [showStatus]);
 
+  // Dismiss the tapped track-box info popover on Escape or any tap that isn't on
+  // a badge (tapping another badge is handled by that badge's own onClick, which
+  // fires after this outside check passes it through).
+  useEffect(() => {
+    if (tappedBadge == null) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.count-badge')) setTappedBadge(null);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setTappedBadge(null);
+    };
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [tappedBadge]);
+
   const closePanel = () => {
     setActive(null);
     setPending(null);
@@ -604,7 +652,7 @@ export default function BoardExplorer({
     setState(initNewGame());
     setTokens(Chronobot.initialCommandTokens());
     setUndoStack([]);
-    setShowBreakthroughs(false);
+    setTappedBadge(null);
     setShowHistory(false);
     setPassMsg(null);
     closePanel();
@@ -931,8 +979,25 @@ export default function BoardExplorer({
   // outcome (so the body knows whether the bot must keep rolling).
   const rollBotParadox = (rolled: number) => {
     const res = Chronobot.rollParadox(state, rolled);
-    setState(res.state);
+    commit(
+      res.state,
+      tokens,
+      `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`,
+      summarizeParadox(state.chronobot, res.state.chronobot),
+    );
     return res;
+  };
+
+  // Warp phase: place the Chronobot's rolled Warp tiles (via commit, so the
+  // placement lands in History like an Action turn).
+  const commitWarp = (paradoxes: number) => {
+    const next = Chronobot.resolveWarp(state, paradoxes);
+    commit(
+      next,
+      tokens,
+      `Era ${state.era} · Warp: placed ${Math.max(0, paradoxes)}`,
+      summarizeWarp(state.chronobot, next.chronobot),
+    );
   };
 
   // Advance out of the current non-Action phase (calls the matching resolver).
@@ -965,7 +1030,7 @@ export default function BoardExplorer({
         onReset={reset}
         calibrate={calibrate}
         onToggleCalibrate={() => {
-          setShowBreakthroughs(false);
+          setTappedBadge(null);
           setCalibrate((c) => !c);
         }}
         botDie={botDie}
@@ -1042,17 +1107,25 @@ export default function BoardExplorer({
             const count = counterValue(bot, c.key);
             const [x, y] = positions[c.key] ?? c.pos;
             const sel = calibrate && selected === c.key;
-            const breakdown = c.key === 'breakthrough' && !calibrate;
+            // Every track box is tap-to-reveal outside calibrate mode; the
+            // breakthrough box shows a per-shape breakdown, the rest their
+            // tooltip text ("what they are" + any details).
+            const tappable = !calibrate;
+            const open = tappable && tappedBadge === c.key;
             return (
               <div
                 key={c.key}
-                className={`count-badge ${sel ? 'cal-selected' : ''} ${breakdown ? 'clickable' : ''}`}
+                className={`count-badge ${sel ? 'cal-selected' : ''} ${tappable ? 'clickable' : ''}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
                 title={calibrate ? c.label : counterTooltip(bot, c)}
-                onClick={breakdown ? () => setShowBreakthroughs((v) => !v) : undefined}
+                onClick={
+                  tappable
+                    ? () => setTappedBadge((k) => (k === c.key ? null : c.key))
+                    : undefined
+                }
               >
                 {calibrate ? (sel ? '◎' : '·') : count}
-                {breakdown && showBreakthroughs && (
+                {open && c.key === 'breakthrough' && (
                   <div className="bt-popover" onClick={(e) => e.stopPropagation()}>
                     {SHAPE_ORDER.map((s) => (
                       <span key={s} className="bt-pop-row">
@@ -1060,6 +1133,11 @@ export default function BoardExplorer({
                         <b>{bot.breakthroughs[s]}</b>
                       </span>
                     ))}
+                  </div>
+                )}
+                {open && c.key !== 'breakthrough' && (
+                  <div className="badge-popover" onClick={(e) => e.stopPropagation()}>
+                    {counterTooltip(bot, c)}
                   </div>
                 )}
               </div>
@@ -1303,13 +1381,7 @@ export default function BoardExplorer({
           statusView={boardStage}
         >
           {state.phase === 'warp' ? (
-            <WarpPhaseBody
-              state={state}
-              meta={meta}
-              onCommit={(paradoxes) =>
-                setState((s) => Chronobot.resolveWarp(s, paradoxes))
-              }
-            />
+            <WarpPhaseBody state={state} meta={meta} onCommit={commitWarp} />
           ) : state.phase === 'paradox' ? (
             <ParadoxPhaseBody
               state={state}

@@ -42,6 +42,13 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
     label: 'Raise minimum Actions to 6',
     detail: "Increase the minimum number of Chronobot's Actions from 3 to 6.",
   },
+  {
+    flag: Chronobot.DIFFICULTY_HEX_UNAVAILABLE,
+    label: 'Cover the right World Council space',
+    detail:
+      'Base-game variant: cover the right World Council space with a Hex ' +
+      'Unavailable tile. (This constrains your own board — the app changes nothing.)',
+  },
 ];
 
 /**
