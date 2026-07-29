@@ -11,7 +11,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { fetchMe, loginUrl, logoutUrl, type BgeUser } from './bgeAuth';
+import { fetchMe, startLogin, startLogout, type BgeUser } from './bgeAuth';
 
 interface AuthContextValue {
   user: BgeUser | null;
@@ -47,12 +47,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value: AuthContextValue = {
     user,
     loading,
-    login: () => {
-      window.location.href = loginUrl();
-    },
-    logout: () => {
-      window.location.href = logoutUrl();
-    },
+    login: startLogin,
+    logout: startLogout,
   };
 
   return createElement(AuthContext.Provider, { value }, children);

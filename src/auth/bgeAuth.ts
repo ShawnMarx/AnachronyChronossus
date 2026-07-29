@@ -40,14 +40,22 @@ export async function fetchMe(): Promise<BgeUser | null> {
   }
 }
 
-/** URL that logs in, then returns the browser to where it is now. */
-export function loginUrl(): string {
+/** Navigate to the login page, returning here afterward. `/login` is a GET route. */
+export function startLogin(): void {
   const ret = encodeURIComponent(window.location.href);
-  return `${AUTH_BASE}/login?return=${ret}`;
+  window.location.href = `${AUTH_BASE}/login?return=${ret}`;
 }
 
-/** URL that logs out, then returns the browser to where it is now. */
-export function logoutUrl(): string {
+/**
+ * Log out. The auth service's `/logout` is **POST-only** (a GET yields 405), so
+ * we submit a top-level POST form — not blocked by CORS since it's a navigation.
+ * After clearing the cookie it redirects to the login page with `return=` set.
+ */
+export function startLogout(): void {
   const ret = encodeURIComponent(window.location.href);
-  return `${AUTH_BASE}/logout?return=${ret}`;
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `${AUTH_BASE}/logout?return=${ret}`;
+  document.body.appendChild(form);
+  form.submit();
 }
