@@ -57,8 +57,12 @@ const PATH_KEYS = [...SHORT_KEYS, ...LONG_KEYS];
 const WARP_KEY = 'warp';
 /** Calibration keys for the 3 Paradox slots. */
 const PARADOX_KEYS = PARADOX_SLOTS.slots.map((_, i) => `paradox${i}`);
-/** Every calibratable point: count badges, 7 TT spots, path steps, warp, paradox. */
+/** Calibration key for one action-tile hotspot, anchored at its box top-left. */
+const hotspotKey = (id: string) => `hs_${id}`;
+const HOTSPOT_KEYS = CHRONOBOT_HOTSPOTS.map((h) => hotspotKey(h.id));
+/** Every calibratable point: count badges, 7 TT spots, path steps, warp, paradox, hotspots. */
 const CAL_KEYS: string[] = [
+  ...HOTSPOT_KEYS,
   ...BOARD_COUNTERS.map((c) => c.key),
   ...TT_KEYS,
   ...PATH_KEYS,
@@ -105,6 +109,14 @@ const BUILDING_LABEL: Record<string, string> = {
   lab: 'Lab',
   powerplant: 'Power Plant',
   support: 'Life Support',
+};
+
+/** Short labels for the difficulty flags (kept in sync with SetupFlow). */
+const DIFFICULTY_LABEL: Record<string, string> = {
+  [Chronobot.DIFFICULTY_REBOOT_ADVANCE]: 'Advance off Reboot immediately',
+  [Chronobot.DIFFICULTY_NO_LEADER]: 'Play without your Leader power',
+  [Chronobot.DIFFICULTY_BOT_EXTRA_TURN]: 'One extra Chronobot turn after you pass',
+  [Chronobot.DIFFICULTY_MIN_ACTIONS_6]: 'Minimum Actions raised to 6',
 };
 
 /**
@@ -444,12 +456,22 @@ export default function BoardExplorer({
       ...Object.fromEntries(LONG_KEYS.map((k, i) => [k, PATH_SPOTS.long[i]])),
       [WARP_KEY]: WARP_MARKER.pos,
       ...Object.fromEntries(PARADOX_KEYS.map((k, i) => [k, PARADOX_SLOTS.slots[i]])),
+      // Stored as the box CENTER (rect is top-left + size), so hotspots share the
+      // center-anchor convention of every other overlay.
+      ...Object.fromEntries(
+        CHRONOBOT_HOTSPOTS.map((h) => [
+          hotspotKey(h.id),
+          [h.rect[0] + h.rect[2] / 2, h.rect[1] + h.rect[3] / 2],
+        ]),
+      ),
     }),
   );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
   const [warpMarkerWidth, setWarpMarkerWidth] = useState<number>(WARP_MARKER.width);
   const [paradoxWidth, setParadoxWidth] = useState<number>(PARADOX_SLOTS.width);
+  const [hotspotWidth, setHotspotWidth] = useState<number>(CHRONOBOT_HOTSPOTS[0].rect[2]);
+  const [hotspotHeight, setHotspotHeight] = useState<number>(CHRONOBOT_HOTSPOTS[0].rect[3]);
   const [selected, setSelected] = useState<string>(BOARD_COUNTERS[0].key);
 
   useEffect(() => {
@@ -979,13 +1001,20 @@ export default function BoardExplorer({
           />
 
           {CHRONOBOT_HOTSPOTS.map((h) => {
-            const [l, t, w, hgt] = h.rect;
+            const w = hotspotWidth;
+            const hgt = hotspotHeight;
+            // Center point (transform: translate(-50%,-50%) places the box around it).
+            const [l, t] = positions[hotspotKey(h.id)] ?? [
+              h.rect[0] + h.rect[2] / 2,
+              h.rect[1] + h.rect[3] / 2,
+            ];
             const def = CHRONOBOT_ACTIONS[h.action];
             const isActive = active?.id === h.id;
+            const sel = calibrate && selected === hotspotKey(h.id);
             return (
               <button
                 key={h.id}
-                className={`hotspot ${outline ? 'outlined' : ''} ${isActive ? 'active' : ''}`}
+                className={`hotspot ${outline || calibrate ? 'outlined' : ''} ${isActive ? 'active' : ''} ${sel ? 'cal-selected' : ''}`}
                 style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${hgt}%` }}
                 disabled={boardReadOnly}
                 onClick={() => {
@@ -999,7 +1028,13 @@ export default function BoardExplorer({
                 }}
                 aria-label={def.label}
                 title={def.label}
-              />
+              >
+                <img
+                  className="hotspot-tile"
+                  src={`/assets/solo/actions/${h.action}.png`}
+                  alt=""
+                />
+              </button>
             );
           })}
 
@@ -1215,6 +1250,10 @@ export default function BoardExplorer({
           onWarpMarkerWidth={setWarpMarkerWidth}
           paradoxWidth={paradoxWidth}
           onParadoxWidth={setParadoxWidth}
+          hotspotWidth={hotspotWidth}
+          onHotspotWidth={setHotspotWidth}
+          hotspotHeight={hotspotHeight}
+          onHotspotHeight={setHotspotHeight}
         />
       )}
     </>
@@ -1750,6 +1789,19 @@ function EndOfActionsBar({
         </RulesBox>
       )}
 
+      <div className="eoa-difficulty">
+        <span className="eoa-diff-title">Difficulty options</span>
+        {state.config.difficulty.length === 0 ? (
+          <span className="eoa-diff-none">Standard game — none selected</span>
+        ) : (
+          <ul className="eoa-diff-list">
+            {state.config.difficulty.map((f) => (
+              <li key={f}>{DIFFICULTY_LABEL[f] ?? f}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <div className="eoa-rule">
         <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
           📖 Passing &amp; End of Actions rules {showRule ? '▾' : '▸'}
@@ -1968,6 +2020,10 @@ function CalibrationPanel({
   onWarpMarkerWidth,
   paradoxWidth,
   onParadoxWidth,
+  hotspotWidth,
+  onHotspotWidth,
+  hotspotHeight,
+  onHotspotHeight,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -1980,12 +2036,30 @@ function CalibrationPanel({
   onWarpMarkerWidth: (w: number) => void;
   paradoxWidth: number;
   onParadoxWidth: (w: number) => void;
+  hotspotWidth: number;
+  onHotspotWidth: (w: number) => void;
+  hotspotHeight: number;
+  onHotspotHeight: (h: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
     BOARD_COUNTERS.map((c) => {
       const [x, y] = positions[c.key] ?? c.pos;
       return `  { key: '${c.key}', pos: [${x}, ${y}], label: '${c.label}' },`;
+    }).join('\n') +
+    '\n];';
+  const hotspotLiteral =
+    'export const CHRONOBOT_HOTSPOTS: Hotspot[] = [\n' +
+    CHRONOBOT_HOTSPOTS.map((h) => {
+      const [cx, cy] = positions[hotspotKey(h.id)] ?? [
+        h.rect[0] + h.rect[2] / 2,
+        h.rect[1] + h.rect[3] / 2,
+      ];
+      // Convert the calibrated center back to a top-left rect [left, top, w, h].
+      const left = +(cx - hotspotWidth / 2).toFixed(1);
+      const top = +(cy - hotspotHeight / 2).toFixed(1);
+      const note = h.note ? `, note: '${h.note}'` : '';
+      return `  { id: '${h.id}', action: '${h.action}', rect: [${left}, ${top}, ${hotspotWidth}, ${hotspotHeight}]${note} },`;
     }).join('\n') +
     '\n];';
   const ttLiteral =
@@ -2021,123 +2095,121 @@ function CalibrationPanel({
     i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
   const pathLabel = (path: PathId, i: number) =>
     `${path === 'short' ? 'S' : 'L'}${i + 1} ${Chronobot.CHRONOBOT_PATHS[path][i]}`;
+  // One selectable item button. `def` is the seed position shown until placed.
+  const item = (
+    key: string,
+    label: React.ReactNode,
+    def: [number, number],
+    extraClass = '',
+  ) => (
+    <button
+      key={key}
+      className={`cal-item ${extraClass} ${selected === key ? 'on' : ''}`}
+      onClick={() => onSelect(key)}
+    >
+      {label}{' '}
+      <span className="cal-xy">{(positions[key] ?? def).join(', ')}</span>
+    </button>
+  );
+  const sizeSlider = (
+    label: string,
+    value: number,
+    onChange: (w: number) => void,
+    max: number,
+  ) => (
+    <label className="cal-size">
+      {label}: <b>{value}%</b>
+      <input
+        type="range"
+        min={1}
+        max={max}
+        step={0.1}
+        value={value}
+        onChange={(e) => onChange(+e.target.value)}
+      />
+    </label>
+  );
   return (
     <div className="cal-panel">
       <p className="cal-hint">
         <b>Calibrate.</b> Pick a spot, click the board to place it, then arrow-keys
-        nudge (0.2% / Shift = 1%). Copy the result to me when done.
+        nudge (0.2% / Shift = 1%). Copy each group's text to me when done.
       </p>
-      <label className="cal-size">
-        TT marker width: <b>{markerWidth}%</b>
-        <input
-          type="range"
-          min={1}
-          max={12}
-          step={0.1}
-          value={markerWidth}
-          onChange={(e) => onMarkerWidth(+e.target.value)}
-        />
-      </label>
-      <label className="cal-size">
-        Command marker width: <b>{cmdMarkerWidth}%</b>
-        <input
-          type="range"
-          min={1}
-          max={12}
-          step={0.1}
-          value={cmdMarkerWidth}
-          onChange={(e) => onCmdMarkerWidth(+e.target.value)}
-        />
-      </label>
-      <label className="cal-size">
-        Warp marker width: <b>{warpMarkerWidth}%</b>
-        <input
-          type="range"
-          min={1}
-          max={14}
-          step={0.1}
-          value={warpMarkerWidth}
-          onChange={(e) => onWarpMarkerWidth(+e.target.value)}
-        />
-      </label>
-      <label className="cal-size">
-        Paradox width: <b>{paradoxWidth}%</b>
-        <input
-          type="range"
-          min={1}
-          max={14}
-          step={0.1}
-          value={paradoxWidth}
-          onChange={(e) => onParadoxWidth(+e.target.value)}
-        />
-      </label>
-      <div className="cal-list">
-        {BOARD_COUNTERS.map((c) => (
-          <button
-            key={c.key}
-            className={`cal-item ${selected === c.key ? 'on' : ''}`}
-            onClick={() => onSelect(c.key)}
-          >
-            {c.label}{' '}
-            <span className="cal-xy">
-              {(positions[c.key] ?? c.pos).join(', ')}
-            </span>
-          </button>
-        ))}
-        {TT_KEYS.map((key, i) => (
-          <button
-            key={key}
-            className={`cal-item tt ${selected === key ? 'on' : ''}`}
-            onClick={() => onSelect(key)}
-          >
-            {ttLabel(i)}{' '}
-            <span className="cal-xy">
-              {(positions[key] ?? TIME_TRAVEL_TRACK.spots[i]).join(', ')}
-            </span>
-          </button>
-        ))}
-        {(['short', 'long'] as PathId[]).flatMap((path) =>
-          PATH_SPOTS[path].map((seed, i) => {
-            const key = pathKey(path, i);
-            return (
-              <button
-                key={key}
-                className={`cal-item path ${selected === key ? 'on' : ''}`}
-                onClick={() => onSelect(key)}
-              >
-                {pathLabel(path, i)}{' '}
-                <span className="cal-xy">
-                  {(positions[key] ?? seed).join(', ')}
-                </span>
-              </button>
-            );
-          }),
-        )}
-        <button
-          className={`cal-item warp ${selected === WARP_KEY ? 'on' : ''}`}
-          onClick={() => onSelect(WARP_KEY)}
-        >
-          Warp tile{' '}
-          <span className="cal-xy">{(positions[WARP_KEY] ?? WARP_MARKER.pos).join(', ')}</span>
-        </button>
-        {PARADOX_KEYS.map((key, i) => (
-          <button
-            key={key}
-            className={`cal-item paradox ${selected === key ? 'on' : ''}`}
-            onClick={() => onSelect(key)}
-          >
-            Paradox {i + 1} {i === 1 ? '(◀)' : '(▶)'}{' '}
-            <span className="cal-xy">
-              {(positions[key] ?? PARADOX_SLOTS.slots[i]).join(', ')}
-            </span>
-          </button>
-        ))}
-      </div>
-      <textarea className="cal-out" readOnly value={literal} />
-      <textarea className="cal-out" readOnly value={ttLiteral} />
-      <textarea className="cal-out" readOnly value={pathLiteral} />
-      <textarea className="cal-out" readOnly value={warpLiteral} />
-      <textarea className="cal-out" readOnly value={paradoxLiteral} />
+
+      <details className="cal-group" open>
+        <summary>Action places ({HOTSPOT_KEYS.length})</summary>
+        <p className="cal-note">Anchor point = center of the tile box (same as every other overlay).</p>
+        {sizeSlider('Tile width', hotspotWidth, onHotspotWidth, 20)}
+        {sizeSlider('Tile height', hotspotHeight, onHotspotHeight, 20)}
+        <div className="cal-list">
+          {CHRONOBOT_HOTSPOTS.map((h) =>
+            item(
+              hotspotKey(h.id),
+              CHRONOBOT_ACTIONS[h.action].label,
+              [h.rect[0] + h.rect[2] / 2, h.rect[1] + h.rect[3] / 2],
+              'hotspot-item',
+            ),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={hotspotLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Count badges ({BOARD_COUNTERS.length})</summary>
+        <div className="cal-list">
+          {BOARD_COUNTERS.map((c) => item(c.key, c.label, c.pos))}
+        </div>
+        <textarea className="cal-out" readOnly value={literal} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Time Travel track ({TT_KEYS.length})</summary>
+        {sizeSlider('TT marker width', markerWidth, onMarkerWidth, 12)}
+        <div className="cal-list">
+          {TT_KEYS.map((key, i) =>
+            item(key, ttLabel(i), TIME_TRAVEL_TRACK.spots[i], 'tt'),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={ttLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Command paths ({PATH_KEYS.length})</summary>
+        {sizeSlider('Command marker width', cmdMarkerWidth, onCmdMarkerWidth, 12)}
+        <div className="cal-list">
+          {(['short', 'long'] as PathId[]).flatMap((path) =>
+            PATH_SPOTS[path].map((seed, i) =>
+              item(pathKey(path, i), pathLabel(path, i), seed, 'path'),
+            ),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={pathLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Warp tile</summary>
+        {sizeSlider('Warp marker width', warpMarkerWidth, onWarpMarkerWidth, 14)}
+        <div className="cal-list">
+          {item(WARP_KEY, 'Warp tile', WARP_MARKER.pos, 'warp')}
+        </div>
+        <textarea className="cal-out" readOnly value={warpLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Paradox slots ({PARADOX_KEYS.length})</summary>
+        {sizeSlider('Paradox width', paradoxWidth, onParadoxWidth, 14)}
+        <div className="cal-list">
+          {PARADOX_KEYS.map((key, i) =>
+            item(
+              key,
+              `Paradox ${i + 1} ${i === 1 ? '(◀)' : '(▶)'}`,
+              PARADOX_SLOTS.slots[i],
+              'paradox',
+            ),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={paradoxLiteral} />
+      </details>
     </div>
   );
 }

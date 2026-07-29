@@ -450,24 +450,40 @@
 /* ---- Tappable action-tile hotspots ---- */
 .hotspot {
   position: absolute;
+  /* Center-anchored on its point, matching every other calibratable overlay
+     (badges, TT/warp/paradox markers). left/top % is the box CENTER. */
+  transform: translate(-50%, -50%);
   margin: 0;
   padding: 0;
   background: transparent;
-  border: 2px solid transparent;
+  /* No layout border: it would carve a transparent ring the tile image can't
+     fill (width:100% = content box), letting the dark board show as "black
+     edges". State highlights use an inset box-shadow instead — zero layout. */
+  border: 0;
   border-radius: 8px;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.12s, box-shadow 0.12s;
+  overflow: hidden;
+}
+/* Clean action-tile art overlaid on the board photo, filling the hotspot box. */
+.hotspot-tile {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  pointer-events: none;
 }
 .hotspot.outlined {
-  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: inset 0 0 0 2px rgba(139, 92, 246, 0.5);
   background: rgba(139, 92, 246, 0.08);
 }
 .hotspot:hover {
-  border-color: rgba(167, 139, 250, 0.95);
+  box-shadow: inset 0 0 0 2px rgba(167, 139, 250, 0.95);
   background: rgba(139, 92, 246, 0.25);
 }
 .hotspot.active {
-  border-color: #c4b5fd;
+  box-shadow: inset 0 0 0 2px #c4b5fd;
   background: rgba(139, 92, 246, 0.32);
 }
 
@@ -901,6 +917,10 @@
 .board-wrap.calibrating .hotspot {
   pointer-events: none;
 }
+.hotspot.cal-selected {
+  box-shadow: inset 0 0 0 2px #f59e0b;
+  background: rgba(245, 158, 11, 0.22);
+}
 .count-badge.cal-selected {
   background: #f59e0b;
   border-color: #fff;
@@ -924,6 +944,43 @@
 .cal-hint {
   margin: 0 0 0.5rem;
   line-height: 1.4;
+}
+.cal-group {
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  padding: 0 0.4rem 0.4rem;
+}
+.cal-group > summary {
+  cursor: pointer;
+  padding: 0.4rem 0.2rem;
+  font-weight: 700;
+  list-style: none;
+  user-select: none;
+}
+.cal-group > summary::-webkit-details-marker {
+  display: none;
+}
+.cal-group > summary::before {
+  content: '▸ ';
+  opacity: 0.7;
+}
+.cal-group[open] > summary::before {
+  content: '▾ ';
+}
+.cal-note {
+  margin: 0.1rem 0 0.4rem;
+  opacity: 0.75;
+  font-size: 0.72rem;
+}
+.cal-item.hotspot-item {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+.cal-item.hotspot-item.on {
+  background: #f59e0b;
+  color: #1a1207;
+  border-color: #fff;
 }
 .cal-list {
   display: flex;
@@ -1345,6 +1402,31 @@
   align-items: center;
   gap: 0.6rem;
   flex-wrap: wrap;
+}
+.eoa-difficulty {
+  margin-top: 0.5rem;
+}
+.eoa-diff-title {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.7;
+  margin-bottom: 0.2rem;
+}
+.eoa-diff-none {
+  font-size: 0.85rem;
+  color: #c4b5fd;
+  opacity: 0.85;
+}
+.eoa-diff-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  color: #c4b5fd;
+}
+.eoa-diff-list li {
+  margin: 0.1rem 0;
 }
 .eoa-pass,
 .eoa-resolve {

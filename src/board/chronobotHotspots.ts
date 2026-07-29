@@ -68,34 +68,20 @@ export const BOARD_COUNTERS: BoardCounter[] = [
   { key: 'scientist', pos: [69.1, 47.4], label: 'Scientist' },
 ];
 
-// Uniform tile boxes: columns × rows of the board's action-tile grid.
-// [left, top] top-left %; every tile is TW×TH.
-const COLS = [4.6, 16.0, 26.6, 38.1];
-const ROWS = [15.0, 30.2, 62.6];
-const TW = 9.6;
-const TH = 8.1;
-const box = (c: number, r: number): [number, number, number, number] => [
-  COLS[c],
-  ROWS[r],
-  TW,
-  TH,
-];
-
+// Action-tile hotspots — [left, top, width, height] %, calibrated in-app
+// (top-left anchored; uniform width/height tuned via the calibrate size sliders).
 // Reading order follows the board's three tile rows (top, middle, lower).
 export const CHRONOBOT_HOTSPOTS: Hotspot[] = [
-  // Row 1 (top tiles)
-  { id: 'h1', action: 'construct-support', rect: box(0, 0) },
-  { id: 'h2', action: 'time-travel', rect: box(1, 0) },
-  { id: 'h3', action: 'construct-superproject', rect: box(2, 0) },
-  { id: 'h4', action: 'remove-anomaly', rect: box(3, 0) },
-  // Row 2 (middle tiles)
-  { id: 'h5', action: 'mine-resource', rect: box(0, 1) },
-  { id: 'h6', action: 'construct-powerplant', rect: box(1, 1) },
-  { id: 'h7', action: 'recruit', rect: box(2, 1) },
-  { id: 'h8', action: 'construct-factory', rect: box(3, 1) },
-  // Row 3 (lower tiles)
-  { id: 'h9', action: 'research', rect: box(0, 2) },
-  { id: 'h10', action: 'construct-lab', rect: box(1, 2) },
-  { id: 'h11', action: 'recruit-genius-research', rect: box(2, 2) },
-  { id: 'h12', action: 'reboot', rect: box(3, 2) },
+  { id: 'h1', action: 'construct-support', rect: [4.7, 14.5, 9.6, 8.9] },
+  { id: 'h2', action: 'time-travel', rect: [15.8, 14.5, 9.6, 8.9] },
+  { id: 'h3', action: 'construct-superproject', rect: [26.8, 14.5, 9.6, 8.9] },
+  { id: 'h4', action: 'remove-anomaly', rect: [37.8, 14.5, 9.6, 8.9] },
+  { id: 'h5', action: 'mine-resource', rect: [4.7, 29.4, 9.6, 8.9] },
+  { id: 'h6', action: 'construct-powerplant', rect: [15.8, 29.4, 9.6, 8.9] },
+  { id: 'h7', action: 'recruit', rect: [26.8, 29.4, 9.6, 8.9] },
+  { id: 'h8', action: 'construct-factory', rect: [37.8, 29.4, 9.6, 8.9] },
+  { id: 'h9', action: 'research', rect: [4.7, 62.6, 9.6, 8.9] },
+  { id: 'h10', action: 'construct-lab', rect: [15.8, 62.6, 9.6, 8.9] },
+  { id: 'h11', action: 'recruit-genius-research', rect: [26.8, 62.6, 9.6, 8.9] },
+  { id: 'h12', action: 'reboot', rect: [37.8, 62.6, 9.6, 8.9] },
 ];
