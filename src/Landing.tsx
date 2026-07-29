@@ -73,7 +73,7 @@ function LandingAuth() {
         </>
       ) : (
         <button className="landing-auth-btn primary" onClick={login}>
-          Log in with BoardGameEdge
+          Log in
         </button>
       )}
     </div>

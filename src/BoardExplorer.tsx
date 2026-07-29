@@ -2622,7 +2622,7 @@ function SettingsMenu({
             </button>
           ) : (
             <button className="settings-item" onClick={login} role="menuitem">
-              👤 Log in with BoardGameEdge
+              👤 Log in
             </button>
           )}
         </div>
