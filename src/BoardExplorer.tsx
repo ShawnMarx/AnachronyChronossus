@@ -1,6 +1,9 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
+import { recordGame } from './data/gameData';
+import HistoryScreen from './history/HistoryScreen';
+import AdminStats from './history/AdminStats';
 import {
   AI_DIE_FACES,
   CHRONOBOT_ACTIONS,
@@ -1964,9 +1967,11 @@ function ScoreScreen({
 }) {
   const bot = state.chronobot;
   const s = Chronobot.scoreChronobot(bot);
+  const { user } = useAuth();
   const [mode, setMode] = useState<'number' | 'tally'>('number');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const tallyTotal = TALLY_FIELDS.reduce((sum, f) => {
     const v = (tally[f.key] ?? 0) * f.mult;
@@ -1980,6 +1985,36 @@ function ScoreScreen({
       : playerScore > s.total
         ? 'win'
         : 'lose';
+
+  const difficultyFlags = state.config.difficulty ?? [];
+  // Human-readable adjustments — used as the History difficulty column and as
+  // the BG Stats play notes. "Base" when no modifiers are configured.
+  const difficultyLabel =
+    difficultyFlags.length === 0
+      ? 'Base'
+      : difficultyFlags.map((f) => DIFFICULTY_LABEL[f] ?? f).join('; ');
+
+  const saveGame = async () => {
+    if (result == null || playerScore == null) return;
+    setSaveState('saving');
+    try {
+      await recordGame({
+        won: result === 'win',
+        bot_score: s.total,
+        player_score: playerScore,
+        difficulty: difficultyLabel,
+        era_reached: state.era,
+        payload: {
+          breakdown: s,
+          botTurns: bot.totalActions,
+          difficultyFlags,
+        },
+      });
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  };
 
   return (
     <div className="modal-overlay">
@@ -2065,6 +2100,26 @@ function ScoreScreen({
             {result === 'win'
               ? '🎉 You win! (more points than the Chronobot)'
               : 'You lose — the Chronobot has at least as many points.'}
+          </div>
+        )}
+
+        {user && (
+          <div className="score-save">
+            {saveState === 'saved' ? (
+              <span className="score-save-ok">✓ Saved to your history</span>
+            ) : (
+              <button
+                className="score-save-btn"
+                onClick={saveGame}
+                disabled={result == null || saveState === 'saving'}
+                title={result == null ? 'Enter your score first' : 'Save this game to your history'}
+              >
+                {saveState === 'saving' ? 'Saving…' : '💾 Save to my history'}
+              </button>
+            )}
+            {saveState === 'error' && (
+              <span className="score-save-err">Couldn't save — try again.</span>
+            )}
           </div>
         )}
 
@@ -2537,6 +2592,8 @@ function SettingsMenu({
   onToggleHistory: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [showMyHistory, setShowMyHistory] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   const { user, loading, login, logout } = useAuth();
   useEffect(() => {
     if (!open) return;
@@ -2612,6 +2669,32 @@ function SettingsMenu({
             ⟳ Reset Game
           </button>
           <div className="settings-sep" />
+          {user && (
+            <>
+              <button
+                className="settings-item"
+                onClick={() => {
+                  setShowMyHistory(true);
+                  setOpen(false);
+                }}
+                role="menuitem"
+              >
+                🗄 My history
+              </button>
+              {user.isAdmin && (
+                <button
+                  className="settings-item"
+                  onClick={() => {
+                    setShowAdmin(true);
+                    setOpen(false);
+                  }}
+                  role="menuitem"
+                >
+                  📊 Overall stats
+                </button>
+              )}
+            </>
+          )}
           {loading ? (
             <button className="settings-item disabled" disabled role="menuitem">
               👤 …
@@ -2627,6 +2710,8 @@ function SettingsMenu({
           )}
         </div>
       )}
+      {showMyHistory && <HistoryScreen onClose={() => setShowMyHistory(false)} />}
+      {showAdmin && <AdminStats onClose={() => setShowAdmin(false)} />}
     </div>
   );
 }

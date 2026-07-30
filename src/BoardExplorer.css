@@ -1573,6 +1573,37 @@
   font-size: 0.85rem;
 }
 .modal-actions,
+.score-save {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0.8rem 0 0.2rem;
+}
+.score-save-btn {
+  padding: 0.5rem 0.9rem;
+  font-weight: 700;
+  color: #ece8f5;
+  background: rgba(139, 92, 246, 0.22);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.score-save-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.35);
+}
+.score-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.score-save-ok {
+  color: #7ee0a6;
+  font-weight: 700;
+}
+.score-save-err {
+  color: #ff9b9b;
+  font-size: 0.9rem;
+}
+
 .score-actions {
   display: flex;
   gap: 0.6rem;

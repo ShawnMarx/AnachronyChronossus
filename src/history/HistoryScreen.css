@@ -1,0 +1,132 @@
+/* Personal history + admin stats modals (shared styles). */
+
+.history-screen {
+  background: #14111c;
+  color: #ece8f5;
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  border-radius: 14px;
+  padding: 1.2rem 1.4rem 1.6rem;
+  width: min(820px, 94vw);
+  max-height: 88vh;
+  overflow: auto;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.history-head h2 {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.history-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+.history-btn {
+  cursor: pointer;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: rgba(30, 22, 46, 0.7);
+  color: #ece8f5;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+}
+.history-btn:hover {
+  background: rgba(52, 38, 78, 0.85);
+}
+
+.history-ok {
+  color: #7ee0a6;
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+.history-err {
+  color: #ff9b9b;
+  margin: 0.3rem 0;
+  font-size: 0.9rem;
+}
+.history-empty {
+  color: #b7abd6;
+  padding: 1rem 0;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+.history-table th,
+.history-table td {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.15);
+}
+.history-table th {
+  color: #b7abd6;
+  font-weight: 600;
+}
+.history-table td.win {
+  color: #7ee0a6;
+  font-weight: 700;
+}
+.history-table td.lose {
+  color: #ff9b9b;
+}
+.history-tag {
+  margin-left: 0.4rem;
+  font-size: 0.7rem;
+  color: #9c8fc4;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 5px;
+  padding: 0 0.3rem;
+}
+.history-del {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-size: 1rem;
+  opacity: 0.7;
+}
+.history-del:hover {
+  opacity: 1;
+}
+
+/* Admin stats cards */
+.stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1.1rem;
+}
+.stats-card {
+  background: rgba(30, 22, 46, 0.6);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 10px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.stats-num {
+  font-size: 1.6rem;
+  font-weight: 800;
+}
+.stats-lbl {
+  font-size: 0.78rem;
+  color: #b7abd6;
+}
+.stats-sub {
+  margin: 0.6rem 0 0.4rem;
+  font-size: 1rem;
+}

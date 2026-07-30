@@ -25,23 +25,52 @@ Repos: `AnachronyChronossus` (app), `boardgameedge` (platform), `GameBrain` (rul
        unaffected logged out (login only renders a menu row). **Live `/api/me` 200 +
        CORS check against a real cookie is the user's runtime step** (needs prod/staging).
 
-## Feature B — Shared BGE data service (`services/gamedata`)
+## Feature B — Shared BGE data service (`services/gamedata`)  ✅ code complete 2026-07-29
 
-1. [ ] boardgameedge: add `GameResult` model to `bge_shared/models.py`
-       (app_slug, user_id, played_at, won, bot_score, player_score, difficulty,
-       era_reached, payload JSON, source, created_at).
-2. [ ] Scaffold `services/gamedata` (uv member; `main/config/routes`; `tests/`),
-       mirroring `services/landing`; `Base.metadata.create_all` on startup; CORS block.
-3. [ ] Endpoint `POST /api/anachrony/games` (require_login) — record finished game.
-4. [ ] Endpoints `GET /api/anachrony/me/games` + `DELETE /me/games/{id}` (require_login).
-5. [ ] Endpoint `GET /api/anachrony/admin/stats` (require_admin) — aggregates.
-6. [ ] Endpoint `GET /api/anachrony/me/games/bgstats` — BG Stats export (adapt
-       `build_bgs_json`, bggId 185343).
-7. [ ] Endpoint `POST /api/anachrony/me/import` — BG Stats import + dry-run
-       (mirror Bullet `_run_import`).
-8. [ ] Tests: CRUD, admin gating (403), BG Stats round-trip; `ruff` + `pytest` clean.
-9. [ ] Draft deploy confs (systemd unit + nginx block + workflow) mirroring existing
-       services. **Server-side apply is the user's step** (host/DNS decision pending).
+1. [x] boardgameedge: added `GameResult` to `bge_shared/models.py` (app_slug,
+       user_id, played_at, won, bot_score, player_score, difficulty, era_reached,
+       payload JSON, source, created_at). Generic `JSON` column (SQLite + PG).
+2. [x] Scaffolded `services/gamedata` (uv member; `main/config/routes/bgs`; `tests/`),
+       mirroring `services/landing`; `Base.metadata.create_all` on startup; CORS block
+       from `CORS_ORIGINS`.
+3. [x] `POST /api/anachrony/games` — record finished game.
+4. [x] `GET /api/anachrony/me/games` + `DELETE /me/games/{id}`.
+5. [x] `GET /api/anachrony/admin/stats` — aggregates (games, wins, win_rate,
+       distinct_users, by_difficulty), admin-scoped to `anachrony`.
+6. [x] `GET /api/anachrony/me/games/bgstats` — BG Stats export (bggId 185343,
+       two players: human + "Chronobot" so both scores + winner round-trip).
+7. [x] `POST /api/anachrony/me/import?dry_run=` — BG Stats import (accepts the
+       play JSON as the request body, not multipart).
+8. [x] Tests: 6 (health, anon 401, CRUD, delete-own-only, admin gating 401/403/200,
+       BG Stats round-trip). Full suite **71 passed**; `ruff` clean.
+9. [x] Drafted deploy confs: `deploy/systemd/gamedata{,-staging}.service` (prod 8002 /
+       staging 8012), `deploy/nginx/data{,.staging}.boardgameedge.com.conf`,
+       `.github/workflows/deploy-gamedata.yml`, README section. **Server-side apply
+       (DNS `data.boardgameedge.com`, cert, `.env`, enable unit) is the user's step.**
+
+### Feature B deviations / notes
+- **Auth deps**: JSON endpoints raise plain **401/403** (local `require_user` /
+  `require_admin_user`) instead of the shared `require_login`'s 303 login redirect,
+  which suits a fetch client.
+- **Host decision** (was an open item): drafted as a dedicated **`data.boardgameedge.com`**
+  subdomain (mirrors auth./gamebrain./bullet.), not a path proxy. Prod port **8002**,
+  staging **8012** — confirm free on the shared droplet before enabling.
+- **`uv.lock` NOT updated**: `uv` isn't installed on this dev machine; I editable-installed
+  the new member into `.venv` via pip to run tests. **Run `uv lock` (or `uv sync`) where
+  uv is available** so the lockfile records `bge-gamedata` before CI/deploy uses it.
+- **DB role**: unlike landing (read-only), gamedata **writes** `game_results` — give its
+  DB user write access.
+
+### Feature B — SERVER LIVE (2026-07-30)
+Prod bring-up complete on the shared droplet:
+- `data.boardgameedge.com` DNS + prod cert (certbot) + nginx block → `a loopback port`.
+- systemd `gamedata.service` active; `.env` shares auth's `SECRET_KEY` + `AUTH_DATABASE_URL`
+  (`localhost/bge_auth`), `CORS_ORIGINS=https://anachrony.boardgameedge.com`.
+- **Port 8006** (not 8002 — 8000–8005 were already taken by other prod gunicorns).
+  Repo confs updated to match (commit ed6b942).
+- Verified: healthz ok; GET `/api/anachrony/me/games` → 401; OPTIONS preflight → 200 with
+  allow-origin/credentials/methods; `game_results` table created by `create_all`.
+- Server uses **pip editable install** (no uv on the droplet); `uv.lock` updated on dev.
 
 ## Feature C — Wire Anachrony to the data service
 
