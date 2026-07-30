@@ -4,6 +4,7 @@ import { useAuth } from './auth/useAuth';
 import { recordGame } from './data/gameData';
 import HistoryScreen from './history/HistoryScreen';
 import AdminStats from './history/AdminStats';
+import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import {
   AI_DIE_FACES,
   CHRONOBOT_ACTIONS,
@@ -426,6 +427,9 @@ export default function BoardExplorer({
   // outside a badge (or Escape) via the effect below.
   const [tappedBadge, setTappedBadge] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  // Rules mode: a full-viewport GameBrain rules frame overlays the game view
+  // (which stays mounted underneath, so Back-to-Game restores the exact spot).
+  const [modeRules, setModeRules] = useState(false);
   // True only for a play-mode free-tap (the read-only rule view), never for a
   // die-driven bot turn (which resolves even in play mode).
   const [ruleView, setRuleView] = useState(false);
@@ -1054,6 +1058,7 @@ export default function BoardExplorer({
         onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
         era={state.era}
         onEra={changeEra}
+        onOpenRules={() => setModeRules(true)}
       />
   );
 
@@ -1306,6 +1311,28 @@ export default function BoardExplorer({
 
   const modals = (
     <>
+      <RulesFrame
+        open={modeRules}
+        onBack={() => setModeRules(false)}
+        onHome={onHome}
+        settings={
+          <SettingsMenu
+            debug={debug}
+            onToggleDebug={toggleDebug}
+            outline={outline}
+            onToggleOutline={() => setOutline((o) => !o)}
+            calibrate={calibrate}
+            onToggleCalibrate={() => {
+              setTappedBadge(null);
+              setCalibrate((c) => !c);
+            }}
+            onReset={reset}
+            historyOpen={showHistory}
+            onToggleHistory={() => setShowHistory((v) => !v)}
+          />
+        }
+      />
+
       {!calibrate && showStatus && (
         <EndOfActionsBar
           state={state}
@@ -1375,12 +1402,15 @@ export default function BoardExplorer({
           overview={meta.overview}
           onHome={onHome}
           headerRight={
-            <VpPill
-              botVp={bot.vp}
-              buildingVp={bot.buildingVp}
-              timeTravelVp={Chronobot.timeTravelVp(bot)}
-              breakthroughVp={Chronobot.breakthroughVp(bot)}
-            />
+            <>
+              <VpPill
+                botVp={bot.vp}
+                buildingVp={bot.buildingVp}
+                timeTravelVp={Chronobot.timeTravelVp(bot)}
+                breakthroughVp={Chronobot.breakthroughVp(bot)}
+              />
+              <RulesButton onClick={() => setModeRules(true)} />
+            </>
           }
           statusView={boardStage}
         >
@@ -2420,6 +2450,7 @@ function StatsBar({
   onParadox,
   era,
   onEra,
+  onOpenRules,
 }: {
   onHome?: () => void;
   bot: ChronobotState;
@@ -2447,6 +2478,7 @@ function StatsBar({
   onParadox: (delta: number) => void;
   era: number;
   onEra: (delta: number) => void;
+  onOpenRules: () => void;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -2553,6 +2585,7 @@ function StatsBar({
         </div>
       )}
       <div className="stats-controls">
+        <RulesButton onClick={onOpenRules} />
         <SettingsMenu
           debug={debug}
           onToggleDebug={onToggleDebug}

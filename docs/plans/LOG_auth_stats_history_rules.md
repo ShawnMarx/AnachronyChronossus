@@ -97,23 +97,55 @@ Prod bring-up complete on the shared droplet:
 - Two ⚙ "History" entries now: 🕑 **History** (current game's per-turn log, localStorage) and
   🗄 **My history** (server-backed past games). Kept distinct on purpose.
 
-## Feature D — In-app rules frame (build after A–C)
+## Feature D — In-app rules frame  ✅ code complete 2026-07-30
 
-1. [ ] GameBrain: add `PUBLIC_ACCESS` config field + admin `/access` toggle +
-       `config_writer` preservation.
-2. [ ] GameBrain: `core/game_deps.py` — `require_game_access` anonymous branch for
-       `PUBLIC_ACCESS` games (returns `User | None`, no redirect).
-3. [ ] GameBrain: make `game_page`, `game_info` (`routers/games.py`) + `get_pdf`,
-       `get_resources` (`routers/pdf.py`) tolerate `user=None`; keep chat gated.
-4. [ ] GameBrain: set `PUBLIC_ACCESS=True` (+ `OPEN_ACCESS=True`) for `anachrony`;
-       confirm default resource + source symlink/PDFs on the server.
-5. [ ] Anachrony: add the rules button (rules-notes icon) + `mode-rules` state that
-       collapses the top bar to ◀ Back to Game · ⚙ · 🏠.
-6. [ ] Anachrony: persistent lazy-loaded `<iframe>` →
-       `${GAMEBRAIN_URL}/games/anachrony/?embedded=true&tab=rules&preset=Solo+Chronobot`;
-       game view hidden (not unmounted) so Back to Game restores phase/scroll.
-7. [ ] Verify: logged-out direct `?embedded=true` shows rules with no login prompt;
-       in-app 📖 toggles frame; Back to Game returns to exact spot.
+1. [x] GameBrain: added `PUBLIC_ACCESS` to `config_writer.py` (serialized right after
+       `OPEN_ACCESS`) + `_mod_to_config` (`admin_games.py`) so it round-trips through
+       admin saves; new **POST `/{slug}/access/public`** toggle + a "Public Access"
+       card in `templates/admin/games/access.html` (red-accented; warns it exposes the
+       page to logged-out visitors).
+2. [x] GameBrain: `core/game_deps.py` — `require_game_access` now returns `User | None`;
+       PUBLIC_ACCESS games resolve the user optionally via `get_user_from_cookie`
+       (**no redirect** when logged out). OPEN_ACCESS/normal branches unchanged.
+3. [x] GameBrain: `game_page`/`game_info` (`routers/games.py`) + `get_pdf`/`get_resources`
+       (`routers/pdf.py`) take `user: User | None`; `_can_see_game` guards `None`
+       (admin check only when a user exists; PUBLIC_ACCESS ⇒ visible). `privileged`
+       computed as `user is not None and (admin or creator)`. **Chat stays gated** —
+       `routers/chat.py` uses `require_app_access`, untouched. Full test suite green.
+4. [x] GameBrain: `games/anachrony/config.py` → `OPEN_ACCESS = True` + `PUBLIC_ACCESS = True`.
+       `DEFAULT_RESOURCE='Rulebook'` already set. **Server-side source symlink + synced
+       PDFs is the user's runtime check** (INTEGRATING_RULES_REFERENCE §1.3).
+5. [x] Anachrony: new `src/rules/gamebrain.ts` (host-detected `GAMEBRAIN_URL` +
+       `RULES_FRAME_URL`) and `src/rules/RulesFrame.tsx` (+ `.css`): a `📖 Rules` entry
+       button and a full-viewport overlay whose collapsed bar is **◀ Back to Game ·
+       📖 Rules Reference · ⚙ · 🏠**. Wired into `BoardExplorer.tsx` via a `modeRules`
+       state; the ⚙ menu is the same `SettingsMenu`, passed in as a node.
+6. [x] Anachrony: the `<iframe id="gamebrain-frame">` src is set lazily on first open
+       (`http://localhost:8000` dev / `gamebrain.boardgameedge.com` prod), then kept
+       mounted forever — the overlay only toggles `display`, never unmounts, so the
+       iframe (PDF scroll/session) and the game view (phase/scroll) both survive
+       Back-to-Game. Esc also returns.
+7. [x] Verified locally (Playwright, port 5203, fresh game → Era 1 Phase 1): 📖 button
+       present; open ⇒ overlay `display:flex`, iframe src
+       `…/games/anachrony/?embedded=true&tab=rules&preset=Solo%20Chronobot`, ⚙ + 🏠
+       present; Back ⇒ overlay `display:none`, **iframe still mounted**, game restored.
+       (Iframe body blank only because no local GameBrain was running.) Build/53 tests/
+       lint all green. **Logged-out live `?embedded=true` (no login prompt) is the
+       user's runtime check** once GameBrain redeploys with the public tier.
+
+### Feature D deviations / notes
+- **Rules button placement**: added to *both* the Phase-5 top bar (`StatsBar`) and the
+  non-Action `PhaseScreen` header (via `headerRight`), so rules are reachable from every
+  in-game phase (1–6), not only the play view. Not surfaced on Setup/Score screens.
+- **Iframe persistence scope**: the `RulesFrame` lives in `modals`, which each render
+  branch (`setup`/non-Action/Action) emits at its own position — so a **phase change**
+  (e.g. Action Rounds → Clean Up) remounts it and reloads the iframe. Persistence holds
+  *within* a phase (the Back-to-Game requirement); reopening after a phase transition
+  reloads GameBrain. Acceptable; hoisting the frame above the phase switch would remove
+  even that reload if wanted later.
+- **Server steps remaining (user's)**: redeploy GameBrain so the new `PUBLIC_ACCESS`
+  code + anachrony config land; confirm the anachrony `source/` symlink + PDFs exist on
+  the droplet; then verify logged-out `?embedded=true` shows rules with no login prompt.
 
 ---
 

@@ -1,0 +1,78 @@
+/* The in-app rules reference overlay — a collapsed top bar over a full-bleed
+   GameBrain iframe. Fixed to the viewport so it covers the game view (which
+   stays mounted underneath). Palette mirrors .stats-bar / .home-btn. */
+.rules-frame {
+  position: fixed;
+  inset: 0;
+  z-index: 200; /* above the board (z 30) and its overlays/menus */
+  display: flex;
+  flex-direction: column;
+  background: #0b0910;
+}
+
+.rules-frame-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.35);
+  background: #120e1c;
+}
+
+.rules-back {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  background: #1a1330;
+  color: #ede9fe;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.rules-back:hover {
+  border-color: rgba(167, 139, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
+
+.rules-frame-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #c4b5fd;
+  letter-spacing: 0.02em;
+}
+
+.rules-frame-controls {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.rules-frame-iframe {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  background: #fff;
+}
+
+/* The 📖 button that opens the rules frame, sitting in the game top bar. */
+.rules-open-btn {
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.4rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  background: #1a1330;
+  color: #ede9fe;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.rules-open-btn:hover {
+  border-color: rgba(167, 139, 250, 0.9);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+}
