@@ -1070,28 +1070,48 @@ export function startNextEra(state: GameState): GameState {
 export const ANOMALY_VP = -3;
 
 export interface ChronobotScore {
+  /** During-game VP from tokens/actions, excluding Buildings (Construct tiles). */
+  tokenVP: number;
+  /** During-game VP from Construct actions (Buildings & Superprojects). */
+  buildingVP: number;
+  /** tokenVP + buildingVP = the running `bot.vp`. */
   duringGameVP: number;
+  /** VP from the Time Travel marker's track position (0/2/4/…/12). */
+  timeTravelVP: number;
+  /** 1 VP per Breakthrough. */
   breakthroughVP: number;
+  /** +2 VP per complete shape set (one of each). */
   shapeSetBonus: number;
   /** Negative: −3 per remaining Anomaly. */
   anomalyVP: number;
   total: number;
 }
 
+/**
+ * The Chronobot's full VP breakdown — the single source of truth shared by the
+ * live top-bar pill and the End-Game score screen. Every scoring avenue is a
+ * line item so they visibly sum to `total`.
+ */
 export function scoreChronobot(bot: ChronobotState): ChronobotScore {
-  const breakthroughTotal = BREAKTHROUGH_SHAPES.reduce(
+  const breakthroughVP = BREAKTHROUGH_SHAPES.reduce(
     (n, s) => n + bot.breakthroughs[s],
     0,
   );
   const completeSets = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
   const shapeSetBonus = completeSets * 2;
   const anomalyVP = bot.anomalies * ANOMALY_VP;
+  const timeTravelVP = timeTravelVp(bot);
+  const buildingVP = bot.buildingVp;
+  const tokenVP = bot.vp - buildingVP;
   return {
+    tokenVP,
+    buildingVP,
     duringGameVP: bot.vp,
-    breakthroughVP: breakthroughTotal,
+    timeTravelVP,
+    breakthroughVP,
     shapeSetBonus,
     anomalyVP,
-    total: bot.vp + breakthroughTotal + shapeSetBonus + anomalyVP,
+    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP,
   };
 }
 

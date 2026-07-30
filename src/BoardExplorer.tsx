@@ -1419,12 +1419,7 @@ export default function BoardExplorer({
           onHome={onHome}
           headerRight={
             <>
-              <VpPill
-                botVp={bot.vp}
-                buildingVp={bot.buildingVp}
-                timeTravelVp={Chronobot.timeTravelVp(bot)}
-                breakthroughVp={Chronobot.breakthroughVp(bot)}
-              />
+              <VpPill bot={bot} />
               <RulesButton onClick={() => setModeRules(true)} />
             </>
           }
@@ -2078,16 +2073,7 @@ function ScoreScreen({
             <span className="score-total-num">{s.total}</span>
             <span className="score-total-label">Chronobot VP</span>
           </div>
-          <ul className="score-breakdown">
-            <li><span>During-game VP</span><b>{s.duringGameVP}</b></li>
-            <li><span>Breakthroughs (1 each)</span><b>{s.breakthroughVP}</b></li>
-            <li><span>Breakthrough sets (+2 each)</span><b>{s.shapeSetBonus}</b></li>
-            {bot.anomalies > 0 && (
-              <li><span>Anomalies (−3 each)</span><b>{s.anomalyVP}</b></li>
-            )}
-            <li className="score-sum"><span>Total</span><b>{s.total}</b></li>
-            <li className="score-turns"><span>Bot turns taken</span><b>{bot.totalActions}</b></li>
-          </ul>
+          <ScoreBreakdown score={s} botTurns={bot.totalActions} />
           <div className="score-rules">
             <RulesBox label="End Game scoring — rulebook text">
               <p>{ENDGAME_RULES}</p>
@@ -2389,53 +2375,89 @@ function CalibrationPanel({
 }
 
 /**
- * The Chronobot's VP as an expandable pill. Collapsed shows the total; clicking
- * reveals the breakdown: "token" VP (everything except Buildings & Time Travel),
- * "bldg" VP (Construct tiles), and "time travel" VP (the track position).
+ * The itemized Chronobot VP breakdown — every scoring avenue as a line that sums
+ * to the total. Shared by the live VP popover and the End-Game score screen.
  */
-function VpPill({
-  botVp,
-  buildingVp,
-  timeTravelVp,
-  breakthroughVp,
+function ScoreBreakdown({
+  score,
+  botTurns,
 }: {
-  botVp: number;
-  buildingVp: number;
-  timeTravelVp: number;
-  breakthroughVp: number;
+  score: ReturnType<typeof Chronobot.scoreChronobot>;
+  /** Optional: total Actions the bot has taken (informational; not scored). */
+  botTurns?: number;
 }) {
-  const [open, setOpen] = useState(false);
-  const nonBuilding = botVp - buildingVp;
-  const total = botVp + timeTravelVp + breakthroughVp;
   return (
-    <button
-      type="button"
-      className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
-      onClick={() => setOpen((o) => !o)}
-      title="Click to break VP down: total · token · bldg · time travel · breakthrough"
-      aria-expanded={open}
-    >
-      <span className="vp-caret">{open ? '▾' : '▸'}</span>
-      <span className="vp-seg">
-        <b>{total}</b> VP
-      </span>
-      {open && (
-        <>
-          <span className="vp-seg vp-sub" title="Token VP — everything except Buildings, Time Travel & Breakthroughs">
-            <b>{nonBuilding}</b> token
-          </span>
-          <span className="vp-seg vp-sub" title="Building VP — from Construct actions (Buildings & Superprojects)">
-            <b>{buildingVp}</b> bldg
-          </span>
-          <span className="vp-seg vp-sub" title="Time Travel VP — from the marker's track position">
-            <b>{timeTravelVp}</b> time travel
-          </span>
-          <span className="vp-seg vp-sub" title="Breakthrough VP — 1 each + 2 per complete shape set">
-            <b>{breakthroughVp}</b> breakthrough
-          </span>
-        </>
+    <ul className="score-breakdown">
+      <li title="Everything except Buildings, Time Travel & Breakthroughs">
+        <span>Token VP</span><b>{score.tokenVP}</b>
+      </li>
+      <li title="From Construct actions (Buildings & Superprojects)">
+        <span>Building VP</span><b>{score.buildingVP}</b>
+      </li>
+      <li title="From the Time Travel marker's track position (0/2/4/…/12)">
+        <span>Time Travel</span><b>{score.timeTravelVP}</b>
+      </li>
+      <li title="1 VP per Breakthrough">
+        <span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b>
+      </li>
+      <li title="+2 VP per complete shape set (one of each)">
+        <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
+      </li>
+      <li className={score.anomalyVP < 0 ? 'score-neg' : ''} title="−3 VP per remaining Anomaly">
+        <span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b>
+      </li>
+      <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
+      {botTurns != null && (
+        <li className="score-turns"><span>Bot turns taken</span><b>{botTurns}</b></li>
       )}
-    </button>
+    </ul>
+  );
+}
+
+/**
+ * The Chronobot's VP as a pill; clicking opens a popover score box itemizing
+ * every way the bot is scoring (including the live Anomaly penalty) summing to
+ * the total. The total matches the End-Game score exactly.
+ */
+function VpPill({ bot }: { bot: ChronobotState }) {
+  const [open, setOpen] = useState(false);
+  const score = Chronobot.scoreChronobot(bot);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.vp-pill-wrap')) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="vp-pill-wrap">
+      <button
+        type="button"
+        className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        title="Click for the full VP breakdown"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        <span className="vp-caret">{open ? '▾' : '▸'}</span>
+        <span className="vp-seg">
+          <b>{score.total}</b> VP
+        </span>
+      </button>
+      {open && (
+        <div className="vp-popover" role="dialog" aria-label="Chronobot VP breakdown">
+          <div className="vp-popover-title">Chronobot VP</div>
+          <ScoreBreakdown score={score} botTurns={bot.totalActions} />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -2548,12 +2570,7 @@ function StatsBar({
       </div>
       {!calibrate && (
         <div className="bot-turn">
-          <VpPill
-            botVp={bot.vp}
-            buildingVp={bot.buildingVp}
-            timeTravelVp={Chronobot.timeTravelVp(bot)}
-            breakthroughVp={Chronobot.breakthroughVp(bot)}
-          />
+          <VpPill bot={bot} />
           {/* Primary turn controls — kept together on the top row when wrapping. */}
           <div className="turn-core">
             <button

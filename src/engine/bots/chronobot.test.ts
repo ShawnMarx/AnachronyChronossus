@@ -426,6 +426,42 @@ describe('Scoring', () => {
     expect(score.anomalyVP).toBe(-6);
     expect(score.total).toBe(6);
   });
+
+  it('includes Time Travel track VP in the total', () => {
+    const bot = emptyChronobotState();
+    bot.vp = 5;
+    bot.timeTravelTrack = 2; // TIME_TRAVEL_VP[2] = 4
+    const score = scoreChronobot(bot);
+    expect(score.timeTravelVP).toBe(4);
+    expect(score.total).toBe(9);
+  });
+
+  it('splits during-game VP into token vs building', () => {
+    const bot = emptyChronobotState();
+    bot.vp = 8;
+    bot.buildingVp = 3;
+    const score = scoreChronobot(bot);
+    expect(score.tokenVP).toBe(5);
+    expect(score.buildingVP).toBe(3);
+    expect(score.duringGameVP).toBe(8);
+    expect(score.total).toBe(8); // no breakthroughs/time-travel/anomalies
+  });
+
+  it('sums every avenue into the total', () => {
+    const bot = emptyChronobotState();
+    bot.vp = 10; // token
+    bot.buildingVp = 4; // subset of vp
+    bot.timeTravelTrack = 3; // 6 VP
+    bot.breakthroughs = { circle: 1, triangle: 1, square: 1 }; // 3 + 1 set (+2)
+    bot.anomalies = 1; // -3
+    const s = scoreChronobot(bot);
+    // 10 + 6 + 3 + 2 - 3 = 18
+    expect(s.total).toBe(18);
+    expect(s.tokenVP + s.buildingVP).toBe(s.duringGameVP);
+    expect(
+      s.duringGameVP + s.timeTravelVP + s.breakthroughVP + s.shapeSetBonus + s.anomalyVP,
+    ).toBe(s.total);
+  });
 });
 
 describe('Paradox die', () => {

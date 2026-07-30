@@ -52,7 +52,7 @@
   .stats-left {
     order: 1;
   }
-  .vp-pill {
+  .vp-pill-wrap {
     order: 2;
   }
   .status-chip,
@@ -402,6 +402,49 @@
   border-left: 1px solid rgba(196, 181, 253, 0.4);
   opacity: 0.85;
   font-size: 0.76rem;
+}
+/* VP breakdown popover, anchored under the pill. */
+.vp-pill-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.vp-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0; /* anchor to the pill's right edge so it stays on-screen in the header */
+  z-index: 90;
+  min-width: 232px;
+  padding: 0.6rem 0.75rem 0.7rem;
+  border-radius: 10px;
+  background: #171226;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  cursor: default;
+}
+/* When the top bar wraps on narrow screens, keep the popover on-screen. */
+@media (max-width: 760px) {
+  .vp-popover {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+.vp-popover-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #b6adc9;
+  margin-bottom: 0.35rem;
+}
+.vp-popover .score-breakdown {
+  font-size: 0.84rem;
+}
+.vp-popover .score-breakdown li {
+  cursor: default;
+}
+.score-breakdown .score-neg b {
+  color: #fca5a5;
 }
 .outline-toggle {
   display: flex;
