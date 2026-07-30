@@ -34,39 +34,35 @@
   gap: 0.6rem;
   flex-wrap: nowrap;
 }
-/* When the top bar is cramped, keep the home icon + Take Bot Action + You Pass +
-   the ⚙ menu together on the top row; Undo (and VP + Actions) wrap below. */
+/* When the top bar is cramped, keep the three turn buttons — Take Bot Action,
+   You Pass, Undo — together on the first row; everything else (home, VP, status,
+   Rules + ⚙) wraps onto the row beneath. */
 @media (max-width: 760px) {
-  /* Flatten .bot-turn AND .turn-core so home / the turn buttons / settings all
-     participate directly in the top-bar flex and can be individually ordered. */
-  .bot-turn,
-  .turn-core {
+  /* Flatten only .bot-turn, so VpPill / .turn-core / the status chip become
+     direct top-bar flex items. .turn-core stays a nowrap unit so its three
+     buttons ride the first row together. */
+  .bot-turn {
     display: contents;
+  }
+  .turn-core {
+    order: 0;
+    flex: 1 0 100%; /* own the full first row */
+    justify-content: center;
   }
   .stats-left {
     order: 1;
   }
-  .take-bot-action {
+  .vp-pill {
     order: 2;
   }
-  .bot-die {
-    order: 3;
-  }
-  .you-pass {
-    order: 4;
-  }
-  /* ⚙ hugs the right edge, which forces Undo onto the next row. */
-  .stats-controls {
-    order: 5;
-    margin-left: auto;
-  }
-  .undo-btn {
-    order: 6;
-  }
-  .vp-pill,
   .status-chip,
   .endgame-btn {
-    order: 7;
+    order: 3;
+  }
+  /* Rules + ⚙ hug the right edge of the second row. */
+  .stats-controls {
+    order: 4;
+    margin-left: auto;
   }
 }
 .stats-left {

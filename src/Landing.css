@@ -199,6 +199,14 @@
 }
 
 @media (max-width: 640px) {
+  /* Pull the login control into normal flow so it sits above the title rather
+     than overlapping it (the absolute top-right placement collides with the
+     header text on narrow screens). */
+  .landing-auth {
+    position: static;
+    align-self: flex-end;
+    margin: -0.4rem 0 -0.6rem;
+  }
   .bot-card {
     flex-direction: column;
   }

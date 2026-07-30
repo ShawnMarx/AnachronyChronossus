@@ -268,6 +268,19 @@ function clearPersisted(): void {
   }
 }
 
+// Save keys of the *other* Solo opponents. Only ONE opponent may be cached at a
+// time, so starting a fresh Chronobot game clears any of these. (Chronossus
+// isn't implemented yet; when it is, its new-game path must likewise clear
+// PERSIST_KEY so the invariant holds both ways.)
+const OTHER_OPPONENT_KEYS = ['anachrony:chronossus'];
+function clearOtherOpponentSaves(): void {
+  try {
+    for (const k of OTHER_OPPONENT_KEYS) localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Landing-page helper: the saved Chronobot game's timestamp, or null if none. */
 export function peekSavedChronobot(): { savedAt: number } | null {
   const p = loadPersisted();
@@ -980,8 +993,11 @@ export default function BoardExplorer({
   };
 
   // Seed the chosen difficulty and enter Era 1, Phase 1 (Preparation).
-  const beginWithDifficulty = (difficulty: string[]) =>
+  const beginWithDifficulty = (difficulty: string[]) => {
+    // A brand-new Chronobot game is now the only cached opponent.
+    clearOtherOpponentSaves();
     setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
+  };
 
   // Paradox phase: apply one Paradox-die roll to the tracker and return the
   // outcome (so the body knows whether the bot must keep rolling).
