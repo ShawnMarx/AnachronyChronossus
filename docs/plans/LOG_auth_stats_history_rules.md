@@ -72,17 +72,30 @@ Prod bring-up complete on the shared droplet:
   allow-origin/credentials/methods; `game_results` table created by `create_all`.
 - Server uses **pip editable install** (no uv on the droplet); `uv.lock` updated on dev.
 
-## Feature C — Wire Anachrony to the data service
+## Feature C — Wire Anachrony to the data service  ✅ code complete + deployed 2026-07-30
 
-1. [ ] Anachrony: add `src/data/gameData.ts` client (host-detected `DATA_BASE`,
-       credentialed): record/list/delete/adminStats/exportUrl/import.
-2. [ ] Anachrony: on game end (score screen, ~`BoardExplorer.tsx:1965`) POST a summary
-       when logged in; keep the localStorage in-progress save untouched.
-3. [ ] Anachrony: `src/history/HistoryScreen.tsx` (⚙ menu, logged-in) — list, delete,
-       Export to BG Stats, Import from BG Stats.
-4. [ ] Anachrony: `src/history/AdminStats.tsx` (admin-only) — render aggregates.
-5. [ ] Verify end-to-end: finish game → row appears → delete → export → re-import
-       recreates rows; admin sees stats, non-admin does not.
+1. [x] `src/data/gameData.ts` client (host-detected `DATA_BASE` → data.boardgameedge.com,
+       all credentialed): recordGame/listMyGames/deleteGame/adminStats/exportUrl/importGames.
+2. [x] Score screen: **Save to my history** button (logged-in only), enabled once a player
+       score is entered. POSTs won/bot_score/player_score/difficulty(+labels)/era + a payload
+       (score breakdown, bot turns, difficulty flags). localStorage resume save untouched.
+3. [x] `src/history/HistoryScreen.tsx` (⚙ → My history) — table, delete, Export to BG Stats
+       (credentialed link), Import from BG Stats (dry-run then real). + `HistoryScreen.css`.
+4. [x] `src/history/AdminStats.tsx` (⚙ → Overall stats, `user.isAdmin` only) — cards +
+       by-difficulty table.
+5. [~] Both repos build/test/lint green (Anachrony 53; gamedata 6). Redeployed gamedata
+       (a21b8c0) + pushed app (ead8a60, auto-deploys). **End-to-end click-through in the live
+       app is the user's runtime check.**
+
+### Feature C deviations / notes
+- **BG Stats format** (per user): board = **"Solo - Chronobot"** (the mode); difficulty
+  adjustments go in the play **notes** (empty for Base); the Chronobot is an **anonymous**
+  non-human player (`isAnonymous: true`). Import reads difficulty from notes. Client sends
+  the detailed modifier labels as `difficulty` so notes + History column are meaningful.
+- **Record trigger**: an explicit Save button (not auto-POST) since the player score is
+  entered by hand on the score screen — auto would fire before a score exists.
+- Two ⚙ "History" entries now: 🕑 **History** (current game's per-turn log, localStorage) and
+  🗄 **My history** (server-backed past games). Kept distinct on purpose.
 
 ## Feature D — In-app rules frame (build after A–C)
 
