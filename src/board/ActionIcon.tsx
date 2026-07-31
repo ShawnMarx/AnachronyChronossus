@@ -1,15 +1,12 @@
 import type { ChronobotActionId } from '../engine/rules/chronobotActions';
 
-// Sprite sheet of the 12 Chronobot action-tile icons, cropped from the solo
-// board (public/assets/solo/chronobot-icons.png). 4 columns × 3 rows.
-const SHEET = '/assets/solo/chronobot-icons.png';
-const COLS = 4;
-const ROWS = 3;
-const CELL_W = 144;
-const CELL_H = 90;
+// One cropped action-tile image per Chronobot action, taken from the solo board
+// (public/assets/solo/actions/<action-id>.png). Each source image is 142×96.
+const CELL_W = 142;
+const CELL_H = 96;
 
-// Row-major order the sprite was packed in.
-const ORDER: ChronobotActionId[] = [
+// The actions that have a tile image on disk (file name == action id).
+const HAS_IMAGE: ChronobotActionId[] = [
   'construct-support',
   'time-travel',
   'construct-superproject',
@@ -24,11 +21,14 @@ const ORDER: ChronobotActionId[] = [
   'reboot',
 ];
 
+const srcFor = (action: ChronobotActionId) =>
+  `/assets/solo/actions/${action}.png`;
+
 export function hasIcon(action: ChronobotActionId): boolean {
-  return ORDER.includes(action);
+  return HAS_IMAGE.includes(action);
 }
 
-/** Renders one action-tile icon from the sprite sheet at the given height (px). */
+/** Renders one action-tile icon at the given height (px), preserving aspect. */
 export function ActionIcon({
   action,
   size = 48,
@@ -36,25 +36,17 @@ export function ActionIcon({
   action: ChronobotActionId;
   size?: number;
 }) {
-  const idx = ORDER.indexOf(action);
-  if (idx < 0) return null;
-  const col = idx % COLS;
-  const row = Math.floor(idx / COLS);
-  const scale = size / CELL_H;
-  const dispW = CELL_W * scale;
+  if (!hasIcon(action)) return null;
+  const width = (CELL_W / CELL_H) * size;
   return (
-    <span
+    <img
       className="action-icon"
-      role="img"
+      src={srcFor(action)}
+      alt=""
       aria-hidden="true"
-      style={{
-        width: `${dispW}px`,
-        height: `${size}px`,
-        backgroundImage: `url(${SHEET})`,
-        backgroundSize: `${COLS * dispW}px ${ROWS * size}px`,
-        backgroundPosition: `-${col * dispW}px -${row * size}px`,
-        backgroundRepeat: 'no-repeat',
-      }}
+      width={width}
+      height={size}
+      style={{ width: `${width}px`, height: `${size}px` }}
     />
   );
 }

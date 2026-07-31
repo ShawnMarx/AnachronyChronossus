@@ -261,6 +261,24 @@ function savePersisted(p: Omit<PersistedGame, 'version' | 'savedAt'>): void {
   }
 }
 
+// The Simple Command View is a display preference (a play aid), independent of the
+// game snapshot — persisted under its own key so it survives across games.
+const SIMPLE_VIEW_KEY = 'anachrony:simpleView';
+function loadSimpleView(): boolean {
+  try {
+    return localStorage.getItem(SIMPLE_VIEW_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+function saveSimpleView(on: boolean): void {
+  try {
+    localStorage.setItem(SIMPLE_VIEW_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+}
+
 function clearPersisted(): void {
   try {
     localStorage.removeItem(PERSIST_KEY);
@@ -502,6 +520,11 @@ export default function BoardExplorer({
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
+  // Simple Command View: an at-a-glance overlay of the Command tokens, the Action
+  // space each sits on, and how the AI die moves them. A play aid for all players.
+  const [simpleView, setSimpleView] = useState<boolean>(loadSimpleView);
+  const [simpleViewShown, setSimpleViewShown] = useState(true);
+  useEffect(() => saveSimpleView(simpleView), [simpleView]);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF. Debug is
   // admin-only, so a confirmed non-admin can never have it on.
@@ -913,6 +936,27 @@ export default function BoardExplorer({
     }
   };
 
+  // Simple Command View: tapping a row shows that action's rules only (a
+  // reference), matching a play-mode free-tap on the main board — never an
+  // engine activation, regardless of debug.
+  const showActionRules = (action: ChronobotActionId) => {
+    const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === action);
+    if (!h) return;
+    botDieRef.current = null;
+    activeTokenRef.current = null;
+    setBotDie(null);
+    setActiveToken(null);
+    setShowStatus(false);
+    setActive(h);
+    setResult([]);
+    setSelectedVP(null);
+    setSelectedResources([]);
+    setSelectedWorker(null);
+    setRolledShape(null);
+    setRuleView(true);
+    setPending(null);
+  };
+
   const onConfirmPlace = () => {
     if (!active) return;
     const a = active.action;
@@ -1130,6 +1174,8 @@ export default function BoardExplorer({
         era={state.era}
         onEra={changeEra}
         onOpenRules={() => setModeRules(true)}
+        simpleView={simpleView}
+        onToggleSimpleView={() => setSimpleView((v) => !v)}
       />
   );
 
@@ -1342,6 +1388,15 @@ export default function BoardExplorer({
             );
           })}
 
+          {simpleView && !calibrate && (
+            <SimpleCommandView
+              tokens={tokens}
+              shown={simpleViewShown}
+              onToggleShown={() => setSimpleViewShown((v) => !v)}
+              onShowRules={showActionRules}
+            />
+          )}
+
           {!calibrate && active && (
             <DetailPanel
               hotspot={active}
@@ -1403,6 +1458,8 @@ export default function BoardExplorer({
             onReset={reset}
             historyOpen={showHistory}
             onToggleHistory={() => setShowHistory((v) => !v)}
+            simpleView={simpleView}
+            onToggleSimpleView={() => setSimpleView((v) => !v)}
           />
         }
       />
@@ -2553,6 +2610,8 @@ function StatsBar({
   era,
   onEra,
   onOpenRules,
+  simpleView,
+  onToggleSimpleView,
 }: {
   onHome?: () => void;
   bot: ChronobotState;
@@ -2581,6 +2640,8 @@ function StatsBar({
   era: number;
   onEra: (delta: number) => void;
   onOpenRules: () => void;
+  simpleView: boolean;
+  onToggleSimpleView: () => void;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -2693,9 +2754,120 @@ function StatsBar({
           onReset={onReset}
           historyOpen={historyOpen}
           onToggleHistory={onToggleHistory}
+          simpleView={simpleView}
+          onToggleSimpleView={onToggleSimpleView}
         />
       </div>
     </div>
+  );
+}
+
+// Simple Command View layout, as % of the board image (calibrated by hand).
+// Box: [left, top, right, bottom]; the show/hide toggle is a single [x, y] point.
+const SCV_BOX: [number, number, number, number] = [1.4, 0.9, 48.8, 72.1];
+const SCV_TOGGLE: [number, number] = [4.8, 3.0];
+
+/**
+ * Simple Command View — an at-a-glance overlay over the left half of the board.
+ * Shows one row per occupied Action space (in board-reading order): the Command
+ * token marker(s) sitting there (up to two), the space's tile image, and its
+ * name. Below the grid is the verbatim rule for how the AI die moves the tokens,
+ * plus the die's six faces. A show/hide toggle collapses the whole overlay.
+ */
+function SimpleCommandView({
+  tokens,
+  shown,
+  onToggleShown,
+  onShowRules,
+}: {
+  tokens: CommandTokensState;
+  shown: boolean;
+  onToggleShown: () => void;
+  onShowRules: (action: ChronobotActionId) => void;
+}) {
+  const rows: {
+    path: PathId;
+    index: number;
+    stack: CommandToken[];
+    action: ChronobotActionId;
+  }[] = [];
+  (['short', 'long'] as const).forEach((path) => {
+    Chronobot.CHRONOBOT_PATHS[path].forEach((_, index) => {
+      const stack = Chronobot.tokensAtPosition(tokens, path, index);
+      if (stack.length === 0) return;
+      rows.push({ path, index, stack, action: Chronobot.tokenAction({ path, index }) });
+    });
+  });
+
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  return (
+    <>
+      <button
+        className={`scv-toggle ${shown ? 'shown' : ''}`}
+        style={{ left: `${SCV_TOGGLE[0]}%`, top: `${SCV_TOGGLE[1]}%` }}
+        onClick={(e) => {
+          stop(e);
+          onToggleShown();
+        }}
+        title={shown ? 'Hide the Simple Command View' : 'Show the Simple Command View'}
+      >
+        {shown ? '◂ Hide' : '▸ Show'}
+      </button>
+      {shown && (
+        <div
+          className="scv-overlay"
+          style={{
+            left: `${SCV_BOX[0]}%`,
+            top: `${SCV_BOX[1]}%`,
+            width: `${SCV_BOX[2] - SCV_BOX[0]}%`,
+            height: `${SCV_BOX[3] - SCV_BOX[1]}%`,
+          }}
+          onClick={stop}
+        >
+          <div className="scv-title">What the Chronobot might do next</div>
+          <div className="scv-grid">
+            {rows.map((r) => (
+              <button
+                type="button"
+                className="scv-row"
+                key={`${r.path}-${r.index}`}
+                onClick={() => onShowRules(r.action)}
+                title={`Show the ${CHRONOBOT_ACTIONS[r.action].label} rules`}
+              >
+                <div className="scv-markers">
+                  {r.stack.map((tk) => (
+                    <img
+                      key={tk}
+                      src={COMMAND_MARKER_IMG[tk]}
+                      alt={`Command token ${tk}`}
+                      className="scv-marker"
+                    />
+                  ))}
+                </div>
+                <div className="scv-icon">
+                  <ActionIcon action={r.action} size={58} />
+                </div>
+                <div className="scv-name">{CHRONOBOT_ACTIONS[r.action].label}</div>
+              </button>
+            ))}
+          </div>
+          <div className="scv-die">
+            <span className="scv-die-label">AI die faces</span>
+            <div className="scv-die-faces">
+              {AI_DIE_FACES.map((f, i) => (
+                <span key={i} className="scv-die-face">
+                  {f}
+                </span>
+              ))}
+            </div>
+          </div>
+          <RulesBox label="How the AI die moves the tokens">
+            <p>{PHASE_META.actions?.rules}</p>
+          </RulesBox>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -2710,6 +2882,8 @@ function SettingsMenu({
   onReset,
   historyOpen,
   onToggleHistory,
+  simpleView,
+  onToggleSimpleView,
 }: {
   debug: boolean;
   onToggleDebug: () => void;
@@ -2720,6 +2894,8 @@ function SettingsMenu({
   onReset: () => void;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  simpleView: boolean;
+  onToggleSimpleView: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [showMyHistory, setShowMyHistory] = useState(false);
@@ -2761,6 +2937,17 @@ function SettingsMenu({
             role="menuitem"
           >
             🕑 History
+          </button>
+          <button
+            className="settings-item toggle"
+            onClick={onToggleSimpleView}
+            role="menuitemcheckbox"
+            aria-checked={simpleView}
+          >
+            <span>Simple Command View</span>
+            <span className={`sw ${simpleView ? 'on' : ''}`}>
+              {simpleView ? 'ON' : 'OFF'}
+            </span>
           </button>
           {/* Debug mode + its dev sub-toggles are admin-only. */}
           {user?.isAdmin && (

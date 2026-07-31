@@ -851,6 +851,135 @@
     drop-shadow(0 1.4px 0 #f0abfc) drop-shadow(0 -1.4px 0 #f0abfc)
     drop-shadow(0 0 6px #fde047) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
 }
+/* ---- Simple Command View overlay ---- */
+.scv-toggle {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 12;
+  padding: 4px 11px;
+  border: 1px solid #a855f7;
+  border-radius: 999px;
+  background: rgba(24, 16, 40, 0.92);
+  color: #f0abfc;
+  font-weight: 700;
+  font-size: clamp(10px, 1.1vw, 15px);
+  line-height: 1.2;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+.scv-toggle:hover {
+  background: rgba(48, 30, 78, 0.96);
+}
+.scv-toggle.shown {
+  color: #fff;
+}
+.scv-overlay {
+  position: absolute;
+  z-index: 11;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  overflow-y: auto;
+  line-height: 1.3;
+  color: #ece7f5;
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  border-radius: 12px;
+  background: rgba(16, 10, 28, 0.94);
+  backdrop-filter: blur(3px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  font-size: clamp(11px, 1.15vw, 16px);
+}
+.scv-title {
+  /* Cleared to the right of the top-left show/hide toggle. */
+  padding-left: 92px;
+  font-weight: 800;
+  font-size: clamp(12px, 1.3vw, 18px);
+  color: #f0abfc;
+  letter-spacing: 0.02em;
+}
+.scv-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.scv-row {
+  display: grid;
+  grid-template-columns: 5em auto 1fr;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.045);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.scv-row:hover {
+  background: rgba(168, 85, 247, 0.18);
+  border-color: rgba(168, 85, 247, 0.6);
+}
+.scv-markers {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.scv-markers .scv-marker + .scv-marker {
+  margin-left: -0.9em;
+}
+.scv-marker {
+  width: 2.7em;
+  height: auto;
+  filter:
+    drop-shadow(1px 0 0 #a855f7) drop-shadow(-1px 0 0 #a855f7)
+    drop-shadow(0 1px 0 #a855f7) drop-shadow(0 -1px 0 #a855f7)
+    drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+.scv-icon {
+  display: flex;
+  line-height: 0;
+}
+.scv-icon .action-icon {
+  border-radius: 5px;
+}
+.scv-name {
+  font-weight: 600;
+}
+.scv-die {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.scv-die-label {
+  color: #c4b5e0;
+  font-size: 0.85em;
+}
+.scv-die-faces {
+  display: flex;
+  gap: 4px;
+}
+.scv-die-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7em;
+  height: 1.7em;
+  font-weight: 800;
+  color: #ef4444;
+  background: #0f0f0f;
+  border-radius: 5px;
+  box-shadow: inset 0 0 0 1px #333;
+}
+
 /* Calibration ghost dot for a path step */
 .cmd-spot {
   position: absolute;

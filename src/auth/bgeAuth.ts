@@ -19,12 +19,24 @@ export interface BgeUser {
   isAdmin: boolean;
 }
 
+/** True when the app is running locally (Vite dev build, or a localhost host). */
+export function isLocalRun(): boolean {
+  if (import.meta.env.DEV) return true;
+  const h = window.location.hostname;
+  return h === 'localhost' || h.startsWith('127.') || h === '[::1]';
+}
+
 /**
  * Ask the auth service who the current user is. Returns null when logged out
  * (401), when CORS/network fails, or on any non-OK response — never throws, so
  * callers can treat "not logged in" and "auth unavailable" the same way.
  */
 export async function fetchMe(): Promise<BgeUser | null> {
+  // Local run (dev server or a localhost host): treat everyone as an admin so all
+  // features are testable without the shared auth service. Never fires in prod.
+  if (isLocalRun()) {
+    return { id: 0, username: 'local-admin', isAdmin: true };
+  }
   try {
     const res = await fetch(`${AUTH_BASE}/api/me`, { credentials: 'include' });
     if (!res.ok) return null;
