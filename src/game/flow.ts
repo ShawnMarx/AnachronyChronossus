@@ -13,7 +13,7 @@
 //   setup → preparation, preparation → paradox/powerup (Era-1 Paradox skip),
 //   and cleanup → next Era / End Game.
 
-import { Chronobot } from '../engine';
+import { engineFor } from '../engine';
 import type { GameState, Phase } from '../engine';
 
 /** The ordered phases of a normal Era (rulebook Phase numbers 1–6). */
@@ -61,7 +61,7 @@ export function advanceFromPreparation(state: GameState): GameState {
  * Game (Era 5–6) or we have finished the final Era.
  */
 export function isFinalEra(state: GameState): boolean {
-  return state.endgameTriggered || state.era >= Chronobot.MAX_ERA;
+  return state.endgameTriggered || state.era >= engineFor(state.config.bot).MAX_ERA;
 }
 
 /**
@@ -77,5 +77,5 @@ export function finishEra(state: GameState): GameState {
       log: [...state.log, `— End Game (after Era ${state.era}) —`],
     };
   }
-  return Chronobot.startNextEra(state);
+  return engineFor(state.config.bot).startNextEra(state);
 }

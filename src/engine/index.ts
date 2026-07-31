@@ -1,15 +1,27 @@
 import { chronobot as chronobotMeta } from './bots/chronobotMeta';
 import { registerBot } from './bots/BotModule';
 import { chronossus } from './bots/chronossus';
+import { registerEngine } from './bots/soloEngine';
+import * as ChronobotEngine from './bots/chronobot';
 
 // Register the built-in bots. Additional modules can call registerBot().
 registerBot(chronobotMeta);
 registerBot(chronossus);
 
+// Register each bot's flow-level engine (the shared Era-loop seam). Chronossus
+// registers its own once its guided engine lands.
+registerEngine({
+  id: 'chronobot',
+  MAX_ERA: ChronobotEngine.MAX_ERA,
+  startNextEra: ChronobotEngine.startNextEra,
+});
+
 export * from './types';
 export * from './state';
 export { getBot, listBots, registerBot } from './bots/BotModule';
 export type { BotModule } from './bots/BotModule';
+export { engineFor, registerEngine, hasEngine } from './bots/soloEngine';
+export type { SoloEngine } from './bots/soloEngine';
 
 export * from './rules/chronobotActions';
 
