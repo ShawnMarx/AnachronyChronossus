@@ -1,19 +1,26 @@
 import { chronobot as chronobotMeta } from './bots/chronobotMeta';
+import { chronossus as chronossusMeta } from './bots/chronossusMeta';
 import { registerBot } from './bots/BotModule';
-import { chronossus } from './bots/chronossus';
 import { registerEngine } from './bots/soloEngine';
 import * as ChronobotEngine from './bots/chronobot';
+import * as ChronossusEngine from './bots/chronossus';
+import type { EnergyPool } from './state';
+import type { EnergyDraw } from './bots/chronossus';
 
 // Register the built-in bots. Additional modules can call registerBot().
 registerBot(chronobotMeta);
-registerBot(chronossus);
+registerBot(chronossusMeta);
 
-// Register each bot's flow-level engine (the shared Era-loop seam). Chronossus
-// registers its own once its guided engine lands.
+// Register each bot's flow-level engine (the shared Era-loop seam).
 registerEngine({
   id: 'chronobot',
   MAX_ERA: ChronobotEngine.MAX_ERA,
   startNextEra: ChronobotEngine.startNextEra,
+});
+registerEngine({
+  id: 'chronossus',
+  MAX_ERA: ChronossusEngine.MAX_ERA,
+  startNextEra: ChronossusEngine.startNextEra,
 });
 
 export * from './types';
@@ -27,6 +34,10 @@ export * from './rules/chronobotActions';
 
 // Chronobot guided engine (pure phase functions).
 export * as Chronobot from './bots/chronobot';
+
+// Chronossus guided engine (pure phase functions).
+export * as Chronossus from './bots/chronossus';
+export type { EnergyDraw } from './bots/chronossus';
 export type {
   CommandToken,
   CommandTokenPos,
@@ -59,6 +70,28 @@ export const AI_DIE_FACES: number[] = [2, 3, 3, 4, 4, 5];
 export function rollParadoxDie(): number {
   const faces = [0, 1, 1, 1, 1, 2];
   return faces[Math.floor(Math.random() * faces.length)];
+}
+
+/**
+ * Draw from the Chronossus's Energy Pool for the Power Up phase: draw 3 tokens
+ * (or all remaining, if fewer) *without replacement* and report how many were
+ * energized vs. exhausted. The pool is unchanged here — `Chronossus.resolvePowerUp`
+ * applies the removal/return bookkeeping given this draw.
+ */
+export function drawEnergyPool(pool: EnergyPool): EnergyDraw {
+  const bag: boolean[] = [
+    ...Array<boolean>(pool.energized).fill(true),
+    ...Array<boolean>(pool.exhausted).fill(false),
+  ];
+  const n = Math.min(3, bag.length);
+  let energized = 0;
+  let exhausted = 0;
+  for (let i = 0; i < n; i++) {
+    const j = Math.floor(Math.random() * bag.length);
+    if (bag.splice(j, 1)[0]) energized++;
+    else exhausted++;
+  }
+  return { energized, exhausted };
 }
 
 /** Roll the Breakthrough shape die. */

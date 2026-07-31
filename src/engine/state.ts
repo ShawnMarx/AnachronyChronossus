@@ -89,6 +89,53 @@ export interface ChronobotState {
   passed: boolean;
 }
 
+/**
+ * The Chronossus's Energy Pool: a bag of Energy Core tokens drawn (without
+ * looking) during the Power Up phase. "Energized" = non-exhausted cores (each
+ * powers up an extra Exosuit); "exhausted" cores contribute nothing. Starts at
+ * 5 / 5; the pool only shrinks over the game (drawn tokens are removed, except
+ * one exhausted core returned each Power Up).
+ */
+export interface EnergyPool {
+  energized: number;
+  exhausted: number;
+}
+
+/** Starting Energy Pool composition (base game): 5 Energy + 5 Exhausted cores. */
+export const ENERGY_POOL_START: EnergyPool = { energized: 5, exhausted: 5 };
+
+/**
+ * Everything the app tracks about the Chronossus itself. Mirrors the shared
+ * trackers of `ChronobotState` (so scoring/board overlays can be shared) and
+ * adds the Chronossus-only `energyPool`. Unlike the Chronobot it has no
+ * `actionsThisEra` (no min-3 rule) and receives no starting assets/workers.
+ */
+export interface ChronossusState {
+  exosuitsTotal: number;
+  /** Powered-up Exosuits available to place this Era (set in Power Up). */
+  exosuitsAvailable: number;
+  vp: number;
+  /** Portion of `vp` from Building + Superproject tiles (rest is "token" VP). */
+  buildingVp: number;
+  resources: Record<Resource, number>;
+  workers: Record<Worker, number>;
+  breakthroughs: Record<BreakthroughShape, number>;
+  buildings: Record<BuildingType, number>;
+  buildingVps: Record<BuildingType, number[]>;
+  superprojects: number;
+  superprojectVps: number[];
+  /** Paradoxes on the tracker (0–2); 3 resets to 0 and gains an Anomaly. */
+  paradoxes: number;
+  anomalies: number;
+  warpTilesOnTimeline: number;
+  warpTilesTotal: number;
+  timeTravelTrack: number;
+  totalActions: number;
+  passed: boolean;
+  /** The Energy Pool bag (drives Power Up). Starts `ENERGY_POOL_START`. */
+  energyPool: EnergyPool;
+}
+
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */
 export interface GameState {
   config: GameConfig;
@@ -109,6 +156,8 @@ export interface GameState {
   /** Set when the player triggers the End Game (Era 5–6); game ends after the Era. */
   endgameTriggered: boolean;
   chronobot: ChronobotState;
+  /** The Chronossus slice — present only in a Chronossus game (attached at setup). */
+  chronossus?: ChronossusState;
   /** Instructions produced for the step currently being resolved. */
   currentInstructions: Instruction[];
   finished: boolean;
@@ -136,6 +185,30 @@ export function emptyChronobotState(): ChronobotState {
     actionsThisEra: 0,
     totalActions: 0,
     passed: false,
+  };
+}
+
+export function emptyChronossusState(): ChronossusState {
+  return {
+    exosuitsTotal: 6,
+    exosuitsAvailable: 0,
+    vp: 0,
+    buildingVp: 0,
+    resources: { water: 0, gold: 0, titanium: 0, uranium: 0, neutronium: 0 },
+    workers: { genius: 0, administrator: 0, engineer: 0, scientist: 0 },
+    breakthroughs: { circle: 0, triangle: 0, square: 0 },
+    buildings: { factory: 0, lab: 0, powerplant: 0, support: 0 },
+    buildingVps: { factory: [], lab: [], powerplant: [], support: [] },
+    superprojects: 0,
+    superprojectVps: [],
+    paradoxes: 0,
+    anomalies: 0,
+    warpTilesOnTimeline: 0,
+    warpTilesTotal: 8,
+    timeTravelTrack: 0,
+    totalActions: 0,
+    passed: false,
+    energyPool: { ...ENERGY_POOL_START },
   };
 }
 

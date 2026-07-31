@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { engineFor, hasEngine } from '../index';
+import type { BotModeId } from '../types';
 import { MAX_ERA, startNextEra } from './chronobot';
 import { createInitialState, DEFAULT_CONFIG } from '../state';
 
@@ -10,13 +11,13 @@ describe('soloEngine registry', () => {
     expect(engine.MAX_ERA).toBe(MAX_ERA);
   });
 
-  it('reports whether an engine is registered (chronossus not yet)', () => {
+  it('reports registered engines for both bots', () => {
     expect(hasEngine('chronobot')).toBe(true);
-    expect(hasEngine('chronossus')).toBe(false);
+    expect(hasEngine('chronossus')).toBe(true);
   });
 
   it('throws for an unregistered engine', () => {
-    expect(() => engineFor('chronossus')).toThrow(/No solo engine/);
+    expect(() => engineFor('nope' as BotModeId)).toThrow(/No solo engine/);
   });
 
   it('startNextEra dispatches to the same result as the Chronobot function', () => {

@@ -6,7 +6,7 @@ parallel session — plan content intact.)
 
 ## Feature 1 — Shared solo-bot framework (no behavior change) ✅ COMPLETE
 - [x] 1. Define `SoloEngine` interface + registry (`engine/bots/soloEngine.ts`). **Deviation:** kept it thin/flow-level (`MAX_ERA`, `startNextEra`) instead of a full phase/decision interface — matches the existing "no single planTurn interface" design note in `BotModule.ts`. Per-phase/per-action logic stays in each bot module and is dispatched by the view that owns it (wired in Feature 6). Grows as bots need more shared seams.
-- [~] 2. Generalize `GameState` bot slice — **deferred into Feature 3**, where `ChronossusState` is designed, to avoid a throwaway stub type. `state.chronobot` untouched (Chronobot ships unchanged); `chronossus?` slice added alongside in F3.
+- [x] 2. Generalize `GameState` bot slice — done in F3: added optional `chronossus?: ChronossusState` alongside the untouched `chronobot` slice (Chronobot ships unchanged).
 - [x] 3. Re-express Chronobot as an implementation — registered its flow-level engine in `engine/index.ts` (`registerEngine`).
 - [x] 4. Route `src/game/flow.ts` through `engineFor(state.config.bot)` — no longer imports `Chronobot` directly (`isFinalEra`, `finishEra`).
 - [x] 5. Regression gate: **60 tests green** (suite grew past the plan's "39"; +4 new `soloEngine.test.ts`), `npm run build` clean.
@@ -17,10 +17,10 @@ parallel session — plan content intact.)
 - [ ] 3. Sample board palette; add scoped `--chrono-*` Chronossus CSS theme.
 - [ ] 4. Reuse warp-tile / time-travel-marker; confirm command-token art (Chronossus-tinted).
 
-## Feature 3 — Engine: state + Power Up (Energy Pool)
-- [ ] 1. `ChronossusState` + `emptyChronossusState` (energy pool, 6 Exosuits, tiles, objectives).
-- [ ] 2. Energy Pool draw (3), power-up math (3+X/2+X, caps 6/4), return-1-exhausted, remove others, refill-if-<3.
-- [ ] 3. Unit tests for Power Up edge cases (empty pool, all-exhausted draw, post-Impact caps).
+## Feature 3 — Engine: state + Power Up (Energy Pool) ✅ COMPLETE
+- [x] 1. `ChronossusState` + `emptyChronossusState` + `EnergyPool`/`ENERGY_POOL_START` (5/5) in `state.ts`; `chronossus?` slice on `GameState`. Split descriptor into `chronossusMeta.ts`; `chronossus.ts` is now the engine (mirrors Chronobot). Registered Chronossus's flow engine. **Note:** Action tiles / Solo Objectives / command-token state deferred to their own features (F4/F5) to avoid churn; slice grows there.
+- [x] 2. Energy Pool math: `drawEnergyPool` roller (draw min(3,pool) without replacement, at the engine boundary), `poweredExosuits` (3+X/2+X, caps 6/4), `poolAfterDraw` (remove drawn, return exactly 1 exhausted), `resolvePowerUp` → advances to Warp. "Refill-if-<3" is naturally handled by `energyDrawCount` next draw.
+- [x] 3. Unit tests (`chronossus.test.ts`, 16): power-up math, caps pre/post-Impact, all-exhausted draw, pool bookkeeping, draw-invariants over 500 samples, startNextEra. **76 tests green, build clean, lint clean (only pre-existing warnings).**
 
 ## Feature 4 — Engine: Action Rounds / tiles / Autoleap / passing
 - [ ] 0. Generalize token model: **N independent per-token routes**; rework `advanceActiveToken` + stacking/bump + paired-split to key off board-spot occupancy (any token), not one shared path. Tests for overlapping-occupancy + bump.
