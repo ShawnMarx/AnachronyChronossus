@@ -846,10 +846,26 @@
     top 0.35s ease;
 }
 .cmd-marker.active {
-  filter:
-    drop-shadow(1.4px 0 0 #f0abfc) drop-shadow(-1.4px 0 0 #f0abfc)
-    drop-shadow(0 1.4px 0 #f0abfc) drop-shadow(0 -1.4px 0 #f0abfc)
-    drop-shadow(0 0 6px #fde047) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  z-index: 7;
+  animation: cmdActivePulse 1s ease-in-out infinite;
+}
+@keyframes cmdActivePulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.12);
+    filter:
+      drop-shadow(1.4px 0 0 #fde047) drop-shadow(-1.4px 0 0 #fde047)
+      drop-shadow(0 1.4px 0 #fde047) drop-shadow(0 -1.4px 0 #fde047)
+      drop-shadow(0 0 5px #fde047) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.24);
+    filter:
+      drop-shadow(1.6px 0 0 #fff6b0) drop-shadow(-1.6px 0 0 #fff6b0)
+      drop-shadow(0 1.6px 0 #fff6b0) drop-shadow(0 -1.6px 0 #fff6b0)
+      drop-shadow(0 0 12px #fde047) drop-shadow(0 0 20px #fbbf24)
+      drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  }
 }
 /* ---- Simple Command View overlay ---- */
 .scv-toggle {
@@ -942,6 +958,57 @@
     drop-shadow(1px 0 0 #a855f7) drop-shadow(-1px 0 0 #a855f7)
     drop-shadow(0 1px 0 #a855f7) drop-shadow(0 -1px 0 #a855f7)
     drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+  transition: filter 0.15s ease;
+}
+/* The AI die's rolled token, highlighted like the active marker on the board. */
+.scv-marker.active {
+  animation: scvMarkerPulse 1s ease-in-out infinite;
+}
+@keyframes scvMarkerPulse {
+  0%,
+  100% {
+    transform: scale(1.08);
+    filter:
+      drop-shadow(1.2px 0 0 #fde047) drop-shadow(-1.2px 0 0 #fde047)
+      drop-shadow(0 1.2px 0 #fde047) drop-shadow(0 -1.2px 0 #fde047)
+      drop-shadow(0 0 4px #fde047);
+  }
+  50% {
+    transform: scale(1.2);
+    filter:
+      drop-shadow(1.4px 0 0 #fff6b0) drop-shadow(-1.4px 0 0 #fff6b0)
+      drop-shadow(0 1.4px 0 #fff6b0) drop-shadow(0 -1.4px 0 #fff6b0)
+      drop-shadow(0 0 10px #fde047) drop-shadow(0 0 16px #fbbf24);
+  }
+}
+.scv-row.active-row {
+  background: rgba(253, 224, 71, 0.2);
+  border-color: #fde047;
+  box-shadow:
+    inset 3px 0 0 #fde047,
+    0 0 10px rgba(253, 224, 71, 0.35);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmd-marker.active,
+  .scv-marker.active {
+    animation: none;
+  }
+  .cmd-marker.active {
+    transform: translate(-50%, -50%) scale(1.15);
+    filter:
+      drop-shadow(0 0 8px #fde047) drop-shadow(1.5px 0 0 #fde047)
+      drop-shadow(-1.5px 0 0 #fde047) drop-shadow(0 1.5px 0 #fde047)
+      drop-shadow(0 -1.5px 0 #fde047);
+  }
+}
+/* Command View settings item: icon + label left-aligned like the other rows. */
+.settings-item.cmd-view {
+  justify-content: flex-start;
+}
+.settings-cmd-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 .scv-icon {
   display: flex;
@@ -1001,11 +1068,39 @@
 .scv-below .scv-title {
   padding-left: 0;
 }
-/* On phones, stack the below-board block under the board. */
+/* Docked left of the board when there's horizontal room (desktop, wide). */
+.scv-side {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: 320px;
+  max-height: 100%;
+  margin-right: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  line-height: 1.3;
+  color: #ece7f5;
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  border-radius: 12px;
+  background: rgba(16, 10, 28, 0.94);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  font-size: 15px;
+}
+.scv-side .scv-title {
+  padding-left: 0;
+}
+/* On phones, stack the below-board block under the board. Pin to the top and
+   scroll — otherwise the inherited `justify-content: center` centres vertically
+   in column mode and overflows the board up behind the top bar. */
 @media (max-width: 760px) {
   .board-stage {
     flex-direction: column;
     align-items: center;
+    justify-content: flex-start;
+    overflow-y: auto;
   }
 }
 

@@ -542,6 +542,35 @@ export default function BoardExplorer({
   useEffect(() => saveSimpleView(simpleView), [simpleView]);
   // On phones the on-board overlay doesn't fit; render it below the board instead.
   const scvBelow = useMediaQuery('(max-width: 760px)');
+  // Measure the board-stage content box (excludes the History dock's reserved
+  // padding) so we can dock the Simple Command View to the left of the board
+  // whenever there's horizontal room to spare beside it.
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!stageEl) return;
+    const px = (v: string) => parseFloat(v) || 0;
+    const measure = () => {
+      const cs = getComputedStyle(stageEl);
+      setStageSize({
+        w: stageEl.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight),
+        h: stageEl.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom),
+      });
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(stageEl);
+    measure();
+    return () => ro.disconnect();
+  }, [stageEl]);
+  // Board renders height-constrained (aspect-locked), so its width is derived
+  // from the stage height; dock left only when the leftover width fits the panel.
+  const SCV_SIDE_W = 320;
+  const boardFitW = Math.min(stageSize.w, stageSize.h * (1500 / 1110));
+  const scvMode: 'below' | 'side' | 'overlay' = scvBelow
+    ? 'below'
+    : stageSize.w > 0 && stageSize.w - boardFitW >= SCV_SIDE_W + 24
+      ? 'side'
+      : 'overlay';
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF. Debug is
   // admin-only, so a confirmed non-admin can never have it on.
@@ -1197,7 +1226,20 @@ export default function BoardExplorer({
   );
 
   const boardStage = (
-      <div className={`board-stage ${showHistory ? 'with-history' : ''}`}>
+      <div
+        className={`board-stage ${showHistory ? 'with-history' : ''}`}
+        ref={setStageEl}
+      >
+        {simpleView && !calibrate && scvMode === 'side' && (
+          <SimpleCommandView
+            tokens={tokens}
+            shown
+            onToggleShown={() => {}}
+            activeToken={activeToken}
+            onShowRules={showActionRules}
+            variant="side"
+          />
+        )}
         <div
           className={`board-wrap ${calibrate ? 'calibrating' : ''}`}
           onClick={onBoardClick}
@@ -1405,11 +1447,12 @@ export default function BoardExplorer({
             );
           })}
 
-          {simpleView && !calibrate && !scvBelow && (
+          {simpleView && !calibrate && scvMode === 'overlay' && (
             <SimpleCommandView
               tokens={tokens}
               shown={simpleViewShown}
               onToggleShown={() => setSimpleViewShown((v) => !v)}
+              activeToken={activeToken}
               onShowRules={showActionRules}
             />
           )}
@@ -1452,11 +1495,12 @@ export default function BoardExplorer({
             />
           )}
         </div>
-        {simpleView && !calibrate && scvBelow && (
+        {simpleView && !calibrate && scvMode === 'below' && (
           <SimpleCommandView
             tokens={tokens}
             shown
             onToggleShown={() => {}}
+            activeToken={activeToken}
             onShowRules={showActionRules}
             variant="below"
           />
@@ -2802,17 +2846,23 @@ const SCV_TOGGLE: [number, number] = [4.8, 3.0];
  */
 function SimpleCommandView({
   tokens,
+  activeToken,
   shown,
   onToggleShown,
   onShowRules,
   variant = 'overlay',
 }: {
   tokens: CommandTokensState;
+  /** The token the AI die just activated, highlighted like on the board. */
+  activeToken: CommandToken | null;
   shown: boolean;
   onToggleShown: () => void;
   onShowRules: (action: ChronobotActionId) => void;
-  /** 'overlay' floats on the board (desktop); 'below' is a static block (mobile). */
-  variant?: 'overlay' | 'below';
+  /**
+   * 'overlay' floats on the board (desktop, tight width); 'side' docks left of
+   * the board when there's room; 'below' is a static block (mobile).
+   */
+  variant?: 'overlay' | 'side' | 'below';
 }) {
   const rows: {
     path: PathId;
@@ -2832,12 +2882,14 @@ function SimpleCommandView({
 
   const content = (
     <>
-      <div className="scv-title">What the Chronobot might do next</div>
+      <div className="scv-title">What Chronobot might do next</div>
       <div className="scv-grid">
         {rows.map((r) => (
           <button
             type="button"
-            className="scv-row"
+            className={`scv-row ${
+              activeToken != null && r.stack.includes(activeToken) ? 'active-row' : ''
+            }`}
             key={`${r.path}-${r.index}`}
             onClick={() => onShowRules(r.action)}
             title={`Show the ${CHRONOBOT_ACTIONS[r.action].label} rules`}
@@ -2848,7 +2900,7 @@ function SimpleCommandView({
                   key={tk}
                   src={COMMAND_MARKER_IMG[tk]}
                   alt={`Command token ${tk}`}
-                  className="scv-marker"
+                  className={`scv-marker ${activeToken === tk ? 'active' : ''}`}
                 />
               ))}
             </div>
@@ -2875,9 +2927,10 @@ function SimpleCommandView({
     </>
   );
 
-  // Mobile: a static block rendered below the board — no floating toggle.
-  if (variant === 'below') {
-    return <div className="scv-below">{content}</div>;
+  // Non-overlay variants are static blocks with no floating toggle: 'side' docks
+  // left of the board, 'below' stacks under it (mobile).
+  if (variant !== 'overlay') {
+    return <div className={variant === 'side' ? 'scv-side' : 'scv-below'}>{content}</div>;
   }
 
   return (
@@ -2889,7 +2942,8 @@ function SimpleCommandView({
           stop(e);
           onToggleShown();
         }}
-        title={shown ? 'Hide the Simple Command View' : 'Show the Simple Command View'}
+        title={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
+        aria-label={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
       >
         {shown ? '◂ Hide' : '▸ Show'}
       </button>
@@ -2979,15 +3033,18 @@ function SettingsMenu({
             🕑 History
           </button>
           <button
-            className="settings-item toggle"
+            className={`settings-item cmd-view ${simpleView ? 'active' : ''}`}
             onClick={onToggleSimpleView}
             role="menuitemcheckbox"
             aria-checked={simpleView}
           >
-            <span>Simple Command View</span>
-            <span className={`sw ${simpleView ? 'on' : ''}`}>
-              {simpleView ? 'ON' : 'OFF'}
-            </span>
+            <img
+              className="settings-cmd-icon"
+              src="/assets/solo/commands/marker-3.png"
+              alt=""
+              aria-hidden="true"
+            />
+            Command View
           </button>
           {/* Debug mode + its dev sub-toggles are admin-only. */}
           {user?.isAdmin && (
