@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
@@ -361,9 +361,10 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
 
 /**
  * A tapped-badge info popover, portaled to <body> so it escapes the badge's
- * `transform` (which would otherwise trap a `position:fixed` child). It centers
- * horizontally in the viewport — so it can never run off a screen edge — and
- * opens just below the badge (or above it when the badge sits low on screen).
+ * `transform` (which would otherwise trap a `position:fixed` child). It anchors
+ * to the tapped badge — centered on it horizontally and opening just below (or
+ * above when there's no room) — then measures itself and clamps to the viewport
+ * so it stays on screen and never drifts away from the tracker.
  */
 function BadgePopover({
   rect,
@@ -374,18 +375,41 @@ function BadgePopover({
   variant: 'bt' | 'text';
   children: React.ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!rect || !el) return;
+    const m = 8; // viewport margin
+    const gap = 8; // gap between badge and popover
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const pw = el.offsetWidth;
+    const ph = el.offsetHeight;
+    // Centre on the badge, then clamp so neither edge runs off screen.
+    const cx = rect.left + rect.width / 2;
+    const left = Math.max(m, Math.min(cx - pw / 2, vw - pw - m));
+    // Prefer below the badge; flip above when it would overflow the bottom.
+    const below = rect.bottom + gap + ph <= vh - m;
+    const top = below
+      ? rect.bottom + gap
+      : Math.max(m, rect.top - gap - ph);
+    setPos({ left, top });
+  }, [rect, children]);
+
   if (!rect) return null;
-  const vh = window.innerHeight;
-  const openBelow = rect.top < vh * 0.45;
-  const style: React.CSSProperties = {
-    left: '50%',
-    transform: 'translateX(-50%)',
-    ...(openBelow ? { top: rect.bottom + 8 } : { bottom: vh - rect.top + 8 }),
-  };
   return createPortal(
     <div
+      ref={ref}
       className={`badge-portal ${variant}`}
-      style={style}
+      // Hidden for the first paint (pos not measured yet) to avoid a flash at
+      // the wrong spot; useLayoutEffect sets the clamped position before paint.
+      style={{
+        left: pos?.left ?? 0,
+        top: pos?.top ?? 0,
+        visibility: pos ? 'visible' : 'hidden',
+      }}
       onClick={(e) => e.stopPropagation()}
     >
       {children}
