@@ -152,3 +152,12 @@
   border-color: rgba(167, 139, 250, 0.9);
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
 }
+/* On small screens the Rules button collapses to just its 📖 icon. */
+@media (max-width: 760px) {
+  .rules-open-label {
+    display: none;
+  }
+  .rules-open-btn {
+    padding: 0.4rem 0.55rem;
+  }
+}

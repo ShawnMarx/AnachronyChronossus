@@ -220,7 +220,7 @@ export function RulesButton({ onClick }: { onClick: () => void }) {
       title="Open the rules reference"
       aria-label="Open the rules reference"
     >
-      📖 Rules
+      📖 <span className="rules-open-label">Rules</span>
     </button>
   );
 }

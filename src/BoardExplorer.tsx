@@ -106,6 +106,8 @@ interface Snapshot {
 interface UndoEntry {
   snap: Snapshot;
   label: string;
+  /** The AI die rolled for a bot turn, shown as the die symbol in History. */
+  die?: number | null;
   /** Concise per-turn change-list (mech placed, cubes gained, +5 set, etc.). */
   effects: string[];
 }
@@ -281,9 +283,10 @@ function useMediaQuery(query: string): boolean {
 const SIMPLE_VIEW_KEY = 'anachrony:simpleView';
 function loadSimpleView(): boolean {
   try {
-    return localStorage.getItem(SIMPLE_VIEW_KEY) === '1';
+    // On by default: only an explicit '0' (the player turned it off) disables it.
+    return localStorage.getItem(SIMPLE_VIEW_KEY) !== '0';
   } catch {
-    return false;
+    return true;
   }
 }
 function saveSimpleView(on: boolean): void {
@@ -749,9 +752,10 @@ export default function BoardExplorer({
     nextTokens: CommandTokensState,
     label: string,
     effects: string[] = [],
+    die: number | null = null,
   ) => {
     const pre: Snapshot = { state, tokens, botDie, activeToken };
-    setUndoStack((s) => [...s, { snap: pre, label, effects }].slice(-UNDO_CAP));
+    setUndoStack((s) => [...s, { snap: pre, label, die, effects }].slice(-UNDO_CAP));
     setState(next);
     setTokens(nextTokens);
   };
@@ -762,10 +766,11 @@ export default function BoardExplorer({
     die: number | null,
     actionLabel: string,
   ) => {
+    // The die is shown as a symbol in History (see HistoryPane), not inline text.
+    void die;
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    const diePart = die != null ? `🎲${die} · ` : '';
     const vpPart = vp ? ` · +${vp} VP` : '';
-    return `Era ${state.era} · ${diePart}${actionLabel}${vpPart}`;
+    return `Era ${state.era} · ${actionLabel}${vpPart}`;
   };
 
   // Undo the last committed step: restore its snapshot wholesale, including the
@@ -942,6 +947,7 @@ export default function BoardExplorer({
       nextTokens,
       turnLabel(instructions, botDie, CHRONOBOT_ACTIONS[h.action].label),
       summarizeTurn(state.chronobot, next.chronobot, instructions),
+      botDie,
     );
     setResult(instructions);
     setPending(null);
@@ -1204,6 +1210,7 @@ export default function BoardExplorer({
         }}
         botDie={botDie}
         botPassed={bot.passed}
+        actionInProgress={active != null && !ruleView}
         canTakeAction={!boardReadOnly && !calibrate && active == null && !bot.passed}
         onTakeBotAction={takeBotAction}
         playerPassed={state.playerPassed}
@@ -2157,7 +2164,14 @@ function HistoryPane({
             <li key={entries.length - i} className="history-row">
               <span className="history-num">{entries.length - i}</span>
               <span className="history-main">
-                <span className="history-label">{e.label}</span>
+                <span className="history-label">
+                  {e.die != null && (
+                    <span className="bot-die history-die" aria-label={`AI die ${e.die}`}>
+                      {e.die}
+                    </span>
+                  )}
+                  {e.label}
+                </span>
                 {e.effects.length > 0 && (
                   <ul className="history-effects">
                     {e.effects.map((eff, j) => (
@@ -2674,6 +2688,7 @@ function StatsBar({
   onToggleCalibrate,
   botDie,
   botPassed,
+  actionInProgress,
   canTakeAction,
   onTakeBotAction,
   playerPassed,
@@ -2704,6 +2719,7 @@ function StatsBar({
   onToggleCalibrate: () => void;
   botDie: number | null;
   botPassed: boolean;
+  actionInProgress: boolean;
   canTakeAction: boolean;
   onTakeBotAction: () => void;
   playerPassed: boolean;
@@ -2776,33 +2792,39 @@ function StatsBar({
       {!calibrate && (
         <div className="bot-turn">
           <VpPill bot={bot} />
-          {/* Primary turn controls — kept together on the top row when wrapping. */}
+          {/* Primary turn controls — kept together on the top row when wrapping.
+              While a bot action is in progress, hide Take Bot Action / You Pass
+              (the turn is underway) and show only the rolled die. */}
           <div className="turn-core">
-            <button
-              className={`take-bot-action ${botPassed ? 'passed' : ''}`}
-              onClick={onTakeBotAction}
-              disabled={!canTakeAction}
-              title={
-                botPassed
-                  ? 'The Chronobot has passed for this Era'
-                  : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
-              }
-            >
-              {botPassed ? '✓ Bot Passed' : 'Take Bot Action'}
-            </button>
+            {!actionInProgress && (
+              <button
+                className={`take-bot-action ${botPassed ? 'passed' : ''}`}
+                onClick={onTakeBotAction}
+                disabled={!canTakeAction}
+                title={
+                  botPassed
+                    ? 'The Chronobot has passed for this Era'
+                    : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
+                }
+              >
+                {botPassed ? '✓ Bot Passed' : 'Take Bot Action'}
+              </button>
+            )}
             {botDie != null && (
               <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
                 {botDie}
               </span>
             )}
-            <button
-              className="you-pass"
-              onClick={onPlayerPass}
-              disabled={!canPass || playerPassed}
-              title="Pass for the Action Rounds phase"
-            >
-              {playerPassed ? '✓ You passed' : 'You Pass'}
-            </button>
+            {!actionInProgress && (
+              <button
+                className="you-pass"
+                onClick={onPlayerPass}
+                disabled={!canPass || playerPassed}
+                title="Pass for the Action Rounds phase"
+              >
+                {playerPassed ? '✓ You passed' : 'You Pass'}
+              </button>
+            )}
             <button
               className="undo-btn"
               onClick={onUndo}
