@@ -1001,14 +1001,18 @@
       drop-shadow(0 -1.5px 0 #fde047);
   }
 }
-/* Command View settings item: icon + label left-aligned like the other rows. */
+/* Command View settings item: sized so the marker icon occupies the same slot
+   an emoji does, and the label lines up with the other rows (e.g. History). */
 .settings-item.cmd-view {
   justify-content: flex-start;
+  gap: 0;
 }
 .settings-cmd-icon {
-  width: 18px;
-  height: 18px;
+  width: 1.2em;
+  height: 1.2em;
+  margin-right: 0.35em;
   object-fit: contain;
+  vertical-align: middle;
 }
 .scv-icon {
   display: flex;
