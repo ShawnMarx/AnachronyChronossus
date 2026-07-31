@@ -360,19 +360,18 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
 }
 
 /**
- * A tapped-badge info popover, portaled to <body> so it escapes the badge's
- * `transform` (which would otherwise trap a `position:fixed` child). It anchors
- * to the tapped badge — centered on it horizontally and opening just below (or
- * above when there's no room) — then measures itself and clamps to the viewport
- * so it stays on screen and never drifts away from the tracker.
+ * A popover portaled to <body> (so it escapes any transformed ancestor) and
+ * anchored to an on-screen rect: centred on it horizontally, opening just below
+ * (or above when there's no room), then measured and clamped to the viewport so
+ * it always stays on screen and never drifts away from what was tapped.
  */
-function BadgePopover({
+function AnchoredPopover({
   rect,
-  variant,
+  className,
   children,
 }: {
   rect: DOMRect | null;
-  variant: 'bt' | 'text';
+  className: string;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -382,19 +381,17 @@ function BadgePopover({
     const el = ref.current;
     if (!rect || !el) return;
     const m = 8; // viewport margin
-    const gap = 8; // gap between badge and popover
+    const gap = 8; // gap between anchor and popover
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const pw = el.offsetWidth;
     const ph = el.offsetHeight;
-    // Centre on the badge, then clamp so neither edge runs off screen.
+    // Centre on the anchor, then clamp so neither edge runs off screen.
     const cx = rect.left + rect.width / 2;
     const left = Math.max(m, Math.min(cx - pw / 2, vw - pw - m));
-    // Prefer below the badge; flip above when it would overflow the bottom.
+    // Prefer below the anchor; flip above when it would overflow the bottom.
     const below = rect.bottom + gap + ph <= vh - m;
-    const top = below
-      ? rect.bottom + gap
-      : Math.max(m, rect.top - gap - ph);
+    const top = below ? rect.bottom + gap : Math.max(m, rect.top - gap - ph);
     setPos({ left, top });
   }, [rect, children]);
 
@@ -402,10 +399,14 @@ function BadgePopover({
   return createPortal(
     <div
       ref={ref}
-      className={`badge-portal ${variant}`}
-      // Hidden for the first paint (pos not measured yet) to avoid a flash at
-      // the wrong spot; useLayoutEffect sets the clamped position before paint.
+      className={className}
+      // Fixed-to-viewport; `right`/`bottom` cleared so a class that sets them
+      // (e.g. .vp-popover) doesn't stretch the box. Hidden for the first paint
+      // (pos not measured yet); useLayoutEffect sets it before paint, no flash.
       style={{
+        position: 'fixed',
+        right: 'auto',
+        bottom: 'auto',
         left: pos?.left ?? 0,
         top: pos?.top ?? 0,
         visibility: pos ? 'visible' : 'hidden',
@@ -415,6 +416,23 @@ function BadgePopover({
       {children}
     </div>,
     document.body,
+  );
+}
+
+/** A tapped tracker-badge info popover — anchored to the badge, clamped on screen. */
+function BadgePopover({
+  rect,
+  variant,
+  children,
+}: {
+  rect: DOMRect | null;
+  variant: 'bt' | 'text';
+  children: React.ReactNode;
+}) {
+  return (
+    <AnchoredPopover rect={rect} className={`badge-portal ${variant}`}>
+      {children}
+    </AnchoredPopover>
   );
 }
 
@@ -2660,11 +2678,16 @@ function ScoreBreakdown({
  */
 function VpPill({ bot }: { bot: ChronobotState }) {
   const [open, setOpen] = useState(false);
+  // Anchor rect of the pill, captured on open so the portaled popover (below)
+  // sits right under the bar and clamps on screen — like the tracker popovers.
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
   const score = Chronobot.scoreChronobot(bot);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.vp-pill-wrap')) setOpen(false);
+      const t = e.target as HTMLElement;
+      if (!t.closest('.vp-pill-wrap') && !t.closest('.vp-popover')) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', onDown);
@@ -2675,12 +2698,19 @@ function VpPill({ bot }: { bot: ChronobotState }) {
     };
   }, [open]);
 
+  const toggle = () =>
+    setOpen((o) => {
+      if (!o && pillRef.current) setRect(pillRef.current.getBoundingClientRect());
+      return !o;
+    });
+
   return (
     <div className="vp-pill-wrap">
       <button
+        ref={pillRef}
         type="button"
         className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         title="Click for the full VP breakdown"
         aria-expanded={open}
         aria-haspopup="dialog"
@@ -2691,10 +2721,10 @@ function VpPill({ bot }: { bot: ChronobotState }) {
         </span>
       </button>
       {open && (
-        <div className="vp-popover" role="dialog" aria-label="Chronobot VP breakdown">
+        <AnchoredPopover rect={rect} className="vp-popover">
           <div className="vp-popover-title">Chronobot VP</div>
           <ScoreBreakdown score={score} botTurns={bot.totalActions} />
-        </div>
+        </AnchoredPopover>
       )}
     </div>
   );
