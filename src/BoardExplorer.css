@@ -979,6 +979,35 @@
   border-radius: 5px;
   box-shadow: inset 0 0 0 1px #333;
 }
+/* Mobile: the Simple Command View as a static block below the board. Shares the
+   inner styles (.scv-grid/.scv-row/.scv-die/RulesBox); only the shell differs. */
+.scv-below {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 640px;
+  margin: 0.6rem auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  line-height: 1.3;
+  color: #ece7f5;
+  border: 1px solid rgba(168, 85, 247, 0.6);
+  border-radius: 12px;
+  background: rgba(16, 10, 28, 0.94);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+  font-size: 15px;
+}
+.scv-below .scv-title {
+  padding-left: 0;
+}
+/* On phones, stack the below-board block under the board. */
+@media (max-width: 760px) {
+  .board-stage {
+    flex-direction: column;
+    align-items: center;
+  }
+}
 
 /* Calibration ghost dot for a path step */
 .cmd-spot {

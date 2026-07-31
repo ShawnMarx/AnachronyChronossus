@@ -261,6 +261,21 @@ function savePersisted(p: Omit<PersistedGame, 'version' | 'savedAt'>): void {
   }
 }
 
+/** Track a CSS media query, re-rendering when it changes (e.g. viewport resize). */
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(query).matches,
+  );
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    onChange();
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+  return matches;
+}
+
 // The Simple Command View is a display preference (a play aid), independent of the
 // game snapshot — persisted under its own key so it survives across games.
 const SIMPLE_VIEW_KEY = 'anachrony:simpleView';
@@ -525,6 +540,8 @@ export default function BoardExplorer({
   const [simpleView, setSimpleView] = useState<boolean>(loadSimpleView);
   const [simpleViewShown, setSimpleViewShown] = useState(true);
   useEffect(() => saveSimpleView(simpleView), [simpleView]);
+  // On phones the on-board overlay doesn't fit; render it below the board instead.
+  const scvBelow = useMediaQuery('(max-width: 760px)');
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
   // and the calibrate/outline dev controls are hidden. Defaults OFF. Debug is
   // admin-only, so a confirmed non-admin can never have it on.
@@ -1388,7 +1405,7 @@ export default function BoardExplorer({
             );
           })}
 
-          {simpleView && !calibrate && (
+          {simpleView && !calibrate && !scvBelow && (
             <SimpleCommandView
               tokens={tokens}
               shown={simpleViewShown}
@@ -1435,6 +1452,15 @@ export default function BoardExplorer({
             />
           )}
         </div>
+        {simpleView && !calibrate && scvBelow && (
+          <SimpleCommandView
+            tokens={tokens}
+            shown
+            onToggleShown={() => {}}
+            onShowRules={showActionRules}
+            variant="below"
+          />
+        )}
       </div>
   );
 
@@ -2779,11 +2805,14 @@ function SimpleCommandView({
   shown,
   onToggleShown,
   onShowRules,
+  variant = 'overlay',
 }: {
   tokens: CommandTokensState;
   shown: boolean;
   onToggleShown: () => void;
   onShowRules: (action: ChronobotActionId) => void;
+  /** 'overlay' floats on the board (desktop); 'below' is a static block (mobile). */
+  variant?: 'overlay' | 'below';
 }) {
   const rows: {
     path: PathId;
@@ -2800,6 +2829,56 @@ function SimpleCommandView({
   });
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+
+  const content = (
+    <>
+      <div className="scv-title">What the Chronobot might do next</div>
+      <div className="scv-grid">
+        {rows.map((r) => (
+          <button
+            type="button"
+            className="scv-row"
+            key={`${r.path}-${r.index}`}
+            onClick={() => onShowRules(r.action)}
+            title={`Show the ${CHRONOBOT_ACTIONS[r.action].label} rules`}
+          >
+            <div className="scv-markers">
+              {r.stack.map((tk) => (
+                <img
+                  key={tk}
+                  src={COMMAND_MARKER_IMG[tk]}
+                  alt={`Command token ${tk}`}
+                  className="scv-marker"
+                />
+              ))}
+            </div>
+            <div className="scv-icon">
+              <ActionIcon action={r.action} size={58} />
+            </div>
+            <div className="scv-name">{CHRONOBOT_ACTIONS[r.action].label}</div>
+          </button>
+        ))}
+      </div>
+      <div className="scv-die">
+        <span className="scv-die-label">AI die faces</span>
+        <div className="scv-die-faces">
+          {AI_DIE_FACES.map((f, i) => (
+            <span key={i} className="scv-die-face">
+              {f}
+            </span>
+          ))}
+        </div>
+      </div>
+      <RulesBox label="How the AI die moves the tokens">
+        <p>{PHASE_META.actions?.rules}</p>
+      </RulesBox>
+    </>
+  );
+
+  // Mobile: a static block rendered below the board — no floating toggle.
+  if (variant === 'below') {
+    return <div className="scv-below">{content}</div>;
+  }
 
   return (
     <>
@@ -2825,46 +2904,7 @@ function SimpleCommandView({
           }}
           onClick={stop}
         >
-          <div className="scv-title">What the Chronobot might do next</div>
-          <div className="scv-grid">
-            {rows.map((r) => (
-              <button
-                type="button"
-                className="scv-row"
-                key={`${r.path}-${r.index}`}
-                onClick={() => onShowRules(r.action)}
-                title={`Show the ${CHRONOBOT_ACTIONS[r.action].label} rules`}
-              >
-                <div className="scv-markers">
-                  {r.stack.map((tk) => (
-                    <img
-                      key={tk}
-                      src={COMMAND_MARKER_IMG[tk]}
-                      alt={`Command token ${tk}`}
-                      className="scv-marker"
-                    />
-                  ))}
-                </div>
-                <div className="scv-icon">
-                  <ActionIcon action={r.action} size={58} />
-                </div>
-                <div className="scv-name">{CHRONOBOT_ACTIONS[r.action].label}</div>
-              </button>
-            ))}
-          </div>
-          <div className="scv-die">
-            <span className="scv-die-label">AI die faces</span>
-            <div className="scv-die-faces">
-              {AI_DIE_FACES.map((f, i) => (
-                <span key={i} className="scv-die-face">
-                  {f}
-                </span>
-              ))}
-            </div>
-          </div>
-          <RulesBox label="How the AI die moves the tokens">
-            <p>{PHASE_META.actions?.rules}</p>
-          </RulesBox>
+          {content}
         </div>
       )}
     </>
