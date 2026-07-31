@@ -1,6 +1,8 @@
 # PLAN — Chronossus (base game) solo opponent
 
-**Status:** active · first-run plan
+**Status:** parked (concept) · finalized but not started — parked 2026-07-31 after
+Chronobot reached its main stopping point. Promote back to `docs/plans/` with
+`/plan create` when picked up. The original empty execution log was dropped on parking.
 **Scope:** Base-game Chronossus only. Fractures of Time (Flux Pool / Flux Cores /
 Fracture Device) and other modules are explicitly deferred to a later iteration.
 **Gating:** Chronossus mode is **admin-only** (`shawn@shawnmarx.com` / `dumah`) or any

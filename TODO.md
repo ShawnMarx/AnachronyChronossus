@@ -15,8 +15,6 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
       reference/link from this app (e.g. the Landing/home screen) back to it. Include a
       "support me" message linking to whatever donation platform I set up (Ko-fi /
       Patreon / etc. — TBD).
-- [ ] **Saved stats / optional login** — needs a backend; not started. Also confirm the
-      **shared-auth integration contract** (staging endpoints / SDK) first.
 - [ ] **Security: rotate the CI deploy key** — the `the deploy key` SSH
       private key was printed to a tool output during an earlier session. Regenerate the
       keypair, update the Droplet `authorized_keys` + repo secret `DEPLOY_SSH_KEY`.
@@ -26,14 +24,24 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
       the CI deploy key was rotated (see above).
 
 ## App
-- [ ] **Player play-history + overall stats** — needs the backend + BGE auth; the
-      ⚙ menu already has a "Log in (soon)" placeholder.
 - [ ] **`impact` flag** is reminder-only (Era-4 Clean Up note); no logic reads it.
       Wire it if Collapsing-Capital timing/automation is ever wanted.
 - [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
       could tighten button sizing/gaps if desired).
+- [ ] **Push local games to the server on first login** — deferred enhancement from
+      the auth/stats work: offer a one-time "import my local (localStorage) finished
+      games" action; currently local prior games are export/import only.
+
+## Next major effort — Chronossus
 - [ ] **Chronossus** automa — the advanced Solo opponent (Coming Soon on the landing
-      page). Its own `/plan` when picked up.
+      page). A finalized-but-not-started plan is parked at
+      `docs/concepts/PLAN_chronossus_base.md`; promote it with `/plan create` when
+      picked up. Likely revisits **stats + BG Stats import/export** improvements then.
+
+Chronobot is the main stopping point — the guided Era loop, optional BGE login,
+server-backed My-history + admin Overall-stats with BG Stats import/export, and the
+in-app GameBrain rules frame are all shipped and live. See
+`docs/complete/20260731_AUTH_STATS_HISTORY_RULES_COMPLETED.md`.
 
 Done: the full **guided Era loop** (Landing → Start/Difficulty/Setup → Phases 1–6 →
 End Game) with per-phase splash shells, verbatim rulebook boxes, the Paradox/Warp
