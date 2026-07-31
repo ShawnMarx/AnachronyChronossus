@@ -285,7 +285,7 @@
 .end-phase-banner {
   position: fixed;
   left: 50%;
-  bottom: 1rem;
+  top: 1rem;
   transform: translateX(-50%);
   z-index: 60;
   display: flex;
@@ -310,6 +310,33 @@
   color: var(--act-text);
   font-weight: 800;
   cursor: pointer;
+}
+
+/* Eras 5–6 Clean Up: orange "did you flip the tiles?" check above the buttons. */
+.capital-check {
+  border: 1px solid rgba(245, 158, 11, 0.55);
+  background: rgba(245, 158, 11, 0.12);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  margin-bottom: 0.9rem;
+  font-weight: 600;
+  color: #fcd9a0;
+  line-height: 1.4;
+}
+
+/* The pink "Game Ended — Finish & Score" button (matches the You Pass palette). */
+.phase-end-pink {
+  padding: 0.6rem 1rem;
+  border-radius: 9px;
+  font-weight: 800;
+  font-size: 0.98rem;
+  cursor: pointer;
+  color: var(--pass-text);
+  background: linear-gradient(180deg, var(--pass), var(--pass-2));
+  border: 1px solid var(--pass-border);
+}
+.phase-end-pink:hover {
+  background: linear-gradient(180deg, var(--pass-hover), var(--pass));
 }
 
 .fp-dialog {

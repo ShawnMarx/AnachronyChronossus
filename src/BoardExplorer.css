@@ -412,22 +412,15 @@
   position: absolute;
   top: calc(100% + 6px);
   right: 0; /* anchor to the pill's right edge so it stays on-screen in the header */
-  z-index: 90;
+  z-index: 120;
   min-width: 232px;
+  max-width: calc(100vw - 1rem);
   padding: 0.6rem 0.75rem 0.7rem;
   border-radius: 10px;
   background: #171226;
   border: 1px solid rgba(139, 92, 246, 0.5);
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
   cursor: default;
-}
-/* When the top bar wraps on narrow screens, keep the popover on-screen. */
-@media (max-width: 760px) {
-  .vp-popover {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-  }
 }
 .vp-popover-title {
   font-size: 0.72rem;
@@ -536,8 +529,9 @@
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
   overflow: hidden;
-  /* Above all board overlays (markers/badges sit at z-index 4–6). */
-  z-index: 30;
+  /* Above all board overlays (markers/badges sit at z-index 4–6) — the action
+     dialog (Construct, Resource picks, etc.) must never sit under a marker. */
+  z-index: 80;
 }
 .dp-head {
   flex: 0 0 auto;
@@ -1214,7 +1208,9 @@
   background: rgba(20, 12, 34, 0.96);
   border: 1px solid rgba(139, 92, 246, 0.6);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  z-index: 30;
+  max-width: calc(100vw - 1rem);
+  /* Tap popovers always sit above every board marker/overlay. */
+  z-index: 120;
 }
 .bt-pop-row {
   display: inline-flex;
@@ -1244,8 +1240,52 @@
   background: rgba(20, 12, 34, 0.96);
   border: 1px solid rgba(139, 92, 246, 0.6);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
-  z-index: 30;
+  /* Tap popovers always sit above every board marker/overlay. */
+  z-index: 120;
   pointer-events: auto;
+}
+
+/* Tapped-badge info popover, portaled to <body> (see BadgePopover). Fixed to the
+   viewport and horizontally centered so it can never run off a screen edge, and
+   above every board marker/overlay. */
+.badge-portal {
+  position: fixed;
+  z-index: 130;
+  max-width: min(92vw, 360px);
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  background: rgba(20, 12, 34, 0.98);
+  border: 1px solid rgba(139, 92, 246, 0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  color: #ede9fe;
+  font-size: 0.84rem;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+}
+.badge-portal.bt {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.4rem 0.6rem;
+}
+
+/* Phones: the VP popover (top-bar anchored, not inside a transformed element)
+   becomes a centered, always-on-screen sheet. */
+@media (max-width: 640px) {
+  .vp-popover {
+    position: fixed;
+    top: auto;
+    right: auto;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(92vw, 360px);
+    max-width: 92vw;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
 }
 
 /* "Start Your Turn" — closes the box and hands play back to the player */
@@ -1305,12 +1345,12 @@
   background: var(--act-hover);
 }
 .pp-cannot {
-  background: rgba(220, 38, 38, 0.15);
-  border-color: rgba(220, 38, 38, 0.6);
-  color: #fca5a5;
+  background: linear-gradient(180deg, var(--pass), var(--pass-2));
+  border-color: var(--pass-border);
+  color: var(--pass-text);
 }
 .pp-cannot:hover {
-  background: rgba(220, 38, 38, 0.3);
+  background: linear-gradient(180deg, var(--pass-hover), var(--pass));
 }
 /* Neutral alternative choice (not a failure) */
 .pp-alt {
@@ -1676,8 +1716,11 @@
 /* Score screen */
 .score-screen {
   width: min(560px, 96vw);
-  max-height: 92vh;
+  /* dvh (not vh) so the mobile browser toolbar can't push the bottom buttons
+     off-screen; subtract the overlay's 1rem top+bottom padding. */
+  max-height: calc(100dvh - 2rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
   background: #140f22;
   border: 2px solid #8b5cf6;
   border-radius: 14px;
@@ -1686,6 +1729,15 @@
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+/* Keep Close / New Game reachable — pinned to the bottom of the scroll area. */
+.score-actions {
+  position: sticky;
+  bottom: 0;
+  margin: 0 -1.2rem -1.3rem;
+  padding: 0.7rem 1.2rem;
+  background: #140f22;
+  border-top: 1px solid rgba(139, 92, 246, 0.3);
 }
 .score-head {
   display: flex;
@@ -1698,12 +1750,18 @@
 }
 .score-bot {
   display: flex;
+  flex-wrap: wrap;
   gap: 1rem;
-  align-items: center;
+  align-items: flex-start;
   padding: 0.8rem 1rem;
   background: rgba(139, 92, 246, 0.1);
   border: 1px solid rgba(139, 92, 246, 0.35);
   border-radius: 10px;
+}
+/* Rulebook text always sits on its own row beneath the total + breakdown
+   (side-by-side is cramped, especially on phones). */
+.score-rules {
+  flex: 1 1 100%;
 }
 .score-total {
   display: flex;

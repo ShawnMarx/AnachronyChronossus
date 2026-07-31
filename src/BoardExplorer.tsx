@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
 import { recordGame } from './data/gameData';
@@ -139,54 +140,54 @@ function summarizeTurn(
   const out: string[] = [];
   const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
 
-  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('🤖 Exosuit placed');
-  if (hasId('fail')) out.push('⚠️ Failed action (+1 VP)');
+  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('Exosuit placed');
+  if (hasId('fail')) out.push('Failed action (+1 VP)');
 
   (['factory', 'lab', 'powerplant', 'support'] as const).forEach((t) => {
     if (post.buildings[t] > pre.buildings[t]) {
       const vp = post.buildingVps[t][post.buildingVps[t].length - 1];
-      out.push(`🏛 ${BUILDING_LABEL[t]} taken (${vp} VP)`);
+      out.push(`${BUILDING_LABEL[t]} taken (${vp} VP)`);
     }
   });
   if (post.superprojects > pre.superprojects) {
     const vp = post.superprojectVps[post.superprojectVps.length - 1];
-    out.push(`🏗 Superproject taken (${vp} VP) · Breakthrough discarded`);
+    out.push(`Superproject taken (${vp} VP) · Breakthrough discarded`);
   }
 
   (['circle', 'triangle', 'square'] as const).forEach((s) => {
     if (post.breakthroughs[s] > pre.breakthroughs[s]) {
-      out.push(`🔷 Breakthrough taken (${s})`);
+      out.push(`Breakthrough taken (${s})`);
     }
   });
 
   if (hasId('recruit-set')) {
-    out.push('♻️ Worker set completed — discard one of each (+5 VP)');
+    out.push('Worker set completed — discard one of each (+5 VP)');
   } else {
     (['genius', 'administrator', 'engineer', 'scientist'] as const).forEach((w) => {
-      if (post.workers[w] > pre.workers[w]) out.push(`👤 Recruited ${w}`);
+      if (post.workers[w] > pre.workers[w]) out.push(`Recruited ${w}`);
     });
   }
 
   const resTypes = ['neutronium', 'uranium', 'gold', 'titanium'] as const;
   if (hasId('mine-set')) {
-    out.push('♻️ Resource set completed — discard one of each (+5 VP)');
+    out.push('Resource set completed — discard one of each (+5 VP)');
   } else {
     resTypes.forEach((r) => {
       const d = post.resources[r] - pre.resources[r];
-      if (d > 0) out.push(`⛏ Gained ${d > 1 ? d + ' ' : ''}${r}`);
+      if (d > 0) out.push(`Gained ${d > 1 ? d + ' ' : ''}${r}`);
     });
     resTypes.forEach((r) => {
       const d = pre.resources[r] - post.resources[r];
-      if (d > 0) out.push(`➖ Discarded ${d > 1 ? d + ' ' : ''}${r}`);
+      if (d > 0) out.push(`Discarded ${d > 1 ? d + ' ' : ''}${r}`);
     });
   }
 
-  if (post.anomalies < pre.anomalies) out.push('☢️ Removed 1 Anomaly');
+  if (post.anomalies < pre.anomalies) out.push('Removed 1 Anomaly');
   if (
     post.warpTilesOnTimeline < pre.warpTilesOnTimeline ||
     post.timeTravelTrack > pre.timeTravelTrack
   ) {
-    out.push('⏳ Warp tile removed → Time Travel advances');
+    out.push('Warp tile removed — Time Travel advances');
   }
   return out;
 }
@@ -322,6 +323,41 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
   );
 }
 
+/**
+ * A tapped-badge info popover, portaled to <body> so it escapes the badge's
+ * `transform` (which would otherwise trap a `position:fixed` child). It centers
+ * horizontally in the viewport — so it can never run off a screen edge — and
+ * opens just below the badge (or above it when the badge sits low on screen).
+ */
+function BadgePopover({
+  rect,
+  variant,
+  children,
+}: {
+  rect: DOMRect | null;
+  variant: 'bt' | 'text';
+  children: React.ReactNode;
+}) {
+  if (!rect) return null;
+  const vh = window.innerHeight;
+  const openBelow = rect.top < vh * 0.45;
+  const style: React.CSSProperties = {
+    left: '50%',
+    transform: 'translateX(-50%)',
+    ...(openBelow ? { top: rect.bottom + 8 } : { bottom: vh - rect.top + 8 }),
+  };
+  return createPortal(
+    <div
+      className={`badge-portal ${variant}`}
+      style={style}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
+
 function isConstructBuilding(a: ChronobotActionId): boolean {
   return a.startsWith('construct-') && a !== 'construct-superproject';
 }
@@ -366,6 +402,7 @@ const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
 function counterTooltip(
   bot: ChronobotState,
   c: (typeof BOARD_COUNTERS)[number],
+  era: number,
 ): string {
   const count = counterValue(bot, c.key);
   if (c.key === 'superproject') {
@@ -383,8 +420,14 @@ function counterTooltip(
   switch (c.key) {
     case 'breakthrough':
       return `${c.label}: ${count} — click for per-shape counts`;
-    case 'mech':
-      return `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+    case 'mech': {
+      // Placed this Era = powered (set at Power Up) − still available.
+      const deployed = Math.max(0, Chronobot.chronobotPoweredExosuits(era) - count);
+      return (
+        `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available` +
+        ` · ${deployed} deployed on board`
+      );
+    }
     case 'anomaly':
       return `${c.label}: ${count} (max 3)`;
     case 'neutronium':
@@ -439,6 +482,9 @@ export default function BoardExplorer({
   // `title` tooltip so the info is reachable on touch. Dismissed by any tap
   // outside a badge (or Escape) via the effect below.
   const [tappedBadge, setTappedBadge] = useState<string | null>(null);
+  // Viewport rect of the last-tapped badge, so its popover (portaled to <body>
+  // to escape the badge's transform) can anchor near it while staying on-screen.
+  const [tappedRect, setTappedRect] = useState<DOMRect | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   // Rules mode: a full-viewport GameBrain rules frame overlays the game view
   // (which stays mounted underneath, so Back-to-Game restores the exact spot).
@@ -457,8 +503,17 @@ export default function BoardExplorer({
   const [outline, setOutline] = useState(false);
   const [passMsg, setPassMsg] = useState<string | null>(null);
   // Debug OFF = play mode: tapping a tile only shows its rules (no activation),
-  // and the calibrate/outline dev controls are hidden. Defaults OFF.
+  // and the calibrate/outline dev controls are hidden. Defaults OFF. Debug is
+  // admin-only, so a confirmed non-admin can never have it on.
   const [debug, setDebug] = useState(() => persisted?.debug ?? false);
+  const { user: authUser, loading: authLoading } = useAuth();
+  useEffect(() => {
+    if (!authLoading && !authUser?.isAdmin && debug) {
+      setDebug(false);
+      setOutline(false);
+      setCalibrate(false);
+    }
+  }, [authLoading, authUser, debug]);
   // Paradoxes are tracked on the engine state (chronobot.paradoxes, 0–2; the
   // Paradox phase drives it, resetting to 0 on gaining an Anomaly). The debug
   // P +/- control below nudges the same value for testing.
@@ -588,7 +643,7 @@ export default function BoardExplorer({
     if (tappedBadge == null) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest('.count-badge')) setTappedBadge(null);
+      if (!t.closest('.count-badge') && !t.closest('.badge-portal')) setTappedBadge(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setTappedBadge(null);
@@ -1142,28 +1197,31 @@ export default function BoardExplorer({
                 key={c.key}
                 className={`count-badge ${sel ? 'cal-selected' : ''} ${tappable ? 'clickable' : ''}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
-                title={calibrate ? c.label : counterTooltip(bot, c)}
+                title={calibrate ? c.label : counterTooltip(bot, c, state.era)}
                 onClick={
                   tappable
-                    ? () => setTappedBadge((k) => (k === c.key ? null : c.key))
+                    ? (e) => {
+                        setTappedRect(e.currentTarget.getBoundingClientRect());
+                        setTappedBadge((k) => (k === c.key ? null : c.key));
+                      }
                     : undefined
                 }
               >
                 {calibrate ? (sel ? '◎' : '·') : count}
                 {open && c.key === 'breakthrough' && (
-                  <div className="bt-popover" onClick={(e) => e.stopPropagation()}>
+                  <BadgePopover rect={tappedRect} variant="bt">
                     {SHAPE_ORDER.map((s) => (
                       <span key={s} className="bt-pop-row">
                         <ShapeIcon shape={s} size={22} />
                         <b>{bot.breakthroughs[s]}</b>
                       </span>
                     ))}
-                  </div>
+                  </BadgePopover>
                 )}
                 {open && c.key !== 'breakthrough' && (
-                  <div className="badge-popover" onClick={(e) => e.stopPropagation()}>
-                    {counterTooltip(bot, c)}
-                  </div>
+                  <BadgePopover rect={tappedRect} variant="text">
+                    {counterTooltip(bot, c, state.era)}
+                  </BadgePopover>
                 )}
               </div>
             );
@@ -1548,16 +1606,13 @@ function FirstPlayerPrompt({
     <div className="modal-overlay" onClick={onCancel}>
       <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
         <h3>First Player next Era</h3>
-        <p>
-          Did you take the First Player spot this Era? Whoever is First Player leads
-          the next Era's Warp and Action Rounds.
-        </p>
+        <p>Does the Chronobot control First Player (banner placed next to the World Council)?</p>
         <div className="fp-actions">
-          <button className="phase-primary" onClick={() => onAnswer(true)}>
-            Yes, I took it
+          <button className="phase-primary" onClick={() => onAnswer(false)}>
+            Yes
           </button>
-          <button className="phase-secondary" onClick={() => onAnswer(false)}>
-            No — the Chronobot did
+          <button className="phase-secondary" onClick={() => onAnswer(true)}>
+            No
           </button>
         </div>
       </div>
@@ -1655,14 +1710,19 @@ function CleanUpPhaseBody({
           🏁 Finish &amp; Score ▶
         </button>
       ) : postImpact ? (
-        <div className="setup-actions">
-          <button className="phase-primary" onClick={onNextEra}>
-            Game continues — start Era {era + 1} ▶
-          </button>
-          <button className="phase-secondary" onClick={onEndGame}>
-            The game ended — Finish &amp; Score
-          </button>
-        </div>
+        <>
+          <div className="capital-check">
+            Are all Collapsing Capital tiles flipped? If so, proceed to Game Ended below.
+          </div>
+          <div className="setup-actions">
+            <button className="phase-primary" onClick={onNextEra}>
+              Game continues — start Era {era + 1} ▶
+            </button>
+            <button className="phase-end-pink" onClick={onEndGame}>
+              Game Ended — Finish &amp; Score
+            </button>
+          </div>
+        </>
       ) : (
         <button className="phase-primary" onClick={onNextEra}>
           End the Era — start Era {era + 1} ▶
@@ -2057,6 +2117,18 @@ function ScoreScreen({
     }
   };
 
+  // Auto-save once a completed game has a player score (number or tally). No
+  // button: the first stable score is recorded automatically for logged-in
+  // players. Debounced so typing doesn't fire mid-entry; saves once per game.
+  useEffect(() => {
+    if (!user || result == null || playerScore == null || Number.isNaN(playerScore)) return;
+    if (saveState !== 'idle') return;
+    const id = setTimeout(() => saveGame(), 900);
+    return () => clearTimeout(id);
+    // saveGame reads the latest score via closure; gate on saveState to save once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, result, playerScore, saveState]);
+
   return (
     <div className="modal-overlay">
       <div className="score-screen" onClick={(e) => e.stopPropagation()}>
@@ -2135,22 +2207,14 @@ function ScoreScreen({
           </div>
         )}
 
-        {user && (
+        {user && saveState !== 'idle' && (
           <div className="score-save">
-            {saveState === 'saved' ? (
+            {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}
+            {saveState === 'saved' && (
               <span className="score-save-ok">✓ Saved to your history</span>
-            ) : (
-              <button
-                className="score-save-btn"
-                onClick={saveGame}
-                disabled={result == null || saveState === 'saving'}
-                title={result == null ? 'Enter your score first' : 'Save this game to your history'}
-              >
-                {saveState === 'saving' ? 'Saving…' : '💾 Save to my history'}
-              </button>
             )}
             {saveState === 'error' && (
-              <span className="score-save-err">Couldn't save — try again.</span>
+              <span className="score-save-err">Couldn't save automatically.</span>
             )}
           </div>
         )}
@@ -2698,36 +2762,41 @@ function SettingsMenu({
           >
             🕑 History
           </button>
-          <div className="settings-sep" />
-          <button
-            className="settings-item toggle"
-            onClick={onToggleDebug}
-            role="menuitemcheckbox"
-            aria-checked={debug}
-          >
-            <span>Debug mode</span>
-            <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
-          </button>
-          {debug && (
+          {/* Debug mode + its dev sub-toggles are admin-only. */}
+          {user?.isAdmin && (
             <>
+              <div className="settings-sep" />
               <button
-                className="settings-item toggle sub"
-                onClick={onToggleOutline}
+                className="settings-item toggle"
+                onClick={onToggleDebug}
                 role="menuitemcheckbox"
-                aria-checked={outline}
+                aria-checked={debug}
               >
-                <span>Tile outlines</span>
-                <span className={`sw ${outline ? 'on' : ''}`}>{outline ? 'ON' : 'OFF'}</span>
+                <span>Debug mode</span>
+                <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
               </button>
-              <button
-                className="settings-item toggle sub"
-                onClick={onToggleCalibrate}
-                role="menuitemcheckbox"
-                aria-checked={calibrate}
-              >
-                <span>Calibrate positions</span>
-                <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
-              </button>
+              {debug && (
+                <>
+                  <button
+                    className="settings-item toggle sub"
+                    onClick={onToggleOutline}
+                    role="menuitemcheckbox"
+                    aria-checked={outline}
+                  >
+                    <span>Tile outlines</span>
+                    <span className={`sw ${outline ? 'on' : ''}`}>{outline ? 'ON' : 'OFF'}</span>
+                  </button>
+                  <button
+                    className="settings-item toggle sub"
+                    onClick={onToggleCalibrate}
+                    role="menuitemcheckbox"
+                    aria-checked={calibrate}
+                  >
+                    <span>Calibrate positions</span>
+                    <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
+                  </button>
+                </>
+              )}
             </>
           )}
           <div className="settings-sep" />

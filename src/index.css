@@ -1,6 +1,10 @@
 :root {
   color-scheme: light dark;
-  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Display font (headings, UI chrome) vs body font (reading text). */
+  --font-display: 'Space Grotesk', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-body: 'Nunito Sans', system-ui, 'Segoe UI', Roboto, sans-serif;
+  font: 16px/1.5 var(--font-body);
 
   /* Bot-action buttons — pale yellow-green (complements the violet theme). */
   --act: #b9d65f;
@@ -20,6 +24,26 @@
 body {
   margin: 0;
   min-height: 100svh;
+}
+
+/* Space Grotesk for headings and prominent UI chrome; Nunito Sans everywhere
+   else keeps the dense rule text readable. */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.phase-title,
+.phase-eyebrow,
+.take-bot-action,
+.you-pass,
+.vp-seg,
+.vp-popover-title,
+.score-total-num,
+.rules-open-btn,
+.rules-back {
+  font-family: var(--font-display);
 }
 
 #root {
