@@ -2,6 +2,7 @@ import { useState } from 'react';
 import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
 import { useAuth } from './auth/useAuth';
+import { isLocalRun } from './auth/bgeAuth';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -80,9 +81,20 @@ function LandingAuth() {
   );
 }
 
-export default function Landing({ onStartChronobot }: { onStartChronobot: () => void }) {
+export default function Landing({
+  onStartChronobot,
+  onStartChronossus,
+}: {
+  onStartChronobot: () => void;
+  onStartChronossus: () => void;
+}) {
   // When a saved Chronobot game exists, launching prompts continue-vs-new.
   const [prompt, setPrompt] = useState<{ savedAt: number } | null>(null);
+  const { user } = useAuth();
+
+  // Chronossus is admin-gated during development: visible to admins and any local
+  // run (dev), "Coming Soon" for everyone else.
+  const chronossusUnlocked = isLocalRun() || Boolean(user?.isAdmin);
 
   const launchChronobot = () => {
     const saved = peekSavedChronobot();
@@ -124,9 +136,18 @@ export default function Landing({ onStartChronobot }: { onStartChronobot: () => 
         <BotCard
           name="Chronossus"
           image="/assets/solo/chronossus-hero.jpg"
-          tagline="The advanced automa · more modes, more depth"
-          status="soon"
-          description="A deeper opponent that supports most of the game's modes and expansions. Not available yet — it's next on the roadmap once the Chronobot is complete."
+          tagline={
+            chronossusUnlocked
+              ? 'The advanced automa · admin preview'
+              : 'The advanced automa · more modes, more depth'
+          }
+          status={chronossusUnlocked ? 'ready' : 'soon'}
+          description={
+            chronossusUnlocked
+              ? 'Admin preview: boots into the Phase-5 Action Rounds debug harness. Tap each action space to see the Chronossus resolve it. Work in progress.'
+              : "A deeper opponent that supports most of the game's modes and expansions. Not available yet — it's next on the roadmap once the Chronobot is complete."
+          }
+          onLaunch={chronossusUnlocked ? onStartChronossus : undefined}
         />
       </div>
 

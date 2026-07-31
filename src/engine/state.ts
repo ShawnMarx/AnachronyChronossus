@@ -130,6 +130,13 @@ export interface ChronossusState {
   warpTilesOnTimeline: number;
   warpTilesTotal: number;
   timeTravelTrack: number;
+  /**
+   * Actions taken this Era. The Chronossus has no min-3-actions rule (unlike the
+   * Chronobot), but tracking it keeps this slice structurally compatible with
+   * `ChronobotState`, so the tested decision helpers (Recruit/Mine/Anomaly
+   * priorities) can be reused directly.
+   */
+  actionsThisEra: number;
   totalActions: number;
   passed: boolean;
   /** The Energy Pool bag (drives Power Up). Starts `ENERGY_POOL_START`. */
@@ -206,6 +213,7 @@ export function emptyChronossusState(): ChronossusState {
     warpTilesOnTimeline: 0,
     warpTilesTotal: 8,
     timeTravelTrack: 0,
+    actionsThisEra: 0,
     totalActions: 0,
     passed: false,
     energyPool: { ...ENERGY_POOL_START },

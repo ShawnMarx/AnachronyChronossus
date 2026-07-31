@@ -7,6 +7,7 @@ import {
   energyDrawCount,
   poolAfterDraw,
   resolvePowerUp,
+  resolveAction,
   startNextEra,
   type EnergyDraw,
 } from './chronossus';
@@ -140,6 +141,78 @@ describe('drawEnergyPool (randomness boundary)', () => {
       expect(d.energized).toBe(0);
       expect(d.exhausted).toBe(3);
     }
+  });
+});
+
+describe('resolveAction — base actions on the Chronossus slice', () => {
+  function withExosuits(n: number, extra: Partial<GameState> = {}): GameState {
+    const s = chronossusState({ phase: 'actions', ...extra });
+    s.chronossus!.exosuitsAvailable = n;
+    return s;
+  }
+
+  it('Recruit gains a worker + 1 VP and consumes an Exosuit', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'recruit' });
+    expect(state.chronossus!.vp).toBe(1);
+    expect(state.chronossus!.exosuitsAvailable).toBe(3);
+    const workerTotal = Object.values(state.chronossus!.workers).reduce((a, b) => a + b, 0);
+    expect(workerTotal).toBe(1);
+  });
+
+  it('Research with a rolled shape gains that Breakthrough', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'research', shape: 'triangle' });
+    expect(state.chronossus!.breakthroughs.triangle).toBe(1);
+    expect(state.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('Reboot does nothing (no Exosuit, no VP)', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'reboot' });
+    expect(state.chronossus!.vp).toBe(0);
+    expect(state.chronossus!.exosuitsAvailable).toBe(4);
+  });
+
+  it('Time Travel with no Warp tiles is Failed (+1 VP, no Exosuit)', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'time-travel' });
+    expect(state.chronossus!.vp).toBe(1);
+    expect(state.chronossus!.timeTravelTrack).toBe(0);
+    expect(state.chronossus!.exosuitsAvailable).toBe(4);
+  });
+
+  it('Time Travel removes a Warp tile and advances the track', () => {
+    const s = withExosuits(4);
+    s.chronossus!.warpTilesOnTimeline = 2;
+    const { state } = resolveAction(s, { actionId: 'time-travel' });
+    expect(state.chronossus!.warpTilesOnTimeline).toBe(1);
+    expect(state.chronossus!.timeTravelTrack).toBe(1);
+  });
+
+  it('no-space Failed: +1 VP AND discards an active Exosuit (Chronossus nuance)', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'mine-resource', noSpaceAvailable: true });
+    expect(state.chronossus!.vp).toBe(1);
+    expect(state.chronossus!.exosuitsAvailable).toBe(3); // discarded one
+  });
+
+  it('Construct is Failed when already at 3 of a type (still places an Exosuit)', () => {
+    const s = withExosuits(4);
+    s.chronossus!.buildings.factory = 3;
+    const { state } = resolveAction(s, { actionId: 'construct-factory' });
+    expect(state.chronossus!.vp).toBe(1);
+    expect(state.chronossus!.buildings.factory).toBe(3);
+    expect(state.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('tile Score gains 2 VP; tile Energy Pack adds an energized core', () => {
+    const score = resolveAction(withExosuits(4), { actionId: 'tile-score' }).state;
+    expect(score.chronossus!.vp).toBe(2);
+    const pack = resolveAction(withExosuits(4), { actionId: 'tile-energy-pack' }).state;
+    expect(pack.chronossus!.energyPool.energized).toBe(6); // 5 + 1
+  });
+
+  it('increments totalActions each resolve', () => {
+    let s = withExosuits(6);
+    s = resolveAction(s, { actionId: 'reboot' }).state;
+    s = resolveAction(s, { actionId: 'reboot' }).state;
+    expect(s.chronossus!.totalActions).toBe(2);
   });
 });
 

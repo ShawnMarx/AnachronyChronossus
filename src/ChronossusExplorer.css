@@ -1,0 +1,156 @@
+/* ChronossusExplorer — Phase-5 debug harness. Chronossus palette: burnt orange
+   / amber / teal off the board art. Reuses .board-wrap/.board/.hotspot from
+   BoardExplorer.css. */
+
+.chronossus-harness {
+  --cx-orange: #c4551f;
+  --cx-amber: #e8922e;
+  --cx-teal: #2e8c8c;
+  --cx-ink: #1a120c;
+  min-height: 100vh;
+  background: linear-gradient(160deg, #241109, #3a1c0d 60%, #14100c);
+  color: #f3e9df;
+  display: flex;
+  flex-direction: column;
+}
+
+.cx-topbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, #3a1a0d, #7a2f10 60%, var(--cx-orange));
+  box-shadow: 0 2px 10px #0006;
+}
+.cx-home {
+  background: #ffffff1a;
+  color: #fff;
+  border: 1px solid #ffffff33;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.cx-home:hover {
+  background: #ffffff2e;
+}
+.cx-title {
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.cx-stats {
+  margin-left: auto;
+  display: flex;
+  gap: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.cx-stats span {
+  background: #00000033;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #ffffff22;
+  white-space: nowrap;
+}
+
+.cx-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #ffffff1a;
+}
+.cx-controls button {
+  background: var(--cx-teal);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.cx-controls button:hover {
+  filter: brightness(1.1);
+}
+.cx-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.cx-body {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.cx-board {
+  flex: 1 1 640px;
+  max-width: 1100px;
+}
+
+/* Make every hotspot visible + labeled in the harness (positions are placeholder). */
+.cx-hotspot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--cx-amber) !important;
+  background: #e8922e22 !important;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.12s, transform 0.08s;
+}
+.cx-hotspot:hover {
+  background: #e8922e55 !important;
+  transform: scale(1.03);
+}
+.cx-hotspot.cx-tile {
+  border-color: var(--cx-teal) !important;
+  background: #2e8c8c33 !important;
+}
+.cx-hotspot.cx-tile:hover {
+  background: #2e8c8c66 !important;
+}
+.cx-hotspot-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-shadow: 0 1px 3px #000, 0 0 4px #000;
+  pointer-events: none;
+  line-height: 1.1;
+  text-align: center;
+}
+
+.cx-log {
+  flex: 1 1 300px;
+  max-width: 460px;
+  background: #00000040;
+  border: 1px solid #ffffff1a;
+  border-radius: 12px;
+  padding: 12px 14px;
+  max-height: 78vh;
+  overflow-y: auto;
+}
+.cx-log h3 {
+  margin: 0 0 10px;
+  color: var(--cx-amber);
+}
+.cx-empty {
+  opacity: 0.6;
+  font-style: italic;
+}
+.cx-entry {
+  border-left: 3px solid var(--cx-amber);
+  padding: 4px 0 8px 10px;
+  margin-bottom: 10px;
+}
+.cx-entry b {
+  color: var(--cx-amber);
+}
+.cx-entry p {
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}

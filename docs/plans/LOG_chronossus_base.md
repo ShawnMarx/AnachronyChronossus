@@ -23,6 +23,10 @@ parallel session — plan content intact.)
 - [x] 3. Unit tests (`chronossus.test.ts`, 16): power-up math, caps pre/post-Impact, all-exhausted draw, pool bookkeeping, draw-invariants over 500 samples, startNextEra. **76 tests green, build clean, lint clean (only pre-existing warnings).**
 
 ## Feature 4 — Engine: Action Rounds / tiles / Autoleap / passing
+> **Vertical-slice deviation (user request):** built a click-to-activate Phase-5 debug
+> harness *without* the Command-token paths first, to validate that each action space
+> resolves correctly. So the single-action resolver landed ahead of the token model.
+- [x] (slice) `resolveAction(state, input)` — all base actions on the Chronossus slice (reusing the Chronobot's tested priority helpers via structural compatibility), the **Failed-no-space discard-Exosuit nuance**, and the 3 default A-side tile actions (C01A Reboot / C02A Score +2 / C03A Energy Pack). No token advancement. +10 tests.
 - [ ] 0. Generalize token model: **N independent per-token routes**; rework `advanceActiveToken` + stacking/bump + paired-split to key off board-spot occupancy (any token), not one shared path. Tests for overlapping-occupancy + bump.
 - [ ] 1. AI-die → action above/below token; advance token.
 - [ ] 2. Action-tile (Cxx A/B) resolution catalog (`chronossusActions.ts`).
@@ -37,8 +41,9 @@ parallel session — plan content intact.)
 - [ ] 3. Unit tests.
 
 ## Feature 6 — UI: BoardExplorer for Chronossus
-- [ ] 0. Debug dev-flow harness: boot Chronossus straight into **Phase 5 (Action Rounds)** with **4 powered Exosuits** (Debug-only; skips Setup→Warp) to test actions/tokens/Autoleap turn-after-turn.
-- [ ] 1. Board image + theme + bot-aware BoardExplorer plumbing.
+- [x] 0. Debug dev-flow harness: `ChronossusExplorer.tsx` boots straight into **Phase 5** with **4 powered Exosuits**; tap any action space → `resolveAction` → activation log. Chronossus theme (orange/amber/teal). Verified in-browser via Playwright (card unlocks on localhost, 4 actions resolve, VP/Exo update, no console errors).
+- [~] 1. Board image + theme done (in the harness). Full bot-aware BoardExplorer plumbing still pending.
+- [~] 2a. `CHRONOSSUS_HOTSPOTS` seeded from the Chronobot grid — **placeholder positions**; tile slots I/II/III landed well, several base actions need nudging. Calibrate next.
 - [ ] 2a. Seed `chronossusHotspots.ts` from Chronobot %-anchors for all **matching action spaces**; nudge only divergent hotspots (tile slots I/II/III, Autoleap, Energy Pool). Verify with `pw-validate.mjs`.
 - [ ] 2b. Build `chronossusPaths.ts` from scratch: **4 unique per-token routes** (2/3/4/5, colored) that **overlap** at shared spaces; per-token-per-step anchors; stacking/bump + paired-split must handle different tokens sharing a spot. Calibrate on the Chronossus board (none of the Chronobot path anchors apply).
 - [ ] 3. Board hotspots/counters — fill in Chronossus-specific spaces + trackers.
@@ -47,9 +52,9 @@ parallel session — plan content intact.)
 - [ ] 6. Solo-Objective tracker + score screen.
 
 ## Feature 7 — Landing + admin gating
-- [ ] 1. Chronossus card playable when `isAdmin || isLocalRun`, else "Coming Soon".
-- [ ] 2. Wire `AppRoot`/`main.tsx` to launch Chronossus view.
-- [ ] 3. Flip `chronossus.implemented` (guarded by gating).
+- [x] 1. Chronossus card playable when `isLocalRun() || user.isAdmin`, else "Coming Soon" (admin-preview tagline/description). Done in `Landing.tsx`.
+- [x] 2. Wire `AppRoot` to launch the Chronossus view (`ChronossusExplorer`).
+- [ ] 3. Flip `chronossus.implemented` — left `false` (harness is a preview, not the full game); flip when the real game view lands.
 
 ## Feature 8 — Playthrough test + polish
 - [ ] 1. End-to-end Chronossus playthrough test.

@@ -11,7 +11,20 @@
 // Feature 3 lands the state slice + Power Up. Later features add Action Rounds
 // (F4), scoring/Solo Objectives (F5), and the view (F6).
 
-import type { GameState, Instruction, EnergyPool } from '../state';
+import type { GameState, Instruction, EnergyPool, ChronossusState } from '../state';
+import type { BreakthroughShape, Resource, Worker } from '../types';
+import {
+  actionDef,
+  RECRUIT_PRIORITY,
+  type ChronobotActionId,
+} from '../rules/chronobotActions';
+import {
+  chooseRecruitWorker,
+  chooseRemoveAnomalyDiscards,
+  chooseBreakthroughDiscard,
+  chooseMineResources,
+  TIME_TRAVEL_VP,
+} from './chronobot';
 
 /** Highest Era before the game always ends (same as the Chronobot). */
 export const MAX_ERA = 7;
@@ -102,6 +115,327 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
       `Power Up: drew ${draw.energized}E/${draw.exhausted}X → ${bot.exosuitsAvailable} Exosuits.`,
     ],
   };
+}
+
+// --------------------------------------------------------------------------
+// Phase 5: Action Rounds — single-action resolution
+// --------------------------------------------------------------------------
+//
+// The Chronossus's base Actions are the Chronobot's, with one base-game rule
+// delta: a Failed Action from *no available space* additionally discards an
+// active Exosuit (rulebook p.10). The 3 modular Action tiles (C01–C03) add their
+// own small Actions. This resolver takes ONE action and applies it to the
+// Chronossus slice — it does NOT advance any Command token (the token/path model
+// is Feature 4's generalization; the Phase-5 debug harness drives actions by
+// direct tap, not by die + path).
+
+/** Modular Action-tile actions (default A-side setup: C01A/C02A/C03A). */
+export type ChronossusTileActionId = 'tile-reboot' | 'tile-score' | 'tile-energy-pack';
+
+/** Every action a Chronossus space can trigger (base actions + tile actions). */
+export type ChronossusActionId = ChronobotActionId | ChronossusTileActionId;
+
+export interface ChronossusActionInput {
+  actionId: ChronossusActionId;
+  /** For Research / Recruit-Genius-Research: the rolled shape (app rolls it). */
+  shape?: BreakthroughShape;
+  /** For Recruit-Genius-Research: whether a Genius is available on the board. */
+  geniusAvailable?: boolean;
+  /** Player override: no available Action space at all (Failed, discards Exosuit). */
+  noSpaceAvailable?: boolean;
+  /** For a successful Construct: the printed VP of the tile the player took. */
+  buildingVP?: number;
+  /** For a Mine action: the 2 Resources granted (defaults to priority choice). */
+  minedResources?: Resource[];
+  /** For a Recruit action: the Worker granted (defaults to priority choice). */
+  recruitedWorker?: Worker;
+}
+
+export interface ChronossusActionResult {
+  state: GameState;
+  instructions: Instruction[];
+}
+
+const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
+  'tile-reboot': { label: 'Reboot (C01A)' },
+  'tile-score': { label: 'Score (C02A)' },
+  'tile-energy-pack': { label: 'Energy Pack (C03A)' },
+};
+
+/** Human-facing label for any Chronossus action id. */
+export function chronossusActionLabel(id: ChronossusActionId): string {
+  return isTileAction(id) ? TILE_ACTIONS[id].label : actionDef(id).label;
+}
+
+function isTileAction(id: ChronossusActionId): id is ChronossusTileActionId {
+  return id === 'tile-reboot' || id === 'tile-score' || id === 'tile-energy-pack';
+}
+
+function cloneChronossus(bot: ChronossusState): ChronossusState {
+  return {
+    ...bot,
+    resources: { ...bot.resources },
+    workers: { ...bot.workers },
+    breakthroughs: { ...bot.breakthroughs },
+    buildings: { ...bot.buildings },
+    buildingVps: {
+      factory: [...bot.buildingVps.factory],
+      lab: [...bot.buildingVps.lab],
+      powerplant: [...bot.buildingVps.powerplant],
+      support: [...bot.buildingVps.support],
+    },
+    superprojectVps: [...bot.superprojectVps],
+    energyPool: { ...bot.energyPool },
+  };
+}
+
+/**
+ * Resolve a single Chronossus action against the Chronossus slice. Returns the
+ * updated state + player instructions. Does not advance any Command token.
+ */
+export function resolveAction(
+  state: GameState,
+  input: ChronossusActionInput,
+): ChronossusActionResult {
+  if (!state.chronossus) throw new Error('resolveAction: no Chronossus state');
+  const bot = cloneChronossus(state.chronossus);
+  const instr: Instruction[] = [];
+  const n = bot.totalActions;
+
+  instr.push({
+    id: `turn-${n}`,
+    text: `The Chronossus takes the "${chronossusActionLabel(input.actionId)}" action.`,
+  });
+
+  // Failed from no available space: +1 VP AND discard an active Exosuit (the
+  // Chronossus-only nuance vs. the Chronobot).
+  if (input.noSpaceAvailable) {
+    bot.vp += 1;
+    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    instr.push({
+      id: `fail-nospace-${n}`,
+      text: 'No available Action space — the Chronossus takes +1 VP and additionally discards one active Exosuit (no Exosuit placed).',
+      effect: { vp: 1 },
+    });
+    return finishAction(state, bot, instr);
+  }
+
+  if (isTileAction(input.actionId)) {
+    resolveTileAction(bot, instr, input.actionId, n);
+    return finishAction(state, bot, instr);
+  }
+
+  const def = actionDef(input.actionId);
+  const placeExosuit = () => {
+    if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+  };
+  const failCantPerform = (why: string) => {
+    if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    bot.vp += 1;
+    instr.push({
+      id: `fail-perform-${n}`,
+      text: `Failed Action: ${why} — the Chronossus ${def.placesExosuit ? 'places an Exosuit and ' : ''}takes +1 VP instead.`,
+      effect: { vp: 1 },
+    });
+  };
+
+  switch (input.actionId) {
+    case 'reboot':
+      instr.push({ id: `reboot-${n}`, text: 'Reboot: the Chronossus does nothing (no Exosuit, no VP).' });
+      break;
+
+    case 'research':
+      resolveResearch(bot, instr, input.shape, n);
+      placeExosuit();
+      break;
+
+    case 'recruit':
+      resolveRecruit(bot, instr, input.recruitedWorker, n);
+      placeExosuit();
+      break;
+
+    case 'recruit-genius-research':
+      if (input.geniusAvailable) {
+        bot.workers.genius += 1;
+        bot.vp += 1;
+        instr.push({ id: `rgr-${n}`, text: 'Recruit a Genius for the Chronossus (+1 VP).', effect: { vp: 1 } });
+        placeExosuit();
+      } else {
+        instr.push({ id: `rgr-res-${n}`, text: 'No Genius available — perform a Research action instead.' });
+        resolveResearch(bot, instr, input.shape, n);
+        placeExosuit();
+      }
+      break;
+
+    case 'mine-resource': {
+      const mined = input.minedResources ?? chooseMineResources(bot);
+      for (const r of mined) bot.resources[r] += 1;
+      placeExosuit();
+      instr.push({
+        id: `mine-${n}`,
+        text: `Mine ${describeCubes(mined)} for the Chronossus.`,
+        detail: 'Prioritises Resources it lacks; ties Neutronium > Uranium > Gold > Titanium.',
+      });
+      applyResourceSetBonus(bot, instr, n);
+      break;
+    }
+
+    case 'time-travel':
+      resolveTimeTravel(bot, instr, n);
+      break;
+
+    case 'remove-anomaly': {
+      const discards = chooseRemoveAnomalyDiscards(bot);
+      if (bot.anomalies < 1 || !discards) {
+        failCantPerform(bot.anomalies < 1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend');
+      } else {
+        for (const r of discards) bot.resources[r] -= 1;
+        bot.anomalies -= 1;
+        placeExosuit();
+        instr.push({
+          id: `ra-${n}`,
+          text: `Discard ${describeCubes(discards)} from the Chronossus and remove 1 Anomaly.`,
+          detail: 'Discards the Resources it has most of; ties Titanium > Gold > Uranium > Neutronium (1 Neutronium = 2 cubes).',
+        });
+      }
+      break;
+    }
+
+    case 'construct-factory':
+    case 'construct-lab':
+    case 'construct-powerplant':
+    case 'construct-support': {
+      const type = input.actionId.replace('construct-', '') as keyof ChronossusState['buildings'];
+      const label = def.label.replace('Construct — ', '');
+      if (bot.buildings[type] >= 3) {
+        failCantPerform(`it already has 3 ${label} buildings`);
+      } else {
+        bot.buildings[type] += 1;
+        placeExosuit();
+        const vp = input.buildingVP ?? 0;
+        if (vp > 0) {
+          bot.vp += vp;
+          bot.buildingVp += vp;
+          bot.buildingVps[type].push(vp);
+          instr.push({ id: `con-${n}`, text: `Give the Chronossus the higher-VP ${label} (secondary stack if tied) — ${vp} VP.`, effect: { vp } });
+        } else {
+          instr.push({ id: `con-${n}`, text: `Give the Chronossus the higher-VP ${label} (secondary stack if tied); record its printed VP.`, requiresInput: true });
+        }
+      }
+      break;
+    }
+
+    case 'construct-superproject': {
+      const discard = chooseBreakthroughDiscard(bot);
+      if (bot.superprojects >= 3 || !discard) {
+        failCantPerform(bot.superprojects >= 3 ? 'it already has 3 Superprojects' : 'it has no Breakthrough to discard');
+      } else {
+        bot.breakthroughs[discard] -= 1;
+        bot.superprojects += 1;
+        placeExosuit();
+        const vp = input.buildingVP ?? 0;
+        if (vp > 0) {
+          bot.vp += vp;
+          bot.buildingVp += vp;
+          bot.superprojectVps.push(vp);
+          instr.push({ id: `sp-${n}`, text: `Discard 1 ${discard} Breakthrough, then give the Chronossus the highest-VP face-up Superproject (oldest if tied) — ${vp} VP.`, effect: { vp } });
+        } else {
+          instr.push({ id: `sp-${n}`, text: `Discard 1 ${discard} Breakthrough, then give the Chronossus the highest-VP face-up Superproject (oldest if tied); record its VP.`, requiresInput: true });
+        }
+      }
+      break;
+    }
+
+    case 'evacuation':
+      instr.push({ id: `evac-${n}`, text: 'The Chronossus does not take Evacuation here.' });
+      break;
+  }
+
+  return finishAction(state, bot, instr);
+}
+
+function resolveTileAction(
+  bot: ChronossusState,
+  instr: Instruction[],
+  id: ChronossusTileActionId,
+  n: number,
+): void {
+  switch (id) {
+    case 'tile-reboot':
+      instr.push({ id: `t-reboot-${n}`, text: 'C01A Reboot: the Chronossus does nothing.' });
+      break;
+    case 'tile-score':
+      bot.vp += 2;
+      instr.push({ id: `t-score-${n}`, text: 'C02A Score: the Chronossus gains 2 VP.', effect: { vp: 2 } });
+      break;
+    case 'tile-energy-pack':
+      bot.energyPool.energized += 1;
+      instr.push({
+        id: `t-energy-${n}`,
+        text: 'C03A Energy Pack: add 1 (non-exhausted) Energy Core to the Chronossus Energy Pool.',
+      });
+      break;
+  }
+}
+
+function resolveResearch(bot: ChronossusState, instr: Instruction[], shape: BreakthroughShape | undefined, n: number): void {
+  if (shape) {
+    bot.breakthroughs[shape] += 1;
+    instr.push({ id: `res-${n}`, text: `Research: the shape die shows ${shape} — give the Chronossus any Breakthrough of that shape.` });
+  } else {
+    instr.push({ id: `res-${n}`, text: 'Research: roll the shape die and give the Chronossus any Breakthrough of the rolled shape.', requiresInput: true });
+  }
+}
+
+function resolveRecruit(bot: ChronossusState, instr: Instruction[], recruited: Worker | undefined, n: number): void {
+  const target = recruited ?? chooseRecruitWorker(bot);
+  if (target) bot.workers[target] += 1;
+  bot.vp += 1;
+  instr.push({ id: `rec-${n}`, text: `Recruit a ${target} for the Chronossus (+1 VP).`, effect: { vp: 1 } });
+  if (RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0)) {
+    for (const w of RECRUIT_PRIORITY) bot.workers[w] -= 1;
+    bot.vp += 5;
+    instr.push({ id: `rec-set-${n}`, text: 'The Chronossus holds all 4 Worker types — discard one of each and add 5 VP.', effect: { vp: 5 } });
+  }
+}
+
+const SET_RESOURCES: Resource[] = ['neutronium', 'uranium', 'gold', 'titanium'];
+function applyResourceSetBonus(bot: ChronossusState, instr: Instruction[], n: number): void {
+  if (SET_RESOURCES.every((r) => bot.resources[r] > 0)) {
+    for (const r of SET_RESOURCES) bot.resources[r] -= 1;
+    bot.vp += 5;
+    instr.push({ id: `mine-set-${n}`, text: 'The Chronossus holds all 4 Resource types — discard one of each and add 5 VP.', effect: { vp: 5 } });
+  }
+}
+
+function resolveTimeTravel(bot: ChronossusState, instr: Instruction[], n: number): void {
+  if (bot.warpTilesOnTimeline <= 0) {
+    bot.vp += 1;
+    instr.push({ id: `tt-${n}`, text: 'No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronossus takes +1 VP (no Exosuit).', effect: { vp: 1 } });
+  } else {
+    bot.warpTilesOnTimeline -= 1;
+    bot.timeTravelTrack += 1;
+    const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
+    instr.push({ id: `tt-${n}`, text: 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot.', detail: `The marker is now worth ${TIME_TRAVEL_VP[spot]} VP.` });
+  }
+}
+
+function describeCubes(cubes: Resource[]): string {
+  const counts: Partial<Record<Resource, number>> = {};
+  for (const c of cubes) counts[c] = (counts[c] ?? 0) + 1;
+  return Object.entries(counts).map(([r, c]) => `${c} ${r}`).join(' + ');
+}
+
+function finishAction(state: GameState, bot: ChronossusState, instr: Instruction[]): ChronossusActionResult {
+  bot.actionsThisEra += 1;
+  bot.totalActions += 1;
+  const next: GameState = {
+    ...state,
+    chronossus: bot,
+    currentInstructions: instr,
+    log: [...state.log, `Chronossus action ${bot.totalActions} (Era ${state.era}).`],
+  };
+  return { state: next, instructions: instr };
 }
 
 // --------------------------------------------------------------------------
