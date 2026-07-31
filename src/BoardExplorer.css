@@ -1847,6 +1847,26 @@
   }
 }
 
+/* Mobile flow variant: the action box sits in normal flow at the top of the
+   stage (pushing the board + Command View down) instead of covering the screen.
+   Overrides both the base absolute panel and the full-screen rule above, so it
+   needs !important on the geometry the full-screen rule sets with !important. */
+.detail-panel.dp-flow {
+  position: static !important;
+  inset: auto !important;
+  left: auto !important;
+  top: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  max-width: 100%;
+  align-self: stretch;
+  flex: 0 0 auto;
+  margin-bottom: 0.5rem;
+  border-width: 2px;
+  border-radius: 12px;
+  z-index: auto;
+}
+
 /* --- Endgame: trigger button, confirm modal, score screen ------------------ */
 .endgame-btn {
   padding: 0.5rem 0.8rem;

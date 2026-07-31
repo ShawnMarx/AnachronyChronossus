@@ -1225,11 +1225,57 @@ export default function BoardExplorer({
       />
   );
 
+  // The action dialog. On mobile it renders in normal flow (flow=true) at the
+  // top of the stage, pushing the board + Command View down; on desktop it's an
+  // absolute panel on the board. Returns null when no action is active.
+  const renderDetailPanel = (flow: boolean) =>
+    !calibrate && active ? (
+      <DetailPanel
+        flow={flow}
+        hotspot={active}
+        readOnly={ruleView}
+        pending={pending}
+        result={result}
+        selectedVP={selectedVP}
+        selectedResources={selectedResources}
+        selectedWorker={selectedWorker}
+        rolledShape={rolledShape}
+        breakthroughs={bot.breakthroughs}
+        removeAnomaly={(() => {
+          const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
+          return {
+            canRemove: bot.anomalies >= 1 && discards != null,
+            discards: discards ? describeCubes(discards) : '',
+            reason:
+              bot.anomalies < 1
+                ? 'it has no Anomaly to remove'
+                : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+          };
+        })()}
+        mineOrder={Chronobot.mineResourceOrder(bot)}
+        workerOrder={Chronobot.recruitWorkerOrder(bot)}
+        onConfirmPlace={onConfirmPlace}
+        onCannotPlace={onCannotPlace}
+        onMineHasSpace={onMineHasSpace}
+        onMineNoSpace={onMineNoSpace}
+        onGeniusYes={onGeniusYes}
+        onGeniusNo={onGeniusNo}
+        onPickVP={onPickVP}
+        onToggleResource={onToggleResource}
+        onPickWorker={onPickWorker}
+        onStartTurn={startTurn}
+        onClose={closePanel}
+      />
+    ) : null;
+
   const boardStage = (
       <div
         className={`board-stage ${showHistory ? 'with-history' : ''}`}
         ref={setStageEl}
       >
+        {/* Mobile: the action box fills the space under the top bar, pushing the
+            board + Command View down; it disappears (restoring them) on close. */}
+        {scvMode === 'below' && renderDetailPanel(true)}
         {simpleView && !calibrate && scvMode === 'side' && (
           <SimpleCommandView
             tokens={tokens}
@@ -1457,43 +1503,7 @@ export default function BoardExplorer({
             />
           )}
 
-          {!calibrate && active && (
-            <DetailPanel
-              hotspot={active}
-              readOnly={ruleView}
-              pending={pending}
-              result={result}
-              selectedVP={selectedVP}
-              selectedResources={selectedResources}
-              selectedWorker={selectedWorker}
-              rolledShape={rolledShape}
-              breakthroughs={bot.breakthroughs}
-              removeAnomaly={(() => {
-                const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
-                return {
-                  canRemove: bot.anomalies >= 1 && discards != null,
-                  discards: discards ? describeCubes(discards) : '',
-                  reason:
-                    bot.anomalies < 1
-                      ? 'it has no Anomaly to remove'
-                      : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
-                };
-              })()}
-              mineOrder={Chronobot.mineResourceOrder(bot)}
-              workerOrder={Chronobot.recruitWorkerOrder(bot)}
-              onConfirmPlace={onConfirmPlace}
-              onCannotPlace={onCannotPlace}
-              onMineHasSpace={onMineHasSpace}
-              onMineNoSpace={onMineNoSpace}
-              onGeniusYes={onGeniusYes}
-              onGeniusNo={onGeniusNo}
-              onPickVP={onPickVP}
-              onToggleResource={onToggleResource}
-              onPickWorker={onPickWorker}
-              onStartTurn={startTurn}
-              onClose={closePanel}
-            />
-          )}
+          {scvMode !== 'below' && renderDetailPanel(false)}
         </div>
         {simpleView && !calibrate && scvMode === 'below' && (
           <SimpleCommandView
@@ -3167,6 +3177,7 @@ function DetailPanel({
   onPickWorker,
   onStartTurn,
   onClose,
+  flow = false,
 }: {
   hotspot: Hotspot;
   readOnly: boolean;
@@ -3191,6 +3202,8 @@ function DetailPanel({
   onPickWorker: (w: Worker) => void;
   onStartTurn: () => void;
   onClose: () => void;
+  /** Render in normal flow (mobile) rather than absolutely on the board. */
+  flow?: boolean;
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
@@ -3210,8 +3223,12 @@ function DetailPanel({
 
   return (
     <div
-      className="detail-panel"
-      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      className={`detail-panel ${flow ? 'dp-flow' : ''}`}
+      style={
+        flow
+          ? undefined
+          : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }
+      }
       role="dialog"
       aria-label={def.label}
     >
