@@ -215,7 +215,7 @@ export function resolveAction(
     if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     instr.push({
       id: `fail-nospace-${n}`,
-      text: 'No available Action space — the Chronossus takes +1 VP and additionally discards one active Exosuit (no Exosuit placed).',
+      text: 'No available Action space — the Chronossus takes +1 VP and additionally discards one active Exosuit (Exosuit discarded).',
       effect: { vp: 1 },
     });
     return finishAction(state, bot, instr);
