@@ -196,6 +196,140 @@
   outline-offset: 2px;
 }
 
+/* ---- Chronossus top bar (the replicated Chronobot StatsBar, recolored) ----
+   Reuses the shared .stats-bar classes; these overrides swap the Chronobot
+   purple for the Chronossus scheme (warm-dark bar, teal chrome, amber highlights). */
+.chronossus-harness .stats-bar.cx-statsbar {
+  background: linear-gradient(135deg, #241109, #3a1c0d 70%, #2a160b);
+  border-bottom: 1px solid var(--cx-teal);
+}
+.chronossus-harness .home-btn {
+  border-color: rgba(46, 140, 140, 0.5);
+  background: #241109;
+}
+.chronossus-harness .home-btn:hover {
+  border-color: var(--cx-teal);
+  box-shadow: 0 0 0 2px rgba(46, 140, 140, 0.35);
+}
+.chronossus-harness .debug-badge.on,
+.chronossus-harness .gear-btn.debug-on {
+  background: var(--cx-amber);
+  border-color: #f4c78a;
+  color: #1a120c;
+}
+.chronossus-harness .paradox-ctl button {
+  background: rgba(46, 140, 140, 0.2);
+  border-color: rgba(46, 140, 140, 0.5);
+  color: #b6e6e6;
+}
+.chronossus-harness .paradox-ctl-val {
+  color: var(--cx-amber);
+}
+
+/* Stat pills + VP pill */
+.chronossus-harness .stat-pill {
+  background: rgba(46, 140, 140, 0.16);
+  border: 1px solid rgba(46, 140, 140, 0.4);
+  color: #eafafa;
+}
+.chronossus-harness .stat-pill.lead,
+.chronossus-harness .vp-pill {
+  background: rgba(46, 140, 140, 0.22);
+  border-color: rgba(46, 140, 140, 0.55);
+}
+.chronossus-harness .vp-pill:hover,
+.chronossus-harness .vp-pill.open {
+  background: rgba(46, 140, 140, 0.34);
+}
+.chronossus-harness .vp-caret {
+  color: var(--cx-amber);
+}
+
+/* Disabled turn stubs (Take Bot Action / You Pass / Undo) + Rules — teal-tinted. */
+.chronossus-harness .take-bot-action,
+.chronossus-harness .you-pass,
+.chronossus-harness .undo-btn,
+.chronossus-harness .rules-open-btn {
+  background: rgba(46, 140, 140, 0.18);
+  border: 1px solid rgba(46, 140, 140, 0.5);
+  color: #b6e6e6;
+}
+
+/* ⚙ menu */
+.chronossus-harness .gear-btn {
+  background: rgba(46, 140, 140, 0.2);
+  border-color: rgba(46, 140, 140, 0.5);
+  color: #b6e6e6;
+}
+.chronossus-harness .gear-btn:hover,
+.chronossus-harness .gear-btn.on {
+  background: rgba(46, 140, 140, 0.34);
+}
+.chronossus-harness .settings-dropdown {
+  background: #16110c;
+  border: 1px solid var(--cx-teal);
+}
+.chronossus-harness .settings-item:hover:not(:disabled) {
+  background: rgba(46, 140, 140, 0.2);
+}
+.chronossus-harness .sw.on {
+  background: var(--cx-teal);
+  color: #06201f;
+}
+
+/* Portaled VP popover (renders on <body>, so styled by its own class). */
+.cx-vp-popover.vp-popover {
+  background: #14100c;
+  border: 1px solid var(--cx-teal, #2e8c8c);
+}
+.cx-vp-popover .vp-popover-title {
+  color: var(--cx-amber, #e8922e);
+}
+
+/* ---- Board trackers: teal outline instead of the Chronobot purple ---- */
+.chronossus-harness .count-badge {
+  border-color: var(--cx-teal);
+  background: rgba(20, 16, 12, 0.85);
+}
+.chronossus-harness .count-badge.cal-selected {
+  border-color: var(--cx-amber);
+  box-shadow: 0 0 0 2px rgba(232, 146, 46, 0.6);
+}
+.chronossus-harness .tt-marker {
+  filter:
+    drop-shadow(1.6px 0 0 #2e8c8c) drop-shadow(-1.6px 0 0 #2e8c8c)
+    drop-shadow(0 1.6px 0 #2e8c8c) drop-shadow(0 -1.6px 0 #2e8c8c)
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+}
+.chronossus-harness .warp-img {
+  filter:
+    drop-shadow(1.6px 0 0 #2e8c8c) drop-shadow(-1.6px 0 0 #2e8c8c)
+    drop-shadow(0 1.6px 0 #2e8c8c) drop-shadow(0 -1.6px 0 #2e8c8c)
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+}
+.chronossus-harness .warp-count {
+  border-color: var(--cx-teal);
+  background: rgba(20, 16, 12, 0.85);
+}
+.chronossus-harness .paradox-slot {
+  filter:
+    drop-shadow(1.4px 0 0 #2e8c8c) drop-shadow(-1.4px 0 0 #2e8c8c)
+    drop-shadow(0 1.4px 0 #2e8c8c) drop-shadow(0 -1.4px 0 #2e8c8c)
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
+}
+.chronossus-harness .tt-marker.cal-selected,
+.chronossus-harness .paradox-slot.cal-selected {
+  filter:
+    drop-shadow(1.6px 0 0 #f0c14e) drop-shadow(-1.6px 0 0 #f0c14e)
+    drop-shadow(0 1.6px 0 #f0c14e) drop-shadow(0 -1.6px 0 #f0c14e)
+    drop-shadow(0 0 6px rgba(240, 193, 78, 0.9));
+}
+
+/* The debug testing rail sits just below the top bar. */
+.cx-debugrail {
+  border-bottom: 1px solid #ffffff1a;
+}
+
 /* ---- Chronossus action dialog ----
    Recolor the shared DetailPanel (BoardExplorer.css defaults to Chronobot
    purple) to the Chronossus palette: teal chrome + amber selection. Scoped

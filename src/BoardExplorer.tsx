@@ -365,7 +365,7 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
  * (or above when there's no room), then measured and clamped to the viewport so
  * it always stays on screen and never drifts away from what was tapped.
  */
-function AnchoredPopover({
+export function AnchoredPopover({
   rect,
   className,
   children,

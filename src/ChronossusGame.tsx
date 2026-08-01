@@ -15,13 +15,14 @@
 // can reconcile the Action Rounds first. The non-Phase-5 phase bodies are honest
 // skeletons for now; a debug phase rail lets you jump around.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import './BoardExplorer.css';
 import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
-import { DetailPanel, type PendingStep } from './BoardExplorer';
+import { DetailPanel, AnchoredPopover, type PendingStep } from './BoardExplorer';
+import { useAuth } from './auth/useAuth';
 import {
   Chronobot,
   Chronossus,
@@ -150,6 +151,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
+
+  // Debug mode (admin-only). On by default — Chronossus is an admin preview and
+  // the debug rail (phase jump / Impact / End Actions) is our testing surface.
+  const { user } = useAuth();
+  const [debug, setDebug] = useState(true);
 
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
@@ -377,6 +383,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastDraw(null);
     setCalibrate(false);
   };
+  const changeEra = (d: number) =>
+    setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
 
   const stats = (
     <div className="cx-stats">
@@ -388,8 +396,80 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     </div>
   );
 
-  const debugRail = (
-    <div className="cx-controls">
+  // Full top bar — mirrors the Chronobot StatsBar (recolored to the Chronossus
+  // scheme). The AI-die / pass / undo / history controls are visible-but-disabled
+  // stubs for now (those systems land with the Command-token feature).
+  const topBar = (
+    <div className="stats-bar cx-statsbar">
+      <div className="stats-left">
+        <button className="home-btn" onClick={onHome} title="Back to the home screen" aria-label="Home">
+          <img src="/favicon-512.png" alt="" />
+        </button>
+        {debug && (
+          <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
+            🛠 DEBUG
+          </span>
+        )}
+        {debug && (
+          <div className="paradox-ctl" title="Set the Era (1–7)">
+            <button onClick={() => changeEra(-1)} disabled={state.era <= 1} aria-label="Previous era">−</button>
+            <span className="paradox-ctl-val">Era {state.era}</span>
+            <button onClick={() => changeEra(1)} disabled={state.era >= Chronossus.MAX_ERA} aria-label="Next era">+</button>
+          </div>
+        )}
+        {debug && (
+          <div className="paradox-ctl" title="Set the number of Paradoxes (0–3)">
+            <button onClick={() => setParadoxes((n) => Math.max(0, n - 1))} disabled={paradoxes <= 0} aria-label="Fewer paradoxes">−</button>
+            <span className="paradox-ctl-val">P {paradoxes}</span>
+            <button onClick={() => setParadoxes((n) => Math.min(3, n + 1))} disabled={paradoxes >= 3} aria-label="More paradoxes">+</button>
+          </div>
+        )}
+      </div>
+      {!calibrate && (
+        <div className="bot-turn">
+          <CxVpPill score={score} totalActions={bot.totalActions} />
+          <div className="turn-core">
+            <button className="take-bot-action" disabled title="Coming soon — the AI die + Command tokens land in a later feature">
+              Take Bot Action
+            </button>
+            <button className="you-pass" disabled title="Coming soon — passing lands with the Command-token feature">
+              You Pass
+            </button>
+            <button className="undo-btn" disabled title="Coming soon — Undo lands with per-turn history">
+              ↶ Undo
+            </button>
+          </div>
+          <span className="stat-pill" title="Powered Exosuits available">
+            🦾 <b>{bot.exosuitsAvailable}</b> Exo
+          </span>
+          <span className="stat-pill" title="Energy Pool — energized / exhausted">
+            🔋 <b>{bot.energyPool.energized}/{bot.energyPool.exhausted}</b>
+          </span>
+        </div>
+      )}
+      <div className="stats-controls">
+        <button className="rules-open-btn" disabled title="Coming soon — the Chronossus rules reference">
+          📖 <span className="rules-open-label">Rules</span>
+        </button>
+        <CxSettingsMenu
+          debug={debug}
+          isAdmin={!!user?.isAdmin}
+          onToggleDebug={() => setDebug((d) => !d)}
+          calibrate={calibrate}
+          onToggleCalibrate={() => {
+            closePanel();
+            setCalibrate((c) => !c);
+          }}
+          onReset={reset}
+        />
+      </div>
+    </div>
+  );
+
+  // Debug testing rail (below the top bar; admin/debug-only): jump phases, toggle
+  // Impact, and end the Action Rounds. Hidden when Debug is off.
+  const debugRail = debug && (
+    <div className="cx-controls cx-debugrail">
       <span className="cx-debug-label">Debug · jump to phase:</span>
       {PHASE_RAIL.map((p) => (
         <button
@@ -400,6 +480,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           {p}
         </button>
       ))}
+      <button onClick={() => setState((s) => ({ ...s, impact: !s.impact }))}>
+        Impact: {state.impact ? 'AFTER' : 'BEFORE'}
+      </button>
+      <button onClick={endActions}>End Actions ▶ Clean Up</button>
       <button onClick={reset}>↺ Reset</button>
     </div>
   );
@@ -408,43 +492,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   if (state.phase === 'actions') {
     return (
       <div className="chronossus-harness">
-        <header className="cx-topbar">
-          <button className="cx-home" onClick={onHome} title="Home">
-            ⌂ Home
-          </button>
-          <span className="cx-title">
-            Chronossus · Era {state.era} · Phase 5 (Action Rounds)
-          </span>
-          {stats}
-        </header>
+        {topBar}
         {debugRail}
-        <div className="cx-controls">
-          <button onClick={() => setState((s) => ({ ...s, impact: !s.impact }))}>
-            Impact: {state.impact ? 'AFTER' : 'BEFORE'}
-          </button>
-          <label className="cx-check">
-            <input
-              type="checkbox"
-              checked={calibrate}
-              onChange={(e) => {
-                closePanel();
-                setCalibrate(e.target.checked);
-              }}
-            />
-            Calibrate positions
-          </label>
-          <span className="cx-debug-label">Paradox:</span>
-          <div className="paradox-ctl">
-            <button onClick={() => setParadoxes((n) => Math.max(0, n - 1))} disabled={paradoxes <= 0}>
-              −
-            </button>
-            <span className="paradox-ctl-val">{paradoxes}</span>
-            <button onClick={() => setParadoxes((n) => Math.min(3, n + 1))} disabled={paradoxes >= 3}>
-              +
-            </button>
-          </div>
-          <button onClick={endActions}>End Actions ▶ Clean Up</button>
-        </div>
         <div className="cx-body">
           <div className="board-stage">
             <div
@@ -693,11 +742,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   if (state.phase === 'endgame') {
     return (
       <div className="chronossus-harness">
-        <header className="cx-topbar">
-          <button className="cx-home" onClick={onHome}>⌂ Home</button>
-          <span className="cx-title">Chronossus · End Game</span>
-          {stats}
-        </header>
+        {topBar}
         {debugRail}
         <div className="cx-score">
           <h2>Chronossus score</h2>
@@ -962,6 +1007,165 @@ function CalibrationPanel({
         </div>
         <textarea className="cal-out" readOnly value={paradoxLiteral} />
       </details>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Top-bar sub-components (mirror the Chronobot's VpPill + SettingsMenu, reusing
+// the shared .stats-bar classes; recolored to Chronossus via .chronossus-harness).
+// --------------------------------------------------------------------------
+
+/** Expandable VP pill → a Chronossus score breakdown popover. */
+function CxVpPill({
+  score,
+  totalActions,
+}: {
+  score: ReturnType<typeof Chronossus.scoreChronossus>;
+  totalActions: number;
+}) {
+  const [open, setOpen] = useState(false);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  const [rect, setRect] = useState<DOMRect | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.vp-pill-wrap') && !t.closest('.vp-popover')) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  const toggle = () =>
+    setOpen((o) => {
+      if (!o && pillRef.current) setRect(pillRef.current.getBoundingClientRect());
+      return !o;
+    });
+  return (
+    <div className="vp-pill-wrap">
+      <button
+        ref={pillRef}
+        type="button"
+        className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
+        onClick={toggle}
+        title="Click for the full VP breakdown"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+      >
+        <span className="vp-caret">{open ? '▾' : '▸'}</span>
+        <span className="vp-seg">
+          <b>{score.total}</b> VP
+        </span>
+      </button>
+      {open && (
+        <AnchoredPopover rect={rect} className="vp-popover cx-vp-popover">
+          <div className="vp-popover-title">Chronossus VP</div>
+          <ul className="score-breakdown">
+            <li title="Everything except Buildings, Time Travel & Breakthroughs">
+              <span>Token VP</span><b>{score.tokenVP}</b>
+            </li>
+            <li title="From Construct actions (Buildings & Superprojects)">
+              <span>Building VP</span><b>{score.buildingVP}</b>
+            </li>
+            <li title="From the Time Travel marker's track position (0/2/4/…/12)">
+              <span>Time Travel</span><b>{score.timeTravelVP}</b>
+            </li>
+            <li title="1 VP per Breakthrough">
+              <span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b>
+            </li>
+            <li title="+2 VP per complete shape set (one of each)">
+              <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
+            </li>
+            <li title="Solo Objective levels (added in a later feature)">
+              <span>Solo Objectives</span><b>{score.soloObjectiveVP}</b>
+            </li>
+            <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
+            <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
+          </ul>
+        </AnchoredPopover>
+      )}
+    </div>
+  );
+}
+
+/** Top-right ⚙ menu: Debug toggle + Calibrate (admin), and Reset Game. */
+function CxSettingsMenu({
+  debug,
+  isAdmin,
+  onToggleDebug,
+  calibrate,
+  onToggleCalibrate,
+  onReset,
+}: {
+  debug: boolean;
+  isAdmin: boolean;
+  onToggleDebug: () => void;
+  calibrate: boolean;
+  onToggleCalibrate: () => void;
+  onReset: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest('.settings-menu')) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  return (
+    <div className="settings-menu">
+      <button
+        className={`gear-btn ${debug ? 'debug-on' : ''} ${open ? 'on' : ''}`}
+        onClick={() => setOpen((o) => !o)}
+        title="Settings"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        ⚙
+      </button>
+      {open && (
+        <div className="settings-dropdown" role="menu">
+          {isAdmin && (
+            <>
+              <button
+                className="settings-item toggle"
+                onClick={onToggleDebug}
+                role="menuitemcheckbox"
+                aria-checked={debug}
+              >
+                <span>Debug mode</span>
+                <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
+              </button>
+              {debug && (
+                <button
+                  className="settings-item toggle sub"
+                  onClick={onToggleCalibrate}
+                  role="menuitemcheckbox"
+                  aria-checked={calibrate}
+                >
+                  <span>Calibrate positions</span>
+                  <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
+                </button>
+              )}
+              <div className="settings-sep" />
+            </>
+          )}
+          <button className="settings-item danger" onClick={onReset} role="menuitem">
+            ⟳ Reset Game
+          </button>
+        </div>
+      )}
     </div>
   );
 }
