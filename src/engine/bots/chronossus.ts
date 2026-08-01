@@ -13,6 +13,7 @@
 
 import type { GameState, Instruction, EnergyPool, ChronossusState } from '../state';
 import type { BreakthroughShape, Resource, Worker } from '../types';
+import { BREAKTHROUGH_SHAPES } from '../types';
 import {
   actionDef,
   RECRUIT_PRIORITY,
@@ -436,6 +437,81 @@ function finishAction(state: GameState, bot: ChronossusState, instr: Instruction
     log: [...state.log, `Chronossus action ${bot.totalActions} (Era ${state.era}).`],
   };
   return { state: next, instructions: instr };
+}
+
+// --------------------------------------------------------------------------
+// Phase 6: Clean Up
+// --------------------------------------------------------------------------
+
+/** Retrieve Exosuits; Collapsing Capital flips happen on the physical board. */
+export function resolveCleanUp(state: GameState): GameState {
+  if (!state.chronossus) throw new Error('resolveCleanUp: no Chronossus state');
+  const bot = { ...state.chronossus, exosuitsAvailable: 0 };
+  const instructions: Instruction[] = [
+    { id: 'cleanup-retrieve', text: "Retrieve the Chronossus's Exosuits along with your own." },
+    {
+      id: 'cleanup-collapse',
+      text: 'After the Impact, follow the usual procedure for flipping Collapsing Capital tiles.',
+    },
+  ];
+  return {
+    ...state,
+    chronossus: bot,
+    phase: 'cleanup',
+    currentInstructions: instructions,
+    log: [...state.log, `Clean Up phase (Era ${state.era}).`],
+  };
+}
+
+// --------------------------------------------------------------------------
+// End of game scoring
+// --------------------------------------------------------------------------
+
+export interface ChronossusScore {
+  /** During-game VP from tokens/actions, excluding Buildings. */
+  tokenVP: number;
+  /** During-game VP from Construct actions (Buildings & Superprojects). */
+  buildingVP: number;
+  /** tokenVP + buildingVP = the running `bot.vp`. */
+  duringGameVP: number;
+  /** VP from the Time Travel marker's track position. */
+  timeTravelVP: number;
+  /** 1 VP per Breakthrough. */
+  breakthroughVP: number;
+  /** +2 VP per complete shape set (one of each). */
+  shapeSetBonus: number;
+  /**
+   * VP from the highest level reached on each of the 3 Solo Objectives. Wired in
+   * Feature 5 (appendix pp.21–22); 0 for now.
+   */
+  soloObjectiveVP: number;
+  total: number;
+}
+
+/**
+ * The Chronossus's VP breakdown. It does NOT lose VP for Warp tiles left on the
+ * Timeline. Scores 1 VP/Breakthrough + 2 per complete shape set, plus Solo
+ * Objective levels (added in Feature 5). Shared by the live pill + score screen.
+ */
+export function scoreChronossus(bot: ChronossusState): ChronossusScore {
+  const breakthroughVP = BREAKTHROUGH_SHAPES.reduce((n, s) => n + bot.breakthroughs[s], 0);
+  const completeSets = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
+  const shapeSetBonus = completeSets * 2;
+  const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
+  const timeTravelVP = TIME_TRAVEL_VP[spot];
+  const buildingVP = bot.buildingVp;
+  const tokenVP = bot.vp - buildingVP;
+  const soloObjectiveVP = 0;
+  return {
+    tokenVP,
+    buildingVP,
+    duringGameVP: bot.vp,
+    timeTravelVP,
+    breakthroughVP,
+    shapeSetBonus,
+    soloObjectiveVP,
+    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + soloObjectiveVP,
+  };
 }
 
 // --------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Landing from './Landing';
 import BoardExplorer, { peekSavedChronobot } from './BoardExplorer';
-import ChronossusExplorer from './ChronossusExplorer';
+import ChronossusGame from './ChronossusGame';
 
 /**
  * Top-level view switch. If a saved Chronobot game exists we open straight into
@@ -19,7 +19,7 @@ export default function AppRoot() {
     return <BoardExplorer onHome={() => setView('home')} />;
   }
   if (view === 'chronossus') {
-    return <ChronossusExplorer onHome={() => setView('home')} />;
+    return <ChronossusGame onHome={() => setView('home')} />;
   }
   return (
     <Landing

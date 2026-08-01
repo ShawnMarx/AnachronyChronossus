@@ -41,7 +41,9 @@ parallel session — plan content intact.)
 - [ ] 3. Unit tests.
 
 ## Feature 6 — UI: BoardExplorer for Chronossus
-- [x] 0. Debug dev-flow harness: `ChronossusExplorer.tsx` boots straight into **Phase 5** with **4 powered Exosuits**; tap any action space → `resolveAction` → activation log. Chronossus theme (orange/amber/teal). Verified in-browser via Playwright (card unlocks on localhost, 4 actions resolve, VP/Exo update, no console errors).
+- [x] 0. Debug dev-flow harness: boots straight into **Phase 5** with **4 powered Exosuits**; tap any action space → `resolveAction` → activation log. Chronossus theme (orange/amber/teal).
+- [x] FULL-FLOW SHELL: `ChronossusGame.tsx` now wraps the whole Era loop (Setup → 1–6 → End Game) reusing the **shared `PhaseScreen`** (parameterized `hero`/`statusLabel`/`heroAlt`, Chronobot defaults → Chronobot unchanged). Boots to Phase 5; Era loop wired: Phase 5 → End Actions → Clean Up → Finish Era → next-Era Power Up (Energy Pool draw shows result) → Warp → Actions, or → End Game score screen. Debug phase rail jumps to any phase. Non-Phase-5 phases (setup/prep/paradox/warp) are honest skeletons to reconcile next. Verified in-browser: full loop works, Power Up math correct, **Chronobot regression-checked (SetupFlow still opens)**, no console errors.
+- Shared infra: `chronossusPhaseMeta.ts` (Chronossus overview/rules text).
 - [~] 1. Board image + theme done (in the harness). Full bot-aware BoardExplorer plumbing still pending.
 - [~] 2a. `CHRONOSSUS_HOTSPOTS` seeded from the Chronobot grid — **placeholder positions**; tile slots I/II/III landed well, several base actions need nudging. Calibrate next.
 - [ ] 2a. Seed `chronossusHotspots.ts` from Chronobot %-anchors for all **matching action spaces**; nudge only divergent hotspots (tile slots I/II/III, Autoleap, Energy Pool). Verify with `pw-validate.mjs`.

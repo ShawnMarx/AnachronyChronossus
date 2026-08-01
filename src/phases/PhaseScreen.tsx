@@ -1,13 +1,16 @@
 import { useState } from 'react';
 
-const HERO = '/assets/solo/chronobot-hero.jpg';
+const CHRONOBOT_HERO = '/assets/solo/chronobot-hero.jpg';
 
 /**
  * The reusable frame for every non-Action phase (Phases 1–4 & 6, plus Start /
- * Setup). Shows the Chronobot splash banner, the rulebook overview, and the
- * phase's body/controls (`children`); a tab flips to the full board as read-only
- * "Chronobot Status" (`statusView`, provided by the caller). Phase 5 renders the
- * board directly and does not use this frame.
+ * Setup). Shows the bot splash banner, the rulebook overview, and the phase's
+ * body/controls (`children`); a tab flips to the full board as read-only bot
+ * status (`statusView`, provided by the caller). Phase 5 renders the board
+ * directly and does not use this frame.
+ *
+ * `hero`/`statusLabel`/`heroAlt` default to the Chronobot so existing callers are
+ * unchanged; the Chronossus flow passes its own.
  */
 export default function PhaseScreen({
   era,
@@ -17,6 +20,9 @@ export default function PhaseScreen({
   onHome,
   headerRight,
   statusView,
+  hero = CHRONOBOT_HERO,
+  statusLabel = 'Chronobot Status',
+  heroAlt = 'Chronobot',
   children,
 }: {
   era: number;
@@ -26,8 +32,14 @@ export default function PhaseScreen({
   onHome?: () => void;
   /** Optional node (e.g. a VP pill) shown at the right of the header. */
   headerRight?: React.ReactNode;
-  /** The full board, rendered read-only under the "Chronobot Status" tab. */
+  /** The full board, rendered read-only under the bot-status tab. */
   statusView?: React.ReactNode;
+  /** Splash-banner image (defaults to the Chronobot hero). */
+  hero?: string;
+  /** Label for the status tab (defaults to "Chronobot Status"). */
+  statusLabel?: string;
+  /** Alt/aria text for the hero banner (defaults to "Chronobot"). */
+  heroAlt?: string;
   children: React.ReactNode;
 }) {
   const [tab, setTab] = useState<'phase' | 'status'>('phase');
@@ -69,7 +81,7 @@ export default function PhaseScreen({
                 className={tab === 'status' ? 'on' : ''}
                 onClick={() => setTab('status')}
               >
-                Chronobot Status
+                {statusLabel}
               </button>
             </div>
           )}
@@ -82,9 +94,9 @@ export default function PhaseScreen({
         <div className="phase-content">
           <div
             className="phase-hero"
-            style={{ backgroundImage: `url(${HERO})` }}
+            style={{ backgroundImage: `url(${hero})` }}
             role="img"
-            aria-label="Chronobot"
+            aria-label={heroAlt}
           />
           <div className="phase-body">
             {overview && <p className="phase-overview">{overview}</p>}
