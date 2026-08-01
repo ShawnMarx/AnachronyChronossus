@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
 import { useAuth } from './auth/useAuth';
-import { isLocalRun } from './auth/bgeAuth';
+import { isLocalRun, isStaging } from './auth/bgeAuth';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -92,9 +92,9 @@ export default function Landing({
   const [prompt, setPrompt] = useState<{ savedAt: number } | null>(null);
   const { user } = useAuth();
 
-  // Chronossus is admin-gated during development: visible to admins and any local
-  // run (dev), "Coming Soon" for everyone else.
-  const chronossusUnlocked = isLocalRun() || Boolean(user?.isAdmin);
+  // Chronossus is admin-gated during development: visible to admins, any local run
+  // (dev), and the staging preview host; "Coming Soon" for everyone else on prod.
+  const chronossusUnlocked = isLocalRun() || isStaging() || Boolean(user?.isAdmin);
 
   const launchChronobot = () => {
     const saved = peekSavedChronobot();

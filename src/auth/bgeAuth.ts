@@ -27,6 +27,15 @@ export function isLocalRun(): boolean {
 }
 
 /**
+ * True when running on the staging host (`*staging*`). Staging is the preview
+ * environment for in-progress work, so admin-gated previews (e.g. Chronossus) are
+ * unlocked there without depending on the auth service's admin flag.
+ */
+export function isStaging(): boolean {
+  return window.location.hostname.includes('staging');
+}
+
+/**
  * Ask the auth service who the current user is. Returns null when logged out
  * (401), when CORS/network fails, or on any non-OK response — never throws, so
  * callers can treat "not logged in" and "auth unavailable" the same way.
