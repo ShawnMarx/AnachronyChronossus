@@ -76,7 +76,7 @@ const CAL_KEYS: string[] = [
   ...PARADOX_KEYS,
 ];
 
-type PendingStep =
+export type PendingStep =
   | null
   | 'mech'
   | 'buildingVP'
@@ -3229,7 +3229,7 @@ function spaceLabel(action: ChronobotActionId): string {
   return CHRONOBOT_ACTIONS[action].label;
 }
 
-function DetailPanel({
+export function DetailPanel({
   hotspot,
   readOnly,
   pending,
@@ -3254,6 +3254,7 @@ function DetailPanel({
   onStartTurn,
   onClose,
   flow = false,
+  botName = 'Chronobot',
 }: {
   hotspot: Hotspot;
   readOnly: boolean;
@@ -3280,6 +3281,8 @@ function DetailPanel({
   onClose: () => void;
   /** Render in normal flow (mobile) rather than absolutely on the board. */
   flow?: boolean;
+  /** Bot name shown in the instruction copy (defaults to the Chronobot). */
+  botName?: string;
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
@@ -3325,7 +3328,7 @@ function DetailPanel({
         {pending === 'mech' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s Exosuit on the topmost available{' '}
+              Place the {botName}’s Exosuit on the topmost available{' '}
               <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
               space if none are free).
             </p>
@@ -3396,7 +3399,7 @@ function DetailPanel({
         {pending === 'mineResources' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s Exosuit in an open <b>Mine</b> space granting
+              Place the {botName}’s Exosuit in an open <b>Mine</b> space granting
               the best 2 Resources by priority order below, based on
               lacking-first. Give it those <b>2 Resources</b> (pre-selected;
               adjust to match the space — click a cube twice for <b>×2</b>),
@@ -3426,7 +3429,7 @@ function DetailPanel({
         {pending === 'recruitWorker' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Recruit the highest-priority <b>Worker</b> the Chronobot lacks by
+              Recruit the highest-priority <b>Worker</b> the {botName} lacks by
               the priority order below (missing-first); if that type isn’t
               available, take the next available one. Pick the recruited Worker
               (+1 VP).
@@ -3456,7 +3459,7 @@ function DetailPanel({
           <div className="place-prompt">
             <p className="pp-instruct">
               Is a <b>Genius</b> available to recruit <b>and</b> an open Recruit
-              Action space (or World Council space)? If so, the Chronobot
+              Action space (or World Council space)? If so, the {botName}
               recruits a Genius. If not, it performs a Research action instead.
             </p>
             <div className="pp-buttons">
@@ -3474,7 +3477,7 @@ function DetailPanel({
         {pending === 'geniusRecruit' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the Chronobot’s Exosuit on the topmost available <b>Recruit</b>{' '}
+              Place the {botName}’s Exosuit on the topmost available <b>Recruit</b>{' '}
               Action space (or a World Council space if full) and recruit a{' '}
               <b>Genius</b>, removing it from the board. The bot gains 1 VP.
             </p>
@@ -3491,7 +3494,7 @@ function DetailPanel({
         {pending === 'research' && rolledShape && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              The shape die rolled <b>{rolledShape}</b> — the Chronobot keeps a{' '}
+              The shape die rolled <b>{rolledShape}</b> — the {botName} keeps a{' '}
               <b>{rolledShape}</b> Breakthrough.
             </p>
             <div className="shape-roll">
@@ -3514,7 +3517,7 @@ function DetailPanel({
         {/* Reboot — the Chronobot does nothing. */}
         {pending === 'reboot' && (
           <div className="place-prompt">
-            <p className="pp-instruct">Reboot: Chronobot does nothing.</p>
+            <p className="pp-instruct">Reboot: {botName} does nothing.</p>
             <button className="start-turn" onClick={onStartTurn}>
               ▶ Start Your Turn
             </button>
@@ -3525,7 +3528,7 @@ function DetailPanel({
         {pending === 'timeTravel' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Remove one of the Chronobot’s <b>Warp tiles</b> from the past
+              Remove one of the {botName}’s <b>Warp tiles</b> from the past
               Timeline tile where it has the most (oldest if tied).
             </p>
             <button className="start-turn" onClick={onStartTurn}>
@@ -3539,7 +3542,7 @@ function DetailPanel({
           (removeAnomaly.canRemove ? (
             <div className="place-prompt">
               <p className="pp-instruct">
-                Discard <b>{removeAnomaly.discards}</b> from the Chronobot and
+                Discard <b>{removeAnomaly.discards}</b> from the {botName} and
                 remove 1 Anomaly. (Remove Anomaly places no Exosuit.)
               </p>
               <button className="start-turn" onClick={onStartTurn}>
@@ -3549,7 +3552,7 @@ function DetailPanel({
           ) : (
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
-                Failed Action: {removeAnomaly.reason} — the Chronobot takes +1 VP
+                Failed Action: {removeAnomaly.reason} — the {botName} takes +1 VP
                 instead (no Exosuit placed).
               </p>
               <button className="start-turn" onClick={onStartTurn}>
