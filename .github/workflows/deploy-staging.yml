@@ -1,0 +1,43 @@
+name: Deploy Anachrony to Staging
+
+# Static Vite/React site. Pushing to `staging` (or a manual run) SSHes to the same
+# shared BoardGameEdge Droplet as production, pulls the `staging` branch, and
+# rebuilds into a SEPARATE directory (/var/www/anachrony-staging/dist) which nginx
+# serves at anachrony.staging.boardgameedge.com. Production (/var/www/anachrony) is
+# untouched. No systemd service and no `sudo` — nothing to restart.
+#
+# Reuses the same repo secrets as production (same Droplet, same deploy key):
+#   PROD_HOST       the Droplet IP (the deploy host)
+#   DEPLOY_SSH_KEY  the existing fleet deploy private key
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to staging server
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+
+            echo "==> Pulling latest staging code..."
+            cd /var/www/anachrony-staging
+            git fetch origin staging
+            git reset --hard origin/staging
+
+            echo "==> Installing dependencies (incl. devDeps for the build)..."
+            npm ci
+
+            echo "==> Building static site..."
+            npm run build
+
+            echo "==> Done. Anachrony STAGING deployed — nginx serves /var/www/anachrony-staging/dist."
