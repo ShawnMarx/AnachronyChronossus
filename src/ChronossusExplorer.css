@@ -196,6 +196,90 @@
   outline-offset: 2px;
 }
 
+/* ---- Chronossus action dialog ----
+   Recolor the shared DetailPanel (BoardExplorer.css defaults to Chronobot
+   purple) to the Chronossus palette: teal chrome + amber selection. Scoped
+   under .chronossus-harness so the Chronobot dialog stays purple. */
+.chronossus-harness .detail-panel {
+  background: #0e1c1b;
+  border-color: var(--cx-teal);
+}
+.chronossus-harness .dp-head {
+  border-bottom-color: rgba(46, 140, 140, 0.45);
+  background: rgba(46, 140, 140, 0.16);
+}
+.chronossus-harness .dp-note {
+  color: #8fd6d6;
+}
+
+.chronossus-harness .mech-link {
+  color: #7fcaca;
+}
+.chronossus-harness .mech-link:hover {
+  color: #b6e6e6;
+}
+
+.chronossus-harness .mech-cta {
+  background: rgba(46, 140, 140, 0.18);
+  border-color: rgba(46, 140, 140, 0.5);
+  color: #b6e6e6;
+}
+.chronossus-harness .mech-cta:hover {
+  background: rgba(46, 140, 140, 0.3);
+}
+.chronossus-harness .mech-rules ul,
+.chronossus-harness .rule-body {
+  border-color: rgba(46, 140, 140, 0.4);
+  background: rgba(46, 140, 140, 0.08);
+}
+
+/* VP digit picker (Construct) */
+.chronossus-harness .vp-digit {
+  background: rgba(46, 140, 140, 0.18);
+  border-color: rgba(46, 140, 140, 0.5);
+  color: #d8f2f2;
+}
+.chronossus-harness .vp-digit:hover {
+  background: rgba(46, 140, 140, 0.35);
+}
+.chronossus-harness .vp-digit.selected {
+  background: var(--cx-amber);
+  border-color: #fff;
+  color: #1a120c;
+  box-shadow: 0 0 0 2px rgba(232, 146, 46, 0.5);
+}
+
+/* Mine / Recruit cube + worker pickers */
+.chronossus-harness .pick-sep {
+  color: #8fd6d6;
+}
+.chronossus-harness .resource-swatch {
+  border-color: rgba(46, 140, 140, 0.4);
+  background: rgba(46, 140, 140, 0.08);
+}
+.chronossus-harness .resource-swatch:hover {
+  background: rgba(46, 140, 140, 0.2);
+}
+.chronossus-harness .resource-swatch.selected {
+  border-color: var(--cx-amber);
+  background: rgba(232, 146, 46, 0.22);
+  box-shadow: 0 0 0 2px rgba(232, 146, 46, 0.5);
+}
+.chronossus-harness .cube-x2 {
+  background: var(--cx-orange);
+  border-color: #f4c78a;
+}
+
+/* Neutral alternative choice in a gate (e.g. Genius → Research) */
+.chronossus-harness .pp-alt {
+  background: rgba(46, 140, 140, 0.18);
+  border-color: rgba(46, 140, 140, 0.55);
+  color: #b6e6e6;
+}
+.chronossus-harness .pp-alt:hover {
+  background: rgba(46, 140, 140, 0.32);
+}
+
 /* Power Up draw result */
 .cx-drawn {
   background: #2e8c8c22;
