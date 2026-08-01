@@ -48,7 +48,7 @@ parallel session — plan content intact.)
   HANDOFF section below): `DetailPanel` exported + `botName` prop; `CHRONOSSUS_ACTION_HOTSPOTS`
   + `CHRONOSSUS_COMMAND_MARKERS`; 19 TTS overlay assets; command-marker art.
 - [x] 1. Board image + theme + **full DetailPanel plumbing** (real Phase-5 board, botName="Chronossus").
-- [x] 2a. Old `CHRONOSSUS_HOTSPOTS` deleted; the 11-action `CHRONOSSUS_ACTION_HOTSPOTS` now drive the real board. **Coordinates still the placeholder seed — calibrate next (see 2a below).**
+- [x] 2a. Old `CHRONOSSUS_HOTSPOTS` deleted; the 11-action `CHRONOSSUS_ACTION_HOTSPOTS` now drive the real board — **coordinates + Command-marker positions calibrated on the Chronossus board (user-supplied literal).** Hotspots are transparent click targets over the tiles printed on the board (no overlaid images); the `reboot` space was dropped (Reboot is a modular Action-tile action, not a base Chronossus space). Added `CHRONOSSUS_PANEL` ([57.2, 1.7, 42.2, 97.4]) so the dialog sits on the board's right ~42% clear of the (left-side) action tiles.
 
 ---
 
