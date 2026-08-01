@@ -42,6 +42,7 @@ import type { ChronossusActionInput, EnergyDraw } from './engine/bots/chronossus
 import {
   CHRONOSSUS_ACTION_HOTSPOTS,
   CHRONOSSUS_COMMAND_MARKERS,
+  CHRONOSSUS_PANEL,
 } from './board/chronossusHotspots';
 import type { Hotspot } from './board/chronobotHotspots';
 
@@ -405,6 +406,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 return (
                   <button
                     key={h.id}
+                    // Transparent click target over the tile printed on the board
+                    // (no overlaid image). `outlined` only while calibrating.
                     className={`hotspot ${calibrate ? 'outlined' : ''} ${isActive ? 'active' : ''} ${sel ? 'cal-selected' : ''}`}
                     style={{
                       left: `${l}%`,
@@ -418,9 +421,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     }}
                     title={CHRONOBOT_ACTIONS[h.action].label}
                     aria-label={CHRONOBOT_ACTIONS[h.action].label}
-                  >
-                    <img className="hotspot-tile" src={`/assets/solo/actions/${h.action}.png`} alt="" />
-                  </button>
+                  />
                 );
               })}
 
@@ -449,7 +450,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
               {!calibrate && active && (
                 <DetailPanel
-                  hotspot={active}
+                  hotspot={{ ...active, panel: active.panel ?? CHRONOSSUS_PANEL }}
                   readOnly={false}
                   pending={pending}
                   result={result}
