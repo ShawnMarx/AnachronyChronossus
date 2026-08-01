@@ -44,8 +44,93 @@ parallel session — plan content intact.)
 - [x] 0. Debug dev-flow harness: boots straight into **Phase 5** with **4 powered Exosuits**; tap any action space → `resolveAction` → activation log. Chronossus theme (orange/amber/teal).
 - [x] FULL-FLOW SHELL: `ChronossusGame.tsx` now wraps the whole Era loop (Setup → 1–6 → End Game) reusing the **shared `PhaseScreen`** (parameterized `hero`/`statusLabel`/`heroAlt`, Chronobot defaults → Chronobot unchanged). Boots to Phase 5; Era loop wired: Phase 5 → End Actions → Clean Up → Finish Era → next-Era Power Up (Energy Pool draw shows result) → Warp → Actions, or → End Game score screen. Debug phase rail jumps to any phase. Non-Phase-5 phases (setup/prep/paradox/warp) are honest skeletons to reconcile next. Verified in-browser: full loop works, Power Up math correct, **Chronobot regression-checked (SetupFlow still opens)**, no console errors.
 - Shared infra: `chronossusPhaseMeta.ts` (Chronossus overview/rules text).
+- Groundwork for the real Phase-5 board is DONE and committed on `staging` (see the
+  HANDOFF section below): `DetailPanel` exported + `botName` prop; `CHRONOSSUS_ACTION_HOTSPOTS`
+  + `CHRONOSSUS_COMMAND_MARKERS`; 19 TTS overlay assets; command-marker art.
 - [~] 1. Board image + theme done (in the harness). Full bot-aware BoardExplorer plumbing still pending.
-- [~] 2a. `CHRONOSSUS_HOTSPOTS` seeded from the Chronobot grid — **placeholder positions**; tile slots I/II/III landed well, several base actions need nudging. Calibrate next.
+- [~] 2a. `CHRONOSSUS_HOTSPOTS` (15 simplified tap tiles) seeded — superseded by the 11-action `CHRONOSSUS_ACTION_HOTSPOTS`; delete the old set when wiring the real board.
+
+---
+
+## ▶▶ NEXT SESSION — Phase 5: replicate the Chronobot action popup on the Chronossus board
+
+**User's directive:** the Chronossus Phase 5 uses the **same 11 action spaces, same rules**
+as the Chronobot — only board placement differs. The pop-ups must **act and look EXACTLY
+like the Chronobot's** (not the current simplified tap-log). Plus a **calibration tool** to
+set positions, and the **Command markers** rendered. Build all in one pass. Work on the
+**`staging`** branch (auto-deploys to anachrony.staging.boardgameedge.com; prod is safe).
+Do NOT change Chronobot behavior — only additive/shared-via-props changes.
+
+### Already staged (commit `a449007` on `staging`)
+- **`DetailPanel` is exported** from `src/BoardExplorer.tsx` with a `botName` prop
+  (defaults `'Chronobot'`; all instruction strings parameterized). Import into the
+  Chronossus view: `import { DetailPanel, type PendingStep } from './BoardExplorer'`.
+  It renders absolutely on the board via `hotspot.panel ?? DEFAULT_PANEL` (right-side).
+  Uses the shared `CHRONOBOT_ACTIONS` catalog + `ActionIcon` sprite (both work for
+  Chronossus — same `ChronobotActionId`s). **Pass `botName="Chronossus"`.**
+- **`CHRONOSSUS_ACTION_HOTSPOTS: Hotspot[]`** (the 11 shared actions on the Chronossus
+  board, placeholder coords) and **`CHRONOSSUS_COMMAND_MARKERS`** — both in
+  `src/board/chronossusHotspots.ts`. Marker art: `assets/solo/commands/chronossus-marker-{2,3,4,5}.png`.
+- Overlay assets in `assets/solo/chronossus/` (cores/markers/buildings clean; workers +
+  factory + exosuit + operator need rework — or reuse existing `assets/solo/workers/*`).
+
+### The controller to replicate (READ IT FIRST)
+`src/BoardExplorer.tsx` **lines ~1001–1167** is the exact action-turn state machine to
+copy into `ChronossusGame.tsx`, swapping the bot slice + resolver:
+- `onTileClick(h)` → sets `pending` by action: `mine-resource`→`mineOpen`;
+  `recruit-genius-research`→`geniusQuestion`; `remove-anomaly`→`removeAnomaly`;
+  `reboot`→`reboot`; `time-travel` (if `warpTilesOnTimeline>0`)→`timeTravel`; else if
+  `CHRONOBOT_ACTIONS[a].placesExosuit`→`mech`; else `resolve(h,{})` immediately.
+- `onConfirmPlace`, `onCannotPlace`, `onMineHasSpace/NoSpace`, `onPickVP`, `onPickWorker`,
+  `onGeniusYes/No`, `onToggleResource`, `startTurn` — copy verbatim.
+- `resolve(h, opts)`: for Chronossus call **`Chronossus.resolveAction(state, input)`**
+  (not `takeActionTurn`), then `setState(next)` + `setResult(instructions)`.
+  **opts → `ChronossusActionInput` map:** `cannotPlace`→`noSpaceAvailable:true`,
+  plus `buildingVP` / `minedResources` / `recruitedWorker` / `shape` / `geniusAvailable`
+  pass through. (`ChronossusActionInput` already supports all of these.)
+- **Reused decision helpers accept the chronossus slice** (ChronossusState is structurally
+  assignable to ChronobotState): `Chronobot.chooseRecruitWorker(bot)`,
+  `Chronobot.recruitWorkerOrder(bot)`, `Chronobot.mineResourceOrder(bot)`,
+  `Chronobot.chooseRemoveAnomalyDiscards(bot)`. `rollShapeDie()` from `./engine`.
+
+### DetailPanel props to supply (from `ChronossusGame` state)
+`hotspot=active`, `readOnly=false`, `pending`, `result`, `selectedVP`,
+`selectedResources`, `selectedWorker`, `rolledShape`, `breakthroughs=bot.breakthroughs`,
+`mineOrder=Chronobot.mineResourceOrder(bot)`, `workerOrder=Chronobot.recruitWorkerOrder(bot)`,
+`botName="Chronossus"`, all the `on*` callbacks, `onStartTurn=startTurn`, `onClose=closePanel`.
+**`removeAnomaly` prop** = `{ canRemove: bot.anomalies>=1 && !!Chronobot.chooseRemoveAnomalyDiscards(bot),
+discards: <formatted cubes>, reason: bot.anomalies<1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend' }`.
+
+### Build steps
+1. In `ChronossusGame.tsx`, replace the `state.phase === 'actions'` block (the simplified
+   tap-log) with: the board image + `CHRONOSSUS_ACTION_HOTSPOTS` buttons (call `onTileClick`),
+   the exported `DetailPanel` when `active`, and the command markers rendered as `<img>` at
+   `CHRONOSSUS_COMMAND_MARKERS` positions. Add all the controller state + handlers above.
+2. Keep the top bar (`# Exo`, Energy Pool `#/#`, VP) + the End-Actions / phase-rail / Impact
+   controls already there. Delete the old `CHRONOSSUS_HOTSPOTS` (15-tile) set + its usage.
+3. **Calibrate mode** (adapt Chronobot's `CalibrationPanel`, `BoardExplorer.tsx` ~line 2428;
+   a simpler version is fine): toggle; clicking a hotspot/marker *selects* it instead of
+   opening the dialog; arrow keys nudge the selected `rect`/`pos` (0.2% / Shift 1%); a panel
+   emits a paste-ready `CHRONOSSUS_ACTION_HOTSPOTS` + `CHRONOSSUS_COMMAND_MARKERS` literal.
+   Validate rendered positions with `node pw-validate.mjs shot.png` if useful.
+
+### Verify
+- `npm run build` + `npm test` (85 green) + `npm run lint` (only pre-existing warnings).
+- Playwright smoke (`http://localhost:<port>/`, card is `ready` on localhost): open Chronossus
+  → Phase 5 → click **Construct — Factory** → gate (Confirm placed) → VP digits → **▶ Start
+  Your Turn** → VP updates; click **Recruit** → worker picker → Start; **Mine** → open? → 2
+  cubes → Start. Confirm the popup is visually identical to the Chronobot's.
+- **Chronobot regression:** open the Chronobot, take any action — popup + text unchanged
+  (it passes no `botName`, so defaults to "Chronobot").
+- Commit + push `staging`; confirm the deploy (gh run watch) and the live bundle hash.
+
+### Gotchas
+- Don't move `DetailPanel`/helpers out of `BoardExplorer` — exporting in place is enough and
+  keeps its many in-module deps (`ResourceSwatch`, `WorkerSwatch`, `ShapeIcon`,
+  `RuleExplainer`, `spaceLabel`, `DEFAULT_PANEL`, `SHAPE_ORDER`, `RESOURCE_META`) valid.
+- The Chronossus `resolveAction` has NO token advancement (correct for now — paths are a
+  later feature). This board is tap-to-activate; the AI die + token paths come later (F4).
+- `Hotspot` type is exported from `src/board/chronobotHotspots.ts`.
 - [ ] 2a. Seed `chronossusHotspots.ts` from Chronobot %-anchors for all **matching action spaces**; nudge only divergent hotspots (tile slots I/II/III, Autoleap, Energy Pool). Verify with `pw-validate.mjs`.
 - [ ] 2b. Build `chronossusPaths.ts` from scratch: **4 unique per-token routes** (2/3/4/5, colored) that **overlap** at shared spaces; per-token-per-step anchors; stacking/bump + paired-split must handle different tokens sharing a spot. Calibrate on the Chronossus board (none of the Chronobot path anchors apply).
 - [ ] 3. Board hotspots/counters — fill in Chronossus-specific spaces + trackers.
