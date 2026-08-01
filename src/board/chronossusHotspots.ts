@@ -61,7 +61,7 @@ export const CHRONOSSUS_COMMAND_MARKERS: CommandMarkerPos[] = [
 
 /** Count/track badges: buildings, superproject, anomalies, breakthroughs, Exosuits, resources, workers. */
 export const CHRONOSSUS_COUNTERS: BoardCounter[] = [
-  { key: 'mech', pos: [83.8, 12.2], label: 'Powered Exosuits' },
+  { key: 'mech', pos: [88.5, 12.2], label: 'Powered Exosuits' },
   { key: 'breakthrough', pos: [5.2, 89.1], label: 'Breakthroughs' },
   { key: 'superproject', pos: [22.9, 80.8], label: 'Superproject' },
   { key: 'powerplant', pos: [42.8, 80.8], label: 'Power Plant' },
@@ -69,14 +69,14 @@ export const CHRONOSSUS_COUNTERS: BoardCounter[] = [
   { key: 'support', pos: [67.3, 80.8], label: 'Life Support' },
   { key: 'lab', pos: [79.6, 80.8], label: 'Lab' },
   { key: 'anomaly', pos: [93.7, 80.8], label: 'Anomalies' },
-  { key: 'neutronium', pos: [58.3, 11.7], label: 'Neutronium' },
-  { key: 'uranium', pos: [58.3, 24], label: 'Uranium' },
-  { key: 'gold', pos: [58.3, 36.5], label: 'Gold' },
-  { key: 'titanium', pos: [58.3, 49.1], label: 'Titanium' },
-  { key: 'genius', pos: [69.1, 9.8], label: 'Genius' },
-  { key: 'administrator', pos: [69.1, 22.1], label: 'Administrator' },
-  { key: 'engineer', pos: [69.1, 35], label: 'Engineer' },
-  { key: 'scientist', pos: [69.1, 47.4], label: 'Scientist' },
+  { key: 'neutronium', pos: [63, 11.7], label: 'Neutronium' },
+  { key: 'uranium', pos: [63, 24.1], label: 'Uranium' },
+  { key: 'gold', pos: [63, 36.6], label: 'Gold' },
+  { key: 'titanium', pos: [63, 49], label: 'Titanium' },
+  { key: 'genius', pos: [73.9, 10.1], label: 'Genius' },
+  { key: 'administrator', pos: [73.9, 22.2], label: 'Administrator' },
+  { key: 'engineer', pos: [73.9, 35.1], label: 'Engineer' },
+  { key: 'scientist', pos: [73.9, 47.4], label: 'Scientist' },
 ];
 
 /** Time Travel marker's 7 spots (0/2/4/6/8/10/12 VP) + marker width. Calibrate. */
