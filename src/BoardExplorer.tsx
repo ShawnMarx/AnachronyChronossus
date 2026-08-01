@@ -3292,7 +3292,10 @@ export function DetailPanel({
   const toggleMech = () => setShowMech((s) => !s);
   const toggleRule = () => setShowRule((s) => !s);
 
-  const paragraphs = def.rule.split('\n\n');
+  // Swap the bot's name into any displayed rulebook/verbatim text when this is
+  // not the Chronobot (no-op for the default). Keeps the rule copy on-theme.
+  const sub = (s: string) => (botName === 'Chronobot' ? s : s.replace(/Chronobot/g, botName));
+  const paragraphs = def.rule.split('\n\n').map(sub);
   const buildingLabel = def.label.replace('Construct — ', '');
   const isSuperproject = hotspot.action === 'construct-superproject';
   const ruleLabel = hotspot.action.startsWith('construct')
@@ -3321,7 +3324,7 @@ export function DetailPanel({
         </button>
       </div>
       <div className="dp-body">
-        {hotspot.note && <p className="dp-note">{hotspot.note}</p>}
+        {hotspot.note && <p className="dp-note">{sub(hotspot.note)}</p>}
 
 
         {/* Step 1 — placement gate for any mech-placing action. */}
@@ -3612,7 +3615,9 @@ function MechRules({
       {open && (
         <ul>
           {MECH_PLACEMENT.map((line, i) => (
-            <li key={i}>{line}</li>
+            <li key={i}>
+              {botName === 'Chronobot' ? line : line.replace(/Chronobot/g, botName)}
+            </li>
           ))}
         </ul>
       )}

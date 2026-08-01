@@ -31,6 +31,7 @@ import {
   drawEnergyPool,
   rollShapeDie,
   type GameState,
+  type ChronossusState,
   type Phase,
   type Resource,
   type Worker,
@@ -43,8 +44,12 @@ import {
   CHRONOSSUS_ACTION_HOTSPOTS,
   CHRONOSSUS_COMMAND_MARKERS,
   CHRONOSSUS_PANEL,
+  CHRONOSSUS_COUNTERS,
+  CHRONOSSUS_TIME_TRAVEL_TRACK,
+  CHRONOSSUS_WARP_MARKER,
+  CHRONOSSUS_PARADOX_SLOTS,
 } from './board/chronossusHotspots';
-import type { Hotspot } from './board/chronobotHotspots';
+import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 const DEBUG_EXOSUITS = 4;
@@ -89,14 +94,49 @@ function isConstructBuilding(a: string): boolean {
 // ---- Calibration keys ----------------------------------------------------
 const hsKey = (id: string) => `hs_${id}`;
 const cmdKey = (num: number) => `cmd_${num}`;
+const ttKey = (i: number) => `tt_${i}`;
+const pdxKey = (i: number) => `pdx_${i}`;
+const WARP_KEY = 'warp';
 const HS_CENTER = (h: Hotspot): [number, number] => [
   h.rect[0] + h.rect[2] / 2,
   h.rect[1] + h.rect[3] / 2,
 ];
+const TT_KEYS = CHRONOSSUS_TIME_TRAVEL_TRACK.spots.map((_, i) => ttKey(i));
+const PDX_KEYS = CHRONOSSUS_PARADOX_SLOTS.slots.map((_, i) => pdxKey(i));
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
   ...CHRONOSSUS_COMMAND_MARKERS.map((m) => cmdKey(m.num)),
+  ...CHRONOSSUS_COUNTERS.map((c) => c.key),
+  ...TT_KEYS,
+  WARP_KEY,
+  ...PDX_KEYS,
 ];
+
+/** Value for a tracker badge (the Chronossus slice shares the Chronobot's fields). */
+function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
+  switch (key) {
+    case 'superproject':
+      return bot.superprojects;
+    case 'anomaly':
+      return bot.anomalies;
+    case 'mech':
+      return bot.exosuitsAvailable;
+    case 'breakthrough':
+      return bot.breakthroughs.circle + bot.breakthroughs.triangle + bot.breakthroughs.square;
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return bot.resources[key];
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist':
+      return bot.workers[key];
+    default:
+      return bot.buildings[key];
+  }
+}
 
 export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [state, setState] = useState<GameState>(initState);
@@ -113,16 +153,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
+  const [paradoxes, setParadoxes] = useState(0); // debug: fill 0–3 Paradox slots
   const [positions, setPositions] = useState<Record<string, [number, number]>>(() => {
     const seed: Record<string, [number, number]> = {};
     for (const h of CHRONOSSUS_ACTION_HOTSPOTS) seed[hsKey(h.id)] = HS_CENTER(h);
     for (const m of CHRONOSSUS_COMMAND_MARKERS) seed[cmdKey(m.num)] = m.pos;
+    for (const c of CHRONOSSUS_COUNTERS) seed[c.key] = c.pos;
+    CHRONOSSUS_TIME_TRAVEL_TRACK.spots.forEach((p, i) => (seed[ttKey(i)] = p));
+    seed[WARP_KEY] = CHRONOSSUS_WARP_MARKER.pos;
+    CHRONOSSUS_PARADOX_SLOTS.slots.forEach((p, i) => (seed[pdxKey(i)] = p));
     return seed;
   });
   const [selected, setSelected] = useState<string>(CAL_KEYS[0]);
   const [hsWidth, setHsWidth] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[2]);
   const [hsHeight, setHsHeight] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[3]);
   const [markerWidth, setMarkerWidth] = useState<number>(5);
+  const [ttWidth, setTtWidth] = useState<number>(CHRONOSSUS_TIME_TRAVEL_TRACK.markerWidth);
+  const [warpWidth, setWarpWidth] = useState<number>(CHRONOSSUS_WARP_MARKER.width);
+  const [paradoxWidth, setParadoxWidth] = useState<number>(CHRONOSSUS_PARADOX_SLOTS.width);
 
   const bot = state.chronossus!;
   const score = Chronossus.scoreChronossus(bot);
@@ -385,6 +433,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             />
             Calibrate positions
           </label>
+          <span className="cx-debug-label">Paradox:</span>
+          <div className="paradox-ctl">
+            <button onClick={() => setParadoxes((n) => Math.max(0, n - 1))} disabled={paradoxes <= 0}>
+              −
+            </button>
+            <span className="paradox-ctl-val">{paradoxes}</span>
+            <button onClick={() => setParadoxes((n) => Math.min(3, n + 1))} disabled={paradoxes >= 3}>
+              +
+            </button>
+          </div>
           <button onClick={endActions}>End Actions ▶ Clean Up</button>
         </div>
         <div className="cx-body">
@@ -448,6 +506,117 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 );
               })}
 
+              {/* Count/track badges (buildings, resources, workers, etc.). */}
+              {CHRONOSSUS_COUNTERS.map((c) => {
+                const [x, y] = positions[c.key] ?? c.pos;
+                const sel = calibrate && selected === c.key;
+                return (
+                  <div
+                    key={c.key}
+                    className={`count-badge ${sel ? 'cal-selected' : ''}`}
+                    style={{ left: `${x}%`, top: `${y}%` }}
+                    title={calibrate ? c.label : `${c.label}: ${counterValue(bot, c.key)}`}
+                    onClick={
+                      calibrate
+                        ? (e) => {
+                            e.stopPropagation();
+                            setSelected(c.key);
+                          }
+                        : undefined
+                    }
+                  >
+                    {calibrate ? (sel ? '◎' : '·') : counterValue(bot, c.key)}
+                  </div>
+                );
+              })}
+
+              {/* Time Travel marker — at its track spot; all 7 shown while calibrating. */}
+              {calibrate
+                ? TT_KEYS.map((key, i) => {
+                    const [x, y] = positions[key] ?? CHRONOSSUS_TIME_TRAVEL_TRACK.spots[i];
+                    return (
+                      <img
+                        key={key}
+                        src="/assets/solo/timetravel-marker.png"
+                        alt=""
+                        className={`tt-marker ${selected === key ? 'cal-selected' : 'cal-ghost'}`}
+                        style={{ left: `${x}%`, top: `${y}%`, width: `${ttWidth}%` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(key);
+                        }}
+                      />
+                    );
+                  })
+                : (() => {
+                    const spot = Math.min(bot.timeTravelTrack, TT_KEYS.length - 1);
+                    const [x, y] = positions[ttKey(spot)] ?? CHRONOSSUS_TIME_TRAVEL_TRACK.spots[spot];
+                    return (
+                      <img
+                        src="/assets/solo/timetravel-marker.png"
+                        alt="Time Travel marker"
+                        className="tt-marker"
+                        style={{ left: `${x}%`, top: `${y}%`, width: `${ttWidth}%` }}
+                      />
+                    );
+                  })()}
+
+              {/* Warp-tile marker (image + count underneath). */}
+              {(() => {
+                const [wx, wy] = positions[WARP_KEY] ?? CHRONOSSUS_WARP_MARKER.pos;
+                const sel = calibrate && selected === WARP_KEY;
+                return (
+                  <div
+                    className={`warp-marker ${sel ? 'cal-selected' : ''}`}
+                    style={{ left: `${wx}%`, top: `${wy}%`, width: `${warpWidth}%` }}
+                    title={`Chronossus Warp tiles on the Timeline: ${bot.warpTilesOnTimeline}`}
+                    onClick={
+                      calibrate
+                        ? (e) => {
+                            e.stopPropagation();
+                            setSelected(WARP_KEY);
+                          }
+                        : undefined
+                    }
+                  >
+                    <img className="warp-img" src="/assets/solo/warp-tile.png" alt="Chronossus Warp tile" />
+                    <span className="warp-count">{bot.warpTilesOnTimeline}</span>
+                  </div>
+                );
+              })()}
+
+              {/* Paradox slots — only the placed ones show (all 3 while calibrating). */}
+              {PDX_KEYS.map((key, i) => {
+                const filled = i < paradoxes;
+                if (!calibrate && !filled) return null;
+                const [px, py] = positions[key] ?? CHRONOSSUS_PARADOX_SLOTS.slots[i];
+                const sel = calibrate && selected === key;
+                const rot = i === 1 ? -90 : 90;
+                return (
+                  <img
+                    key={key}
+                    src="/assets/solo/paradox.png"
+                    alt={`Paradox slot ${i + 1}`}
+                    title={`Paradox ${paradoxes}`}
+                    className={`paradox-slot ${sel ? 'cal-selected' : ''} ${calibrate && !filled ? 'cal-ghost' : ''}`}
+                    style={{
+                      left: `${px}%`,
+                      top: `${py}%`,
+                      width: `${paradoxWidth}%`,
+                      transform: `translate(-50%, -50%) rotate(${rot}deg)`,
+                    }}
+                    onClick={
+                      calibrate
+                        ? (e) => {
+                            e.stopPropagation();
+                            setSelected(key);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
+
               {!calibrate && active && (
                 <DetailPanel
                   hotspot={{ ...active, panel: active.panel ?? CHRONOSSUS_PANEL }}
@@ -499,6 +668,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               onHsHeight={setHsHeight}
               markerWidth={markerWidth}
               onMarkerWidth={setMarkerWidth}
+              ttWidth={ttWidth}
+              onTtWidth={setTtWidth}
+              warpWidth={warpWidth}
+              onWarpWidth={setWarpWidth}
+              paradoxWidth={paradoxWidth}
+              onParadoxWidth={setParadoxWidth}
             />
           ) : (
             <aside className="cx-log">
@@ -637,6 +812,12 @@ function CalibrationPanel({
   onHsHeight,
   markerWidth,
   onMarkerWidth,
+  ttWidth,
+  onTtWidth,
+  warpWidth,
+  onWarpWidth,
+  paradoxWidth,
+  onParadoxWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -647,6 +828,12 @@ function CalibrationPanel({
   onHsHeight: (h: number) => void;
   markerWidth: number;
   onMarkerWidth: (w: number) => void;
+  ttWidth: number;
+  onTtWidth: (w: number) => void;
+  warpWidth: number;
+  onWarpWidth: (w: number) => void;
+  paradoxWidth: number;
+  onParadoxWidth: (w: number) => void;
 }) {
   const hotspotLiteral =
     'export const CHRONOSSUS_ACTION_HOTSPOTS: Hotspot[] = [\n' +
@@ -664,6 +851,31 @@ function CalibrationPanel({
       return `  { num: ${m.num}, pos: [${x}, ${y}] },`;
     }).join('\n') +
     '\n];';
+  const countersLiteral =
+    'export const CHRONOSSUS_COUNTERS: BoardCounter[] = [\n' +
+    CHRONOSSUS_COUNTERS.map((c) => {
+      const [x, y] = positions[c.key] ?? c.pos;
+      return `  { key: '${c.key}', pos: [${x}, ${y}], label: '${c.label}' },`;
+    }).join('\n') +
+    '\n];';
+  const ttLiteral =
+    'export const CHRONOSSUS_TIME_TRAVEL_TRACK: TimeTravelTrackLayout = {\n  spots: [\n' +
+    TT_KEYS.map((key, i) => {
+      const [x, y] = positions[key] ?? CHRONOSSUS_TIME_TRAVEL_TRACK.spots[i];
+      return `    [${x}, ${y}],`;
+    }).join('\n') +
+    `\n  ],\n  markerWidth: ${ttWidth},\n};`;
+  const [wx, wy] = positions[WARP_KEY] ?? CHRONOSSUS_WARP_MARKER.pos;
+  const warpLiteral =
+    `export const CHRONOSSUS_WARP_MARKER: WarpMarkerLayout = {\n  pos: [${wx}, ${wy}],\n  width: ${warpWidth},\n};`;
+  const paradoxLiteral =
+    'export const CHRONOSSUS_PARADOX_SLOTS: ParadoxLayout = {\n  slots: [\n' +
+    PDX_KEYS.map((key, i) => {
+      const [x, y] = positions[key] ?? CHRONOSSUS_PARADOX_SLOTS.slots[i];
+      return `    [${x}, ${y}],`;
+    }).join('\n') +
+    `\n  ],\n  width: ${paradoxWidth},\n};`;
+  const ttLabel = (i: number) => (i === 0 ? 'TT start (0 VP)' : `TT +${i}`);
 
   const item = (key: string, label: React.ReactNode, def: [number, number]) => (
     <button
@@ -716,6 +928,39 @@ function CalibrationPanel({
           {CHRONOSSUS_COMMAND_MARKERS.map((m) => item(cmdKey(m.num), `Token ${m.num}`, m.pos))}
         </div>
         <textarea className="cal-out" readOnly value={markerLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Count badges ({CHRONOSSUS_COUNTERS.length})</summary>
+        <div className="cal-list">
+          {CHRONOSSUS_COUNTERS.map((c) => item(c.key, c.label, c.pos))}
+        </div>
+        <textarea className="cal-out" readOnly value={countersLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Time Travel track ({TT_KEYS.length})</summary>
+        {sizeSlider('Marker width', ttWidth, onTtWidth, 12)}
+        <div className="cal-list">
+          {TT_KEYS.map((key, i) => item(key, ttLabel(i), CHRONOSSUS_TIME_TRAVEL_TRACK.spots[i]))}
+        </div>
+        <textarea className="cal-out" readOnly value={ttLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Warp marker</summary>
+        {sizeSlider('Marker width', warpWidth, onWarpWidth, 12)}
+        <div className="cal-list">{item(WARP_KEY, 'Warp tile', CHRONOSSUS_WARP_MARKER.pos)}</div>
+        <textarea className="cal-out" readOnly value={warpLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Paradox slots ({PDX_KEYS.length})</summary>
+        {sizeSlider('Slot width', paradoxWidth, onParadoxWidth, 12)}
+        <div className="cal-list">
+          {PDX_KEYS.map((key, i) => item(key, `Paradox ${i + 1}`, CHRONOSSUS_PARADOX_SLOTS.slots[i]))}
+        </div>
+        <textarea className="cal-out" readOnly value={paradoxLiteral} />
       </details>
     </div>
   );
