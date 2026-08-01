@@ -47,12 +47,37 @@ parallel session — plan content intact.)
 - Groundwork for the real Phase-5 board is DONE and committed on `staging` (see the
   HANDOFF section below): `DetailPanel` exported + `botName` prop; `CHRONOSSUS_ACTION_HOTSPOTS`
   + `CHRONOSSUS_COMMAND_MARKERS`; 19 TTS overlay assets; command-marker art.
-- [~] 1. Board image + theme done (in the harness). Full bot-aware BoardExplorer plumbing still pending.
-- [~] 2a. `CHRONOSSUS_HOTSPOTS` (15 simplified tap tiles) seeded — superseded by the 11-action `CHRONOSSUS_ACTION_HOTSPOTS`; delete the old set when wiring the real board.
+- [x] 1. Board image + theme + **full DetailPanel plumbing** (real Phase-5 board, botName="Chronossus").
+- [x] 2a. Old `CHRONOSSUS_HOTSPOTS` deleted; the 11-action `CHRONOSSUS_ACTION_HOTSPOTS` now drive the real board. **Coordinates still the placeholder seed — calibrate next (see 2a below).**
 
 ---
 
-## ▶▶ NEXT SESSION — Phase 5: replicate the Chronobot action popup on the Chronossus board
+## ✅ DONE — Phase 5: Chronobot action popup replicated on the Chronossus board
+
+**Landed (this session, `staging`):** `ChronossusGame.tsx` Phase-5 block now renders the
+real board (`board-chronossus.jpg`) with the 12 `CHRONOSSUS_ACTION_HOTSPOTS` buttons, the
+4 Command markers (`chronossus-marker-{2,3,4,5}.png`, teal-glow `.cx-cmd-marker`), and the
+**exported `DetailPanel` with `botName="Chronossus"`** — the pop-up is visually + behaviorally
+identical to the Chronobot's. Full controller copied over (`onTileClick`/`onConfirmPlace`/
+`onCannotPlace`/`onMine*`/`onGenius*`/`onPickVP`/`onPickWorker`/`onToggleResource`/`startTurn`/
+`resolve`), calling `Chronossus.resolveAction` (no token advancement — correct for now), reusing
+`Chronobot.*` decision helpers on the (structurally compatible) Chronossus slice.
+- **Calibrate mode** added: checkbox in the Phase-5 controls; clicking a hotspot/marker *selects*
+  it, click-board places, arrow-keys nudge (0.2% / Shift 1%), width/height sliders; a
+  `CalibrationPanel` emits paste-ready `CHRONOSSUS_ACTION_HOTSPOTS` + `CHRONOSSUS_COMMAND_MARKERS`
+  literals. **Positions are still the placeholder seed** — next: actually calibrate on the board (2a/2b).
+- Deleted the old `CHRONOSSUS_HOTSPOTS` (15-tile) set + `ChronossusHotspot` interface.
+- **Fixed a botName leak:** `MechRules` ("Placing the …'s Exosuit") is now parameterized by
+  `botName` (defaults `'Chronobot'`; Chronobot unchanged).
+- **Verified:** `npm run build` clean, `npm test` 85 green, `npm run lint` (3 pre-existing warnings).
+  Playwright smoke on localhost:5205 — Construct-Factory gate → VP picker → Start (Exo 4→3, VP recorded),
+  Recruit (Exo→3, +1 VP), Mine open/no-space branch, mech collapsible reads "Chronossus's Exosuit",
+  no console errors. Chronobot regression: SetupFlow still opens, no errors.
+- **Still TODO:** calibrate the real hotspot/marker coordinates (2a); build `chronossusPaths.ts` +
+  the 4-token route model (2b / F4-0); board counters/trackers (3); per-phase bodies (4); top bar
+  Exo/Energy already present (5); Solo-Objective tracker + score (6).
+
+### (original directive, for reference) — replicate the Chronobot action popup on the Chronossus board
 
 **User's directive:** the Chronossus Phase 5 uses the **same 11 action spaces, same rules**
 as the Chronobot — only board placement differs. The pop-ups must **act and look EXACTLY

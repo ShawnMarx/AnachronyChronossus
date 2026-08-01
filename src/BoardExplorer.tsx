@@ -3587,19 +3587,27 @@ export function DetailPanel({
 
         {/* Mech-placement rules — always below the orange boxes, on demand. */}
         {def.placesExosuit && (
-          <MechRules open={showMech} onToggle={toggleMech} />
+          <MechRules open={showMech} onToggle={toggleMech} botName={botName} />
         )}
       </div>
     </div>
   );
 }
 
-/** Collapsible verbatim rules for how the Chronobot places its mech. */
-function MechRules({ open, onToggle }: { open: boolean; onToggle: () => void }) {
+/** Collapsible verbatim rules for how the bot places its mech. */
+function MechRules({
+  open,
+  onToggle,
+  botName = 'Chronobot',
+}: {
+  open: boolean;
+  onToggle: () => void;
+  botName?: string;
+}) {
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={onToggle}>
-        📖 Placing the Chronobot’s Exosuit {open ? '▾' : '▸'}
+        📖 Placing the {botName}’s Exosuit {open ? '▾' : '▸'}
       </button>
       {open && (
         <ul>

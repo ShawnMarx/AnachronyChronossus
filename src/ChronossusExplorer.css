@@ -177,6 +177,25 @@
   font-weight: 700;
 }
 
+/* Command-token markers on the Chronossus board (teal glow vs. the Chronobot's
+   purple). Center-anchored like every other overlay. */
+.cx-cmd-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter:
+    drop-shadow(1.4px 0 0 #2e8c8c) drop-shadow(-1.4px 0 0 #2e8c8c)
+    drop-shadow(0 1.4px 0 #2e8c8c) drop-shadow(0 -1.4px 0 #2e8c8c)
+    drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  z-index: 4;
+}
+.cx-cmd-marker.cal-selected {
+  pointer-events: auto;
+  cursor: pointer;
+  outline: 2px solid #fde047;
+  outline-offset: 2px;
+}
+
 /* Power Up draw result */
 .cx-drawn {
   background: #2e8c8c22;
