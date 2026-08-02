@@ -871,7 +871,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
-  // so ▶ Start resolves it, advances the marker, and shows the result.
+  // so ▶ Start resolves it and advances the marker (the caller then closes).
   const resolveTileSlot = (actionId: ChronossusActionId) => {
     const { state: next, instructions } = Chronossus.resolveAction(state, { actionId });
     commit(
@@ -885,9 +885,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastResult(instructions);
     activeMarkerRef.current = null;
   };
-  // ▶ Start on the tile dialog: resolve, keep the dialog open to show the result.
+  // ▶ Start on the tile dialog: resolve and close immediately (like the printed
+  // actions) — the result lands in History / the turn-status aside, no Done step.
   const startTileTurn = () => {
-    if (pendingTile) resolveTileSlot(pendingTile);
+    if (!pendingTile) return;
+    resolveTileSlot(pendingTile);
+    closeTile();
   };
   // Close the tile dialog. If it hasn't resolved yet (no result), the marker does
   // not advance (a cancelled turn).
@@ -1315,7 +1318,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               {pendingTile && (
                 <CxTileDialog
                   action={pendingTile}
-                  result={result}
                   panel={CHRONOSSUS_PANEL}
                   readOnly={tileRuleView}
                   onStart={startTileTurn}
@@ -1555,14 +1557,12 @@ const TILES_WITH_RULES_BOX = new Set<string>([]);
 
 function CxTileDialog({
   action,
-  result,
   panel,
   readOnly = false,
   onStart,
   onClose,
 }: {
   action: ChronossusTileActionId;
-  result: Instruction[];
   panel: [number, number, number, number];
   readOnly?: boolean;
   onStart: () => void;
@@ -1570,7 +1570,6 @@ function CxTileDialog({
 }) {
   const code = TILE_ACTION_CODE[action];
   const tile = CHRONOSSUS_TILES[code];
-  const resolved = result.length > 0;
   const showRulesBox = TILES_WITH_RULES_BOX.has(code);
   const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
   const [l, t, w, h] = panel;
@@ -1597,19 +1596,10 @@ function CxTileDialog({
       <div className="dp-body">
         <div className="place-prompt">
           <p className="pp-instruct">{TILE_INSTRUCT[action]}</p>
-          {readOnly ? null : !resolved ? (
+          {!readOnly && (
             <button className="start-turn" onClick={onStart}>
               ▶ Start Your Turn
             </button>
-          ) : (
-            <div className="cx-tile-result">
-              {result.map((i, idx) => (
-                <p key={idx}>{i.text}</p>
-              ))}
-              <button className="start-turn" onClick={onClose}>
-                Done ✓
-              </button>
-            </div>
           )}
         </div>
 
