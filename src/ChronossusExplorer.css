@@ -359,6 +359,60 @@
   border-bottom: 1px solid #ffffff1a;
 }
 
+/* Tapped-badge info popover — Chronossus-themed (portals to <body>, so its own
+   class rather than a .chronossus-harness descendant selector). */
+.cx-badge-portal.badge-portal {
+  background: #14100c;
+  border: 1px solid var(--cx-teal, #2e8c8c);
+  color: #f3e9df;
+}
+.cx-badge-portal.bt {
+  display: flex;
+  gap: 0.7rem;
+}
+.cx-bt-pop-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-weight: 800;
+}
+.cx-bt-sym {
+  color: var(--cx-amber, #e8922e);
+  font-size: 1rem;
+}
+
+/* Command-marker calibration ghosts (teal) */
+.chronossus-harness .cmd-spot.cal-selected {
+  color: var(--cx-amber);
+}
+/* Modular tile-slot ghost (I/II/III) in calibrate mode */
+.chronossus-harness .cmd-spot.cx-slot {
+  color: var(--cx-amber);
+  font-weight: 800;
+  font-size: 0.8rem;
+}
+
+/* Persistent modular tile-slot chips (I/II/III) on the board */
+.cx-slot-chip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 1.4em;
+  height: 1.4em;
+  padding: 0 0.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.6rem, 1.4vw, 0.9rem);
+  font-weight: 800;
+  color: #06201f;
+  background: var(--cx-amber);
+  border: 1px solid #f4c78a;
+  border-radius: 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  z-index: 3;
+}
+
 /* ---- Chronossus action dialog ----
    Recolor the shared DetailPanel (BoardExplorer.css defaults to Chronobot
    purple) to the Chronossus palette: teal chrome + amber selection. Scoped

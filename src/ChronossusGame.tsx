@@ -31,6 +31,8 @@ import {
   emptyChronossusState,
   drawEnergyPool,
   rollShapeDie,
+  rollAiDie,
+  AI_DIE_FACES,
   type GameState,
   type ChronossusState,
   type Phase,
@@ -43,13 +45,21 @@ import { finishEra, advanceFromPreparation } from './game/flow';
 import type { ChronossusActionInput, EnergyDraw } from './engine/bots/chronossus';
 import {
   CHRONOSSUS_ACTION_HOTSPOTS,
-  CHRONOSSUS_COMMAND_MARKERS,
   CHRONOSSUS_PANEL,
   CHRONOSSUS_COUNTERS,
   CHRONOSSUS_TIME_TRAVEL_TRACK,
   CHRONOSSUS_WARP_MARKER,
   CHRONOSSUS_PARADOX_SLOTS,
 } from './board/chronossusHotspots';
+import {
+  CHRONOSSUS_TRACK_POSITIONS,
+  COMMAND_NUMS,
+  initialMarkerSteps,
+  markerPosKey,
+  nextStep,
+  trackPos,
+  type CommandNum,
+} from './board/chronossusPaths';
 import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
@@ -95,7 +105,6 @@ function isConstructBuilding(a: string): boolean {
 
 // ---- Calibration keys ----------------------------------------------------
 const hsKey = (id: string) => `hs_${id}`;
-const cmdKey = (num: number) => `cmd_${num}`;
 const ttKey = (i: number) => `tt_${i}`;
 const pdxKey = (i: number) => `pdx_${i}`;
 const WARP_KEY = 'warp';
@@ -105,14 +114,51 @@ const HS_CENTER = (h: Hotspot): [number, number] => [
 ];
 const TT_KEYS = CHRONOSSUS_TIME_TRAVEL_TRACK.spots.map((_, i) => ttKey(i));
 const PDX_KEYS = CHRONOSSUS_PARADOX_SLOTS.slots.map((_, i) => pdxKey(i));
+const TRACK_KEYS = CHRONOSSUS_TRACK_POSITIONS.map((p) => p.key);
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
-  ...CHRONOSSUS_COMMAND_MARKERS.map((m) => cmdKey(m.num)),
+  ...TRACK_KEYS,
   ...CHRONOSSUS_COUNTERS.map((c) => c.key),
   ...TT_KEYS,
   WARP_KEY,
   ...PDX_KEYS,
 ];
+
+const SHAPE_SYMBOLS: [BreakthroughShape, string][] = [
+  ['circle', '●'],
+  ['triangle', '▲'],
+  ['square', '■'],
+];
+const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
+
+/** Popover text for a tracker badge (the same info as the Chronobot's tooltips). */
+function counterInfo(bot: ChronossusState, c: BoardCounter): string {
+  const count = counterValue(bot, c.key);
+  if (c.key === 'superproject') {
+    return bot.superprojectVps.length
+      ? `${c.label} ×${count} — VP: ${bot.superprojectVps.join(', ')}`
+      : `${c.label}: 0`;
+  }
+  if ((BUILDING_KEYS as readonly string[]).includes(c.key)) {
+    const vps = bot.buildingVps[c.key as (typeof BUILDING_KEYS)[number]];
+    return vps.length
+      ? `${c.label} ×${count} — VP: ${vps.join(', ')} (max 3 of a type)`
+      : `${c.label}: 0 (max 3 of a type)`;
+  }
+  switch (c.key) {
+    case 'mech':
+      return `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+    case 'anomaly':
+      return `${c.label}: ${count} (max 3)`;
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return `${c.label}: ${count} cube${count === 1 ? '' : 's'}`;
+    default:
+      return `${c.label}: ${count}`;
+  }
+}
 
 /** Value for a tracker badge (the Chronossus slice shares the Chronobot's fields). */
 function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
@@ -154,6 +200,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   const [lastResult, setLastResult] = useState<Instruction[]>([]); // persists in the aside
 
+  // Tapped tracker-badge popover (like the Chronobot's board tooltips).
+  const [tappedBadge, setTappedBadge] = useState<string | null>(null);
+  const [tappedRect, setTappedRect] = useState<DOMRect | null>(null);
+
+  // ---- Command markers (Take Bot Action) ---------------------------------
+  const [markerSteps, setMarkerSteps] = useState<Record<CommandNum, number>>(initialMarkerSteps);
+  const [activeMarker, setActiveMarker] = useState<CommandNum | null>(null);
+  const [botDie, setBotDie] = useState<number | null>(null);
+  // The marker to advance when the current bot-driven turn resolves (null on a
+  // player free-tap, so free taps never move a marker).
+  const activeMarkerRef = useRef<CommandNum | null>(null);
+
   // Debug mode (admin-only). On by default — Chronossus is an admin preview and
   // the debug rail (phase jump / Impact / End Actions) is our testing surface.
   const { user } = useAuth();
@@ -165,7 +223,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [positions, setPositions] = useState<Record<string, [number, number]>>(() => {
     const seed: Record<string, [number, number]> = {};
     for (const h of CHRONOSSUS_ACTION_HOTSPOTS) seed[hsKey(h.id)] = HS_CENTER(h);
-    for (const m of CHRONOSSUS_COMMAND_MARKERS) seed[cmdKey(m.num)] = m.pos;
+    for (const p of CHRONOSSUS_TRACK_POSITIONS) seed[p.key] = p.pos;
     for (const c of CHRONOSSUS_COUNTERS) seed[c.key] = c.pos;
     CHRONOSSUS_TIME_TRAVEL_TRACK.spots.forEach((p, i) => (seed[ttKey(i)] = p));
     seed[WARP_KEY] = CHRONOSSUS_WARP_MARKER.pos;
@@ -205,6 +263,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [calibrate, selected]);
 
+  // Dismiss the tapped tracker-badge popover on Escape or an outside click.
+  useEffect(() => {
+    if (tappedBadge == null) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.count-badge') && !t.closest('.badge-portal')) setTappedBadge(null);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setTappedBadge(null);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [tappedBadge]);
+
   const onBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!calibrate) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -224,6 +298,31 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
+    activeMarkerRef.current = null; // cancelled turn: don't advance a marker
+  };
+
+  // Advance the marker driving the current bot turn (no-op on a player free-tap).
+  const advanceActiveMarker = () => {
+    const m = activeMarkerRef.current;
+    if (m == null) return;
+    setMarkerSteps((s) => ({ ...s, [m]: nextStep(m, s[m]) }));
+    activeMarkerRef.current = null;
+  };
+
+  // The action hotspot nearest a board point (used to map a marker's landing
+  // spot to the Action space it sits on).
+  const nearestHotspot = (x: number, y: number): Hotspot => {
+    let best = CHRONOSSUS_ACTION_HOTSPOTS[0];
+    let bestD = Infinity;
+    for (const h of CHRONOSSUS_ACTION_HOTSPOTS) {
+      const [hx, hy] = positions[hsKey(h.id)] ?? HS_CENTER(h);
+      const d = (hx - x) ** 2 + (hy - y) ** 2;
+      if (d < bestD) {
+        bestD = d;
+        best = h;
+      }
+    }
+    return best;
   };
 
   const resolve = (
@@ -249,6 +348,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult(instructions);
     setLastResult(instructions);
     setPending(null);
+    advanceActiveMarker(); // the marker advances after its action resolves
   };
 
   const onTileClick = (h: Hotspot) => {
@@ -262,7 +362,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (Chronossus.wouldPassOn(bot, h.action)) {
       const { state: next, instructions } = Chronossus.passChronossus(state);
       setState(next);
-      closePanel();
+      closePanel(); // clears activeMarkerRef → the token does NOT advance on a pass
       setLastResult(instructions); // shown in the turn-status aside
       return;
     }
@@ -396,6 +496,28 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastResult([]);
     setLastDraw(null);
     setCalibrate(false);
+    setMarkerSteps(initialMarkerSteps());
+    setActiveMarker(null);
+    setBotDie(null);
+  };
+
+  // Take Bot Action: roll the AI die (faces 2/3/4/5), activate that Command
+  // marker, resolve the Action space it currently sits on, then advance it.
+  const takeBotTurn = () => {
+    if (bot.passed || active) return;
+    const die = rollAiDie() as CommandNum;
+    setBotDie(die);
+    setActiveMarker(die);
+    activeMarkerRef.current = die;
+    const key = markerPosKey(die, markerSteps[die]);
+    const tp = trackPos(key);
+    const [x, y] = positions[key] ?? [0, 0];
+    // Modular tile slots (I/II/III) carry an explicit action; every other spot
+    // sits on a printed Action space, resolved via the nearest Action hotspot.
+    const h: Hotspot = tp?.action
+      ? { id: `slot-${tp.label ?? key}`, action: tp.action, rect: [0, 0, 0, 0] }
+      : nearestHotspot(x, y);
+    onTileClick(h);
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
@@ -450,11 +572,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           <div className="turn-core">
             <button
               className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
-              disabled
-              title="Tap an action space on the board to take the Chronossus's turn (AI-die automation lands with the Command-token feature)"
+              onClick={takeBotTurn}
+              disabled={bot.passed || active != null}
+              title={
+                bot.passed
+                  ? 'The Chronossus has passed for this Era'
+                  : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command marker`
+              }
             >
               {bot.passed ? '✓ Bot Passed' : 'Take Bot Action'}
             </button>
+            {botDie != null && (
+              <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
+                {botDie}
+              </span>
+            )}
             <button
               className="you-pass"
               onClick={playerPass}
@@ -560,49 +692,111 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 );
               })}
 
-              {/* Command markers (tokens 2–5). Selectable in calibrate mode. */}
-              {CHRONOSSUS_COMMAND_MARKERS.map((m) => {
-                const [x, y] = positions[cmdKey(m.num)] ?? m.pos;
-                const sel = calibrate && selected === cmdKey(m.num);
-                return (
-                  <img
-                    key={m.num}
-                    src={`/assets/solo/commands/chronossus-marker-${m.num}.png`}
-                    alt={`Command token ${m.num}`}
-                    className={`cx-cmd-marker ${sel ? 'cal-selected' : ''}`}
-                    style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth}%` }}
-                    onClick={
-                      calibrate
-                        ? (e) => {
-                            e.stopPropagation();
-                            setSelected(cmdKey(m.num));
-                          }
-                        : undefined
-                    }
-                  />
-                );
-              })}
+              {/* Command markers on their tracks. Calibrating: show every distinct
+                  track position as a selectable ghost; otherwise the 4 live markers
+                  at their current step (paired-split when they share a spot). */}
+              {calibrate
+                ? CHRONOSSUS_TRACK_POSITIONS.map((p) => {
+                    const [x, y] = positions[p.key] ?? p.pos;
+                    return (
+                      <div
+                        key={p.key}
+                        className={`cmd-spot ${p.label ? 'cx-slot' : ''} ${selected === p.key ? 'cal-selected' : ''}`}
+                        style={{ left: `${x}%`, top: `${y}%` }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(p.key);
+                        }}
+                        title={p.label ? `Modular tile slot ${p.label}` : p.key}
+                      >
+                        {p.label ?? (selected === p.key ? '◎' : '·')}
+                      </div>
+                    );
+                  })
+                : COMMAND_NUMS.map((num) => {
+                    const key = markerPosKey(num, markerSteps[num]);
+                    const [x, y] = positions[key] ?? [0, 0];
+                    // Split markers that share a board spot so all stay visible.
+                    const sharers = COMMAND_NUMS.filter(
+                      (n) => markerPosKey(n, markerSteps[n]) === key,
+                    );
+                    const rank = sharers.indexOf(num);
+                    const dx =
+                      sharers.length > 1
+                        ? (rank - (sharers.length - 1) / 2) * (markerWidth * 0.7)
+                        : 0;
+                    return (
+                      <img
+                        key={num}
+                        src={`/assets/solo/commands/chronossus-marker-${num}.png`}
+                        alt={`Command marker ${num}`}
+                        className={`cx-cmd-marker ${activeMarker === num ? 'active' : ''}`}
+                        style={{
+                          left: `${x + dx}%`,
+                          top: `${y}%`,
+                          width: `${markerWidth}%`,
+                          zIndex: 4 + rank,
+                        }}
+                      />
+                    );
+                  })}
 
-              {/* Count/track badges (buildings, resources, workers, etc.). */}
+              {/* Modular tile slots (I/II/III) — always-on chips so the slot spots
+                  are visible on the board (their action is mode-dependent; Reboot
+                  for now). Hidden while calibrating (the ghosts show them there). */}
+              {!calibrate &&
+                CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.label).map((p) => {
+                  const [x, y] = positions[p.key] ?? p.pos;
+                  return (
+                    <div
+                      key={p.key}
+                      className="cx-slot-chip"
+                      style={{ left: `${x}%`, top: `${y}%` }}
+                      title={`Modular tile slot ${p.label} — Reboot (placeholder)`}
+                    >
+                      {p.label}
+                    </div>
+                  );
+                })}
+
+              {/* Count/track badges (buildings, resources, workers, etc.). Tap a
+                  badge (outside calibrate) for a themed info popover. */}
               {CHRONOSSUS_COUNTERS.map((c) => {
                 const [x, y] = positions[c.key] ?? c.pos;
                 const sel = calibrate && selected === c.key;
+                const open = !calibrate && tappedBadge === c.key;
                 return (
                   <div
                     key={c.key}
-                    className={`count-badge ${sel ? 'cal-selected' : ''}`}
+                    className={`count-badge ${sel ? 'cal-selected' : ''} ${!calibrate ? 'clickable' : ''}`}
                     style={{ left: `${x}%`, top: `${y}%` }}
-                    title={calibrate ? c.label : `${c.label}: ${counterValue(bot, c.key)}`}
-                    onClick={
-                      calibrate
-                        ? (e) => {
-                            e.stopPropagation();
-                            setSelected(c.key);
-                          }
-                        : undefined
-                    }
+                    title={calibrate ? c.label : undefined}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (calibrate) {
+                        setSelected(c.key);
+                      } else {
+                        setTappedRect(e.currentTarget.getBoundingClientRect());
+                        setTappedBadge((k) => (k === c.key ? null : c.key));
+                      }
+                    }}
                   >
                     {calibrate ? (sel ? '◎' : '·') : counterValue(bot, c.key)}
+                    {open && c.key === 'breakthrough' && (
+                      <AnchoredPopover rect={tappedRect} className="badge-portal cx-badge-portal bt">
+                        {SHAPE_SYMBOLS.map(([s, sym]) => (
+                          <span key={s} className="cx-bt-pop-row">
+                            <span className="cx-bt-sym">{sym}</span>
+                            <b>{bot.breakthroughs[s]}</b>
+                          </span>
+                        ))}
+                      </AnchoredPopover>
+                    )}
+                    {open && c.key !== 'breakthrough' && (
+                      <AnchoredPopover rect={tappedRect} className="badge-portal cx-badge-portal">
+                        {counterInfo(bot, c)}
+                      </AnchoredPopover>
+                    )}
                   </div>
                 );
               })}
@@ -944,11 +1138,12 @@ function CalibrationPanel({
       return `  { id: '${h.id}', action: '${h.action}', rect: [${left}, ${top}, ${hsWidth}, ${hsHeight}] },`;
     }).join('\n') +
     '\n];';
-  const markerLiteral =
-    'export const CHRONOSSUS_COMMAND_MARKERS: CommandMarkerPos[] = [\n' +
-    CHRONOSSUS_COMMAND_MARKERS.map((m) => {
-      const [x, y] = positions[cmdKey(m.num)] ?? m.pos;
-      return `  { num: ${m.num}, pos: [${x}, ${y}] },`;
+  const trackLiteral =
+    'export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [\n' +
+    CHRONOSSUS_TRACK_POSITIONS.map((p) => {
+      const [x, y] = positions[p.key] ?? p.pos;
+      const extra = p.action ? `, action: '${p.action}', label: '${p.label}'` : '';
+      return `  { key: '${p.key}', pos: [${x}, ${y}]${extra} },`;
     }).join('\n') +
     '\n];';
   const countersLiteral =
@@ -1022,12 +1217,18 @@ function CalibrationPanel({
       </details>
 
       <details className="cal-group">
-        <summary>Command markers ({CHRONOSSUS_COMMAND_MARKERS.length})</summary>
+        <summary>Command-marker track ({CHRONOSSUS_TRACK_POSITIONS.length})</summary>
+        <p className="cal-note">
+          Distinct board spots the 4 markers walk. Shared spots (m2p1–m2p5) are
+          visited by more than one marker — place each once. → paste into <code>chronossusPaths.ts</code>.
+        </p>
         {sizeSlider('Marker width', markerWidth, onMarkerWidth, 12)}
         <div className="cal-list">
-          {CHRONOSSUS_COMMAND_MARKERS.map((m) => item(cmdKey(m.num), `Token ${m.num}`, m.pos))}
+          {CHRONOSSUS_TRACK_POSITIONS.map((p) =>
+            item(p.key, p.label ? `${p.key} · slot ${p.label}` : p.key, p.pos),
+          )}
         </div>
-        <textarea className="cal-out" readOnly value={markerLiteral} />
+        <textarea className="cal-out" readOnly value={trackLiteral} />
       </details>
 
       <details className="cal-group">

@@ -1,0 +1,102 @@
+// Command-marker tracks on the Chronossus board.
+//
+// Each of the 4 Command markers (2/3/4/5) walks its own ordered track of board
+// positions. Some positions are SHARED between markers (they land on the same
+// board spot), per the Chronossus solo board:
+//
+//   • Marker 3 — 5 own steps, shared with nobody.
+//   • Marker 2 — a 5-step loop; every one of its steps is shared with 4 or 5.
+//   • Marker 4 — 5 steps; steps 2 & 3 sit on marker 2's steps 3 & 2 (reverse dir).
+//   • Marker 5 — 4 steps; steps 1,2,3 sit on marker 2's steps 4,5,1 (same dir);
+//     step 4 is on its own.
+//
+// So the shared board positions are marker 2's five loop positions (m2p1..m2p5):
+//   m2p2 == marker4 step3   m2p3 == marker4 step2   (4 traverses p3→p2, reversed)
+//   m2p4 == marker5 step1   m2p5 == marker5 step2   m2p1 == marker5 step3
+//
+// A marker ADVANCES one step each time it is activated, looping back to step 1
+// after its last step (step 1 is its start-of-game position). POSITIONS ARE
+// PLACEHOLDERS — calibrate them in-app (the calibrate panel emits this literal).
+
+import type { ChronobotActionId } from '../engine/rules/chronobotActions';
+
+export type CommandNum = 2 | 3 | 4 | 5;
+
+/** A distinct, calibratable board position on the Command-marker tracks. */
+export interface TrackPos {
+  key: string;
+  /** Center [x, y] as a % of the board image. */
+  pos: [number, number];
+  /**
+   * The Action this board spot triggers. Omitted for spots that sit on one of the
+   * printed Action spaces — those resolve to the nearest Action hotspot instead.
+   * The three modular tile slots (I/II/III) carry an explicit action (Reboot for
+   * now; the real action depends on the game mode's chosen tiles). Typed to the
+   * base action set (what the shared DetailPanel resolves); tile-specific actions
+   * will need their own handling when they land.
+   */
+  action?: ChronobotActionId;
+  /** Display label for a modular tile slot (roman numeral I/II/III). */
+  label?: string;
+}
+
+/**
+ * The 14 distinct board positions. Shared positions (m2p1..m2p5) appear once and
+ * are referenced by more than one marker's track below.
+ */
+export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [
+  // Marker 3 — own row (seeded from the old marker-3 start position).
+  { key: 'm3s1', pos: [6, 10.6] },
+  { key: 'm3s2', pos: [17, 10.6] },
+  // Modular tile slot II (marker 3 step 3) — Reboot for now (mode-dependent).
+  { key: 'm3s3', pos: [28, 10.6], action: 'reboot', label: 'II' },
+  { key: 'm3s4', pos: [39, 10.6] },
+  { key: 'm3s5', pos: [50, 10.6] },
+  // Marker 2 loop — every position shared with marker 4 or 5.
+  { key: 'm2p1', pos: [39.1, 58.7] }, // marker 2 start; == marker 5 step 3
+  { key: 'm2p2', pos: [28, 58.7] }, //   == marker 4 step 3
+  // Modular tile slot I (marker 4 step 2 / marker 2 step 3) — Reboot for now.
+  { key: 'm2p3', pos: [17, 58.7], action: 'reboot', label: 'I' },
+  { key: 'm2p4', pos: [49.9, 30.5] }, // == marker 5 start (step 1)
+  { key: 'm2p5', pos: [39, 45] }, //     == marker 5 step 2
+  // Marker 4 own positions.
+  { key: 'm4s1', pos: [16.9, 30.5] }, // marker 4 start
+  { key: 'm4s4', pos: [6, 45] },
+  { key: 'm4s5', pos: [6, 58.7] },
+  // Modular tile slot III (marker 5 step 4) — Reboot for now.
+  { key: 'm5s4', pos: [60, 30.5], action: 'reboot', label: 'III' },
+];
+
+/** Look up a track position by key. */
+export function trackPos(key: string): TrackPos | undefined {
+  return CHRONOSSUS_TRACK_POSITIONS.find((p) => p.key === key);
+}
+
+/**
+ * Each marker's ordered track: a list of position keys (step 1 = start). A marker
+ * loops back to step 1 after its final step. Shared keys make markers meet.
+ */
+export const CHRONOSSUS_TRACKS: Record<CommandNum, string[]> = {
+  3: ['m3s1', 'm3s2', 'm3s3', 'm3s4', 'm3s5'],
+  2: ['m2p1', 'm2p2', 'm2p3', 'm2p4', 'm2p5'],
+  4: ['m4s1', 'm2p3', 'm2p2', 'm4s4', 'm4s5'],
+  5: ['m2p4', 'm2p5', 'm2p1', 'm5s4'],
+};
+
+export const COMMAND_NUMS: CommandNum[] = [2, 3, 4, 5];
+
+/** Every marker starts at step 0 (its step-1 position). */
+export function initialMarkerSteps(): Record<CommandNum, number> {
+  return { 2: 0, 3: 0, 4: 0, 5: 0 };
+}
+
+/** The position key a marker currently sits on. */
+export function markerPosKey(num: CommandNum, step: number): string {
+  const track = CHRONOSSUS_TRACKS[num];
+  return track[step % track.length];
+}
+
+/** Advance a marker one step (loops back to step 1 after the last). */
+export function nextStep(num: CommandNum, step: number): number {
+  return (step + 1) % CHRONOSSUS_TRACKS[num].length;
+}
