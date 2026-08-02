@@ -452,6 +452,172 @@
 .score-breakdown .score-neg b {
   color: #fca5a5;
 }
+
+/* Turn tracker — shared "Turn N" pill + hover panel (both bots). */
+.turn-pill {
+  cursor: pointer;
+}
+.turn-pill.open {
+  outline: 1px solid rgba(139, 92, 246, 0.6);
+}
+.turn-popover .turn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+  font-size: 0.82rem;
+}
+.turn-popover .turn-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.15rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.turn-popover .turn-row:first-child {
+  border-top: none;
+}
+.turn-popover .turn-n {
+  flex: 0 0 auto;
+  font-weight: 700;
+  color: #cbb9ff;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  white-space: nowrap;
+}
+.turn-popover .turn-die {
+  font-size: 0.7rem;
+}
+.turn-popover .turn-label {
+  color: #d9d2e6;
+}
+.turn-popover .turn-empty {
+  font-size: 0.82rem;
+  color: #b6adc9;
+  margin: 0.1rem 0;
+}
+.turn-popover .turn-extra {
+  margin-top: 0.5rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+  font-size: 0.84rem;
+  color: #e7e0f2;
+}
+
+/* Unified Debug bar — dropdown (left) + always-open jump-to-phase bar (both bots). */
+.debug-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 0.3rem 0.6rem;
+  background: rgba(20, 16, 34, 0.85);
+  border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+}
+.debug-menu-wrap {
+  position: relative;
+}
+.debug-btn {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0.25rem 0.55rem;
+  border-radius: 7px;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  background: #2a2140;
+  color: #e7e0f2;
+  cursor: pointer;
+}
+.debug-btn.on {
+  background: #3a2d5c;
+  outline: 1px solid rgba(139, 92, 246, 0.7);
+}
+.debug-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 130;
+  min-width: 210px;
+  padding: 0.4rem;
+  border-radius: 9px;
+  background: #171226;
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.debug-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.debug-row-label {
+  font-size: 0.8rem;
+  color: #cbb9ff;
+}
+.debug-stepper,
+.debug-flag,
+.debug-action {
+  display: inline-flex;
+  align-items: center;
+}
+.debug-stepper button,
+.debug-flag,
+.debug-action {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: #241c38;
+  color: #e7e0f2;
+  cursor: pointer;
+}
+.debug-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.debug-stepper-val {
+  min-width: 2.2em;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+.debug-action {
+  width: 100%;
+  justify-content: center;
+}
+.debug-phasejump {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+.debug-jump-label {
+  font-size: 0.72rem;
+  color: #b6adc9;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.debug-jump {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 6px;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: #201a30;
+  color: #cfc6df;
+  cursor: pointer;
+}
+.debug-jump.on {
+  background: #4c3a86;
+  color: #fff;
+}
+
 .outline-toggle {
   display: flex;
   align-items: center;

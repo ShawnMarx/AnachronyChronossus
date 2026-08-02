@@ -21,7 +21,14 @@ import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
-import { DetailPanel, AnchoredPopover, type PendingStep } from './BoardExplorer';
+import { DetailPanel, AnchoredPopover, summarizeTurn, type PendingStep } from './BoardExplorer';
+import HistoryPane from './history/HistoryPane';
+import ReadyToBegin from './phases/ReadyToBegin';
+import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
+import TurnTracker from './components/TurnTracker';
+import DebugBar from './components/DebugBar';
+import { useUndoableGame } from './game/useUndoableGame';
+import { clearPersisted, type HistoryEntry } from './game/undo';
 import { useAuth } from './auth/useAuth';
 import {
   Chronobot,
@@ -66,6 +73,22 @@ import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 const DEBUG_EXOSUITS = 4;
+
+// Persistence (own key so it survives refresh, separate from the Chronobot's).
+const CX_PERSIST_KEY = 'anachrony:chronossus';
+const CX_PERSIST_VERSION = 1;
+
+/** The transient per-view slice (Command-marker positions + shown AI die). */
+interface ChronossusUi {
+  markerSteps: Record<CommandNum, number>;
+  botDie: number | null;
+  activeMarker: CommandNum | null;
+}
+const emptyCxUi = (): ChronossusUi => ({
+  markerSteps: initialMarkerSteps(),
+  botDie: null,
+  activeMarker: null,
+});
 
 /** Boot straight into Phase 5 (Action Rounds) with powered Exosuits (dev). */
 function initState(): GameState {
@@ -200,8 +223,35 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
 }
 
 export default function ChronossusGame({ onHome }: { onHome: () => void }) {
-  const [state, setState] = useState<GameState>(initState);
+  // Shared turn-loop store: engine state + the transient ui slice + undo/history
+  // + localStorage persistence (survives refresh).
+  const {
+    state,
+    setState,
+    ui,
+    setUi,
+    entries,
+    canUndo,
+    debug,
+    setDebug,
+    commit,
+    undo,
+    reset: hookReset,
+  } = useUndoableGame<ChronossusUi>({
+    storageKey: CX_PERSIST_KEY,
+    version: CX_PERSIST_VERSION,
+    initialState: initState,
+    initialUi: emptyCxUi,
+    initialDebug: true, // Chronossus is an admin preview — debug on by default
+  });
+  // Read-aliases so the render/logic below keep referring to these by name.
+  const markerSteps = ui.markerSteps;
+  const activeMarker = ui.activeMarker;
+  const botDie = ui.botDie;
   const [lastDraw, setLastDraw] = useState<EnergyDraw | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
+  const [showFirstPlayer, setShowFirstPlayer] = useState(false);
 
   // ---- Phase 5 action-dialog controller (mirrors BoardExplorer) ----------
   const [active, setActive] = useState<Hotspot | null>(null);
@@ -218,17 +268,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [tappedRect, setTappedRect] = useState<DOMRect | null>(null);
 
   // ---- Command markers (Take Bot Action) ---------------------------------
-  const [markerSteps, setMarkerSteps] = useState<Record<CommandNum, number>>(initialMarkerSteps);
-  const [activeMarker, setActiveMarker] = useState<CommandNum | null>(null);
-  const [botDie, setBotDie] = useState<number | null>(null);
-  // The marker to advance when the current bot-driven turn resolves (null on a
-  // player free-tap, so free taps never move a marker).
+  // The marker to advance + die shown when the current bot-driven turn resolves
+  // (refs stay in sync for the synchronous resolve path; null on a player
+  // free-tap, so free taps never move a marker).
   const activeMarkerRef = useRef<CommandNum | null>(null);
+  const botDieRef = useRef<number | null>(null);
 
-  // Debug mode (admin-only). On by default — Chronossus is an admin preview and
-  // the debug rail (phase jump / Impact / End Actions) is our testing surface.
   const { user } = useAuth();
-  const [debug, setDebug] = useState(true);
 
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
@@ -314,14 +360,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setSelectedWorker(null);
     setRolledShape(null);
     activeMarkerRef.current = null; // cancelled turn: don't advance a marker
+    botDieRef.current = null;
   };
 
-  // Advance the marker driving the current bot turn (no-op on a player free-tap).
-  const advanceActiveMarker = () => {
+  // The ui slice to store for a committed turn: advance the marker driving the
+  // turn one step (no-op on a player free-tap, where activeMarkerRef is null).
+  const advancedUi = (): ChronossusUi => {
     const m = activeMarkerRef.current;
-    if (m == null) return;
-    setMarkerSteps((s) => ({ ...s, [m]: nextStep(m, s[m]) }));
-    activeMarkerRef.current = null;
+    const nextMarkerSteps =
+      m != null ? { ...ui.markerSteps, [m]: nextStep(m, ui.markerSteps[m]) } : ui.markerSteps;
+    return {
+      markerSteps: nextMarkerSteps,
+      botDie: botDieRef.current,
+      activeMarker: activeMarkerRef.current,
+    };
+  };
+
+  // One-line History label for a resolved turn (Era · action · +VP).
+  const turnLabel = (instructions: Instruction[], actionLabel: string): string => {
+    const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
+    return `Era ${state.era} · ${actionLabel}${vp ? ` · +${vp} VP` : ''}`;
   };
 
   // The action hotspot nearest a board point (used to map a marker's landing
@@ -359,11 +417,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (opts.shape) input.shape = opts.shape;
     if (opts.geniusAvailable) input.geniusAvailable = true;
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
-    setState(next);
+    commit(
+      next,
+      advancedUi(), // the marker advances after its action resolves
+      turnLabel(instructions, CHRONOBOT_ACTIONS[h.action].label),
+      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
+      botDieRef.current,
+    );
     setResult(instructions);
     setLastResult(instructions);
     setPending(null);
-    advanceActiveMarker(); // the marker advances after its action resolves
+    activeMarkerRef.current = null;
   };
 
   const onTileClick = (h: Hotspot) => {
@@ -376,8 +440,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // Chronossus passes instead of taking the action (its token doesn't advance).
     if (Chronossus.wouldPassOn(bot, h.action)) {
       const { state: next, instructions } = Chronossus.passChronossus(state);
-      setState(next);
-      closePanel(); // clears activeMarkerRef → the token does NOT advance on a pass
+      // The token does NOT advance on a pass → keep ui.markerSteps as-is.
+      commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
+      closePanel();
       setLastResult(instructions); // shown in the turn-status aside
       return;
     }
@@ -492,9 +557,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const next = Chronossus.resolvePowerUp(state, draw);
     setState({ ...next, phase: 'powerup' });
   };
+  // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   const endActions = () => {
     closePanel();
-    setState(Chronossus.resolveCleanUp(state));
+    setShowFirstPlayer(true);
+  };
+  const proceedToCleanup = (playerFirst: boolean) => {
+    setShowFirstPlayer(false);
+    setState(
+      Chronossus.resolveCleanUp({ ...state, firstPlayer: playerFirst ? 'player' : 'bot' }),
+    );
   };
   const afterCleanUp = () => {
     const next = finishEra(state);
@@ -506,14 +578,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setState((s) => ({ ...s, phase: p }));
   };
   const reset = () => {
-    setState(initState());
+    clearPersisted(CX_PERSIST_KEY);
+    hookReset(initState(), emptyCxUi());
     closePanel();
     setLastResult([]);
     setLastDraw(null);
     setCalibrate(false);
-    setMarkerSteps(initialMarkerSteps());
-    setActiveMarker(null);
-    setBotDie(null);
+    setShowHistory(false);
+    setShowFirstPlayer(false);
+    setActionsIntroEra(null);
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+  };
+
+  // Undo the last committed turn: restore its snapshot, re-showing its die.
+  const undoTurn = () => {
+    closePanel();
+    const snap = undo();
+    if (snap) botDieRef.current = snap.ui.botDie;
+    activeMarkerRef.current = null;
+    setLastResult([]);
   };
 
   // Take Bot Action: roll the AI die (faces 2/3/4/5), activate that Command
@@ -521,10 +605,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const takeBotTurn = () => {
     if (bot.passed || active) return;
     const die = rollAiDie() as CommandNum;
-    setBotDie(die);
-    setActiveMarker(die);
+    botDieRef.current = die;
     activeMarkerRef.current = die;
-    const key = markerPosKey(die, markerSteps[die]);
+    setUi((u) => ({ ...u, botDie: die, activeMarker: die }));
+    const key = markerPosKey(die, ui.markerSteps[die]);
     const tp = trackPos(key);
     // Modular tile slots (I/II/III) carry an explicit tile action — resolve it
     // directly (no gate/pick). Every other spot sits on a printed Action space,
@@ -541,10 +625,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // no player input, so it commits immediately and advances the active marker.
   const resolveTileSlot = (actionId: ChronossusActionId) => {
     const { state: next, instructions } = Chronossus.resolveAction(state, { actionId });
-    setState(next);
+    commit(
+      next,
+      advancedUi(),
+      turnLabel(instructions, Chronossus.chronossusActionLabel(actionId)),
+      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
+      botDieRef.current,
+    );
     setResult([]);
     setLastResult(instructions);
-    advanceActiveMarker();
+    activeMarkerRef.current = null;
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
@@ -553,6 +643,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setState((s) => ({ ...s, playerPassed: true }));
   };
   const bothPassed = Chronossus.actionRoundsEnded(state);
+
+  // This Era's committed bot turns (drives the Turn tracker + its hover list).
+  const thisEraEntries: HistoryEntry[] = entries.filter(
+    (e) => e.state.era === state.era && !e.label.includes('You passed'),
+  );
+  const turnsThisEra = thisEraEntries.length;
 
   const stats = (
     <div className="cx-stats">
@@ -573,29 +669,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         <button className="home-btn" onClick={onHome} title="Back to the home screen" aria-label="Home">
           <img src="/favicon-512.png" alt="" />
         </button>
-        {debug && (
-          <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
-            🛠 DEBUG
-          </span>
-        )}
-        {debug && (
-          <div className="paradox-ctl" title="Set the Era (1–7)">
-            <button onClick={() => changeEra(-1)} disabled={state.era <= 1} aria-label="Previous era">−</button>
-            <span className="paradox-ctl-val">Era {state.era}</span>
-            <button onClick={() => changeEra(1)} disabled={state.era >= Chronossus.MAX_ERA} aria-label="Next era">+</button>
-          </div>
-        )}
-        {debug && (
-          <div className="paradox-ctl" title="Set the number of Paradoxes (0–3)">
-            <button onClick={() => setParadoxes((n) => Math.max(0, n - 1))} disabled={paradoxes <= 0} aria-label="Fewer paradoxes">−</button>
-            <span className="paradox-ctl-val">P {paradoxes}</span>
-            <button onClick={() => setParadoxes((n) => Math.min(3, n + 1))} disabled={paradoxes >= 3} aria-label="More paradoxes">+</button>
-          </div>
-        )}
       </div>
       {!calibrate && (
         <div className="bot-turn">
           <CxVpPill score={score} totalActions={bot.totalActions} />
+          <TurnTracker
+            turnNumber={turnsThisEra}
+            entries={thisEraEntries}
+            extra={
+              <>
+                <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exo</span>
+                <span title="Energy Pool — energized / exhausted">
+                  🔋 {bot.energyPool.energized}/{bot.energyPool.exhausted}
+                </span>
+              </>
+            }
+          />
           <div className="turn-core">
             <button
               className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
@@ -622,16 +711,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             >
               {state.playerPassed ? '✓ You passed' : 'You Pass'}
             </button>
-            <button className="undo-btn" disabled title="Coming soon — Undo lands with per-turn history">
+            <button
+              className="undo-btn"
+              onClick={undoTurn}
+              disabled={!canUndo || active != null}
+              title="Undo the last committed turn"
+            >
               ↶ Undo
             </button>
           </div>
-          <span className="stat-pill" title="Powered Exosuits available">
-            🦾 <b>{bot.exosuitsAvailable}</b> Exo
-          </span>
-          <span className="stat-pill" title="Energy Pool — energized / exhausted">
-            🔋 <b>{bot.energyPool.energized}/{bot.energyPool.exhausted}</b>
-          </span>
         </div>
       )}
       <div className="stats-controls">
@@ -647,40 +735,48 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             closePanel();
             setCalibrate((c) => !c);
           }}
+          historyOpen={showHistory}
+          onToggleHistory={() => setShowHistory((v) => !v)}
           onReset={reset}
         />
       </div>
     </div>
   );
 
-  // Debug testing rail (below the top bar; admin/debug-only): jump phases, toggle
-  // Impact, and end the Action Rounds. Hidden when Debug is off.
-  const debugRail = debug && (
-    <div className="cx-controls cx-debugrail">
-      <span className="cx-debug-label">Debug · jump to phase:</span>
-      {PHASE_RAIL.map((p) => (
-        <button
-          key={p}
-          className={state.phase === p ? 'cx-rail on' : 'cx-rail'}
-          onClick={() => goPhase(p)}
-        >
-          {p}
-        </button>
-      ))}
-      <button onClick={() => setState((s) => ({ ...s, impact: !s.impact }))}>
-        Impact: {state.impact ? 'AFTER' : 'BEFORE'}
-      </button>
-      <button onClick={endActions}>End Actions ▶ Clean Up</button>
-      <button onClick={reset}>↺ Reset</button>
-    </div>
-  );
+  // Unified Debug bar (Debug dropdown + jump-to-phase), shown in every phase view
+  // when Debug is on. Mirrors the Chronobot's DebugBar.
+  const debugBar = debug ? (
+    <DebugBar
+      phases={PHASE_RAIL}
+      currentPhase={state.phase}
+      onGoPhase={goPhase}
+      era={state.era}
+      maxEra={Chronossus.MAX_ERA}
+      onEra={changeEra}
+      paradoxes={paradoxes}
+      onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
+      impact={state.impact}
+      onToggleImpact={() => setState((s) => ({ ...s, impact: !s.impact }))}
+      onEndActions={endActions}
+      warpTiles={bot.warpTilesOnTimeline}
+      onWarpTiles={(d) =>
+        setState((s) => ({
+          ...s,
+          chronossus: {
+            ...s.chronossus!,
+            warpTilesOnTimeline: Math.max(0, s.chronossus!.warpTilesOnTimeline + d),
+          },
+        }))
+      }
+    />
+  ) : null;
 
   // ---- Phase 5: Action Rounds (the real board) ---------------------------
   if (state.phase === 'actions') {
     return (
       <div className="chronossus-harness">
         {topBar}
-        {debugRail}
+        {debugBar}
         <div className="cx-body">
           <div className="board-stage">
             <div
@@ -1022,7 +1118,39 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               )}
             </aside>
           )}
+          {showHistory && !calibrate && (
+            <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
+          )}
         </div>
+
+        {/* Ready-to-begin splash (once/Era); if the Chronossus is First Player its
+            button fires the first Take Bot Action. */}
+        {!calibrate &&
+          !bothPassed &&
+          turnsThisEra === 0 &&
+          !bot.passed &&
+          !state.playerPassed &&
+          actionsIntroEra !== state.era && (
+            <ReadyToBegin
+              firstPlayer={state.firstPlayer}
+              era={state.era}
+              botName="Chronossus"
+              onDismiss={() => setActionsIntroEra(state.era)}
+              onTakeBotAction={() => {
+                setActionsIntroEra(state.era);
+                takeBotTurn();
+              }}
+            />
+          )}
+
+        {/* End of Action Rounds → who's First Player next Era → Clean Up. */}
+        {showFirstPlayer && (
+          <FirstPlayerPrompt
+            botName="Chronossus"
+            onAnswer={proceedToCleanup}
+            onCancel={() => setShowFirstPlayer(false)}
+          />
+        )}
       </div>
     );
   }
@@ -1032,7 +1160,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return (
       <div className="chronossus-harness">
         {topBar}
-        {debugRail}
+        {debugBar}
         <div className="cx-score">
           <h2>Chronossus score</h2>
           <table>
@@ -1125,7 +1253,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   return (
     <>
-      {debugRail}
+      {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
     </>
   );
@@ -1418,6 +1546,8 @@ function CxSettingsMenu({
   onToggleDebug,
   calibrate,
   onToggleCalibrate,
+  historyOpen,
+  onToggleHistory,
   onReset,
 }: {
   debug: boolean;
@@ -1425,6 +1555,8 @@ function CxSettingsMenu({
   onToggleDebug: () => void;
   calibrate: boolean;
   onToggleCalibrate: () => void;
+  historyOpen: boolean;
+  onToggleHistory: () => void;
   onReset: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1479,6 +1611,19 @@ function CxSettingsMenu({
               <div className="settings-sep" />
             </>
           )}
+          <button
+            className="settings-item toggle"
+            onClick={onToggleHistory}
+            role="menuitemcheckbox"
+            aria-checked={historyOpen}
+          >
+            <span>🕑 History</span>
+            <span className={`sw ${historyOpen ? 'on' : ''}`}>{historyOpen ? 'ON' : 'OFF'}</span>
+          </button>
+          <button className="settings-item" disabled role="menuitem" title="Coming soon">
+            Log in (soon)
+          </button>
+          <div className="settings-sep" />
           <button className="settings-item danger" onClick={onReset} role="menuitem">
             ⟳ Reset Game
           </button>

@@ -1,10 +1,18 @@
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
 import { recordGame } from './data/gameData';
 import HistoryScreen from './history/HistoryScreen';
+import HistoryPane from './history/HistoryPane';
 import AdminStats from './history/AdminStats';
+import ReadyToBegin from './phases/ReadyToBegin';
+import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
+import AnchoredPopover from './components/AnchoredPopover';
+import TurnTracker from './components/TurnTracker';
+import DebugBar from './components/DebugBar';
+import type { HistoryEntry } from './game/undo';
+// Re-exported for existing importers (e.g. ChronossusGame).
+export { AnchoredPopover };
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import {
   AI_DIE_FACES,
@@ -25,6 +33,7 @@ import {
   type GameState,
   type Instruction,
   type PathId,
+  type Phase,
   type Resource,
   type Worker,
   type BreakthroughShape,
@@ -74,6 +83,18 @@ const CAL_KEYS: string[] = [
   ...PATH_KEYS,
   WARP_KEY,
   ...PARADOX_KEYS,
+];
+
+/** Phases the Debug jump-to-phase bar can hop between (both bots share this list). */
+const DEBUG_PHASES: Phase[] = [
+  'setup',
+  'preparation',
+  'paradox',
+  'powerup',
+  'warp',
+  'actions',
+  'cleanup',
+  'endgame',
 ];
 
 export type PendingStep =
@@ -134,7 +155,7 @@ const DIFFICULTY_LABEL: Record<string, string> = {
  * These are the things the player physically applies: mech placed, tile taken for
  * X VP, cubes gained/discarded, Warp tile removed, etc.
  */
-function summarizeTurn(
+export function summarizeTurn(
   pre: ChronobotState,
   post: ChronobotState,
   instructions: Instruction[],
@@ -356,66 +377,6 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
       alt={shape}
       style={{ width: size, height: size }}
     />
-  );
-}
-
-/**
- * A popover portaled to <body> (so it escapes any transformed ancestor) and
- * anchored to an on-screen rect: centred on it horizontally, opening just below
- * (or above when there's no room), then measured and clamped to the viewport so
- * it always stays on screen and never drifts away from what was tapped.
- */
-export function AnchoredPopover({
-  rect,
-  className,
-  children,
-}: {
-  rect: DOMRect | null;
-  className: string;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!rect || !el) return;
-    const m = 8; // viewport margin
-    const gap = 8; // gap between anchor and popover
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const pw = el.offsetWidth;
-    const ph = el.offsetHeight;
-    // Centre on the anchor, then clamp so neither edge runs off screen.
-    const cx = rect.left + rect.width / 2;
-    const left = Math.max(m, Math.min(cx - pw / 2, vw - pw - m));
-    // Prefer below the anchor; flip above when it would overflow the bottom.
-    const below = rect.bottom + gap + ph <= vh - m;
-    const top = below ? rect.bottom + gap : Math.max(m, rect.top - gap - ph);
-    setPos({ left, top });
-  }, [rect, children]);
-
-  if (!rect) return null;
-  return createPortal(
-    <div
-      ref={ref}
-      className={className}
-      // Fixed-to-viewport; `right`/`bottom` cleared so a class that sets them
-      // (e.g. .vp-popover) doesn't stretch the box. Hidden for the first paint
-      // (pos not measured yet); useLayoutEffect sets it before paint, no flash.
-      style={{
-        position: 'fixed',
-        right: 'auto',
-        bottom: 'auto',
-        left: pos?.left ?? 0,
-        top: pos?.top ?? 0,
-        visibility: pos ? 'visible' : 'hidden',
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      {children}
-    </div>,
-    document.body,
   );
 }
 
@@ -1166,6 +1127,30 @@ export default function BoardExplorer({
     closePanel();
   };
 
+  // Debug: jump straight to a phase (may skip engine setup — a testing shortcut).
+  const goPhaseDebug = (p: Phase) => {
+    closePanel();
+    setState((s) => ({ ...s, phase: p }));
+  };
+  const toggleImpact = () => setState((s) => ({ ...s, impact: !s.impact }));
+
+  // The unified Debug bar (Debug dropdown + jump-to-phase), shown in every phase
+  // view when Debug is on. All the scattered Era/Paradox controls live here now.
+  const debugBar = debug ? (
+    <DebugBar
+      phases={DEBUG_PHASES}
+      currentPhase={state.phase}
+      onGoPhase={goPhaseDebug}
+      era={state.era}
+      maxEra={Chronobot.MAX_ERA}
+      onEra={changeEra}
+      paradoxes={paradoxes}
+      onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
+      impact={state.impact}
+      onToggleImpact={toggleImpact}
+    />
+  ) : null;
+
   // Which phase view to render. Non-Action phases show the PhaseScreen shell; the
   // board is read-only whenever it's not the Action Rounds phase (or forced R/O).
   const isActionsPhase = state.phase === 'actions';
@@ -1264,13 +1249,13 @@ export default function BoardExplorer({
         onToggleHistory={() => setShowHistory((v) => !v)}
         statusOpen={showStatus}
         onToggleStatus={() => setShowStatus((v) => !v)}
-        paradoxes={paradoxes}
-        onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
-        era={state.era}
-        onEra={changeEra}
         onOpenRules={() => setModeRules(true)}
         simpleView={simpleView}
         onToggleSimpleView={() => setSimpleView((v) => !v)}
+        turnNumber={bot.actionsThisEra}
+        turnEntries={undoStack.filter(
+          (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
+        )}
       />
   );
 
@@ -1632,6 +1617,7 @@ export default function BoardExplorer({
   if (state.phase === 'setup') {
     return (
       <div className="explorer">
+        {debugBar}
         <SetupFlow onHome={onHome} onBegin={beginWithDifficulty} />
         {modals}
       </div>
@@ -1642,6 +1628,7 @@ export default function BoardExplorer({
   if (state.phase === 'endgame') {
     return (
       <div className="explorer">
+        {debugBar}
         <ScoreScreen
           state={state}
           onClose={() => onHome?.()}
@@ -1655,6 +1642,7 @@ export default function BoardExplorer({
   if (meta && !isActionsPhase && !calibrate) {
     return (
       <div className="explorer">
+        {debugBar}
         <PhaseScreen
           era={state.era}
           phaseNumber={meta.number}
@@ -1698,6 +1686,7 @@ export default function BoardExplorer({
   return (
     <div className="explorer">
       {topBar}
+      {debugBar}
       {boardStage}
       {isActionsPhase &&
         !calibrate &&
@@ -1705,7 +1694,7 @@ export default function BoardExplorer({
         !bot.passed &&
         !state.playerPassed &&
         actionsIntroEra !== state.era && (
-          <ActionsIntro
+          <ReadyToBegin
             firstPlayer={state.firstPlayer}
             era={state.era}
             onDismiss={() => setActionsIntroEra(state.era)}
@@ -1730,78 +1719,6 @@ export default function BoardExplorer({
         />
       )}
       {modals}
-    </div>
-  );
-}
-
-/**
- * Asked at the end of the Action Rounds phase: who took the First Player spot?
- * The answer sets who leads the next Era's Warp + Action Rounds, then advances to
- * Clean Up (Phase 6).
- */
-/**
- * The "Ready to begin?" splash at the start of each Era's Action Rounds. If you
- * are First Player you take your turn first, then run the bot; otherwise the
- * Chronobot begins.
- */
-function ActionsIntro({
-  firstPlayer,
-  era,
-  onDismiss,
-  onTakeBotAction,
-}: {
-  firstPlayer: 'bot' | 'player';
-  era: number;
-  onDismiss: () => void;
-  onTakeBotAction: () => void;
-}) {
-  const botFirst = firstPlayer === 'bot';
-  return (
-    <div className="modal-overlay" onClick={onDismiss}>
-      <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
-        <h3>Ready to begin — Era {era}</h3>
-        <p>
-          {botFirst
-            ? 'The Chronobot is First Player this Era — it takes the first turn. Press “Take Bot Action” to roll the AI die and resolve it.'
-            : 'You are First Player this Era. Take your turn on the Main board first, then press “Take Bot Action” for the Chronobot’s turn.'}
-        </p>
-        <div className="fp-actions">
-          {botFirst ? (
-            <button className="phase-primary" onClick={onTakeBotAction}>
-              Take Bot Action
-            </button>
-          ) : (
-            <button className="phase-primary" onClick={onDismiss}>
-              Your turn first — got it
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function FirstPlayerPrompt({
-  onAnswer,
-  onCancel,
-}: {
-  onAnswer: (playerFirst: boolean) => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
-        <h3>First Player next Era</h3>
-        <p>Does the Chronobot control First Player (banner placed next to the World Council)?</p>
-        <div className="fp-actions">
-          <button className="phase-primary" onClick={() => onAnswer(false)}>
-            Yes
-          </button>
-          <button className="phase-secondary" onClick={() => onAnswer(true)}>
-            No
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
@@ -2177,55 +2094,6 @@ function EndOfActionsBar({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-/** Right-docked pane listing the committed turns newest-first (from the undo stack). */
-function HistoryPane({
-  entries,
-  onClose,
-}: {
-  entries: UndoEntry[];
-  onClose: () => void;
-}) {
-  const rows = [...entries].reverse(); // newest first
-  return (
-    <div className="history-pane">
-      <div className="history-head">
-        <h3>History</h3>
-        <button className="history-close" onClick={onClose} aria-label="Close history">
-          ×
-        </button>
-      </div>
-      {rows.length === 0 ? (
-        <p className="history-empty">No turns taken yet.</p>
-      ) : (
-        <ol className="history-list">
-          {rows.map((e, i) => (
-            <li key={entries.length - i} className="history-row">
-              <span className="history-num">{entries.length - i}</span>
-              <span className="history-main">
-                <span className="history-label">
-                  {e.die != null && (
-                    <span className="bot-die history-die" aria-label={`AI die ${e.die}`}>
-                      {e.die}
-                    </span>
-                  )}
-                  {e.label}
-                </span>
-                {e.effects.length > 0 && (
-                  <ul className="history-effects">
-                    {e.effects.map((eff, j) => (
-                      <li key={j}>{eff}</li>
-                    ))}
-                  </ul>
-                )}
-              </span>
-            </li>
-          ))}
-        </ol>
-      )}
     </div>
   );
 }
@@ -2754,13 +2622,11 @@ function StatsBar({
   onToggleHistory,
   statusOpen,
   onToggleStatus,
-  paradoxes,
-  onParadox,
-  era,
-  onEra,
   onOpenRules,
   simpleView,
   onToggleSimpleView,
+  turnNumber,
+  turnEntries,
 }: {
   onHome?: () => void;
   bot: ChronobotState;
@@ -2785,13 +2651,11 @@ function StatsBar({
   onToggleHistory: () => void;
   statusOpen: boolean;
   onToggleStatus: () => void;
-  paradoxes: number;
-  onParadox: (delta: number) => void;
-  era: number;
-  onEra: (delta: number) => void;
   onOpenRules: () => void;
   simpleView: boolean;
   onToggleSimpleView: () => void;
+  turnNumber: number;
+  turnEntries: HistoryEntry[];
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -2808,33 +2672,6 @@ function StatsBar({
             <img src="/favicon-512.png" alt="" />
           </button>
         )}
-        {debug && (
-          <span className="debug-badge on" title="Debug mode is on (see the ⚙ menu)">
-            🛠 DEBUG
-          </span>
-        )}
-        {debug && (
-          <div className="paradox-ctl" title="Set the Era (1–7)">
-            <button onClick={() => onEra(-1)} disabled={era <= 1} aria-label="Previous era">
-              −
-            </button>
-            <span className="paradox-ctl-val">Era {era}</span>
-            <button onClick={() => onEra(1)} disabled={era >= 7} aria-label="Next era">
-              +
-            </button>
-          </div>
-        )}
-        {debug && (
-          <div className="paradox-ctl" title="Set the number of Paradoxes (0–3)">
-            <button onClick={() => onParadox(-1)} disabled={paradoxes <= 0} aria-label="Fewer paradoxes">
-              −
-            </button>
-            <span className="paradox-ctl-val">P {paradoxes}</span>
-            <button onClick={() => onParadox(1)} disabled={paradoxes >= 3} aria-label="More paradoxes">
-              +
-            </button>
-          </div>
-        )}
         <div className="stats-row">
           {stats.map((s) => (
             <span key={s.label} className="stat-pill">
@@ -2846,6 +2683,18 @@ function StatsBar({
       {!calibrate && (
         <div className="bot-turn">
           <VpPill bot={bot} />
+          <TurnTracker
+            turnNumber={turnNumber}
+            entries={turnEntries}
+            extra={
+              <>
+                <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exosuits</span>
+                <span title="Actions the Chronobot has taken this Era">
+                  ⚙ {bot.actionsThisEra} action{bot.actionsThisEra === 1 ? '' : 's'} this Era
+                </span>
+              </>
+            }
+          />
           {/* Primary turn controls — kept together on the top row when wrapping.
               While a bot action is in progress, hide Take Bot Action / You Pass
               (the turn is underway) and show only the rolled die. */}
