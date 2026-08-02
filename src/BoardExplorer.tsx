@@ -7,10 +7,10 @@ import HistoryPane from './history/HistoryPane';
 import AdminStats from './history/AdminStats';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
+import TurnBarOverview from './phases/TurnBarOverview';
 import AnchoredPopover from './components/AnchoredPopover';
 import DebugBar from './components/DebugBar';
 import { useMediaQuery } from './game/useMediaQuery';
-import type { HistoryEntry } from './game/undo';
 // Re-exported for existing importers (e.g. ChronossusGame).
 export { AnchoredPopover };
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
@@ -1560,13 +1560,28 @@ export default function BoardExplorer({
       />
 
       {!calibrate && showStatus && (
-        <EndOfActionsBar
-          state={state}
-          passMsg={passMsg}
+        <TurnBarOverview
+          botName="Chronobot"
+          era={state.era}
+          phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
+          playerPassed={state.playerPassed}
+          botPassed={bot.passed}
+          actionsThisEra={bot.actionsThisEra}
           minActions={Chronobot.chronobotMinActions(state)}
+          hint={
+            passMsg ??
+            describeDecision(
+              Chronobot.botPassDecision(state),
+              Chronobot.chronobotMinActions(state),
+            )
+          }
+          canEnd={Chronobot.actionRoundsCanEnd(state)}
+          turnRules={PHASE_META.actions?.rules}
+          difficulty={state.config.difficulty.map((f) => DIFFICULTY_LABEL[f] ?? f)}
           entries={undoStack.filter(
             (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
           )}
+          passingRule={PASSING_RULE}
           onClose={() => setShowStatus(false)}
         />
       )}
@@ -1990,116 +2005,6 @@ function describeDecision(
     case 'pass':
       return 'The Chronobot passes for this Era.';
   }
-}
-
-/**
- * The "Passing and End of Actions" strip (rulebook p. 6). Shows the pass state,
- * lets the player pass, and drives the Chronobot's pass decision through the
- * engine (immediate end / keep going / final Time Travel then pass).
- */
-/**
- * The "End of Actions" details, shown as a dismissible popover anchored under the
- * top-bar status chip (rulebook p. 6 pass state + minimum Actions).
- */
-function EndOfActionsBar({
-  state,
-  passMsg,
-  minActions,
-  entries,
-  onClose,
-}: {
-  state: GameState;
-  passMsg: string | null;
-  minActions: number;
-  /** This-Era bot turns (oldest→newest); the last few show as a mini turn log. */
-  entries: HistoryEntry[];
-  onClose: () => void;
-}) {
-  const bot = state.chronobot;
-  const decision = Chronobot.botPassDecision(state);
-  const canEnd = Chronobot.actionRoundsCanEnd(state);
-  const [showRule, setShowRule] = useState(false);
-
-  return (
-    <div className="eoa-popover">
-      <div className="eoa-pop-head">
-        <span className="eoa-pop-title">
-          Era {state.era} · Phase {PHASE_NUMBER[state.phase] ?? '—'}
-        </span>
-        <button className="eoa-pop-close" onClick={onClose} aria-label="Close">
-          ×
-        </button>
-      </div>
-      <div className="eoa-flags">
-        <span className={`eoa-flag ${state.playerPassed ? 'on' : ''}`}>
-          You: {state.playerPassed ? 'passed' : 'active'}
-        </span>
-        <span className={`eoa-flag ${bot.passed ? 'on' : ''}`}>
-          Bot: {bot.passed ? 'passed' : 'active'}
-        </span>
-        <span className="eoa-count">
-          Actions <b>{bot.actionsThisEra}</b> / min {minActions}
-        </span>
-      </div>
-
-      <p className="eoa-hint">{passMsg ?? describeDecision(decision, minActions)}</p>
-
-      {canEnd && (
-        <div className="eoa-buttons">
-          <span className="eoa-end">✓ Action Rounds Phase ends</span>
-        </div>
-      )}
-
-      {PHASE_META.actions?.rules && (
-        <RulesBox label="Chronobot's turn — rulebook text">
-          <p>{PHASE_META.actions.rules}</p>
-        </RulesBox>
-      )}
-
-      <div className="eoa-difficulty">
-        <span className="eoa-diff-title">Difficulty options</span>
-        {state.config.difficulty.length === 0 ? (
-          <span className="eoa-diff-none">Standard game — none selected</span>
-        ) : (
-          <ul className="eoa-diff-list">
-            {state.config.difficulty.map((f) => (
-              <li key={f}>{DIFFICULTY_LABEL[f] ?? f}</li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      {entries.length > 0 && (
-        <div className="eoa-turns">
-          <span className="eoa-turns-title">Recent bot turns</span>
-          <ol className="eoa-turn-list">
-            {[...entries].slice(-5).reverse().map((e, i) => (
-              <li key={entries.length - i} className="eoa-turn-row">
-                <span className="eoa-turn-n">
-                  {e.die != null && <span className="bot-die eoa-turn-die">{e.die}</span>}
-                  Turn {entries.length - i}
-                </span>
-                <span className="eoa-turn-label">{e.label}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      <div className="eoa-rule">
-        <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
-          📖 Passing &amp; End of Actions rules {showRule ? '▾' : '▸'}
-        </button>
-        {showRule && (
-          <div className="eoa-rule-body">
-            {PASSING_RULE.split('\n\n').map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 }
 
 /** Player score tally categories (rulebook). Timeline penalties subtract. */

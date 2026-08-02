@@ -32,7 +32,7 @@ import {
 import HistoryPane from './history/HistoryPane';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
-import TurnTracker from './components/TurnTracker';
+import TurnBarOverview from './phases/TurnBarOverview';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
@@ -51,6 +51,7 @@ import {
   rollShapeDie,
   rollAiDie,
   AI_DIE_FACES,
+  PHASE_NUMBER,
   type GameState,
   type ChronossusState,
   type ChronobotActionId,
@@ -182,6 +183,14 @@ function isConstructBuilding(a: string): boolean {
   return a.startsWith('construct-') && a !== 'construct-superproject';
 }
 
+/** One-line status hint for the Turn popover (the Chronossus pass model). */
+function chronossusTurnHint(bot: ChronossusState): string {
+  if (bot.passed) return 'The Chronossus has passed for this Era.';
+  if (bot.exosuitsAvailable <= 0)
+    return 'The Chronossus is out of Exosuits — it passes the next time it would place one (Time Travel / Reboot still resolve).';
+  return 'The Chronossus alternates turns with you. It passes once it is out of Exosuits and would place one; when you have both passed, the Action Rounds Phase ends.';
+}
+
 // ---- Calibration keys ----------------------------------------------------
 const hsKey = (id: string) => `hs_${id}`;
 const ttKey = (i: number) => `tt_${i}`;
@@ -302,6 +311,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [showHistory, setShowHistory] = useState(false);
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
+  const [showStatus, setShowStatus] = useState(false); // Turn-chip popover
   // Read-only rule view (a free-tap / SCV row shows the action's rules, no turn).
   const [ruleView, setRuleView] = useState(false);
   // A modular tile action (Reboot / Score / Energy Pack) awaiting its ▶ Start
@@ -409,6 +419,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [calibrate, selected]);
+
+  // Dismiss the Turn-chip status popover on Escape or an outside click.
+  useEffect(() => {
+    if (!showStatus) return;
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement;
+      if (!t.closest('.eoa-popover') && !t.closest('.status-chip')) setShowStatus(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setShowStatus(false);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [showStatus]);
 
   // Dismiss the tapped tracker-badge popover on Escape or an outside click.
   useEffect(() => {
@@ -854,18 +880,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {!calibrate && (
         <div className="bot-turn">
           <CxVpPill score={score} totalActions={bot.totalActions} />
-          <TurnTracker
-            turnNumber={turnsThisEra}
-            entries={thisEraEntries}
-            extra={
-              <>
-                <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exo</span>
-                <span title="Energy Pool — energized / exhausted">
-                  🔋 {bot.energyPool.energized}/{bot.energyPool.exhausted}
-                </span>
-              </>
-            }
-          />
           <div className="turn-core">
             {!actionInProgress && (
               <button
@@ -905,6 +919,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               ↶ Undo
             </button>
           </div>
+          <button
+            className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
+            onClick={() => setShowStatus((v) => !v)}
+            title="Turn tracker — pass status & recent bot turns"
+            aria-pressed={showStatus}
+          >
+            Turn <b>{turnsThisEra}</b>
+          </button>
         </div>
       )}
       <div className="stats-controls">
@@ -1281,6 +1303,34 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           )}
           {showHistory && !calibrate && (
             <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
+          )}
+          {!calibrate && showStatus && (
+            <TurnBarOverview
+              botName="Chronossus"
+              era={state.era}
+              phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
+              playerPassed={state.playerPassed}
+              botPassed={bot.passed}
+              actionsThisEra={turnsThisEra}
+              countLabel="Turns"
+              extraFlags={
+                <>
+                  <span className="eoa-flag" title="Powered Exosuits available">
+                    🦾 {bot.exosuitsAvailable} Exo
+                  </span>
+                  <span className="eoa-flag" title="Energy Pool — energized / exhausted">
+                    🔋 {bot.energyPool.energized}/{bot.energyPool.exhausted}
+                  </span>
+                </>
+              }
+              hint={chronossusTurnHint(bot)}
+              canEnd={bothPassed}
+              turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
+              difficulty={[]}
+              entries={thisEraEntries}
+              passingRule={Chronossus.CHRONOSSUS_PASSING_RULE}
+              onClose={() => setShowStatus(false)}
+            />
           )}
 
         {/* Ready-to-begin splash (once/Era); if the Chronossus is First Player its

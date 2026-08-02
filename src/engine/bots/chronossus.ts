@@ -487,6 +487,16 @@ export function actionRoundsEnded(state: GameState): boolean {
   return state.playerPassed && !!state.chronossus?.passed;
 }
 
+/** Verbatim "PASSING AND END OF ACTIONS" rule for the Chronossus (differs from the
+ *  Chronobot: no minimum-Actions requirement). Paragraphs split on a blank line. */
+export const CHRONOSSUS_PASSING_RULE =
+  'Once the Chronossus has run out of Exosuits, it will pass the next time it needs ' +
+  'to execute an Action that would require placing an Exosuit. Its Command token does ' +
+  'not advance when it passes. Actions that place no Exosuit (such as Time Travel or ' +
+  'Reboot) never trigger a pass.\n\n' +
+  'Once both you and the Chronossus have passed, the Action Rounds Phase ends. Unlike ' +
+  'the Chronobot, the Chronossus has no minimum number of Actions it must take.';
+
 // --------------------------------------------------------------------------
 // Phase 6: Clean Up
 // --------------------------------------------------------------------------
