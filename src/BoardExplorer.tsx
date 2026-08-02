@@ -10,6 +10,7 @@ import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
 import AnchoredPopover from './components/AnchoredPopover';
 import TurnTracker from './components/TurnTracker';
 import DebugBar from './components/DebugBar';
+import { useMediaQuery } from './game/useMediaQuery';
 import type { HistoryEntry } from './game/undo';
 // Re-exported for existing importers (e.g. ChronossusGame).
 export { AnchoredPopover };
@@ -284,21 +285,6 @@ function savePersisted(p: Omit<PersistedGame, 'version' | 'savedAt'>): void {
   }
 }
 
-/** Track a CSS media query, re-rendering when it changes (e.g. viewport resize). */
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(query).matches,
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const onChange = () => setMatches(mql.matches);
-    onChange();
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, [query]);
-  return matches;
-}
-
 // The Simple Command View is a display preference (a play aid), independent of the
 // game snapshot — persisted under its own key so it survives across games.
 const SIMPLE_VIEW_KEY = 'anachrony:simpleView';
@@ -369,7 +355,7 @@ const SHAPE_IMG: Record<BreakthroughShape, string> = {
 };
 const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
 
-function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) {
+export function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) {
   return (
     <img
       className="shape-icon"
@@ -381,7 +367,7 @@ function ShapeIcon({ shape, size }: { shape: BreakthroughShape; size: number }) 
 }
 
 /** A tapped tracker-badge info popover — anchored to the badge, clamped on screen. */
-function BadgePopover({
+export function BadgePopover({
   rect,
   variant,
   children,

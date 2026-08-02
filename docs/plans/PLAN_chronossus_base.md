@@ -108,10 +108,16 @@ around it. Bring it to parity by **extracting shared modules** used by both view
 ### A6. Settings-menu + responsive CSS parity
 - [x] Add **History** entry + "Log in (soon)" placeholder to `CxSettingsMenu`
   (`ChronossusGame` L1415), matching `StatsBar`'s ⚙ menu.
-- [~] `ChronossusGame` already imports `BoardExplorer.css`, so shared `.stats-bar`/`.bot-turn`
-  rules apply. Port the missing `cx-*` reflow — board-stage top-align/shrink, docked-history
-  padding, the `@media (max-width:760px)` / `clamp()` treatments — into `ChronossusExplorer.css`
-  so `cx-body`/`cx-board`/`cx-log` reflow like `board-stage`/`history-dock`.
+- [x] Phase-5 layout now uses the Chronobot's shared `board-stage`/`board-wrap` + `scvMode`
+  (ResizeObserver + `useMediaQuery`) mechanics, so the board scales to fit and reflows
+  identically on mobile (SCV drops below the board). Dropped the bespoke `cx-body`/`cx-board`/
+  `cx-log` layout and the right-side "Action Rounds" aside; end-of-phase uses the shared
+  `end-phase-banner`. Extracted `src/game/useMediaQuery.ts`.
+- [x] **Breakthrough popover** now uses the shared `BadgePopover` + `ShapeIcon` (exported from
+  BoardExplorer) — identical shape-icon art to the Chronobot (was a bespoke ●▲■ list).
+- [x] **Simple Command View** added for Chronossus (`CxSimpleCommandView`): the 4 markers + the
+  Action each sits on + AI-die faces, reusing the shared `.scv-*` classes; toggled from the
+  ⚙ menu, overlay/side/below by viewport, mirroring the Chronobot.
 
 ---
 

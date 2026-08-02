@@ -21,14 +21,24 @@ import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
-import { DetailPanel, AnchoredPopover, summarizeTurn, type PendingStep } from './BoardExplorer';
+import {
+  DetailPanel,
+  AnchoredPopover,
+  BadgePopover,
+  ShapeIcon,
+  summarizeTurn,
+  type PendingStep,
+} from './BoardExplorer';
 import HistoryPane from './history/HistoryPane';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
 import TurnTracker from './components/TurnTracker';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
+import { useMediaQuery } from './game/useMediaQuery';
 import { clearPersisted, type HistoryEntry } from './game/undo';
+import { ActionIcon } from './board/ActionIcon';
+import RulesBox from './phases/RulesBox';
 import { useAuth } from './auth/useAuth';
 import {
   Chronobot,
@@ -42,6 +52,7 @@ import {
   AI_DIE_FACES,
   type GameState,
   type ChronossusState,
+  type ChronobotActionId,
   type Phase,
   type Resource,
   type Worker,
@@ -89,6 +100,34 @@ const emptyCxUi = (): ChronossusUi => ({
   botDie: null,
   activeMarker: null,
 });
+
+// Simple Command View is a display preference shared across bots (own key).
+const SIMPLE_VIEW_KEY = 'anachrony:simpleView';
+const loadSimpleView = (): boolean => {
+  try {
+    return localStorage.getItem(SIMPLE_VIEW_KEY) !== '0';
+  } catch {
+    return true;
+  }
+};
+const saveSimpleView = (on: boolean): void => {
+  try {
+    localStorage.setItem(SIMPLE_VIEW_KEY, on ? '1' : '0');
+  } catch {
+    /* ignore */
+  }
+};
+/** Floating SCV toggle + overlay box on the board (overlay variant), % of board. */
+const CX_SCV_TOGGLE: [number, number] = [4.8, 3.0];
+const CX_SCV_BOX: [number, number, number, number] = [1.4, 0.9, 48.8, 72.1];
+
+/** One Simple-Command-View row: a marker + the action it currently sits on. */
+interface ScvRow {
+  num: CommandNum;
+  action: ChronossusActionId;
+  label: string;
+  tile: boolean;
+}
 
 /** Boot straight into Phase 5 (Action Rounds) with powered Exosuits (dev). */
 function initState(): GameState {
@@ -160,11 +199,7 @@ const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
   'tile-energy-pack': 'Energy Pack: +1 Energy Core',
 };
 
-const SHAPE_SYMBOLS: [BreakthroughShape, string][] = [
-  ['circle', '●'],
-  ['triangle', '▲'],
-  ['square', '■'],
-];
+const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
 const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
 
 /** Popover text for a tracker badge (the same info as the Chronobot's tooltips). */
@@ -252,6 +287,39 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [showHistory, setShowHistory] = useState(false);
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
+  // Read-only rule view (a free-tap / SCV row shows the action's rules, no turn).
+  const [ruleView, setRuleView] = useState(false);
+
+  // Simple Command View (play aid) + the board-stage sizing mechanism, ported
+  // verbatim from the Chronobot so the board + SCV reflow identically on mobile.
+  const [simpleView, setSimpleView] = useState<boolean>(loadSimpleView);
+  const [simpleViewShown, setSimpleViewShown] = useState(true);
+  useEffect(() => saveSimpleView(simpleView), [simpleView]);
+  const scvBelow = useMediaQuery('(max-width: 760px)');
+  const [stageEl, setStageEl] = useState<HTMLDivElement | null>(null);
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    if (!stageEl) return;
+    const px = (v: string) => parseFloat(v) || 0;
+    const measure = () => {
+      const cs = getComputedStyle(stageEl);
+      setStageSize({
+        w: stageEl.clientWidth - px(cs.paddingLeft) - px(cs.paddingRight),
+        h: stageEl.clientHeight - px(cs.paddingTop) - px(cs.paddingBottom),
+      });
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(stageEl);
+    measure();
+    return () => ro.disconnect();
+  }, [stageEl]);
+  const SCV_SIDE_W = 320;
+  const boardFitW = Math.min(stageSize.w, stageSize.h * (1500 / 1110));
+  const scvMode: 'below' | 'side' | 'overlay' = scvBelow
+    ? 'below'
+    : stageSize.w > 0 && stageSize.w - boardFitW >= SCV_SIDE_W + 24
+      ? 'side'
+      : 'overlay';
 
   // ---- Phase 5 action-dialog controller (mirrors BoardExplorer) ----------
   const [active, setActive] = useState<Hotspot | null>(null);
@@ -261,7 +329,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
-  const [lastResult, setLastResult] = useState<Instruction[]>([]); // persists in the aside
+  const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
 
   // Tapped tracker-badge popover (like the Chronobot's board tooltips).
   const [tappedBadge, setTappedBadge] = useState<string | null>(null);
@@ -359,6 +427,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
+    setRuleView(false);
     activeMarkerRef.current = null; // cancelled turn: don't advance a marker
     botDieRef.current = null;
   };
@@ -550,6 +619,76 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     closePanel();
   };
 
+  // Show an action's rules read-only (from a Simple Command View row) — opens the
+  // DetailPanel without taking a turn.
+  const showActionRules = (action: ChronossusActionId) => {
+    const h = CHRONOSSUS_ACTION_HOTSPOTS.find((x) => x.action === action);
+    if (!h) return;
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+    setActive(h);
+    setPending(null);
+    setResult([]);
+    setRuleView(true);
+  };
+
+  // Rows for the Simple Command View: each of the 4 markers, the action it now
+  // sits on (a modular tile action, or the nearest printed Action space).
+  const scvRows: ScvRow[] = COMMAND_NUMS.map((num) => {
+    const key = markerPosKey(num, markerSteps[num]);
+    const tp = trackPos(key);
+    if (tp?.action) {
+      return { num, action: tp.action, label: Chronossus.chronossusActionLabel(tp.action), tile: true };
+    }
+    const [x, y] = positions[key] ?? [0, 0];
+    const h = nearestHotspot(x, y);
+    return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: false };
+  });
+
+  // The action dialog. On mobile (flow=true) it renders in normal flow at the top
+  // of the stage, pushing the board down; on desktop it's an absolute panel on the
+  // board. Mirrors the Chronobot's renderDetailPanel.
+  const renderDetailPanel = (flow: boolean) =>
+    !calibrate && active ? (
+      <DetailPanel
+        flow={flow}
+        hotspot={{ ...active, panel: active.panel ?? CHRONOSSUS_PANEL }}
+        readOnly={ruleView}
+        pending={pending}
+        result={result}
+        selectedVP={selectedVP}
+        selectedResources={selectedResources}
+        selectedWorker={selectedWorker}
+        rolledShape={rolledShape}
+        breakthroughs={bot.breakthroughs}
+        removeAnomaly={(() => {
+          const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
+          return {
+            canRemove: bot.anomalies >= 1 && discards != null,
+            discards: discards ? describeCubes(discards) : '',
+            reason:
+              bot.anomalies < 1
+                ? 'it has no Anomaly to remove'
+                : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+          };
+        })()}
+        mineOrder={Chronobot.mineResourceOrder(bot)}
+        workerOrder={Chronobot.recruitWorkerOrder(bot)}
+        botName="Chronossus"
+        onConfirmPlace={onConfirmPlace}
+        onCannotPlace={onCannotPlace}
+        onMineHasSpace={onMineHasSpace}
+        onMineNoSpace={onMineNoSpace}
+        onGeniusYes={onGeniusYes}
+        onGeniusNo={onGeniusNo}
+        onPickVP={onPickVP}
+        onToggleResource={onToggleResource}
+        onPickWorker={onPickWorker}
+        onStartTurn={startTurn}
+        onClose={closePanel}
+      />
+    ) : null;
+
   // ---- Phase transitions -------------------------------------------------
   const drawAndPowerUp = () => {
     const draw = drawEnergyPool(bot.energyPool);
@@ -737,6 +876,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           }}
           historyOpen={showHistory}
           onToggleHistory={() => setShowHistory((v) => !v)}
+          simpleView={simpleView}
+          onToggleSimpleView={() => setSimpleView((v) => !v)}
           onReset={reset}
         />
       </div>
@@ -777,17 +918,30 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       <div className="chronossus-harness">
         {topBar}
         {debugBar}
-        <div className="cx-body">
-          <div className="board-stage">
-            <div
-              className={`board-wrap cx-board ${calibrate ? 'calibrating' : ''}`}
-              onClick={onBoardClick}
-            >
-              <img
-                src="/assets/solo/board-chronossus.jpg"
-                alt="Chronossus solo board"
-                className="board"
-              />
+        <div
+          className={`board-stage cx-stage ${showHistory ? 'with-history' : ''}`}
+          ref={setStageEl}
+        >
+          {/* Mobile: the action box renders in flow at the top, pushing the board
+              down; disappears on close. Desktop: absolute on the board (below). */}
+          {scvMode === 'below' && renderDetailPanel(true)}
+          {simpleView && !calibrate && scvMode === 'side' && (
+            <CxSimpleCommandView
+              rows={scvRows}
+              activeMarker={activeMarker}
+              onShowRules={showActionRules}
+              variant="side"
+            />
+          )}
+          <div
+            className={`board-wrap ${calibrate ? 'calibrating' : ''}`}
+            onClick={onBoardClick}
+          >
+            <img
+              src="/assets/solo/board-chronossus.jpg"
+              alt="Chronossus solo board"
+              className="board"
+            />
 
               {CHRONOSSUS_ACTION_HOTSPOTS.map((h) => {
                 const [l, t] = positions[hsKey(h.id)] ?? HS_CENTER(h);
@@ -916,19 +1070,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   >
                     {calibrate ? (sel ? '◎' : '·') : counterValue(bot, c.key)}
                     {open && c.key === 'breakthrough' && (
-                      <AnchoredPopover rect={tappedRect} className="badge-portal cx-badge-portal bt">
-                        {SHAPE_SYMBOLS.map(([s, sym]) => (
-                          <span key={s} className="cx-bt-pop-row">
-                            <span className="cx-bt-sym">{sym}</span>
+                      <BadgePopover rect={tappedRect} variant="bt">
+                        {SHAPE_ORDER.map((s) => (
+                          <span key={s} className="bt-pop-row">
+                            <ShapeIcon shape={s} size={22} />
                             <b>{bot.breakthroughs[s]}</b>
                           </span>
                         ))}
-                      </AnchoredPopover>
+                      </BadgePopover>
                     )}
                     {open && c.key !== 'breakthrough' && (
-                      <AnchoredPopover rect={tappedRect} className="badge-portal cx-badge-portal">
+                      <BadgePopover rect={tappedRect} variant="text">
                         {counterInfo(bot, c)}
-                      </AnchoredPopover>
+                      </BadgePopover>
                     )}
                   </div>
                 );
@@ -1021,47 +1175,27 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 );
               })}
 
-              {!calibrate && active && (
-                <DetailPanel
-                  hotspot={{ ...active, panel: active.panel ?? CHRONOSSUS_PANEL }}
-                  readOnly={false}
-                  pending={pending}
-                  result={result}
-                  selectedVP={selectedVP}
-                  selectedResources={selectedResources}
-                  selectedWorker={selectedWorker}
-                  rolledShape={rolledShape}
-                  breakthroughs={bot.breakthroughs}
-                  removeAnomaly={(() => {
-                    const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
-                    return {
-                      canRemove: bot.anomalies >= 1 && discards != null,
-                      discards: discards ? describeCubes(discards) : '',
-                      reason:
-                        bot.anomalies < 1
-                          ? 'it has no Anomaly to remove'
-                          : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
-                    };
-                  })()}
-                  mineOrder={Chronobot.mineResourceOrder(bot)}
-                  workerOrder={Chronobot.recruitWorkerOrder(bot)}
-                  botName="Chronossus"
-                  onConfirmPlace={onConfirmPlace}
-                  onCannotPlace={onCannotPlace}
-                  onMineHasSpace={onMineHasSpace}
-                  onMineNoSpace={onMineNoSpace}
-                  onGeniusYes={onGeniusYes}
-                  onGeniusNo={onGeniusNo}
-                  onPickVP={onPickVP}
-                  onToggleResource={onToggleResource}
-                  onPickWorker={onPickWorker}
-                  onStartTurn={startTurn}
-                  onClose={closePanel}
+              {simpleView && !calibrate && scvMode === 'overlay' && (
+                <CxSimpleCommandView
+                  rows={scvRows}
+                  activeMarker={activeMarker}
+                  shown={simpleViewShown}
+                  onToggleShown={() => setSimpleViewShown((v) => !v)}
+                  onShowRules={showActionRules}
                 />
               )}
+              {scvMode !== 'below' && renderDetailPanel(false)}
             </div>
+            {simpleView && !calibrate && scvMode === 'below' && (
+              <CxSimpleCommandView
+                rows={scvRows}
+                activeMarker={activeMarker}
+                onShowRules={showActionRules}
+                variant="below"
+              />
+            )}
           </div>
-          {calibrate ? (
+          {calibrate && (
             <CalibrationPanel
               positions={positions}
               selected={selected}
@@ -1081,47 +1215,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               paradoxWidth={paradoxWidth}
               onParadoxWidth={setParadoxWidth}
             />
-          ) : (
-            <aside className="cx-log">
-              <h3>Action Rounds</h3>
-              {bothPassed ? (
-                <div className="cx-turn-end">
-                  <p>
-                    <b>Both players have passed</b> — the Action Rounds phase is over.
-                  </p>
-                  <button className="phase-primary" onClick={endActions}>
-                    Proceed to Clean Up ▶
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <ul className="cx-turn-status">
-                    <li>
-                      Chronossus:{' '}
-                      <b>{bot.passed ? 'passed' : `${bot.exosuitsAvailable} Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} left`}</b>
-                    </li>
-                    <li>You: <b>{state.playerPassed ? 'passed' : 'active'}</b></li>
-                  </ul>
-                  <p className="cx-empty">
-                    Tap an action space to take the Chronossus's turn. When it runs out of
-                    Exosuits it passes an Exosuit-placing action; once you both pass, the phase ends.
-                  </p>
-                </>
-              )}
-              {lastResult.length > 0 && (
-                <div className="cx-entry cx-last-turn">
-                  <b>Last turn</b>
-                  {lastResult.map((i, idx) => (
-                    <p key={idx}>{i.text}</p>
-                  ))}
-                </div>
-              )}
-            </aside>
+          )}
+          {bothPassed && !showFirstPlayer && (
+            <div className="end-phase-banner">
+              <span>✓ Everyone has passed — the Action Rounds Phase is complete.</span>
+              <button className="phase-primary" onClick={endActions}>
+                Continue to Clean Up ▶
+              </button>
+            </div>
           )}
           {showHistory && !calibrate && (
             <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
           )}
-        </div>
 
         {/* Ready-to-begin splash (once/Era); if the Chronossus is First Player its
             button fires the first Take Bot Action. */}
@@ -1255,6 +1360,108 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     <>
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
+    </>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Simple Command View — the Chronossus play aid mirroring the Chronobot's SCV:
+// each of the 4 Command markers, the Action it currently sits on, and the AI-die
+// faces. Reuses the shared .scv-* classes so it looks identical (retinted).
+// --------------------------------------------------------------------------
+function CxSimpleCommandView({
+  rows,
+  activeMarker,
+  shown = true,
+  onToggleShown,
+  onShowRules,
+  variant = 'overlay',
+}: {
+  rows: ScvRow[];
+  activeMarker: CommandNum | null;
+  shown?: boolean;
+  onToggleShown?: () => void;
+  onShowRules: (action: ChronossusActionId) => void;
+  variant?: 'overlay' | 'side' | 'below';
+}) {
+  const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const content = (
+    <>
+      <div className="scv-title">What Chronossus might do next</div>
+      <div className="scv-grid">
+        {rows.map((r) => (
+          <button
+            type="button"
+            className={`scv-row ${activeMarker === r.num ? 'active-row' : ''}`}
+            key={r.num}
+            onClick={() => !r.tile && onShowRules(r.action)}
+            title={r.tile ? r.label : `Show the ${r.label} rules`}
+          >
+            <div className="scv-markers">
+              <img
+                src={`/assets/solo/commands/chronossus-marker-${r.num}.png`}
+                alt={`Command marker ${r.num}`}
+                className={`scv-marker ${activeMarker === r.num ? 'active' : ''}`}
+              />
+            </div>
+            <div className="scv-icon">
+              {r.tile ? (
+                <span className="scv-tile-badge">{r.label}</span>
+              ) : (
+                <ActionIcon action={r.action as ChronobotActionId} size={58} />
+              )}
+            </div>
+            <div className="scv-name">{r.label}</div>
+          </button>
+        ))}
+      </div>
+      <div className="scv-die">
+        <span className="scv-die-label">AI die faces</span>
+        <div className="scv-die-faces">
+          {AI_DIE_FACES.map((f, i) => (
+            <span key={i} className="scv-die-face">
+              {f}
+            </span>
+          ))}
+        </div>
+      </div>
+      <RulesBox label="How the AI die moves the markers">
+        <p>{CHRONOSSUS_PHASE_META.actions?.rules}</p>
+      </RulesBox>
+    </>
+  );
+
+  if (variant !== 'overlay') {
+    return <div className={variant === 'side' ? 'scv-side' : 'scv-below'}>{content}</div>;
+  }
+  return (
+    <>
+      <button
+        className={`scv-toggle ${shown ? 'shown' : ''}`}
+        style={{ left: `${CX_SCV_TOGGLE[0]}%`, top: `${CX_SCV_TOGGLE[1]}%` }}
+        onClick={(e) => {
+          stop(e);
+          onToggleShown?.();
+        }}
+        title={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
+        aria-label={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
+      >
+        {shown ? '◂ Hide' : '▸ Show'}
+      </button>
+      {shown && (
+        <div
+          className="scv-overlay"
+          style={{
+            left: `${CX_SCV_BOX[0]}%`,
+            top: `${CX_SCV_BOX[1]}%`,
+            width: `${CX_SCV_BOX[2] - CX_SCV_BOX[0]}%`,
+            height: `${CX_SCV_BOX[3] - CX_SCV_BOX[1]}%`,
+          }}
+          onClick={stop}
+        >
+          {content}
+        </div>
+      )}
     </>
   );
 }
@@ -1548,6 +1755,8 @@ function CxSettingsMenu({
   onToggleCalibrate,
   historyOpen,
   onToggleHistory,
+  simpleView,
+  onToggleSimpleView,
   onReset,
 }: {
   debug: boolean;
@@ -1557,6 +1766,8 @@ function CxSettingsMenu({
   onToggleCalibrate: () => void;
   historyOpen: boolean;
   onToggleHistory: () => void;
+  simpleView: boolean;
+  onToggleSimpleView: () => void;
   onReset: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1611,6 +1822,15 @@ function CxSettingsMenu({
               <div className="settings-sep" />
             </>
           )}
+          <button
+            className="settings-item toggle"
+            onClick={onToggleSimpleView}
+            role="menuitemcheckbox"
+            aria-checked={simpleView}
+          >
+            <span>Simple Command View</span>
+            <span className={`sw ${simpleView ? 'on' : ''}`}>{simpleView ? 'ON' : 'OFF'}</span>
+          </button>
           <button
             className="settings-item toggle"
             onClick={onToggleHistory}

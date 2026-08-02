@@ -523,3 +523,22 @@
   border-bottom: none;
   font-size: 18px;
 }
+
+/* Simple Command View: a modular-tile row shows the tile code instead of a
+   sprite icon (tile actions have no action-sheet icon). */
+.scv-tile-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 40px;
+  border-radius: 6px;
+  background: #2e8c8c33;
+  border: 1px solid var(--cx-teal);
+  color: #cfefef;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.05;
+  padding: 2px;
+}
