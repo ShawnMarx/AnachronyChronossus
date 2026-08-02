@@ -86,6 +86,7 @@ import {
   nextStep,
   trackPos,
   type CommandNum,
+  type TrackPos,
 } from './board/chronossusPaths';
 import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 
@@ -142,7 +143,8 @@ interface ScvRow {
   num: CommandNum;
   action: ChronossusActionId;
   label: string;
-  tile: boolean;
+  /** Modular tile art code (e.g. 'C01A') when on a tile slot; null on a printed space. */
+  tile: string | null;
 }
 
 /** Boot straight into Phase 5 (Action Rounds) with powered Exosuits (dev). */
@@ -317,6 +319,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A modular tile action (Reboot / Score / Energy Pack) awaiting its ▶ Start
   // (the marker landed on a tile slot). Its dialog waits like every other action.
   const [pendingTile, setPendingTile] = useState<ChronossusTileActionId | null>(null);
+  // A modular-tile dialog opened read-only (play-mode tap / SCV row): shows the
+  // tile's rules with no ▶ Start, taking no turn (mirrors the action rule view).
+  const [tileRuleView, setTileRuleView] = useState(false);
 
   // Simple Command View (play aid) + the board-stage sizing mechanism, ported
   // verbatim from the Chronobot so the board + SCV reflow identically on mobile.
@@ -555,9 +560,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     activeMarkerRef.current = null;
   };
 
-  const onTileClick = (h: Hotspot) => {
+  const onTileClick = (h: Hotspot, force = false) => {
     if (calibrate) {
       setSelected(hsKey(h.id)); // select instead of activating
+      return;
+    }
+    setActive(h);
+    setResult([]);
+    setSelectedVP(null);
+    setSelectedResources([]);
+    setSelectedWorker(null);
+    setRolledShape(null);
+    // Play mode free-tap (not debug, not a die-driven turn): show the rule
+    // reference only, no engine activation — mirrors the Chronobot.
+    const showRuleOnly = !debug && !force;
+    setRuleView(showRuleOnly);
+    if (showRuleOnly) {
+      setPending(null);
       return;
     }
     if (bot.passed) return; // the Chronossus has passed for this Era
@@ -571,12 +590,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setLastResult(instructions); // shown in the turn-status aside
       return;
     }
-    setActive(h);
-    setResult([]);
-    setSelectedVP(null);
-    setSelectedResources([]);
-    setSelectedWorker(null);
-    setRolledShape(null);
     if (h.action === 'mine-resource') {
       setPending('mineOpen');
     } else if (h.action === 'recruit-genius-research') {
@@ -688,17 +701,53 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRuleView(true);
   };
 
+  // Show a modular tile action's rules read-only (a play-mode tap on the tile
+  // space, or its SCV row) — opens the tile dialog with no ▶ Start, no turn.
+  const showTileRules = (tileAction: ChronossusTileActionId) => {
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+    setResult([]);
+    setTileRuleView(true);
+    setPendingTile(tileAction);
+  };
+
+  // A tap on a modular tile SPACE (I/II/III). Calibrate → select; play mode →
+  // rules only; debug free-tap → the interactive dialog (advances no marker,
+  // since this isn't a die-driven turn).
+  const onTileArtClick = (p: TrackPos) => {
+    if (calibrate) {
+      setSelected(tileKey(p.key));
+      return;
+    }
+    if (!p.action) return;
+    const tileAction = p.action as ChronossusTileActionId;
+    if (!debug) {
+      showTileRules(tileAction);
+      return;
+    }
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+    setResult([]);
+    setTileRuleView(false);
+    setPendingTile(tileAction);
+  };
+
   // Rows for the Simple Command View: each of the 4 markers, the action it now
   // sits on (a modular tile action, or the nearest printed Action space).
   const scvRows: ScvRow[] = COMMAND_NUMS.map((num) => {
     const key = markerPosKey(num, markerSteps[num]);
     const tp = trackPos(key);
     if (tp?.action) {
-      return { num, action: tp.action, label: Chronossus.chronossusActionLabel(tp.action), tile: true };
+      return {
+        num,
+        action: tp.action,
+        label: Chronossus.chronossusActionLabel(tp.action),
+        tile: tp.tile ?? null,
+      };
     }
     const [x, y] = positions[key] ?? [0, 0];
     const h = nearestHotspot(x, y);
-    return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: false };
+    return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: null };
   });
 
   // The action dialog. On mobile (flow=true) it renders in normal flow at the top
@@ -817,7 +866,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     const [x, y] = positions[key] ?? [0, 0];
-    onTileClick(nearestHotspot(x, y));
+    onTileClick(nearestHotspot(x, y), true); // die-driven turn: activate, not rule-view
   };
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
@@ -843,6 +892,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // not advance (a cancelled turn).
   const closeTile = () => {
     setPendingTile(null);
+    setTileRuleView(false);
     setResult([]);
     botDieRef.current = null;
     activeMarkerRef.current = null;
@@ -858,7 +908,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A bot turn is underway (an action or tile dialog is open, not a rule view).
   // While it is, the turn controls hide and only the rolled die shows (like the
   // Chronobot), returning once the dialog completes.
-  const actionInProgress = (active != null && !ruleView) || pendingTile != null;
+  const actionInProgress =
+    (active != null && !ruleView) || (pendingTile != null && !tileRuleView);
 
   // This Era's committed bot turns (drives the Turn tracker + its hover list).
   const thisEraEntries: HistoryEntry[] = entries.filter(
@@ -1007,6 +1058,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               rows={scvRows}
               activeMarker={activeMarker}
               onShowRules={showActionRules}
+              onShowTileRules={showTileRules}
               variant="side"
             />
           )}
@@ -1111,14 +1163,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     alt={`Modular tile ${p.tile}`}
                     style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
                     title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
-                    onClick={
-                      calibrate
-                        ? (e) => {
-                            e.stopPropagation();
-                            setSelected(k);
-                          }
-                        : undefined
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTileArtClick(p);
+                    }}
                   />
                 );
               })}
@@ -1259,6 +1307,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   shown={simpleViewShown}
                   onToggleShown={() => setSimpleViewShown((v) => !v)}
                   onShowRules={showActionRules}
+              onShowTileRules={showTileRules}
                 />
               )}
               {scvMode !== 'below' && renderDetailPanel(false)}
@@ -1267,6 +1316,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   action={pendingTile}
                   result={result}
                   panel={CHRONOSSUS_PANEL}
+                  readOnly={tileRuleView}
                   onStart={startTileTurn}
                   onClose={closeTile}
                 />
@@ -1277,6 +1327,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 rows={scvRows}
                 activeMarker={activeMarker}
                 onShowRules={showActionRules}
+              onShowTileRules={showTileRules}
                 variant="below"
               />
             )}
@@ -1503,12 +1554,14 @@ function CxTileDialog({
   action,
   result,
   panel,
+  readOnly = false,
   onStart,
   onClose,
 }: {
   action: ChronossusTileActionId;
   result: Instruction[];
   panel: [number, number, number, number];
+  readOnly?: boolean;
   onStart: () => void;
   onClose: () => void;
 }) {
@@ -1532,7 +1585,11 @@ function CxTileDialog({
       </div>
       <div className="dp-body">
         <p className="pp-instruct">{info.effect}</p>
-        {!resolved ? (
+        {readOnly ? (
+          <button className="start-turn" onClick={onClose}>
+            Close
+          </button>
+        ) : !resolved ? (
           <button className="start-turn" onClick={onStart}>
             ▶ Start Your Turn
           </button>
@@ -1562,6 +1619,7 @@ function CxSimpleCommandView({
   shown = true,
   onToggleShown,
   onShowRules,
+  onShowTileRules,
   variant = 'overlay',
 }: {
   rows: ScvRow[];
@@ -1569,6 +1627,7 @@ function CxSimpleCommandView({
   shown?: boolean;
   onToggleShown?: () => void;
   onShowRules: (action: ChronossusActionId) => void;
+  onShowTileRules: (action: ChronossusTileActionId) => void;
   variant?: 'overlay' | 'side' | 'below';
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -1581,8 +1640,12 @@ function CxSimpleCommandView({
             type="button"
             className={`scv-row ${activeMarker === r.num ? 'active-row' : ''}`}
             key={r.num}
-            onClick={() => !r.tile && onShowRules(r.action)}
-            title={r.tile ? r.label : `Show the ${r.label} rules`}
+            onClick={() =>
+              r.tile
+                ? onShowTileRules(r.action as ChronossusTileActionId)
+                : onShowRules(r.action)
+            }
+            title={`Show the ${r.label} rules`}
           >
             <div className="scv-markers">
               <img
@@ -1593,7 +1656,11 @@ function CxSimpleCommandView({
             </div>
             <div className="scv-icon">
               {r.tile ? (
-                <span className="scv-tile-badge">{r.label}</span>
+                <img
+                  className="scv-tile-img"
+                  src={`/assets/solo/chronossus/tiles/${r.tile}.png`}
+                  alt={r.label}
+                />
               ) : (
                 <ActionIcon action={r.action as ChronobotActionId} size={58} />
               )}

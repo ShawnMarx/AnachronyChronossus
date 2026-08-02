@@ -586,6 +586,15 @@
   font-size: 18px;
 }
 
+/* Simple Command View: a modular-tile row shows the tile's art, sized to match
+   the printed-action sprite icons in the other rows. */
+.scv-tile-img {
+  width: 58px;
+  height: 58px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
 /* Simple Command View: a modular-tile row shows the tile code instead of a
    sprite icon (tile actions have no action-sheet icon). */
 .scv-tile-badge {
