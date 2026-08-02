@@ -7,7 +7,7 @@
   flex-direction: column;
   overflow: hidden;
   background: #0b0910;
-  color: #ece8f5;
+  color: var(--sp-text-base);
 }
 
 /* ---- Top bar ---- */
@@ -20,7 +20,7 @@
   gap: 0.5rem 1rem;
   padding: 0.45rem 0.9rem;
   border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.35);
-  background: #120e1c;
+  background: var(--sp-panel-2);
 }
 .phase-bar-left,
 .phase-bar-right {
@@ -34,7 +34,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #a78bfa;
+  color: var(--sp-accent-2);
 }
 .phase-title {
   margin: 0;
@@ -51,8 +51,8 @@
   padding: 0.35rem 0.7rem;
   font-size: 0.82rem;
   font-weight: 700;
-  background: #1a1330;
-  color: #ccc1ea;
+  background: var(--sp-panel);
+  color: var(--sp-text-1);
   border: none;
   cursor: pointer;
 }
@@ -100,7 +100,7 @@
   border-radius: 0 8px 8px 0;
   background: var(--sp-panel-2);
   line-height: 1.55;
-  color: #d6cdf0;
+  color: var(--sp-text-1);
   font-size: 0.98rem;
 }
 
@@ -125,8 +125,8 @@
   padding: 0.55rem 1.1rem;
   border-radius: 9px;
   border: 1px solid rgba(var(--sp-accent-rgb), 0.55);
-  background: #241a3d;
-  color: #e6def7;
+  background: var(--sp-panel);
+  color: var(--sp-text-2);
   font-weight: 700;
   font-size: 0.95rem;
   cursor: pointer;
@@ -149,9 +149,9 @@
   padding: 0.4rem 0.8rem;
   border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
   border-radius: 999px;
-  background: #16112a;
+  background: var(--sp-panel-2);
   font-size: 0.9rem;
-  color: #cbc0ea;
+  color: var(--sp-text-1);
 }
 .paradox-status b {
   color: #fff;
@@ -166,7 +166,7 @@
   background: var(--sp-panel-2);
 }
 .paradox-log .phase-note {
-  color: #d6cdf0;
+  color: var(--sp-text-1);
 }
 
 /* Dice-roll result (Warp / Paradox phases). */
@@ -177,7 +177,7 @@
   padding: 0.8rem 1rem;
   border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
   border-radius: 10px;
-  background: #16112a;
+  background: var(--sp-panel-2);
 }
 .warp-roll-num {
   flex: 0 0 auto;
@@ -194,7 +194,7 @@
 }
 .warp-roll-result .phase-note {
   margin: 0;
-  color: #d6cdf0;
+  color: var(--sp-text-1);
 }
 
 /* Status tab holds the full board explorer (read-only). */
@@ -213,7 +213,7 @@
   margin: 0;
   font-size: 1.05rem;
   line-height: 1.65;
-  color: #e2daf5;
+  color: var(--sp-text-2);
   font-style: italic;
 }
 .difficulty-list {
@@ -264,18 +264,18 @@
 .setup-modified h3 {
   margin: 0 0 0.5rem;
   font-size: 1.05rem;
-  color: #f0eaff;
+  color: var(--sp-text-2);
 }
 .setup-modified p {
   margin: 0 0 0.6rem;
   line-height: 1.55;
-  color: #d2c9ea;
+  color: var(--sp-text-1);
 }
 .setup-modified ul {
   margin: 0 0 0.6rem;
   padding-left: 1.2rem;
   line-height: 1.55;
-  color: #cfc6e6;
+  color: var(--sp-text-1);
 }
 .setup-modified li {
   margin-bottom: 0.3rem;
@@ -355,7 +355,7 @@
 .fp-dialog p {
   margin: 0 0 1.1rem;
   line-height: 1.55;
-  color: #cfc6e6;
+  color: var(--sp-text-1);
 }
 .fp-actions {
   display: flex;
@@ -376,8 +376,8 @@
   color: var(--act-text);
 }
 .fp-actions .phase-secondary {
-  background: #241a3d;
-  color: #e6def7;
+  background: var(--sp-panel);
+  color: var(--sp-text-2);
   border: 1px solid rgba(var(--sp-accent-rgb), 0.55);
 }
 
@@ -385,7 +385,7 @@
 .rules-box {
   border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   border-radius: 10px;
-  background: #100c1b;
+  background: var(--sp-panel-2);
   overflow: hidden;
 }
 .rules-box-toggle {
@@ -396,14 +396,14 @@
   padding: 0.6rem 0.8rem;
   background: none;
   border: none;
-  color: #d8cff0;
+  color: var(--sp-text-1);
   font-size: 0.92rem;
   font-weight: 700;
   cursor: pointer;
   text-align: left;
 }
 .rules-box-caret {
-  color: #a78bfa;
+  color: var(--sp-accent-2);
   width: 0.9em;
 }
 .rules-box-label {
@@ -422,7 +422,7 @@
 .rules-box-text {
   font-size: 0.9rem;
   line-height: 1.6;
-  color: #cabfe6;
+  color: var(--sp-text-1);
 }
 .rules-box-text p {
   margin: 0 0 0.6rem;
