@@ -85,7 +85,10 @@ export const CHRONOSSUS_TRACKS: Record<CommandNum, string[]> = {
 export const COMMAND_NUMS: CommandNum[] = [2, 3, 4, 5];
 
 /** Render width of the modular tile art (% of the board image). Calibratable. */
-export const CHRONOSSUS_TILE_WIDTH = 11;
+export const CHRONOSSUS_TILE_WIDTH = 9.5;
+
+/** Render width of the Command markers (% of the board image). Calibratable. */
+export const CHRONOSSUS_MARKER_WIDTH = 6.5;
 
 /** Every marker starts at step 0 (its step-1 position). */
 export function initialMarkerSteps(): Record<CommandNum, number> {

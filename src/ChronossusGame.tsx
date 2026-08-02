@@ -54,6 +54,7 @@ import {
 import {
   CHRONOSSUS_TRACK_POSITIONS,
   CHRONOSSUS_TILE_WIDTH,
+  CHRONOSSUS_MARKER_WIDTH,
   COMMAND_NUMS,
   initialMarkerSteps,
   markerPosKey,
@@ -241,7 +242,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [selected, setSelected] = useState<string>(CAL_KEYS[0]);
   const [hsWidth, setHsWidth] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[2]);
   const [hsHeight, setHsHeight] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[3]);
-  const [markerWidth, setMarkerWidth] = useState<number>(5);
+  const [markerWidth, setMarkerWidth] = useState<number>(CHRONOSSUS_MARKER_WIDTH);
   const [tileWidth, setTileWidth] = useState<number>(CHRONOSSUS_TILE_WIDTH);
   const [ttWidth, setTtWidth] = useState<number>(CHRONOSSUS_TIME_TRAVEL_TRACK.markerWidth);
   const [warpWidth, setWarpWidth] = useState<number>(CHRONOSSUS_WARP_MARKER.width);
@@ -1175,7 +1176,8 @@ function CalibrationPanel({
         : '';
       return `  { key: '${p.key}', pos: [${x}, ${y}]${extra} },`;
     }).join('\n') +
-    `\n];\n\nexport const CHRONOSSUS_TILE_WIDTH = ${tileWidth};`;
+    `\n];\n\nexport const CHRONOSSUS_TILE_WIDTH = ${tileWidth};` +
+    `\nexport const CHRONOSSUS_MARKER_WIDTH = ${markerWidth};`;
   const countersLiteral =
     'export const CHRONOSSUS_COUNTERS: BoardCounter[] = [\n' +
     CHRONOSSUS_COUNTERS.map((c) => {
