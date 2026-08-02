@@ -53,6 +53,7 @@ import {
 } from './board/chronossusHotspots';
 import {
   CHRONOSSUS_TRACK_POSITIONS,
+  CHRONOSSUS_TILE_WIDTH,
   COMMAND_NUMS,
   initialMarkerSteps,
   markerPosKey,
@@ -241,6 +242,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [hsWidth, setHsWidth] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[2]);
   const [hsHeight, setHsHeight] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[3]);
   const [markerWidth, setMarkerWidth] = useState<number>(5);
+  const [tileWidth, setTileWidth] = useState<number>(CHRONOSSUS_TILE_WIDTH);
   const [ttWidth, setTtWidth] = useState<number>(CHRONOSSUS_TIME_TRAVEL_TRACK.markerWidth);
   const [warpWidth, setWarpWidth] = useState<number>(CHRONOSSUS_WARP_MARKER.width);
   const [paradoxWidth, setParadoxWidth] = useState<number>(CHRONOSSUS_PARADOX_SLOTS.width);
@@ -773,7 +775,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       className="cx-tile-art"
                       src={`/assets/solo/chronossus/tiles/${p.tile}.png`}
                       alt={`Modular tile ${p.tile}`}
-                      style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth * 1.6}%` }}
+                      style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
                       title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
                     />
                   );
@@ -959,6 +961,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               onHsHeight={setHsHeight}
               markerWidth={markerWidth}
               onMarkerWidth={setMarkerWidth}
+              tileWidth={tileWidth}
+              onTileWidth={setTileWidth}
               ttWidth={ttWidth}
               onTtWidth={setTtWidth}
               warpWidth={warpWidth}
@@ -1126,6 +1130,8 @@ function CalibrationPanel({
   onHsHeight,
   markerWidth,
   onMarkerWidth,
+  tileWidth,
+  onTileWidth,
   ttWidth,
   onTtWidth,
   warpWidth,
@@ -1142,6 +1148,8 @@ function CalibrationPanel({
   onHsHeight: (h: number) => void;
   markerWidth: number;
   onMarkerWidth: (w: number) => void;
+  tileWidth: number;
+  onTileWidth: (w: number) => void;
   ttWidth: number;
   onTtWidth: (w: number) => void;
   warpWidth: number;
@@ -1167,7 +1175,7 @@ function CalibrationPanel({
         : '';
       return `  { key: '${p.key}', pos: [${x}, ${y}]${extra} },`;
     }).join('\n') +
-    '\n];';
+    `\n];\n\nexport const CHRONOSSUS_TILE_WIDTH = ${tileWidth};`;
   const countersLiteral =
     'export const CHRONOSSUS_COUNTERS: BoardCounter[] = [\n' +
     CHRONOSSUS_COUNTERS.map((c) => {
@@ -1245,6 +1253,7 @@ function CalibrationPanel({
           visited by more than one marker — place each once. → paste into <code>chronossusPaths.ts</code>.
         </p>
         {sizeSlider('Marker width', markerWidth, onMarkerWidth, 12)}
+        {sizeSlider('Mod-tile width', tileWidth, onTileWidth, 24)}
         <div className="cal-list">
           {CHRONOSSUS_TRACK_POSITIONS.map((p) =>
             item(p.key, p.label ? `${p.key} · slot ${p.label}` : p.key, p.pos),
