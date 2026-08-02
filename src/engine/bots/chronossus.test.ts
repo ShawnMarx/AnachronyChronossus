@@ -8,6 +8,9 @@ import {
   poolAfterDraw,
   resolvePowerUp,
   resolveAction,
+  wouldPassOn,
+  passChronossus,
+  actionRoundsEnded,
   startNextEra,
   type EnergyDraw,
 } from './chronossus';
@@ -213,6 +216,46 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     s = resolveAction(s, { actionId: 'reboot' }).state;
     s = resolveAction(s, { actionId: 'reboot' }).state;
     expect(s.chronossus!.totalActions).toBe(2);
+  });
+});
+
+describe('passing & end of Action Rounds', () => {
+  function withExosuits(n: number, extra: Partial<GameState> = {}): GameState {
+    const s = chronossusState({ phase: 'actions', ...extra });
+    s.chronossus!.exosuitsAvailable = n;
+    return s;
+  }
+
+  it('wouldPassOn: true for an Exosuit-placing action at 0 Exosuits', () => {
+    const bot = withExosuits(0).chronossus!;
+    expect(wouldPassOn(bot, 'construct-factory')).toBe(true);
+    expect(wouldPassOn(bot, 'mine-resource')).toBe(true);
+    expect(wouldPassOn(bot, 'recruit')).toBe(true);
+  });
+
+  it('wouldPassOn: false when Exosuits remain', () => {
+    const bot = withExosuits(1).chronossus!;
+    expect(wouldPassOn(bot, 'construct-factory')).toBe(false);
+  });
+
+  it('wouldPassOn: false for non-placing actions even at 0 Exosuits', () => {
+    const bot = withExosuits(0).chronossus!;
+    expect(wouldPassOn(bot, 'time-travel')).toBe(false);
+    expect(wouldPassOn(bot, 'reboot')).toBe(false);
+    expect(wouldPassOn(bot, 'tile-score')).toBe(false);
+  });
+
+  it('passChronossus sets the passed flag', () => {
+    const { state } = passChronossus(withExosuits(0));
+    expect(state.chronossus!.passed).toBe(true);
+  });
+
+  it('actionRoundsEnded only when BOTH have passed', () => {
+    const base = withExosuits(0);
+    expect(actionRoundsEnded(base)).toBe(false);
+    const botPassed = passChronossus(base).state;
+    expect(actionRoundsEnded(botPassed)).toBe(false); // player hasn't passed
+    expect(actionRoundsEnded({ ...botPassed, playerPassed: true })).toBe(true);
   });
 });
 

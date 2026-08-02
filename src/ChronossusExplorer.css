@@ -155,6 +155,35 @@
   line-height: 1.4;
 }
 
+/* Turn-status aside (Action Rounds) */
+.cx-turn-status {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cx-turn-status li {
+  font-size: 14px;
+}
+.cx-turn-status b {
+  color: var(--cx-amber);
+}
+.cx-turn-end {
+  background: #2e8c8c22;
+  border-left: 3px solid var(--cx-teal);
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.cx-turn-end .phase-primary {
+  margin-top: 8px;
+}
+.cx-last-turn {
+  margin-top: 12px;
+}
+
 /* Debug phase rail */
 .cx-debug-label {
   font-size: 12px;

@@ -65,6 +65,7 @@ function initState(): GameState {
   });
   const bot = emptyChronossusState();
   bot.exosuitsAvailable = DEBUG_EXOSUITS;
+  bot.warpTilesOnTimeline = 2; // seed 2 Warp tiles so Time Travel is testable
   return { ...base, chronossus: bot, phase: 'actions', firstPlayer: 'bot' };
 }
 
@@ -151,6 +152,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
+  const [lastResult, setLastResult] = useState<Instruction[]>([]); // persists in the aside
 
   // Debug mode (admin-only). On by default — Chronossus is an admin preview and
   // the debug rail (phase jump / Impact / End Actions) is our testing surface.
@@ -245,12 +247,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     setState(next);
     setResult(instructions);
+    setLastResult(instructions);
     setPending(null);
   };
 
   const onTileClick = (h: Hotspot) => {
     if (calibrate) {
       setSelected(hsKey(h.id)); // select instead of activating
+      return;
+    }
+    if (bot.passed) return; // the Chronossus has passed for this Era
+    // Passing rule: out of Exosuits + this action would place one → the
+    // Chronossus passes instead of taking the action (its token doesn't advance).
+    if (Chronossus.wouldPassOn(bot, h.action)) {
+      const { state: next, instructions } = Chronossus.passChronossus(state);
+      setState(next);
+      closePanel();
+      setLastResult(instructions); // shown in the turn-status aside
       return;
     }
     setActive(h);
@@ -380,11 +393,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const reset = () => {
     setState(initState());
     closePanel();
+    setLastResult([]);
     setLastDraw(null);
     setCalibrate(false);
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
+  const playerPass = () => {
+    closePanel();
+    setState((s) => ({ ...s, playerPassed: true }));
+  };
+  const bothPassed = Chronossus.actionRoundsEnded(state);
 
   const stats = (
     <div className="cx-stats">
@@ -429,11 +448,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         <div className="bot-turn">
           <CxVpPill score={score} totalActions={bot.totalActions} />
           <div className="turn-core">
-            <button className="take-bot-action" disabled title="Coming soon — the AI die + Command tokens land in a later feature">
-              Take Bot Action
+            <button
+              className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
+              disabled
+              title="Tap an action space on the board to take the Chronossus's turn (AI-die automation lands with the Command-token feature)"
+            >
+              {bot.passed ? '✓ Bot Passed' : 'Take Bot Action'}
             </button>
-            <button className="you-pass" disabled title="Coming soon — passing lands with the Command-token feature">
-              You Pass
+            <button
+              className="you-pass"
+              onClick={playerPass}
+              disabled={state.playerPassed}
+              title="Pass for the Action Rounds phase"
+            >
+              {state.playerPassed ? '✓ You passed' : 'You Pass'}
             </button>
             <button className="undo-btn" disabled title="Coming soon — Undo lands with per-turn history">
               ↶ Undo
@@ -726,11 +754,39 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             />
           ) : (
             <aside className="cx-log">
-              <h3>How to play Phase 5</h3>
-              <p className="cx-empty">
-                Tap an action space to open its turn dialog — the pop-up matches the
-                Chronobot's exactly. (Command-token paths + the AI die come later.)
-              </p>
+              <h3>Action Rounds</h3>
+              {bothPassed ? (
+                <div className="cx-turn-end">
+                  <p>
+                    <b>Both players have passed</b> — the Action Rounds phase is over.
+                  </p>
+                  <button className="phase-primary" onClick={endActions}>
+                    Proceed to Clean Up ▶
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <ul className="cx-turn-status">
+                    <li>
+                      Chronossus:{' '}
+                      <b>{bot.passed ? 'passed' : `${bot.exosuitsAvailable} Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} left`}</b>
+                    </li>
+                    <li>You: <b>{state.playerPassed ? 'passed' : 'active'}</b></li>
+                  </ul>
+                  <p className="cx-empty">
+                    Tap an action space to take the Chronossus's turn. When it runs out of
+                    Exosuits it passes an Exosuit-placing action; once you both pass, the phase ends.
+                  </p>
+                </>
+              )}
+              {lastResult.length > 0 && (
+                <div className="cx-entry cx-last-turn">
+                  <b>Last turn</b>
+                  {lastResult.map((i, idx) => (
+                    <p key={idx}>{i.text}</p>
+                  ))}
+                </div>
+              )}
             </aside>
           )}
         </div>
@@ -752,7 +808,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               <tr><td>Time Travel track</td><td>{score.timeTravelVP}</td></tr>
               <tr><td>Breakthroughs (1 each)</td><td>{score.breakthroughVP}</td></tr>
               <tr><td>Complete shape sets (+2 each)</td><td>{score.shapeSetBonus}</td></tr>
-              <tr><td>Solo Objectives (F5)</td><td>{score.soloObjectiveVP}</td></tr>
               <tr className="cx-score-total"><td>Total</td><td>{score.total}</td></tr>
             </tbody>
           </table>
@@ -1080,9 +1135,6 @@ function CxVpPill({
             </li>
             <li title="+2 VP per complete shape set (one of each)">
               <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
-            </li>
-            <li title="Solo Objective levels (added in a later feature)">
-              <span>Solo Objectives</span><b>{score.soloObjectiveVP}</b>
             </li>
             <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>

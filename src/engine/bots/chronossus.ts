@@ -440,6 +440,54 @@ function finishAction(state: GameState, bot: ChronossusState, instr: Instruction
 }
 
 // --------------------------------------------------------------------------
+// Phase 5: passing & end of the Action Rounds
+// --------------------------------------------------------------------------
+//
+// Chronossus passing rule (differs from the Chronobot): "Once the Chronossus has
+// run out of Exosuits, it will pass the next time it needs to execute an Action
+// that would require placing an Exosuit. The Command token does not advance when
+// the Chronossus passes. Once both you and it have passed, the Action Rounds
+// Phase ends." Non-Exosuit actions (Time Travel, Reboot) don't trigger a pass.
+
+/**
+ * True when taking `actionId` would require placing an Exosuit the Chronossus no
+ * longer has — i.e. attempting it makes the Chronossus pass instead.
+ */
+export function wouldPassOn(bot: ChronossusState, actionId: ChronossusActionId): boolean {
+  if (isTileAction(actionId)) return false;
+  return actionDef(actionId).placesExosuit === true && bot.exosuitsAvailable <= 0;
+}
+
+/**
+ * The Chronossus passes for the Era (it is out of Exosuits and the attempted
+ * Action would have placed one). Its Command token does not advance.
+ */
+export function passChronossus(state: GameState): ChronossusActionResult {
+  if (!state.chronossus) throw new Error('passChronossus: no Chronossus state');
+  const bot = { ...state.chronossus, passed: true };
+  const instructions: Instruction[] = [
+    {
+      id: 'cx-pass',
+      text: 'The Chronossus is out of Exosuits and passes. (Its Command token does not advance.)',
+    },
+  ];
+  return {
+    state: {
+      ...state,
+      chronossus: bot,
+      currentInstructions: instructions,
+      log: [...state.log, `Chronossus passes (Era ${state.era}).`],
+    },
+    instructions,
+  };
+}
+
+/** The Action Rounds phase ends once BOTH the player and the Chronossus have passed. */
+export function actionRoundsEnded(state: GameState): boolean {
+  return state.playerPassed && !!state.chronossus?.passed;
+}
+
+// --------------------------------------------------------------------------
 // Phase 6: Clean Up
 // --------------------------------------------------------------------------
 
@@ -480,18 +528,14 @@ export interface ChronossusScore {
   breakthroughVP: number;
   /** +2 VP per complete shape set (one of each). */
   shapeSetBonus: number;
-  /**
-   * VP from the highest level reached on each of the 3 Solo Objectives. Wired in
-   * Feature 5 (appendix pp.21–22); 0 for now.
-   */
-  soloObjectiveVP: number;
   total: number;
 }
 
 /**
  * The Chronossus's VP breakdown. It does NOT lose VP for Warp tiles left on the
- * Timeline. Scores 1 VP/Breakthrough + 2 per complete shape set, plus Solo
- * Objective levels (added in Feature 5). Shared by the live pill + score screen.
+ * Timeline. Scores 1 VP/Breakthrough + 2 per complete shape set. (Solo Objectives
+ * are a PLAYER-only scoring line — the Chronossus never scores them.) Shared by
+ * the live pill + score screen.
  */
 export function scoreChronossus(bot: ChronossusState): ChronossusScore {
   const breakthroughVP = BREAKTHROUGH_SHAPES.reduce((n, s) => n + bot.breakthroughs[s], 0);
@@ -501,7 +545,6 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
   const timeTravelVP = TIME_TRAVEL_VP[spot];
   const buildingVP = bot.buildingVp;
   const tokenVP = bot.vp - buildingVP;
-  const soloObjectiveVP = 0;
   return {
     tokenVP,
     buildingVP,
@@ -509,8 +552,7 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
     timeTravelVP,
     breakthroughVP,
     shapeSetBonus,
-    soloObjectiveVP,
-    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + soloObjectiveVP,
+    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus,
   };
 }
 
