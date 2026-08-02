@@ -63,7 +63,8 @@ import {
   type BreakthroughShape,
   type Instruction,
 } from './engine';
-import { finishEra, advanceFromPreparation } from './game/flow';
+import { finishEra, advanceFromPreparation, startFirstEra } from './game/flow';
+import ChronossusSetupFlow from './phases/ChronossusSetupFlow';
 import type {
   ChronossusActionInput,
   ChronossusActionId,
@@ -94,7 +95,6 @@ import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 import { CHRONOSSUS_TILES, TILE_ACTION_CODE } from './board/chronossusTiles';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
-const DEBUG_EXOSUITS = 4;
 
 // Persistence (own key so it survives refresh, separate from the Chronobot's).
 const CX_PERSIST_KEY = 'anachrony:chronossus';
@@ -150,7 +150,7 @@ interface ScvRow {
   tile: string | null;
 }
 
-/** Boot straight into Phase 5 (Action Rounds) with powered Exosuits (dev). */
+/** A fresh Chronossus game at the Setup screen (Era 1, the pre-game flow). */
 function initState(): GameState {
   const base = createInitialState({
     bot: 'chronossus',
@@ -158,10 +158,7 @@ function initState(): GameState {
     difficulty: [],
     playerBoardSide: 'A',
   });
-  const bot = emptyChronossusState();
-  bot.exosuitsAvailable = DEBUG_EXOSUITS;
-  bot.warpTilesOnTimeline = 2; // seed 2 Warp tiles so Time Travel is testable
-  return { ...base, chronossus: bot, phase: 'actions', firstPlayer: 'bot' };
+  return { ...base, chronossus: emptyChronossusState(), firstPlayer: 'bot' };
 }
 
 const PHASE_RAIL: Phase[] = [
@@ -306,7 +303,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     version: CX_PERSIST_VERSION,
     initialState: initState,
     initialUi: emptyCxUi,
-    initialDebug: true, // Chronossus is an admin preview — debug on by default
+    initialDebug: false, // real game starts at Setup, play mode (admins can toggle)
   });
   // Read-aliases so the render/logic below keep referring to these by name.
   const markerSteps = ui.markerSteps;
@@ -799,6 +796,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     ) : null;
 
   // ---- Phase transitions -------------------------------------------------
+  // Finish Setup: seed the chosen difficulty and enter Era 1, Phase 1.
+  const beginGame = (difficulty: string[]) => {
+    setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
+  };
   const drawAndPowerUp = () => {
     const draw = drawEnergyPool(bot.energyPool);
     setLastDraw(draw);
@@ -1456,6 +1457,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           />
         )}
       </div>
+    );
+  }
+
+  // ---- Setup: the pre-game flow (Intro → Modules → Difficulty → Setup) --
+  if (state.phase === 'setup') {
+    return (
+      <>
+        {rulesModal}
+        {debugBar}
+        <ChronossusSetupFlow onHome={onHome} onBegin={beginGame} />
+      </>
     );
   }
 
