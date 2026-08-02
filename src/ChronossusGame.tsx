@@ -1162,7 +1162,9 @@ function CalibrationPanel({
     'export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [\n' +
     CHRONOSSUS_TRACK_POSITIONS.map((p) => {
       const [x, y] = positions[p.key] ?? p.pos;
-      const extra = p.action ? `, action: '${p.action}', label: '${p.label}'` : '';
+      const extra = p.action
+        ? `, action: '${p.action}', label: '${p.label}'${p.tile ? `, tile: '${p.tile}'` : ''}`
+        : '';
       return `  { key: '${p.key}', pos: [${x}, ${y}]${extra} },`;
     }).join('\n') +
     '\n];';
