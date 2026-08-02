@@ -2,6 +2,40 @@
    / amber / teal off the board art. Reuses .board-wrap/.board/.hotspot from
    BoardExplorer.css. */
 
+/* Retint every shared-UI element (pills, popovers, DetailPanel, Debug bar,
+   History, SCV, dialogs) to the Chronossus palette while its view is mounted.
+   Scoped on the document root (set by ChronossusGame) so it also reaches popovers
+   portaled to <body>. Chronobot keeps the purple defaults from BoardExplorer.css. */
+:root[data-bot='chronossus'] {
+  --sp-accent: #2e8c8c; /* teal — borders / interactive (matches token rims) */
+  --sp-accent-rgb: 46, 140, 140;
+  --sp-accent-2: #3fb1b1; /* brighter teal — markers / SCV */
+  --sp-accent-2-rgb: 63, 177, 177;
+  --sp-accent-3: #e8922e; /* amber — highlights (was pink) */
+  --sp-text-1: #d8c3a8; /* warm body accent text */
+  --sp-text-1-rgb: 216, 195, 168;
+  --sp-text-2: #f2d7a8; /* amber-cream headings */
+  --sp-text-mute: #b7a893;
+  --sp-text-soft: #e8c79a;
+  --sp-text-soft2: #e0d3c2;
+  --sp-panel: #1e130b; /* warm dark popover / panel bg */
+  --sp-panel-2: #170f09;
+  --sp-panel-rgb: 26, 16, 9;
+  --sp-debug-bg: #33220f;
+  --sp-debug-bg2: #2a1c0d;
+  --sp-debug-bg3: #221708;
+  --sp-debug-on: #7a3f14; /* burnt orange — active */
+  --sp-debug-btn-on: #45280f;
+  --sp-accent-deep: #1f6d6d; /* deep teal — solid accent buttons */
+  --sp-accent-deep2: #185656;
+  /* "Cannot place / failed action" — warm rust instead of the Chronobot pink. */
+  --pass: #c9603a;
+  --pass-2: #a84b2b;
+  --pass-hover: #db774f;
+  --pass-text: #2a0f06;
+  --pass-border: #db774f;
+}
+
 .chronossus-harness {
   --cx-orange: #c4551f;
   --cx-amber: #e8922e;

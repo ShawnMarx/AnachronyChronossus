@@ -671,6 +671,15 @@ export default function BoardExplorer({
 
   const bot = state.chronobot;
 
+  // Theme the document for the Chronobot (purple defaults) while mounted; clears
+  // any Chronossus theme attribute left on the root.
+  useEffect(() => {
+    document.documentElement.dataset.bot = 'chronobot';
+    return () => {
+      delete document.documentElement.dataset.bot;
+    };
+  }, []);
+
   // Persist the committed game whenever it changes (transient UI is excluded).
   useEffect(() => {
     savePersisted({ state, tokens, undoStack, debug });

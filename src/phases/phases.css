@@ -19,7 +19,7 @@
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
   padding: 0.45rem 0.9rem;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.35);
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   background: #120e1c;
 }
 .phase-bar-left,
@@ -43,7 +43,7 @@
 }
 .phase-tabs {
   display: inline-flex;
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -57,7 +57,7 @@
   cursor: pointer;
 }
 .phase-tabs button.on {
-  background: #7c3aed;
+  background: var(--sp-accent-deep);
   color: #fff;
 }
 
@@ -74,7 +74,7 @@
   height: clamp(140px, 26vh, 300px);
   background-size: cover;
   background-position: center 35%;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.4);
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.4);
   position: relative;
 }
 .phase-hero::after {
@@ -96,9 +96,9 @@
 .phase-overview {
   margin: 0;
   padding: 0.9rem 1rem;
-  border-left: 3px solid #7c3aed;
+  border-left: 3px solid var(--sp-accent-deep);
   border-radius: 0 8px 8px 0;
-  background: #140f22;
+  background: var(--sp-panel-2);
   line-height: 1.55;
   color: #d6cdf0;
   font-size: 0.98rem;
@@ -124,7 +124,7 @@
   align-self: flex-start;
   padding: 0.55rem 1.1rem;
   border-radius: 9px;
-  border: 1px solid rgba(139, 92, 246, 0.55);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.55);
   background: #241a3d;
   color: #e6def7;
   font-weight: 700;
@@ -147,7 +147,7 @@
 }
 .paradox-status span {
   padding: 0.4rem 0.8rem;
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
   border-radius: 999px;
   background: #16112a;
   font-size: 0.9rem;
@@ -161,9 +161,9 @@
   flex-direction: column;
   gap: 0.4rem;
   padding: 0.7rem 0.9rem;
-  border-left: 3px solid #7c3aed;
+  border-left: 3px solid var(--sp-accent-deep);
   border-radius: 0 8px 8px 0;
-  background: #140f22;
+  background: var(--sp-panel-2);
 }
 .paradox-log .phase-note {
   color: #d6cdf0;
@@ -175,7 +175,7 @@
   align-items: center;
   gap: 0.9rem;
   padding: 0.8rem 1rem;
-  border: 1px solid rgba(139, 92, 246, 0.45);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
   border-radius: 10px;
   background: #16112a;
 }
@@ -187,7 +187,7 @@
   width: 2.6rem;
   height: 2.6rem;
   border-radius: 10px;
-  background: #7c3aed;
+  background: var(--sp-accent-deep);
   color: #fff;
   font-size: 1.4rem;
   font-weight: 800;
@@ -226,9 +226,9 @@
   gap: 0.7rem;
   align-items: flex-start;
   padding: 0.75rem 0.9rem;
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   border-radius: 10px;
-  background: #140f22;
+  background: var(--sp-panel-2);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -240,7 +240,7 @@
   margin-top: 0.2rem;
   width: 1.1rem;
   height: 1.1rem;
-  accent-color: #7c3aed;
+  accent-color: var(--sp-accent-deep);
   flex: 0 0 auto;
 }
 .difficulty-opt-text {
@@ -343,7 +343,7 @@
   width: 100%;
   max-width: 440px;
   background: #17122a;
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
   border-radius: 14px;
   padding: 1.4rem 1.5rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
@@ -378,12 +378,12 @@
 .fp-actions .phase-secondary {
   background: #241a3d;
   color: #e6def7;
-  border: 1px solid rgba(139, 92, 246, 0.55);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.55);
 }
 
 /* ---- Rules box (verbatim rulebook text) ---- */
 .rules-box {
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   border-radius: 10px;
   background: #100c1b;
   overflow: hidden;

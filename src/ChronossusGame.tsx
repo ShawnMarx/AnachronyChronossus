@@ -420,6 +420,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [calibrate, selected]);
 
+  // Theme the whole document (incl. popovers portaled to <body>) for Chronossus
+  // while this view is mounted; the shared-UI tokens override to the warm palette.
+  useEffect(() => {
+    document.documentElement.dataset.bot = 'chronossus';
+    return () => {
+      delete document.documentElement.dataset.bot;
+    };
+  }, []);
+
   // Dismiss the Turn-chip status popover on Escape or an outside click.
   useEffect(() => {
     if (!showStatus) return;
