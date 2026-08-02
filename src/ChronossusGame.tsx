@@ -89,6 +89,7 @@ import {
   type TrackPos,
 } from './board/chronossusPaths';
 import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
+import { CHRONOSSUS_TILES, TILE_ACTION_CODE } from './board/chronossusTiles';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 const DEBUG_EXOSUITS = 4;
@@ -1530,24 +1531,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 }
 
 // --------------------------------------------------------------------------
-// Tile-action dialog — the modular tiles (Reboot / Score / Energy Pack) have no
-// player input, so this small on-board panel shows the effect + a ▶ Start Your
-// Turn button (then the result), matching the wait-for-confirmation flow of the
-// printed-space actions. Reuses the shared .detail-panel / .start-turn styling.
+// Tile-action dialog — the modular tiles (Reboot / Score / Energy Pack). Matches
+// the printed-action DetailPanel format: tile art + name in the head, a friendly
+// instruction, a ▶ Start Your Turn button (then the result), and a collapsible
+// VERBATIM rulebook box. Reuses the shared .detail-panel / .start-turn styling.
 // --------------------------------------------------------------------------
-const TILE_INFO: Record<ChronossusTileActionId, { title: string; effect: string }> = {
-  'tile-reboot': {
-    title: 'Reboot (C01A)',
-    effect: 'The Chronossus does nothing this turn — its Command marker still advances.',
-  },
-  'tile-score': {
-    title: 'Score (C02A)',
-    effect: 'The Chronossus scores +2 VP.',
-  },
-  'tile-energy-pack': {
-    title: 'Energy Pack (C03A)',
-    effect: 'Add 1 non-exhausted Energy Core to the Chronossus’s Energy Pool.',
-  },
+
+/** Friendly, player-facing instruction for each in-play tile action. */
+const TILE_INSTRUCT: Record<ChronossusTileActionId, string> = {
+  'tile-reboot': 'The Chronossus does nothing this turn — its Command marker still advances.',
+  'tile-score': 'The Chronossus scores +2 VP.',
+  'tile-energy-pack': 'Add 1 non-exhausted Energy Core to the Chronossus’s Energy Pool.',
 };
 
 function CxTileDialog({
@@ -1565,44 +1559,65 @@ function CxTileDialog({
   onStart: () => void;
   onClose: () => void;
 }) {
-  const info = TILE_INFO[action];
+  const code = TILE_ACTION_CODE[action];
+  const tile = CHRONOSSUS_TILES[code];
   const resolved = result.length > 0;
+  const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
   const [l, t, w, h] = panel;
   return (
     <div
       className="detail-panel cx-tile-dialog"
       style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
-      aria-label={info.title}
+      aria-label={tile.name}
     >
       <div className="dp-head">
         <div className="dp-title">
-          <h2>{info.title}</h2>
+          <img
+            className="cx-tile-dialog-art"
+            src={`/assets/solo/chronossus/tiles/${code}.png`}
+            alt={`${tile.name} tile (${code})`}
+          />
+          <h2>{tile.name}</h2>
         </div>
         <button className="dp-close" onClick={onClose} aria-label="Close">
           ×
         </button>
       </div>
       <div className="dp-body">
-        <p className="pp-instruct">{info.effect}</p>
-        {readOnly ? (
-          <button className="start-turn" onClick={onClose}>
-            Close
-          </button>
-        ) : !resolved ? (
-          <button className="start-turn" onClick={onStart}>
-            ▶ Start Your Turn
-          </button>
-        ) : (
-          <div className="cx-tile-result">
-            {result.map((i, idx) => (
-              <p key={idx}>{i.text}</p>
-            ))}
-            <button className="start-turn" onClick={onClose}>
-              Done ✓
+        <div className="place-prompt">
+          <p className="pp-instruct">{TILE_INSTRUCT[action]}</p>
+          {readOnly ? null : !resolved ? (
+            <button className="start-turn" onClick={onStart}>
+              ▶ Start Your Turn
             </button>
-          </div>
-        )}
+          ) : (
+            <div className="cx-tile-result">
+              {result.map((i, idx) => (
+                <p key={idx}>{i.text}</p>
+              ))}
+              <button className="start-turn" onClick={onClose}>
+                Done ✓
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Verbatim rulebook text, collapsible — mirrors the action dialogs. */}
+        <div className="mech-rules">
+          <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
+            📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
+          </button>
+          {showRule && (
+            <div className="rule-body">
+              {tile.rule.split('\n').map((line, i) => (
+                <p key={i} className="dp-rule">
+                  {line}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

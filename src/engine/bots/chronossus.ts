@@ -158,9 +158,9 @@ export interface ChronossusActionResult {
 }
 
 const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
-  'tile-reboot': { label: 'Reboot (C01A)' },
-  'tile-score': { label: 'Score (C02A)' },
-  'tile-energy-pack': { label: 'Energy Pack (C03A)' },
+  'tile-reboot': { label: 'Reboot' },
+  'tile-score': { label: 'Score' },
+  'tile-energy-pack': { label: 'Energy Pack' },
 };
 
 /** Human-facing label for any Chronossus action id. */
