@@ -7,7 +7,11 @@
   --cx-amber: #e8922e;
   --cx-teal: #2e8c8c;
   --cx-ink: #1a120c;
-  min-height: 100vh;
+  /* Match the Chronobot's .explorer: a fixed-height, clipped flex column so the
+     board-stage is capped to the viewport and the board scales to fit by height
+     (not width). min-height would let the column grow and oversize the board. */
+  height: 100dvh;
+  overflow: hidden;
   background: linear-gradient(160deg, #241109, #3a1c0d 60%, #14100c);
   color: #f3e9df;
   display: flex;
