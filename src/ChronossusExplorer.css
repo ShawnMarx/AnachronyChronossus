@@ -598,10 +598,11 @@
 
 /* Simple Command View: a modular-tile row shows the tile's art, sized to match
    the printed-action sprite icons in the other rows. */
+/* Match the action-icon footprint: same 58px height, width by the tile's aspect
+   (167×114 ≈ the 142×96 action tiles), so tile rows line up with action rows. */
 .scv-tile-img {
-  width: 58px;
   height: 58px;
-  object-fit: contain;
+  width: auto;
   border-radius: 5px;
 }
 
