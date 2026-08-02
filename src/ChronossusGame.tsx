@@ -60,7 +60,12 @@ import {
   type Instruction,
 } from './engine';
 import { finishEra, advanceFromPreparation } from './game/flow';
-import type { ChronossusActionInput, ChronossusActionId, EnergyDraw } from './engine/bots/chronossus';
+import type {
+  ChronossusActionInput,
+  ChronossusActionId,
+  ChronossusTileActionId,
+  EnergyDraw,
+} from './engine/bots/chronossus';
 import {
   CHRONOSSUS_ACTION_HOTSPOTS,
   CHRONOSSUS_PANEL,
@@ -289,6 +294,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
   // Read-only rule view (a free-tap / SCV row shows the action's rules, no turn).
   const [ruleView, setRuleView] = useState(false);
+  // A modular tile action (Reboot / Score / Energy Pack) awaiting its ▶ Start
+  // (the marker landed on a tile slot). Its dialog waits like every other action.
+  const [pendingTile, setPendingTile] = useState<ChronossusTileActionId | null>(null);
 
   // Simple Command View (play aid) + the board-stage sizing mechanism, ported
   // verbatim from the Chronobot so the board + SCV reflow identically on mobile.
@@ -428,6 +436,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setSelectedWorker(null);
     setRolledShape(null);
     setRuleView(false);
+    setPendingTile(null);
     activeMarkerRef.current = null; // cancelled turn: don't advance a marker
     botDieRef.current = null;
   };
@@ -742,26 +751,29 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Take Bot Action: roll the AI die (faces 2/3/4/5), activate that Command
   // marker, resolve the Action space it currently sits on, then advance it.
   const takeBotTurn = () => {
-    if (bot.passed || active) return;
+    if (bot.passed || active || pendingTile) return;
     const die = rollAiDie() as CommandNum;
     botDieRef.current = die;
     activeMarkerRef.current = die;
     setUi((u) => ({ ...u, botDie: die, activeMarker: die }));
     const key = markerPosKey(die, ui.markerSteps[die]);
     const tp = trackPos(key);
-    // Modular tile slots (I/II/III) carry an explicit tile action — resolve it
-    // directly (no gate/pick). Every other spot sits on a printed Action space,
+    // Modular tile slots (I/II/III) carry an explicit tile action — open its
+    // dialog (with a ▶ Start Your Turn button) like every other action, rather
+    // than resolving instantly. Every other spot sits on a printed Action space,
     // resolved via the nearest Action hotspot (the full DetailPanel flow).
     if (tp?.action) {
-      resolveTileSlot(tp.action);
+      // TrackPos.action on a tile slot is always a modular tile action.
+      setResult([]);
+      setPendingTile(tp.action as ChronossusTileActionId);
       return;
     }
     const [x, y] = positions[key] ?? [0, 0];
     onTileClick(nearestHotspot(x, y));
   };
 
-  // Resolve a modular tile action (Reboot / Score / Energy Pack): deterministic,
-  // no player input, so it commits immediately and advances the active marker.
+  // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
+  // so ▶ Start resolves it, advances the marker, and shows the result.
   const resolveTileSlot = (actionId: ChronossusActionId) => {
     const { state: next, instructions } = Chronossus.resolveAction(state, { actionId });
     commit(
@@ -771,8 +783,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       summarizeTurn(state.chronossus!, next.chronossus!, instructions),
       botDieRef.current,
     );
-    setResult([]);
+    setResult(instructions);
     setLastResult(instructions);
+    activeMarkerRef.current = null;
+  };
+  // ▶ Start on the tile dialog: resolve, keep the dialog open to show the result.
+  const startTileTurn = () => {
+    if (pendingTile) resolveTileSlot(pendingTile);
+  };
+  // Close the tile dialog. If it hasn't resolved yet (no result), the marker does
+  // not advance (a cancelled turn).
+  const closeTile = () => {
+    setPendingTile(null);
+    setResult([]);
+    botDieRef.current = null;
     activeMarkerRef.current = null;
   };
   const changeEra = (d: number) =>
@@ -828,7 +852,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             <button
               className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
               onClick={takeBotTurn}
-              disabled={bot.passed || active != null}
+              disabled={bot.passed || active != null || pendingTile != null}
               title={
                 bot.passed
                   ? 'The Chronossus has passed for this Era'
@@ -853,7 +877,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             <button
               className="undo-btn"
               onClick={undoTurn}
-              disabled={!canUndo || active != null}
+              disabled={!canUndo || active != null || pendingTile != null}
               title="Undo the last committed turn"
             >
               ↶ Undo
@@ -1185,6 +1209,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 />
               )}
               {scvMode !== 'below' && renderDetailPanel(false)}
+              {pendingTile && (
+                <CxTileDialog
+                  action={pendingTile}
+                  result={result}
+                  panel={CHRONOSSUS_PANEL}
+                  onStart={startTileTurn}
+                  onClose={closeTile}
+                />
+              )}
             </div>
             {simpleView && !calibrate && scvMode === 'below' && (
               <CxSimpleCommandView
@@ -1361,6 +1394,79 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
     </>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Tile-action dialog — the modular tiles (Reboot / Score / Energy Pack) have no
+// player input, so this small on-board panel shows the effect + a ▶ Start Your
+// Turn button (then the result), matching the wait-for-confirmation flow of the
+// printed-space actions. Reuses the shared .detail-panel / .start-turn styling.
+// --------------------------------------------------------------------------
+const TILE_INFO: Record<ChronossusTileActionId, { title: string; effect: string }> = {
+  'tile-reboot': {
+    title: 'Reboot (C01A)',
+    effect: 'The Chronossus does nothing this turn — its Command marker still advances.',
+  },
+  'tile-score': {
+    title: 'Score (C02A)',
+    effect: 'The Chronossus scores +2 VP.',
+  },
+  'tile-energy-pack': {
+    title: 'Energy Pack (C03A)',
+    effect: 'Add 1 non-exhausted Energy Core to the Chronossus’s Energy Pool.',
+  },
+};
+
+function CxTileDialog({
+  action,
+  result,
+  panel,
+  onStart,
+  onClose,
+}: {
+  action: ChronossusTileActionId;
+  result: Instruction[];
+  panel: [number, number, number, number];
+  onStart: () => void;
+  onClose: () => void;
+}) {
+  const info = TILE_INFO[action];
+  const resolved = result.length > 0;
+  const [l, t, w, h] = panel;
+  return (
+    <div
+      className="detail-panel cx-tile-dialog"
+      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      role="dialog"
+      aria-label={info.title}
+    >
+      <div className="dp-head">
+        <div className="dp-title">
+          <h2>{info.title}</h2>
+        </div>
+        <button className="dp-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div className="dp-body">
+        <p className="pp-instruct">{info.effect}</p>
+        {!resolved ? (
+          <button className="start-turn" onClick={onStart}>
+            ▶ Start Your Turn
+          </button>
+        ) : (
+          <div className="cx-tile-result">
+            {result.map((i, idx) => (
+              <p key={idx}>{i.text}</p>
+            ))}
+            <button className="start-turn" onClick={onClose}>
+              Done ✓
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1797,7 +1903,9 @@ function CxSettingsMenu({
       </button>
       {open && (
         <div className="settings-dropdown" role="menu">
-          {isAdmin && (
+          {/* Debug defaults ON for the Chronossus preview; always let it be turned
+              OFF (the view is already admin/local-gated at the landing). */}
+          {(isAdmin || debug) && (
             <>
               <button
                 className="settings-item toggle"

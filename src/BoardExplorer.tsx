@@ -8,7 +8,6 @@ import AdminStats from './history/AdminStats';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
 import AnchoredPopover from './components/AnchoredPopover';
-import TurnTracker from './components/TurnTracker';
 import DebugBar from './components/DebugBar';
 import { useMediaQuery } from './game/useMediaQuery';
 import type { HistoryEntry } from './game/undo';
@@ -1238,10 +1237,6 @@ export default function BoardExplorer({
         onOpenRules={() => setModeRules(true)}
         simpleView={simpleView}
         onToggleSimpleView={() => setSimpleView((v) => !v)}
-        turnNumber={bot.actionsThisEra}
-        turnEntries={undoStack.filter(
-          (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
-        )}
       />
   );
 
@@ -1569,6 +1564,9 @@ export default function BoardExplorer({
           state={state}
           passMsg={passMsg}
           minActions={Chronobot.chronobotMinActions(state)}
+          entries={undoStack.filter(
+            (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
+          )}
           onClose={() => setShowStatus(false)}
         />
       )}
@@ -2007,11 +2005,14 @@ function EndOfActionsBar({
   state,
   passMsg,
   minActions,
+  entries,
   onClose,
 }: {
   state: GameState;
   passMsg: string | null;
   minActions: number;
+  /** This-Era bot turns (oldest→newest); the last few show as a mini turn log. */
+  entries: HistoryEntry[];
   onClose: () => void;
 }) {
   const bot = state.chronobot;
@@ -2067,6 +2068,23 @@ function EndOfActionsBar({
           </ul>
         )}
       </div>
+
+      {entries.length > 0 && (
+        <div className="eoa-turns">
+          <span className="eoa-turns-title">Recent bot turns</span>
+          <ol className="eoa-turn-list">
+            {[...entries].slice(-5).reverse().map((e, i) => (
+              <li key={entries.length - i} className="eoa-turn-row">
+                <span className="eoa-turn-n">
+                  {e.die != null && <span className="bot-die eoa-turn-die">{e.die}</span>}
+                  Turn {entries.length - i}
+                </span>
+                <span className="eoa-turn-label">{e.label}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div className="eoa-rule">
         <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
@@ -2611,8 +2629,6 @@ function StatsBar({
   onOpenRules,
   simpleView,
   onToggleSimpleView,
-  turnNumber,
-  turnEntries,
 }: {
   onHome?: () => void;
   bot: ChronobotState;
@@ -2640,8 +2656,6 @@ function StatsBar({
   onOpenRules: () => void;
   simpleView: boolean;
   onToggleSimpleView: () => void;
-  turnNumber: number;
-  turnEntries: HistoryEntry[];
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -2669,18 +2683,6 @@ function StatsBar({
       {!calibrate && (
         <div className="bot-turn">
           <VpPill bot={bot} />
-          <TurnTracker
-            turnNumber={turnNumber}
-            entries={turnEntries}
-            extra={
-              <>
-                <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exosuits</span>
-                <span title="Actions the Chronobot has taken this Era">
-                  ⚙ {bot.actionsThisEra} action{bot.actionsThisEra === 1 ? '' : 's'} this Era
-                </span>
-              </>
-            }
-          />
           {/* Primary turn controls — kept together on the top row when wrapping.
               While a bot action is in progress, hide Take Bot Action / You Pass
               (the turn is underway) and show only the rolled die. */}
@@ -2724,12 +2726,12 @@ function StatsBar({
             </button>
           </div>
           <button
-            className={`stat-pill status-chip ${statusOpen ? 'on' : ''}`}
+            className={`stat-pill status-chip turn-chip ${statusOpen ? 'on' : ''}`}
             onClick={onToggleStatus}
-            title="End of Actions — pass status & minimum Actions"
+            title="Turn tracker — pass status, minimum Actions & recent bot turns"
             aria-pressed={statusOpen}
           >
-            <b>{bot.actionsThisEra}</b> Actions
+            Turn <b>{bot.actionsThisEra}</b>
           </button>
         </div>
       )}
@@ -2967,8 +2969,9 @@ function SettingsMenu({
             />
             Command View
           </button>
-          {/* Debug mode + its dev sub-toggles are admin-only. */}
-          {user?.isAdmin && (
+          {/* Debug mode is admin-only to turn ON, but always offer to turn it OFF
+              (so it can never get stuck on). Its dev sub-toggles are debug-only. */}
+          {(user?.isAdmin || debug) && (
             <>
               <div className="settings-sep" />
               <button
