@@ -38,6 +38,13 @@ export interface TrackPos {
   label?: string;
   /** Modular tile art code (C01A/C02A/C03A) for the tile image on the board. */
   tile?: string;
+  /**
+   * Where the modular tile ART renders — the printed empty tile SPACE, which is a
+   * SEPARATE board location from where the marker lands (`pos`). The marker rides
+   * the circular track spot; the tile sits in the dashed slot near it. Falls back
+   * to `pos` if unset. Only meaningful for modular slots (those with `tile`).
+   */
+  tilePos?: [number, number];
 }
 
 /**
@@ -48,14 +55,14 @@ export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [
   // Marker 3 — own row. Step 3 is modular tile slot II (C02A Score, +2 VP).
   { key: 'm3s1', pos: [6, 10.6] },
   { key: 'm3s2', pos: [17, 10.6] },
-  { key: 'm3s3', pos: [28, 10.8], action: 'tile-score', label: 'II', tile: 'C02A' },
+  { key: 'm3s3', pos: [28, 10.8], action: 'tile-score', label: 'II', tile: 'C02A', tilePos: [27.8, 19.7] },
   { key: 'm3s4', pos: [39, 10.6] },
   { key: 'm3s5', pos: [50, 10.6] },
   // Marker 2 loop — every position shared with marker 4 or 5. m2p3 is modular
   // tile slot I (marker 4 step 2 / marker 2 step 3): C01A Reboot.
   { key: 'm2p1', pos: [39.1, 58.7] }, // marker 2 start; == marker 5 step 3
   { key: 'm2p2', pos: [28, 55.8] }, //   == marker 4 step 3
-  { key: 'm2p3', pos: [27.9, 32.1], action: 'tile-reboot', label: 'I', tile: 'C01A' },
+  { key: 'm2p3', pos: [27.9, 32.1], action: 'tile-reboot', label: 'I', tile: 'C01A', tilePos: [27.9, 40.9] },
   { key: 'm2p4', pos: [49.9, 30.5] }, // == marker 5 start (step 1)
   { key: 'm2p5', pos: [49.8, 54.2] }, // == marker 5 step 2
   // Marker 4 own positions.
@@ -63,7 +70,7 @@ export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [
   { key: 'm4s4', pos: [6.1, 54] },
   { key: 'm4s5', pos: [5.8, 30.3] },
   // Modular tile slot III (marker 5 step 4): C03A Energy Pack (+1 Energy Core).
-  { key: 'm5s4', pos: [39.1, 35], action: 'tile-energy-pack', label: 'III', tile: 'C03A' },
+  { key: 'm5s4', pos: [39.1, 35], action: 'tile-energy-pack', label: 'III', tile: 'C03A', tilePos: [39, 43.9] },
 ];
 
 /** Look up a track position by key. */

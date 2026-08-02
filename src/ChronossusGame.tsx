@@ -109,6 +109,7 @@ function isConstructBuilding(a: string): boolean {
 const hsKey = (id: string) => `hs_${id}`;
 const ttKey = (i: number) => `tt_${i}`;
 const pdxKey = (i: number) => `pdx_${i}`;
+const tileKey = (key: string) => `tile_${key}`;
 const WARP_KEY = 'warp';
 const HS_CENTER = (h: Hotspot): [number, number] => [
   h.rect[0] + h.rect[2] / 2,
@@ -117,9 +118,12 @@ const HS_CENTER = (h: Hotspot): [number, number] => [
 const TT_KEYS = CHRONOSSUS_TIME_TRAVEL_TRACK.spots.map((_, i) => ttKey(i));
 const PDX_KEYS = CHRONOSSUS_PARADOX_SLOTS.slots.map((_, i) => pdxKey(i));
 const TRACK_KEYS = CHRONOSSUS_TRACK_POSITIONS.map((p) => p.key);
+/** The 3 modular tile slots (I/II/III) — their tile ART is calibrated separately. */
+const MOD_SLOTS = CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.tile);
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
   ...TRACK_KEYS,
+  ...MOD_SLOTS.map((p) => tileKey(p.key)),
   ...CHRONOSSUS_COUNTERS.map((c) => c.key),
   ...TT_KEYS,
   WARP_KEY,
@@ -233,6 +237,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const seed: Record<string, [number, number]> = {};
     for (const h of CHRONOSSUS_ACTION_HOTSPOTS) seed[hsKey(h.id)] = HS_CENTER(h);
     for (const p of CHRONOSSUS_TRACK_POSITIONS) seed[p.key] = p.pos;
+    for (const p of MOD_SLOTS) seed[tileKey(p.key)] = p.tilePos ?? p.pos;
     for (const c of CHRONOSSUS_COUNTERS) seed[c.key] = c.pos;
     CHRONOSSUS_TIME_TRAVEL_TRACK.spots.forEach((p, i) => (seed[ttKey(i)] = p));
     seed[WARP_KEY] = CHRONOSSUS_WARP_MARKER.pos;
@@ -763,24 +768,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     );
                   })}
 
-              {/* Modular tile slots (I/II/III) — render the placed tile art so the
-                  slots are visible on the board. Base-game setup: I=C01A Reboot,
-                  II=C02A Score, III=C03A Energy Pack. Hidden while calibrating
-                  (the ghosts show the spots there). */}
-              {!calibrate &&
-                CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.tile).map((p) => {
-                  const [x, y] = positions[p.key] ?? p.pos;
-                  return (
-                    <img
-                      key={p.key}
-                      className="cx-tile-art"
-                      src={`/assets/solo/chronossus/tiles/${p.tile}.png`}
-                      alt={`Modular tile ${p.tile}`}
-                      style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
-                      title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
-                    />
-                  );
-                })}
+              {/* Modular tile art (I/II/III) — the printed tile SPACE, a separate
+                  board location from where the marker lands. Base-game setup:
+                  I=C01A Reboot, II=C02A Score, III=C03A Energy Pack. Selectable in
+                  calibrate mode (its own calibration position). */}
+              {MOD_SLOTS.map((p) => {
+                const k = tileKey(p.key);
+                const [x, y] = positions[k] ?? p.tilePos ?? p.pos;
+                const sel = calibrate && selected === k;
+                return (
+                  <img
+                    key={k}
+                    className={`cx-tile-art ${sel ? 'cal-selected' : ''}`}
+                    src={`/assets/solo/chronossus/tiles/${p.tile}.png`}
+                    alt={`Modular tile ${p.tile}`}
+                    style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
+                    title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
+                    onClick={
+                      calibrate
+                        ? (e) => {
+                            e.stopPropagation();
+                            setSelected(k);
+                          }
+                        : undefined
+                    }
+                  />
+                );
+              })}
 
               {/* Count/track badges (buildings, resources, workers, etc.). Tap a
                   badge (outside calibrate) for a themed info popover. */}
@@ -1171,9 +1185,14 @@ function CalibrationPanel({
     'export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [\n' +
     CHRONOSSUS_TRACK_POSITIONS.map((p) => {
       const [x, y] = positions[p.key] ?? p.pos;
-      const extra = p.action
-        ? `, action: '${p.action}', label: '${p.label}'${p.tile ? `, tile: '${p.tile}'` : ''}`
-        : '';
+      let extra = '';
+      if (p.action) {
+        extra += `, action: '${p.action}', label: '${p.label}'`;
+        if (p.tile) {
+          const [tx, ty] = positions[tileKey(p.key)] ?? p.tilePos ?? p.pos;
+          extra += `, tile: '${p.tile}', tilePos: [${tx}, ${ty}]`;
+        }
+      }
       return `  { key: '${p.key}', pos: [${x}, ${y}]${extra} },`;
     }).join('\n') +
     `\n];\n\nexport const CHRONOSSUS_TILE_WIDTH = ${tileWidth};` +
@@ -1258,10 +1277,23 @@ function CalibrationPanel({
         {sizeSlider('Mod-tile width', tileWidth, onTileWidth, 24)}
         <div className="cal-list">
           {CHRONOSSUS_TRACK_POSITIONS.map((p) =>
-            item(p.key, p.label ? `${p.key} · slot ${p.label}` : p.key, p.pos),
+            item(p.key, p.label ? `${p.key} · marker step (slot ${p.label})` : p.key, p.pos),
           )}
         </div>
         <textarea className="cal-out" readOnly value={trackLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Mod-tile spaces ({MOD_SLOTS.length})</summary>
+        <p className="cal-note">
+          The printed tile SPACE (separate from the marker step). Sizing uses the
+          Mod-tile width slider above; positions round-trip in the track literal.
+        </p>
+        <div className="cal-list">
+          {MOD_SLOTS.map((p) =>
+            item(tileKey(p.key), `slot ${p.label} · ${p.tile}`, p.tilePos ?? p.pos),
+          )}
+        </div>
       </details>
 
       <details className="cal-group">
