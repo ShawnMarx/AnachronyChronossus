@@ -45,26 +45,25 @@ export interface TrackPos {
  * are referenced by more than one marker's track below.
  */
 export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [
-  // Marker 3 — own row (seeded from the old marker-3 start position).
+  // Marker 3 — own row. Step 3 is modular tile slot II (Reboot for now).
   { key: 'm3s1', pos: [6, 10.6] },
   { key: 'm3s2', pos: [17, 10.6] },
-  // Modular tile slot II (marker 3 step 3) — Reboot for now (mode-dependent).
   { key: 'm3s3', pos: [28, 10.6], action: 'reboot', label: 'II' },
   { key: 'm3s4', pos: [39, 10.6] },
   { key: 'm3s5', pos: [50, 10.6] },
-  // Marker 2 loop — every position shared with marker 4 or 5.
+  // Marker 2 loop — every position shared with marker 4 or 5. m2p3 is modular
+  // tile slot I (marker 4 step 2 / marker 2 step 3), Reboot for now.
   { key: 'm2p1', pos: [39.1, 58.7] }, // marker 2 start; == marker 5 step 3
-  { key: 'm2p2', pos: [28, 58.7] }, //   == marker 4 step 3
-  // Modular tile slot I (marker 4 step 2 / marker 2 step 3) — Reboot for now.
-  { key: 'm2p3', pos: [17, 58.7], action: 'reboot', label: 'I' },
+  { key: 'm2p2', pos: [28, 55.8] }, //   == marker 4 step 3
+  { key: 'm2p3', pos: [28.2, 32], action: 'reboot', label: 'I' },
   { key: 'm2p4', pos: [49.9, 30.5] }, // == marker 5 start (step 1)
-  { key: 'm2p5', pos: [39, 45] }, //     == marker 5 step 2
+  { key: 'm2p5', pos: [49.8, 54.2] }, // == marker 5 step 2
   // Marker 4 own positions.
   { key: 'm4s1', pos: [16.9, 30.5] }, // marker 4 start
-  { key: 'm4s4', pos: [6, 45] },
-  { key: 'm4s5', pos: [6, 58.7] },
+  { key: 'm4s4', pos: [6.1, 54] },
+  { key: 'm4s5', pos: [5.8, 30.3] },
   // Modular tile slot III (marker 5 step 4) — Reboot for now.
-  { key: 'm5s4', pos: [60, 30.5], action: 'reboot', label: 'III' },
+  { key: 'm5s4', pos: [38.9, 35], action: 'reboot', label: 'III' },
 ];
 
 /** Look up a track position by key. */
