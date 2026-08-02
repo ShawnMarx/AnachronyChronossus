@@ -336,14 +336,25 @@
   color: var(--cx-amber);
 }
 
-/* Disabled turn stubs (Take Bot Action / You Pass / Undo) + Rules — teal-tinted. */
-.chronossus-harness .take-bot-action,
-.chronossus-harness .you-pass,
+/* Undo + Rules stubs — teal-tinted. Take Bot Action / You Pass deliberately keep
+   the Chronobot colors (lime / pink) below, so the primary turn controls read the
+   same across both bots. */
 .chronossus-harness .undo-btn,
 .chronossus-harness .rules-open-btn {
   background: rgba(46, 140, 140, 0.18);
   border: 1px solid rgba(46, 140, 140, 0.5);
   color: #b6e6e6;
+}
+
+/* You Pass keeps the Chronobot's pink; the Chronossus root retints --pass to rust
+   for the failed-action prompts, so re-supply the pink locally to this button
+   only. (Take Bot Action already uses --act, which isn't retinted.) */
+.chronossus-harness .you-pass {
+  --pass: #e07fa8;
+  --pass-2: #c85f8d;
+  --pass-hover: #ec97ba;
+  --pass-text: #360a20;
+  --pass-border: #ec97ba;
 }
 
 /* ⚙ menu */
