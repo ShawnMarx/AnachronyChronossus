@@ -42,7 +42,7 @@ import {
   type Instruction,
 } from './engine';
 import { finishEra, advanceFromPreparation } from './game/flow';
-import type { ChronossusActionInput, EnergyDraw } from './engine/bots/chronossus';
+import type { ChronossusActionInput, ChronossusActionId, EnergyDraw } from './engine/bots/chronossus';
 import {
   CHRONOSSUS_ACTION_HOTSPOTS,
   CHRONOSSUS_PANEL,
@@ -123,6 +123,13 @@ const CAL_KEYS: string[] = [
   WARP_KEY,
   ...PDX_KEYS,
 ];
+
+/** Short effect text for the modular tile actions (for slot tooltips). */
+const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
+  'tile-reboot': 'Reboot: the Chronossus does nothing',
+  'tile-score': 'Score: +2 VP',
+  'tile-energy-pack': 'Energy Pack: +1 Energy Core',
+};
 
 const SHAPE_SYMBOLS: [BreakthroughShape, string][] = [
   ['circle', '●'],
@@ -511,13 +518,25 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     activeMarkerRef.current = die;
     const key = markerPosKey(die, markerSteps[die]);
     const tp = trackPos(key);
+    // Modular tile slots (I/II/III) carry an explicit tile action — resolve it
+    // directly (no gate/pick). Every other spot sits on a printed Action space,
+    // resolved via the nearest Action hotspot (the full DetailPanel flow).
+    if (tp?.action) {
+      resolveTileSlot(tp.action);
+      return;
+    }
     const [x, y] = positions[key] ?? [0, 0];
-    // Modular tile slots (I/II/III) carry an explicit action; every other spot
-    // sits on a printed Action space, resolved via the nearest Action hotspot.
-    const h: Hotspot = tp?.action
-      ? { id: `slot-${tp.label ?? key}`, action: tp.action, rect: [0, 0, 0, 0] }
-      : nearestHotspot(x, y);
-    onTileClick(h);
+    onTileClick(nearestHotspot(x, y));
+  };
+
+  // Resolve a modular tile action (Reboot / Score / Energy Pack): deterministic,
+  // no player input, so it commits immediately and advances the active marker.
+  const resolveTileSlot = (actionId: ChronossusActionId) => {
+    const { state: next, instructions } = Chronossus.resolveAction(state, { actionId });
+    setState(next);
+    setResult([]);
+    setLastResult(instructions);
+    advanceActiveMarker();
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
@@ -741,21 +760,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     );
                   })}
 
-              {/* Modular tile slots (I/II/III) — always-on chips so the slot spots
-                  are visible on the board (their action is mode-dependent; Reboot
-                  for now). Hidden while calibrating (the ghosts show them there). */}
+              {/* Modular tile slots (I/II/III) — render the placed tile art so the
+                  slots are visible on the board. Base-game setup: I=C01A Reboot,
+                  II=C02A Score, III=C03A Energy Pack. Hidden while calibrating
+                  (the ghosts show the spots there). */}
               {!calibrate &&
-                CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.label).map((p) => {
+                CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.tile).map((p) => {
                   const [x, y] = positions[p.key] ?? p.pos;
                   return (
-                    <div
+                    <img
                       key={p.key}
-                      className="cx-slot-chip"
-                      style={{ left: `${x}%`, top: `${y}%` }}
-                      title={`Modular tile slot ${p.label} — Reboot (placeholder)`}
-                    >
-                      {p.label}
-                    </div>
+                      className="cx-tile-art"
+                      src={`/assets/solo/chronossus/tiles/${p.tile}.png`}
+                      alt={`Modular tile ${p.tile}`}
+                      style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth * 1.6}%` }}
+                      title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
+                    />
                   );
                 })}
 

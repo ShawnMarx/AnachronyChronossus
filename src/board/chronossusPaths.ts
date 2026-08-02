@@ -18,7 +18,7 @@
 // after its last step (step 1 is its start-of-game position). POSITIONS ARE
 // PLACEHOLDERS — calibrate them in-app (the calibrate panel emits this literal).
 
-import type { ChronobotActionId } from '../engine/rules/chronobotActions';
+import type { ChronossusActionId } from '../engine/bots/chronossus';
 
 export type CommandNum = 2 | 3 | 4 | 5;
 
@@ -28,16 +28,16 @@ export interface TrackPos {
   /** Center [x, y] as a % of the board image. */
   pos: [number, number];
   /**
-   * The Action this board spot triggers. Omitted for spots that sit on one of the
-   * printed Action spaces — those resolve to the nearest Action hotspot instead.
-   * The three modular tile slots (I/II/III) carry an explicit action (Reboot for
-   * now; the real action depends on the game mode's chosen tiles). Typed to the
-   * base action set (what the shared DetailPanel resolves); tile-specific actions
-   * will need their own handling when they land.
+   * The action a modular tile slot triggers. Non-modular spots omit this and
+   * resolve to the nearest printed Action space instead. Base-game default setup
+   * (no expansion, no difficulty tweak): I = C01A Reboot, II = C02A Score,
+   * III = C03A Energy Pack.
    */
-  action?: ChronobotActionId;
+  action?: ChronossusActionId;
   /** Display label for a modular tile slot (roman numeral I/II/III). */
   label?: string;
+  /** Modular tile art code (C01A/C02A/C03A) for the tile image on the board. */
+  tile?: string;
 }
 
 /**
@@ -45,25 +45,25 @@ export interface TrackPos {
  * are referenced by more than one marker's track below.
  */
 export const CHRONOSSUS_TRACK_POSITIONS: TrackPos[] = [
-  // Marker 3 — own row. Step 3 is modular tile slot II (Reboot for now).
+  // Marker 3 — own row. Step 3 is modular tile slot II (C02A Score, +2 VP).
   { key: 'm3s1', pos: [6, 10.6] },
   { key: 'm3s2', pos: [17, 10.6] },
-  { key: 'm3s3', pos: [28, 10.6], action: 'reboot', label: 'II' },
+  { key: 'm3s3', pos: [28, 10.6], action: 'tile-score', label: 'II', tile: 'C02A' },
   { key: 'm3s4', pos: [39, 10.6] },
   { key: 'm3s5', pos: [50, 10.6] },
   // Marker 2 loop — every position shared with marker 4 or 5. m2p3 is modular
-  // tile slot I (marker 4 step 2 / marker 2 step 3), Reboot for now.
+  // tile slot I (marker 4 step 2 / marker 2 step 3): C01A Reboot.
   { key: 'm2p1', pos: [39.1, 58.7] }, // marker 2 start; == marker 5 step 3
   { key: 'm2p2', pos: [28, 55.8] }, //   == marker 4 step 3
-  { key: 'm2p3', pos: [28.2, 32], action: 'reboot', label: 'I' },
+  { key: 'm2p3', pos: [28.2, 32], action: 'tile-reboot', label: 'I', tile: 'C01A' },
   { key: 'm2p4', pos: [49.9, 30.5] }, // == marker 5 start (step 1)
   { key: 'm2p5', pos: [49.8, 54.2] }, // == marker 5 step 2
   // Marker 4 own positions.
   { key: 'm4s1', pos: [16.9, 30.5] }, // marker 4 start
   { key: 'm4s4', pos: [6.1, 54] },
   { key: 'm4s5', pos: [5.8, 30.3] },
-  // Modular tile slot III (marker 5 step 4) — Reboot for now.
-  { key: 'm5s4', pos: [38.9, 35], action: 'reboot', label: 'III' },
+  // Modular tile slot III (marker 5 step 4): C03A Energy Pack (+1 Energy Core).
+  { key: 'm5s4', pos: [38.9, 35], action: 'tile-energy-pack', label: 'III', tile: 'C03A' },
 ];
 
 /** Look up a track position by key. */

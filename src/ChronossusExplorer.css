@@ -392,23 +392,12 @@
   font-size: 0.8rem;
 }
 
-/* Persistent modular tile-slot chips (I/II/III) on the board */
-.cx-slot-chip {
+/* Placed modular tile art (C01A/C02A/C03A) on the board slots. */
+.cx-tile-art {
   position: absolute;
   transform: translate(-50%, -50%);
-  min-width: 1.4em;
-  height: 1.4em;
-  padding: 0 0.2em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(0.6rem, 1.4vw, 0.9rem);
-  font-weight: 800;
-  color: #06201f;
-  background: var(--cx-amber);
-  border: 1px solid #f4c78a;
-  border-radius: 6px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
   pointer-events: auto;
   z-index: 3;
 }
