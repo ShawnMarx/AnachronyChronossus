@@ -873,7 +873,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         : undefined
                     }
                   >
-                    <img className="warp-img" src="/assets/solo/warp-tile.png" alt="Chronossus Warp tile" />
+                    <img className="warp-img" src="/assets/solo/chronossus/warp-tile.png" alt="Chronossus Warp tile" />
                     <span className="warp-count">{bot.warpTilesOnTimeline}</span>
                   </div>
                 );
