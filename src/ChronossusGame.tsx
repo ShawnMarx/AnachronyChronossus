@@ -36,7 +36,8 @@ import TurnTracker from './components/TurnTracker';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
-import { clearPersisted, type HistoryEntry } from './game/undo';
+import { clearPersisted, peekSaved, type HistoryEntry } from './game/undo';
+import { clearSavedChronobot } from './BoardExplorer';
 import { ActionIcon } from './board/ActionIcon';
 import RulesBox from './phases/RulesBox';
 import { useAuth } from './auth/useAuth';
@@ -93,6 +94,15 @@ const DEBUG_EXOSUITS = 4;
 // Persistence (own key so it survives refresh, separate from the Chronobot's).
 const CX_PERSIST_KEY = 'anachrony:chronossus';
 const CX_PERSIST_VERSION = 1;
+
+/** Landing/AppRoot helpers: the saved Chronossus game's timestamp, or null. */
+export function peekSavedChronossus(): { savedAt: number } | null {
+  return peekSaved(CX_PERSIST_KEY, CX_PERSIST_VERSION);
+}
+/** Discard any saved Chronossus game (for "New game" / opponent switch). */
+export function clearSavedChronossus(): void {
+  clearPersisted(CX_PERSIST_KEY);
+}
 
 /** The transient per-view slice (Command-marker positions + shown AI die). */
 interface ChronossusUi {
@@ -439,6 +449,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setPendingTile(null);
     activeMarkerRef.current = null; // cancelled turn: don't advance a marker
     botDieRef.current = null;
+    // Clear the shown die + the board/SCV marker highlight now the turn is done.
+    setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
   };
 
   // The ui slice to store for a committed turn: advance the marker driving the
@@ -727,6 +739,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const reset = () => {
     clearPersisted(CX_PERSIST_KEY);
+    clearSavedChronobot(); // only one opponent's game may be active at a time
     hookReset(initState(), emptyCxUi());
     closePanel();
     setLastResult([]);
@@ -798,6 +811,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult([]);
     botDieRef.current = null;
     activeMarkerRef.current = null;
+    setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
@@ -806,6 +820,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setState((s) => ({ ...s, playerPassed: true }));
   };
   const bothPassed = Chronossus.actionRoundsEnded(state);
+  // A bot turn is underway (an action or tile dialog is open, not a rule view).
+  // While it is, the turn controls hide and only the rolled die shows (like the
+  // Chronobot), returning once the dialog completes.
+  const actionInProgress = (active != null && !ruleView) || pendingTile != null;
 
   // This Era's committed bot turns (drives the Turn tracker + its hover list).
   const thisEraEntries: HistoryEntry[] = entries.filter(
@@ -849,35 +867,39 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             }
           />
           <div className="turn-core">
-            <button
-              className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
-              onClick={takeBotTurn}
-              disabled={bot.passed || active != null || pendingTile != null}
-              title={
-                bot.passed
-                  ? 'The Chronossus has passed for this Era'
-                  : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command marker`
-              }
-            >
-              {bot.passed ? '✓ Bot Passed' : 'Take Bot Action'}
-            </button>
+            {!actionInProgress && (
+              <button
+                className={`take-bot-action ${bot.passed ? 'passed' : ''}`}
+                onClick={takeBotTurn}
+                disabled={bot.passed}
+                title={
+                  bot.passed
+                    ? 'The Chronossus has passed for this Era'
+                    : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command marker`
+                }
+              >
+                {bot.passed ? '✓ Bot Passed' : 'Take Bot Action'}
+              </button>
+            )}
             {botDie != null && (
               <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
                 {botDie}
               </span>
             )}
-            <button
-              className="you-pass"
-              onClick={playerPass}
-              disabled={state.playerPassed}
-              title="Pass for the Action Rounds phase"
-            >
-              {state.playerPassed ? '✓ You passed' : 'You Pass'}
-            </button>
+            {!actionInProgress && (
+              <button
+                className="you-pass"
+                onClick={playerPass}
+                disabled={state.playerPassed}
+                title="Pass for the Action Rounds phase"
+              >
+                {state.playerPassed ? '✓ You passed' : 'You Pass'}
+              </button>
+            )}
             <button
               className="undo-btn"
               onClick={undoTurn}
-              disabled={!canUndo || active != null || pendingTile != null}
+              disabled={!canUndo || actionInProgress}
               title="Undo the last committed turn"
             >
               ↶ Undo

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
+import { peekSavedChronossus, clearSavedChronossus } from './ChronossusGame';
 import { useAuth } from './auth/useAuth';
 import { isLocalRun, isStaging } from './auth/bgeAuth';
 
@@ -81,6 +82,8 @@ function LandingAuth() {
   );
 }
 
+type BotId = 'chronobot' | 'chronossus';
+
 export default function Landing({
   onStartChronobot,
   onStartChronossus,
@@ -88,18 +91,41 @@ export default function Landing({
   onStartChronobot: () => void;
   onStartChronossus: () => void;
 }) {
-  // When a saved Chronobot game exists, launching prompts continue-vs-new.
-  const [prompt, setPrompt] = useState<{ savedAt: number } | null>(null);
+  // Launching prompts continue-vs-new when the clicked bot has a saved game, or a
+  // discard-the-other warning when the OTHER opponent has the active game (only
+  // one may run at a time).
+  const [prompt, setPrompt] = useState<
+    | { bot: BotId; kind: 'own'; savedAt: number }
+    | { bot: BotId; kind: 'other'; otherBot: BotId; savedAt: number }
+    | null
+  >(null);
   const { user } = useAuth();
 
   // Chronossus is admin-gated during development: visible to admins, any local run
   // (dev), and the staging preview host; "Coming Soon" for everyone else on prod.
   const chronossusUnlocked = isLocalRun() || isStaging() || Boolean(user?.isAdmin);
 
-  const launchChronobot = () => {
-    const saved = peekSavedChronobot();
-    if (saved) setPrompt(saved);
-    else onStartChronobot();
+  const otherOf = (b: BotId): BotId => (b === 'chronobot' ? 'chronossus' : 'chronobot');
+  const botName = (b: BotId) => (b === 'chronobot' ? 'Chronobot' : 'Chronossus');
+  const peekFor = (b: BotId) => (b === 'chronobot' ? peekSavedChronobot() : peekSavedChronossus());
+  const clearFor = (b: BotId) =>
+    b === 'chronobot' ? clearSavedChronobot() : clearSavedChronossus();
+  const startFor = (b: BotId) => (b === 'chronobot' ? onStartChronobot() : onStartChronossus());
+
+  const launch = (bot: BotId) => {
+    const own = peekFor(bot);
+    if (own) {
+      setPrompt({ bot, kind: 'own', savedAt: own.savedAt });
+      return;
+    }
+    const otherB = otherOf(bot);
+    const otherSaved = peekFor(otherB);
+    if (otherSaved) {
+      setPrompt({ bot, kind: 'other', otherBot: otherB, savedAt: otherSaved.savedAt });
+      return;
+    }
+    clearFor(otherB); // defensive: keep only one opponent active
+    startFor(bot);
   };
 
   return (
@@ -131,7 +157,7 @@ export default function Landing({
           tagline="The base-game automa · easiest place to start"
           status="ready"
           description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens and the AI die — the best place to begin solo play."
-          onLaunch={launchChronobot}
+          onLaunch={() => launch('chronobot')}
         />
         <BotCard
           name="Chronossus"
@@ -147,7 +173,7 @@ export default function Landing({
               ? 'Admin preview: boots into the Phase-5 Action Rounds debug harness. Tap each action space to see the Chronossus resolve it. Work in progress.'
               : "A deeper opponent that supports most of the game's modes and expansions. Not available yet — it's next on the roadmap once the Chronobot is complete."
           }
-          onLaunch={chronossusUnlocked ? onStartChronossus : undefined}
+          onLaunch={chronossusUnlocked ? () => launch('chronossus') : undefined}
         />
       </div>
 
@@ -164,35 +190,74 @@ export default function Landing({
             role="dialog"
             aria-modal="true"
           >
-            <h3>Continue your Chronobot game?</h3>
-            <p>
-              You have a game in progress, last played on{' '}
-              <b>{formatSavedAt(prompt.savedAt)}</b>.
-            </p>
-            <div className="resume-actions">
-              <button
-                className="resume-continue"
-                onClick={() => {
-                  setPrompt(null);
-                  onStartChronobot();
-                }}
-              >
-                Continue game
-              </button>
-              <button
-                className="resume-new"
-                onClick={() => {
-                  clearSavedChronobot();
-                  setPrompt(null);
-                  onStartChronobot();
-                }}
-              >
-                Start a new game
-              </button>
-            </div>
-            <button className="resume-cancel" onClick={() => setPrompt(null)}>
-              Cancel
-            </button>
+            {prompt.kind === 'own' ? (
+              <>
+                <h3>Continue your {botName(prompt.bot)} game?</h3>
+                <p>
+                  You have a game in progress, last played on{' '}
+                  <b>{formatSavedAt(prompt.savedAt)}</b>.
+                </p>
+                <div className="resume-actions">
+                  <button
+                    className="resume-continue"
+                    onClick={() => {
+                      clearFor(otherOf(prompt.bot));
+                      setPrompt(null);
+                      startFor(prompt.bot);
+                    }}
+                  >
+                    Continue game
+                  </button>
+                  <button
+                    className="resume-new"
+                    onClick={() => {
+                      clearFor(prompt.bot);
+                      clearFor(otherOf(prompt.bot));
+                      setPrompt(null);
+                      startFor(prompt.bot);
+                    }}
+                  >
+                    Start a new game
+                  </button>
+                </div>
+                <button className="resume-cancel" onClick={() => setPrompt(null)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <h3>Start a {botName(prompt.bot)} game?</h3>
+                <p>
+                  You have a saved <b>{botName(prompt.otherBot)}</b> game (last played{' '}
+                  <b>{formatSavedAt(prompt.savedAt)}</b>). Only one opponent can be active at a
+                  time — starting the {botName(prompt.bot)} will discard it.
+                </p>
+                <div className="resume-actions">
+                  <button
+                    className="resume-continue"
+                    onClick={() => {
+                      setPrompt(null);
+                      startFor(prompt.otherBot);
+                    }}
+                  >
+                    Resume {botName(prompt.otherBot)}
+                  </button>
+                  <button
+                    className="resume-new"
+                    onClick={() => {
+                      clearFor(prompt.otherBot);
+                      setPrompt(null);
+                      startFor(prompt.bot);
+                    }}
+                  >
+                    Discard &amp; start {botName(prompt.bot)}
+                  </button>
+                </div>
+                <button className="resume-cancel" onClick={() => setPrompt(null)}>
+                  Cancel
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

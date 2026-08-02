@@ -228,6 +228,29 @@
   outline: 2px solid #fde047;
   outline-offset: 2px;
 }
+/* The marker the AI die just activated pulses (matches the Chronobot board). */
+.cx-cmd-marker.active {
+  z-index: 8;
+  animation: cxCmdActivePulse 1s ease-in-out infinite;
+}
+@keyframes cxCmdActivePulse {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1.12);
+    filter:
+      drop-shadow(1.4px 0 0 #fde047) drop-shadow(-1.4px 0 0 #fde047)
+      drop-shadow(0 1.4px 0 #fde047) drop-shadow(0 -1.4px 0 #fde047)
+      drop-shadow(0 0 5px #fde047) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.24);
+    filter:
+      drop-shadow(1.6px 0 0 #fff6b0) drop-shadow(-1.6px 0 0 #fff6b0)
+      drop-shadow(0 1.6px 0 #fff6b0) drop-shadow(0 -1.6px 0 #fff6b0)
+      drop-shadow(0 0 12px #fde047) drop-shadow(0 0 20px #fbbf24)
+      drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+  }
+}
 
 /* ---- Chronossus top bar (the replicated Chronobot StatsBar, recolored) ----
    Reuses the shared .stats-bar classes; these overrides swap the Chronobot

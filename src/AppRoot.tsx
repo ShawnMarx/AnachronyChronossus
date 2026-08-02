@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import Landing from './Landing';
 import BoardExplorer, { peekSavedChronobot } from './BoardExplorer';
-import ChronossusGame from './ChronossusGame';
+import ChronossusGame, { peekSavedChronossus } from './ChronossusGame';
 
 /**
- * Top-level view switch. If a saved Chronobot game exists we open straight into
- * it (rehydrated by BoardExplorer on mount); the top-left home button returns
- * here to Landing. At most one opponent is ever cached at a time — starting a
- * new game clears the other — so this check is unambiguous. Chronossus is
- * admin-gated on the Landing (see there); its view is the Phase-5 debug harness.
+ * Top-level view switch. On load we resume whichever opponent has a saved game
+ * (rehydrated by its view on mount); the top-left home button returns here to
+ * Landing. At most one opponent is ever cached at a time — starting/continuing
+ * one clears the other — so this check is unambiguous and a refresh always
+ * returns to the last active game. Chronossus is admin-gated on the Landing.
  */
 export default function AppRoot() {
   const [view, setView] = useState<'home' | 'chronobot' | 'chronossus'>(() =>
-    peekSavedChronobot() ? 'chronobot' : 'home',
+    peekSavedChronobot() ? 'chronobot' : peekSavedChronossus() ? 'chronossus' : 'home',
   );
 
   if (view === 'chronobot') {
