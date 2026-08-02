@@ -15,6 +15,11 @@ export const GAMEBRAIN_URL = (() => {
   return 'https://gamebrain.boardgameedge.com';
 })();
 
-/** The embedded rules-frame URL for the Anachrony game page. */
-export const RULES_FRAME_URL =
-  `${GAMEBRAIN_URL}/games/anachrony/?embedded=true&tab=rules&preset=${encodeURIComponent('Solo Chronobot')}`;
+/** Build the embedded rules-frame URL for the Anachrony page, opening on the
+ *  rules tab with the given chat `preset` pre-selected (per solo opponent). */
+export function rulesFrameUrl(preset: string): string {
+  return `${GAMEBRAIN_URL}/games/anachrony/?embedded=true&tab=rules&preset=${encodeURIComponent(preset)}`;
+}
+
+/** The embedded rules-frame URL for the Chronobot (default). */
+export const RULES_FRAME_URL = rulesFrameUrl('Solo Chronobot');

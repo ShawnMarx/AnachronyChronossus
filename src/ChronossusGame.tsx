@@ -40,6 +40,8 @@ import { clearPersisted, peekSaved, type HistoryEntry } from './game/undo';
 import { clearSavedChronobot } from './BoardExplorer';
 import { ActionIcon } from './board/ActionIcon';
 import RulesBox from './phases/RulesBox';
+import RulesFrame, { RulesButton } from './rules/RulesFrame';
+import { rulesFrameUrl } from './rules/gamebrain';
 import { useAuth } from './auth/useAuth';
 import {
   Chronobot,
@@ -312,6 +314,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const botDie = ui.botDie;
   const [lastDraw, setLastDraw] = useState<EnergyDraw | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [modeRules, setModeRules] = useState(false); // GameBrain rules overlay open
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
   const [showStatus, setShowStatus] = useState(false); // Turn-chip popover
@@ -994,9 +997,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         </div>
       )}
       <div className="stats-controls">
-        <button className="rules-open-btn" disabled title="Coming soon — the Chronossus rules reference">
-          📖 <span className="rules-open-label">Rules</span>
-        </button>
+        <RulesButton onClick={() => setModeRules(true)} />
         <CxSettingsMenu
           debug={debug}
           isAdmin={!!user?.isAdmin}
@@ -1014,6 +1015,35 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         />
       </div>
     </div>
+  );
+
+  // The GameBrain rules reference overlay (persistent iframe). Kept mounted across
+  // phases so its scroll/session survives Back-to-Game — mirrors the Chronobot's
+  // {modals}. Opens on the "Solo Chronossus" chat preset.
+  const rulesModal = (
+    <RulesFrame
+      open={modeRules}
+      onBack={() => setModeRules(false)}
+      onHome={onHome}
+      src={rulesFrameUrl('Solo Chronossus')}
+      settings={
+        <CxSettingsMenu
+          debug={debug}
+          isAdmin={!!user?.isAdmin}
+          onToggleDebug={() => setDebug((d) => !d)}
+          calibrate={calibrate}
+          onToggleCalibrate={() => {
+            closePanel();
+            setCalibrate((c) => !c);
+          }}
+          historyOpen={showHistory}
+          onToggleHistory={() => setShowHistory((v) => !v)}
+          simpleView={simpleView}
+          onToggleSimpleView={() => setSimpleView((v) => !v)}
+          onReset={reset}
+        />
+      }
+    />
   );
 
   // Unified Debug bar (Debug dropdown + jump-to-phase), shown in every phase view
@@ -1048,6 +1078,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   if (state.phase === 'actions') {
     return (
       <div className="chronossus-harness">
+        {rulesModal}
         {topBar}
         {debugBar}
         <div
@@ -1432,6 +1463,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   if (state.phase === 'endgame') {
     return (
       <div className="chronossus-harness">
+        {rulesModal}
         {topBar}
         {debugBar}
         <div className="cx-score">
@@ -1526,6 +1558,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   return (
     <>
+      {rulesModal}
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
     </>

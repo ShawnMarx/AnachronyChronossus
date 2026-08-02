@@ -32,12 +32,15 @@ export default function RulesFrame({
   onBack,
   onHome,
   settings,
+  src = RULES_FRAME_URL,
 }: {
   open: boolean;
   onBack: () => void;
   onHome?: () => void;
   /** The shared ⚙ settings menu, rendered in the collapsed bar. */
   settings?: React.ReactNode;
+  /** The GameBrain frame URL (defaults to the Chronobot preset). */
+  src?: string;
 }) {
   // Lazy: don't load GameBrain until the player first opens the rules.
   const [loaded, setLoaded] = useState(false);
@@ -204,7 +207,7 @@ export default function RulesFrame({
           id="gamebrain-frame"
           className="rules-frame-iframe"
           title="Anachrony rules reference"
-          src={RULES_FRAME_URL}
+          src={src}
         />
       )}
     </div>
