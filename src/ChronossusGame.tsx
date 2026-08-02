@@ -1533,8 +1533,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 // --------------------------------------------------------------------------
 // Tile-action dialog — the modular tiles (Reboot / Score / Energy Pack). Matches
 // the printed-action DetailPanel format: tile art + name in the head, a friendly
-// instruction, a ▶ Start Your Turn button (then the result), and a collapsible
-// VERBATIM rulebook box. Reuses the shared .detail-panel / .start-turn styling.
+// instruction, and a ▶ Start Your Turn button (then the result). Reuses the
+// shared .detail-panel / .start-turn styling.
+//
+// The current base tiles have simple rules the instruction line fully conveys, so
+// the collapsible verbatim rules box is suppressed for them. More involved tiles
+// (e.g. the Autoleap "skip"/token-advance tiles) will want it — add their codes
+// to TILES_WITH_RULES_BOX and the box renders automatically.
 // --------------------------------------------------------------------------
 
 /** Friendly, player-facing instruction for each in-play tile action. */
@@ -1543,6 +1548,10 @@ const TILE_INSTRUCT: Record<ChronossusTileActionId, string> = {
   'tile-score': 'The Chronossus scores +2 VP.',
   'tile-energy-pack': 'Add 1 non-exhausted Energy Core to the Chronossus’s Energy Pool.',
 };
+
+/** Tile codes whose effect warrants the verbatim rules box (empty for now — the
+ *  base tiles are simple; the Autoleap/skip tiles go here when implemented). */
+const TILES_WITH_RULES_BOX = new Set<string>([]);
 
 function CxTileDialog({
   action,
@@ -1562,6 +1571,7 @@ function CxTileDialog({
   const code = TILE_ACTION_CODE[action];
   const tile = CHRONOSSUS_TILES[code];
   const resolved = result.length > 0;
+  const showRulesBox = TILES_WITH_RULES_BOX.has(code);
   const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
   const [l, t, w, h] = panel;
   return (
@@ -1603,21 +1613,24 @@ function CxTileDialog({
           )}
         </div>
 
-        {/* Verbatim rulebook text, collapsible — mirrors the action dialogs. */}
-        <div className="mech-rules">
-          <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
-            📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
-          </button>
-          {showRule && (
-            <div className="rule-body">
-              {tile.rule.split('\n').map((line, i) => (
-                <p key={i} className="dp-rule">
-                  {line}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Verbatim rulebook text, collapsible — mirrors the action dialogs.
+            Only for tiles complex enough to warrant it (see TILES_WITH_RULES_BOX). */}
+        {showRulesBox && (
+          <div className="mech-rules">
+            <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
+              📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
+            </button>
+            {showRule && (
+              <div className="rule-body">
+                {tile.rule.split('\n').map((line, i) => (
+                  <p key={i} className="dp-rule">
+                    {line}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
