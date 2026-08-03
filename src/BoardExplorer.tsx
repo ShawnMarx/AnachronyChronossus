@@ -1848,14 +1848,17 @@ function CleanUpPhaseBody({
  * many Warp tiles for it (0, 1, or 2 — it gains nothing and any tile will do).
  * The roll is always shown, even when it's zero, before you can continue.
  */
-function WarpPhaseBody({
+export function WarpPhaseBody({
   state,
   meta,
   onCommit,
+  botName = 'Chronobot',
 }: {
   state: GameState;
   meta: PhaseMeta;
   onCommit: (paradoxes: number) => void;
+  /** Bot name shown in the copy (defaults to the Chronobot). */
+  botName?: string;
 }) {
   const [rolled, setRolled] = useState<number | null>(null);
   const botFirst = state.firstPlayer === 'bot';
@@ -1864,8 +1867,8 @@ function WarpPhaseBody({
       <p className="phase-note">
         Warping occurs in player order.{' '}
         {botFirst
-          ? 'The Chronobot is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.'
-          : 'You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the Chronobot.'}
+          ? `The ${botName} is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.`
+          : `You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the ${botName}.`}
       </p>
 
       {meta.rules && (
@@ -1876,7 +1879,7 @@ function WarpPhaseBody({
 
       {rolled == null ? (
         <button className="phase-primary" onClick={() => setRolled(rollParadoxDie())}>
-          Roll for the Chronobot's Warp
+          Roll for the {botName}'s Warp
         </button>
       ) : (
         <>
@@ -1884,8 +1887,8 @@ function WarpPhaseBody({
             <span className="warp-roll-num">{rolled}</span>
             <p className="phase-note">
               {rolled === 0
-                ? 'The Chronobot rolled no Paradoxes — it places no Warp tiles this phase.'
-                : `The Chronobot rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on the current Timeline tile. Any tiles will do; the Chronobot gains nothing from them.`}
+                ? `The ${botName} rolled no Paradoxes — it places no Warp tiles this phase.`
+                : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on the current Timeline tile. Any tiles will do; the ${botName} gains nothing from them.`}
             </p>
           </div>
           <button className="phase-primary" onClick={() => onCommit(rolled)}>

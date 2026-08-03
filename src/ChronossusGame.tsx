@@ -27,6 +27,7 @@ import {
   BadgePopover,
   ShapeIcon,
   SettingsMenu,
+  WarpPhaseBody,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -858,8 +859,35 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const drawAndPowerUp = () => {
     const draw = drawEnergyPool(bot.energyPool);
     setLastDraw(draw);
-    const next = Chronossus.resolvePowerUp(state, draw);
-    setState({ ...next, phase: 'powerup' });
+    // resolvePowerUp advances to Warp; stay on 'powerup' to show the result. Commit
+    // so the power-up lands in History (like the Chronobot's phase events).
+    const resolved = Chronossus.resolvePowerUp(state, draw);
+    const next = { ...resolved, phase: 'powerup' as Phase };
+    const b = next.chronossus!;
+    commit(
+      next,
+      ui,
+      `Era ${state.era} · Power Up: ${b.exosuitsAvailable} Exosuit${b.exosuitsAvailable === 1 ? '' : 's'}`,
+      [
+        `Drew ${draw.energized} Energy + ${draw.exhausted} Exhausted`,
+        `Powered up ${b.exosuitsAvailable} Exosuit${b.exosuitsAvailable === 1 ? '' : 's'}`,
+        `Pool now ${b.energyPool.energized}/${b.energyPool.exhausted}`,
+      ],
+    );
+  };
+  // Warp phase: place the Chronossus's rolled Warp tiles and commit (so the
+  // placement lands in History) — mirrors the Chronobot's commitWarp.
+  const commitWarp = (paradoxes: number) => {
+    const place = Math.max(0, paradoxes);
+    const next = Chronossus.resolveWarp(state, place);
+    commit(
+      next,
+      ui,
+      `Era ${state.era} · Warp: placed ${place}`,
+      place > 0
+        ? [`Placed ${place} Warp tile${place === 1 ? '' : 's'} on the Timeline`]
+        : ['Placed no Warp tiles'],
+    );
   };
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   const endActions = () => {
@@ -989,9 +1017,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const actionInProgress =
     (active != null && !ruleView) || (pendingTile != null && !tileRuleView);
 
-  // This Era's committed bot turns (drives the Turn tracker + its hover list).
+  // This Era's committed bot Action turns (drives the Turn tracker + its hover
+  // list). Excludes the pre-Action phase events (Power Up / Warp / Paradox), which
+  // still appear in the full History pane but are not Action Rounds "turns".
   const thisEraEntries: HistoryEntry[] = entries.filter(
-    (e) => e.state.era === state.era && !e.label.includes('You passed'),
+    (e) =>
+      e.state.era === state.era && !/You passed|Power Up:|Warp:|Paradox/.test(e.label),
   );
   const turnsThisEra = thisEraEntries.length;
 
@@ -1644,7 +1675,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 </div>
                 <p className="phase-note">
                   Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
-                  {bot.exosuitsAvailable === 1 ? '' : 's'}.
+                  {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
+                  place on the board for this Era.
                 </p>
               </div>
               <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>
@@ -1658,12 +1690,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       break;
     case 'warp':
-      body = (
-        <>
-          {meta?.rules && <p className="phase-note">{meta.rules}</p>}
-          <button className="phase-primary" onClick={() => goPhase('actions')}>Continue to Action Rounds ▶</button>
-        </>
-      );
+      body = <WarpPhaseBody state={state} meta={meta!} onCommit={commitWarp} botName="Chronossus" />;
       break;
     case 'cleanup': {
       // Impact + game-end flow, identical to the Chronobot: the Impact resolves at

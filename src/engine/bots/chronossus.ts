@@ -587,6 +587,43 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
 }
 
 // --------------------------------------------------------------------------
+// Phase 4: Warp
+// --------------------------------------------------------------------------
+
+/**
+ * Warp phase: place `paradoxes` Warp tiles for the Chronossus (the number rolled
+ * on the Paradox die). Same mechanic as the Chronobot — it gains nothing from
+ * them and any tiles will do — just on the Chronossus slice. Advances to Actions.
+ */
+export function resolveWarp(state: GameState, paradoxes: number): GameState {
+  if (!state.chronossus) throw new Error('resolveWarp: no Chronossus state');
+  const place = Math.max(0, paradoxes);
+  const bot = {
+    ...state.chronossus,
+    warpTilesOnTimeline: state.chronossus.warpTilesOnTimeline + place,
+  };
+  const instructions: Instruction[] = [
+    {
+      id: 'warp',
+      text:
+        place > 0
+          ? `Place ${place} Warp tile${place === 1 ? '' : 's'} for the Chronossus on the Timeline.`
+          : 'The Chronossus places no Warp tiles this Era.',
+      detail:
+        'Warping happens in player order. The Chronossus gains nothing for its Warp tiles ' +
+        'and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)',
+    },
+  ];
+  return {
+    ...state,
+    chronossus: bot,
+    phase: 'actions',
+    currentInstructions: instructions,
+    log: [...state.log, `Warp phase (placed ${place}).`],
+  };
+}
+
+// --------------------------------------------------------------------------
 // Era loop
 // --------------------------------------------------------------------------
 
