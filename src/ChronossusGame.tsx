@@ -407,6 +407,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // free-tap, so free taps never move a marker).
   const activeMarkerRef = useRef<CommandNum | null>(null);
   const botDieRef = useRef<number | null>(null);
+  // A rolled-but-not-yet-committed AI die: cleared only when a turn commits (or on
+  // a full reset), NOT when the dialog is cancelled — so closing a bot dialog and
+  // re-hitting Take Bot Action repeats the same roll / action rather than re-rolling.
+  const pendingDieRef = useRef<CommandNum | null>(null);
 
   const { user } = useAuth();
 
@@ -510,7 +514,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
 
   // ---- Action resolution -------------------------------------------------
-  const closePanel = () => {
+  // Close the dialog UI + the shared selection state (not the pending roll).
+  const clearDialogState = () => {
     setActive(null);
     setPending(null);
     setResult([]);
@@ -520,10 +525,28 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRolledShape(null);
     setRuleView(false);
     setPendingTile(null);
-    activeMarkerRef.current = null; // cancelled turn: don't advance a marker
+    setTileRuleView(false);
+  };
+  // Full close: dialog + the rolled die + marker highlight. Used after a committed
+  // turn and on resets — the next Take Bot Action rolls fresh.
+  const closePanel = () => {
+    clearDialogState();
+    activeMarkerRef.current = null;
     botDieRef.current = null;
-    // Clear the shown die + the board/SCV marker highlight now the turn is done.
+    pendingDieRef.current = null;
     setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
+  };
+  // Cancel (the dialog ×): close the dialog. If a rolled die is still pending
+  // (a genuine cancel — the turn was not committed), KEEP it shown so re-hitting
+  // Take Bot Action repeats the same roll. If the turn already committed (or this
+  // was a rule-view tap), pendingDieRef is null, so clear the die display too.
+  const cancelPanel = () => {
+    clearDialogState();
+    activeMarkerRef.current = null;
+    if (pendingDieRef.current == null) {
+      botDieRef.current = null;
+      setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
+    }
   };
 
   // The ui slice to store for a committed turn: advance the marker driving the
@@ -591,6 +614,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastResult(instructions);
     setPending(null);
     activeMarkerRef.current = null;
+    pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
   };
 
   const onTileClick = (h: Hotspot, force = false) => {
@@ -823,7 +847,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         onToggleResource={onToggleResource}
         onPickWorker={onPickWorker}
         onStartTurn={startTurn}
-        onClose={closePanel}
+        onClose={cancelPanel}
       />
     ) : null;
 
@@ -879,11 +903,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     activeMarkerRef.current = null;
   };
 
-  // Undo the last committed turn: restore its snapshot, re-showing its die.
+  // Undo the last committed turn: restore its snapshot, re-showing its die and
+  // making it pending again so the next Take Bot Action repeats that same roll.
   const undoTurn = () => {
     closePanel();
     const snap = undo();
-    if (snap) botDieRef.current = snap.ui.botDie;
+    if (snap) {
+      botDieRef.current = snap.ui.botDie;
+      pendingDieRef.current = snap.ui.botDie as CommandNum | null;
+    }
     activeMarkerRef.current = null;
     setLastResult([]);
   };
@@ -892,7 +920,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // marker, resolve the Action space it currently sits on, then advance it.
   const takeBotTurn = () => {
     if (bot.passed || active || pendingTile) return;
-    const die = rollAiDie() as CommandNum;
+    // Reuse a rolled-but-uncommitted die (e.g. after cancelling the dialog, or an
+    // Undo) so it repeats the same roll; otherwise roll fresh.
+    const die = (pendingDieRef.current ?? rollAiDie()) as CommandNum;
+    pendingDieRef.current = die;
     botDieRef.current = die;
     activeMarkerRef.current = die;
     setUi((u) => ({ ...u, botDie: die, activeMarker: die }));
@@ -926,6 +957,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult(instructions);
     setLastResult(instructions);
     activeMarkerRef.current = null;
+    pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
   };
   // ▶ Start on the tile dialog: resolve and close immediately (like the printed
   // actions) — the result lands in History / the turn-status aside, no Done step.
@@ -942,6 +974,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult([]);
     botDieRef.current = null;
     activeMarkerRef.current = null;
+    pendingDieRef.current = null;
     setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
   };
   const changeEra = (d: number) =>
@@ -1409,7 +1442,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   panel={CHRONOSSUS_PANEL}
                   readOnly={tileRuleView}
                   onStart={startTileTurn}
-                  onClose={closeTile}
+                  onClose={cancelPanel}
                 />
               )}
             </div>
