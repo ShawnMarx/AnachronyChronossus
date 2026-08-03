@@ -73,10 +73,10 @@ export const CHRONOSSUS_COUNTERS: BoardCounter[] = [
   { key: 'uranium', pos: [63, 24.1], label: 'Uranium' },
   { key: 'gold', pos: [63, 36.6], label: 'Gold' },
   { key: 'titanium', pos: [63, 49], label: 'Titanium' },
-  { key: 'genius', pos: [73.9, 10.1], label: 'Genius' },
-  { key: 'administrator', pos: [73.9, 22.2], label: 'Administrator' },
-  { key: 'engineer', pos: [73.9, 35.1], label: 'Engineer' },
-  { key: 'scientist', pos: [73.9, 47.4], label: 'Scientist' },
+  { key: 'genius', pos: [73.8, 12.6], label: 'Genius' },
+  { key: 'administrator', pos: [73.8, 24.8], label: 'Administrator' },
+  { key: 'engineer', pos: [73.8, 37.4], label: 'Engineer' },
+  { key: 'scientist', pos: [73.8, 49.9], label: 'Scientist' },
 ];
 
 /** Time Travel marker's 7 spots (0/2/4/6/8/10/12 VP) + marker width. Calibrate. */
