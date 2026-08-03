@@ -2285,7 +2285,7 @@ function CalibrationPanel({
             `${OVERLAY_LABEL[selOverlay]} width`,
             overlayWidths[selOverlay] ?? 6,
             (w) => onOverlayWidth(selOverlay, w),
-            20,
+            30,
           )
         ) : (
           <p className="cal-note">Pick a type below to enable its size slider.</p>

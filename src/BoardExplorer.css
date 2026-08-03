@@ -863,6 +863,8 @@
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
   /* Receive hover so the native `title` tooltip shows (see counterTooltip). */
   pointer-events: auto;
+  /* Always above the bot-placement overlay art (z-index 2) so the count stays readable. */
+  z-index: 6;
 }
 /* During calibration, let clicks pass through to the board for placement. */
 .board-wrap.calibrating .count-badge {
@@ -947,7 +949,9 @@
   position: absolute;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 3;
+  /* Below the trackers/badges (z-index 6) so the count numbers stay readable
+     on top of the art; still above the base board image. */
+  z-index: 2;
   border-radius: 5px;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
 }
