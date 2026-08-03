@@ -169,11 +169,26 @@ export function withOverlayCount<T extends OverlayCountable>(
   }
 }
 
-const seed = (width: number): BotOverlay[] =>
-  OVERLAY_KEYS.map((key) => ({ key, pos: [50, 50], width }));
-
-// Chronobot — placeholder layout (calibrate in-app; emits the literal).
-export const CHRONOBOT_OVERLAYS: BotOverlay[] = seed(6);
+// Chronobot — calibrated (2026-08-03). Columns/rows aligned (resources x=58.3,
+// workers x=69, bottom row y=89.2); widths/curves mirror CHRONOSSUS_OVERLAYS.
+export const CHRONOBOT_OVERLAYS: BotOverlay[] = [
+  { key: 'mech', pos: [84, 12.2], width: 15.8 },
+  { key: 'neutronium', pos: [58.3, 8.2], width: 7.6, curve: 24.2 },
+  { key: 'uranium', pos: [58.3, 20.7], width: 7.7, curve: 24.4 },
+  { key: 'gold', pos: [58.3, 33], width: 7.7, curve: 24.2 },
+  { key: 'titanium', pos: [58.3, 46], width: 7.7, curve: 23.8 },
+  { key: 'genius', pos: [69, 7.9], width: 5.8 },
+  { key: 'administrator', pos: [69, 20.6], width: 5.8 },
+  { key: 'engineer', pos: [69, 33.1], width: 5.8 },
+  { key: 'scientist', pos: [69, 45.8], width: 5.8 },
+  { key: 'powerplant', pos: [42.7, 89.2], width: 12.2 },
+  { key: 'factory', pos: [55.3, 89.2], width: 12.2 },
+  { key: 'support', pos: [67.4, 89.2], width: 12.2 },
+  { key: 'lab', pos: [79.9, 89.2], width: 12.2 },
+  { key: 'anomaly', pos: [93.8, 89.2], width: 12.2 },
+  { key: 'superproject', pos: [22.8, 89.2], width: 25 },
+  { key: 'breakthrough', pos: [5.3, 89.2], width: 5.8 },
+];
 
 // Chronossus — calibrated in-app (2026-08-03).
 export const CHRONOSSUS_OVERLAYS: BotOverlay[] = [
