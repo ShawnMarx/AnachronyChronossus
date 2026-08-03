@@ -51,6 +51,8 @@ import {
   type OverlayKey,
 } from './board/botOverlays';
 import { BotOverlayLayer } from './board/BotOverlayLayer';
+import { overlayCount, withOverlayCount } from './board/botOverlays';
+import { OverlayDebugControls } from './components/OverlayDebugControls';
 import {
   PARADOX_SLOTS,
   TIME_TRAVEL_TRACK,
@@ -1186,6 +1188,14 @@ export default function BoardExplorer({
       onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
       impact={state.impact}
       onToggleImpact={toggleImpact}
+      extra={
+        <OverlayDebugControls
+          count={(k) => overlayCount(bot, k)}
+          onSet={(k, v) =>
+            setState((s) => ({ ...s, chronobot: withOverlayCount(s.chronobot, k, v) }))
+          }
+        />
+      }
     />
   ) : null;
 

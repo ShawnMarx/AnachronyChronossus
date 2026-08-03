@@ -570,6 +570,27 @@
   width: 100%;
   justify-content: center;
 }
+/* Collapsible "set overlay counts" section inside the Debug dropdown. */
+.debug-overlays {
+  border-top: 1px solid rgba(var(--sp-accent-rgb), 0.3);
+  margin-top: 0.15rem;
+  padding-top: 0.3rem;
+}
+.debug-overlays > summary {
+  font-size: 0.8rem;
+  color: var(--sp-text-soft);
+  cursor: pointer;
+  user-select: none;
+  padding: 0.1rem 0;
+}
+.debug-overlays-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.3rem;
+  max-height: 244px;
+  overflow-y: auto;
+}
 .debug-phasejump {
   display: flex;
   align-items: center;
@@ -889,6 +910,14 @@
     drop-shadow(1.6px 0 0 var(--sp-accent-2)) drop-shadow(-1.6px 0 0 var(--sp-accent-2))
     drop-shadow(0 1.6px 0 var(--sp-accent-2)) drop-shadow(0 -1.6px 0 var(--sp-accent-2))
     drop-shadow(0 3px 5px rgba(0, 0, 0, 0.6));
+}
+/* Warp-phase roll result: outline the Warp-tile icon in the bot's accent (teal
+   for Chronossus, purple for Chronobot) — matching the main-board Warp marker. */
+.warp-roll-tile {
+  filter:
+    drop-shadow(1.6px 0 0 var(--sp-accent-2)) drop-shadow(-1.6px 0 0 var(--sp-accent-2))
+    drop-shadow(0 1.6px 0 var(--sp-accent-2)) drop-shadow(0 -1.6px 0 var(--sp-accent-2))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
 }
 /* Match the boxed count-badge style used by every other tracker. */
 .warp-count {

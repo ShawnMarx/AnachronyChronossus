@@ -12,11 +12,12 @@
 
 import type { BoardCounter } from './chronobotHotspots';
 
-/** Overlay types reuse the BoardCounter keys, minus 'mech' (the powered-Exosuit tracker). */
-export type OverlayKey = Exclude<BoardCounter['key'], 'mech'>;
+/** Overlay types reuse the BoardCounter keys ('mech' = the bot's Exosuit). */
+export type OverlayKey = BoardCounter['key'];
 
 /** Stable render/calibrate order: resources, workers, buildings, then the singles. */
 export const OVERLAY_KEYS: OverlayKey[] = [
+  'mech',
   'neutronium',
   'uranium',
   'gold',
@@ -42,6 +43,7 @@ export const OVERLAY_KEYS: OverlayKey[] = [
  */
 const A = '/assets/solo/chronossus';
 export const OVERLAY_ART: Partial<Record<OverlayKey, string>> = {
+  mech: `${A}/exosuit-marker.png`,
   gold: `${A}/resource-gold.png`,
   genius: `${A}/worker-genius.png`,
   administrator: `${A}/worker-administrator.png`,
@@ -58,6 +60,7 @@ export const OVERLAY_ART: Partial<Record<OverlayKey, string>> = {
 
 /** Short human label for each type (calibrate list + tooltips). */
 export const OVERLAY_LABEL: Record<OverlayKey, string> = {
+  mech: 'Exosuit',
   neutronium: 'Neutronium',
   uranium: 'Uranium',
   gold: 'Gold',
@@ -87,6 +90,80 @@ export interface BotOverlay {
 /** Calibration key for one overlay (kept distinct from the count-badge key). */
 export const overlayKey = (key: OverlayKey): string => `ov_${key}`;
 
+/** The bot-state fields overlay counts read/write (shared shape for both bots). */
+export interface OverlayCountable {
+  resources: Record<'neutronium' | 'uranium' | 'gold' | 'titanium', number>;
+  workers: Record<'genius' | 'administrator' | 'engineer' | 'scientist', number>;
+  buildings: Record<'powerplant' | 'factory' | 'support' | 'lab', number>;
+  superprojects: number;
+  anomalies: number;
+  exosuitsAvailable: number;
+  breakthroughs: { circle: number; triangle: number; square: number };
+}
+
+/** How many of `key` the bot currently owns (drives whether its overlay shows). */
+export function overlayCount(bot: OverlayCountable, key: OverlayKey): number {
+  switch (key) {
+    case 'mech':
+      return bot.exosuitsAvailable;
+    case 'superproject':
+      return bot.superprojects;
+    case 'anomaly':
+      return bot.anomalies;
+    case 'breakthrough':
+      return (
+        bot.breakthroughs.circle + bot.breakthroughs.triangle + bot.breakthroughs.square
+      );
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return bot.resources[key];
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist':
+      return bot.workers[key];
+    default:
+      return bot.buildings[key];
+  }
+}
+
+/**
+ * A copy of `bot` with the overlay count for `key` set to `value` (debug-only, so
+ * every overlay can be toggled on without playing a full game). Breakthroughs are
+ * stored on the Circle shape for simplicity — the overlay only cares about the sum.
+ */
+export function withOverlayCount<T extends OverlayCountable>(
+  bot: T,
+  key: OverlayKey,
+  value: number,
+): T {
+  const v = Math.max(0, Math.round(value));
+  switch (key) {
+    case 'mech':
+      return { ...bot, exosuitsAvailable: v };
+    case 'superproject':
+      return { ...bot, superprojects: v };
+    case 'anomaly':
+      return { ...bot, anomalies: v };
+    case 'breakthrough':
+      return { ...bot, breakthroughs: { circle: v, triangle: 0, square: 0 } };
+    case 'neutronium':
+    case 'uranium':
+    case 'gold':
+    case 'titanium':
+      return { ...bot, resources: { ...bot.resources, [key]: v } };
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist':
+      return { ...bot, workers: { ...bot.workers, [key]: v } };
+    default:
+      return { ...bot, buildings: { ...bot.buildings, [key]: v } };
+  }
+}
+
 const seed = (width: number): BotOverlay[] =>
   OVERLAY_KEYS.map((key) => ({ key, pos: [50, 50], width }));
 
@@ -95,6 +172,7 @@ export const CHRONOBOT_OVERLAYS: BotOverlay[] = seed(6);
 
 // Chronossus — calibrated in-app (2026-08-03).
 export const CHRONOSSUS_OVERLAYS: BotOverlay[] = [
+  { key: 'mech', pos: [50, 50], width: 6 }, // TODO calibrate
   { key: 'neutronium', pos: [63, 8.2], width: 6 },
   { key: 'uranium', pos: [62.8, 20.6], width: 6 },
   { key: 'gold', pos: [62.9, 33], width: 7.2 },

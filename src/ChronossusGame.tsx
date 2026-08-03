@@ -106,6 +106,8 @@ import {
   type OverlayKey,
 } from './board/botOverlays';
 import { BotOverlayLayer } from './board/BotOverlayLayer';
+import { overlayCount, withOverlayCount } from './board/botOverlays';
+import { OverlayDebugControls } from './components/OverlayDebugControls';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 
@@ -1210,6 +1212,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             warpTilesOnTimeline: Math.max(0, s.chronossus!.warpTilesOnTimeline + d),
           },
         }))
+      }
+      extra={
+        <OverlayDebugControls
+          count={(k) => overlayCount(bot, k)}
+          onSet={(k, v) =>
+            setState((s) => ({
+              ...s,
+              chronossus: withOverlayCount(s.chronossus!, k, v),
+            }))
+          }
+        />
       }
     />
   ) : null;
