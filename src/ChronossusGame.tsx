@@ -112,16 +112,20 @@ export function clearSavedChronossus(): void {
   clearPersisted(CX_PERSIST_KEY);
 }
 
-/** The transient per-view slice (Command-marker positions + shown AI die). */
+/** The transient per-view slice (Command-marker positions + shown AI die +
+ *  this Era's Power-Up draw). Persisted, so a reload during Power Up restores the
+ *  result instead of offering a second draw. */
 interface ChronossusUi {
   markerSteps: Record<CommandNum, number>;
   botDie: number | null;
   activeMarker: CommandNum | null;
+  lastDraw: EnergyDraw | null;
 }
 const emptyCxUi = (): ChronossusUi => ({
   markerSteps: initialMarkerSteps(),
   botDie: null,
   activeMarker: null,
+  lastDraw: null,
 });
 
 // Simple Command View is a display preference shared across bots (own key).
@@ -344,7 +348,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const markerSteps = ui.markerSteps;
   const activeMarker = ui.activeMarker;
   const botDie = ui.botDie;
-  const [lastDraw, setLastDraw] = useState<EnergyDraw | null>(null);
+  const lastDraw = ui.lastDraw; // this Era's Power-Up draw (persisted in the ui slice)
   const [showHistory, setShowHistory] = useState(false);
   const [modeRules, setModeRules] = useState(false); // GameBrain rules overlay open
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
@@ -561,6 +565,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       markerSteps: nextMarkerSteps,
       botDie: botDieRef.current,
       activeMarker: activeMarkerRef.current,
+      lastDraw: ui.lastDraw,
     };
   };
 
@@ -859,16 +864,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
   };
   const drawAndPowerUp = () => {
+    if (ui.lastDraw) return; // already drawn this Era — never deplete the pool twice
     const draw = drawEnergyPool(bot.energyPool);
-    setLastDraw(draw);
     // resolvePowerUp advances to Warp; stay on 'powerup' to show the result. Commit
-    // so the power-up lands in History (like the Chronobot's phase events).
+    // so the power-up lands in History (like the Chronobot's phase events), and keep
+    // the draw in the persisted ui so a reload restores it (no second draw).
     const resolved = Chronossus.resolvePowerUp(state, draw);
     const next = { ...resolved, phase: 'powerup' as Phase };
     const b = next.chronossus!;
     commit(
       next,
-      ui,
+      { ...ui, lastDraw: draw },
       `Era ${state.era} · Power Up: ${b.exosuitsAvailable} Exosuit${b.exosuitsAvailable === 1 ? '' : 's'}`,
       [
         `Drew ${draw.energized} Energy + ${draw.exhausted} Exhausted`,
@@ -919,17 +925,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const afterCleanUp = () => {
     const next = finishEra(state);
-    setLastDraw(null);
+    setUi((u) => ({ ...u, lastDraw: null }));
     setState(next);
   };
   // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
   // 5–6 when flipping Collapsing Capital tiles). Mirrors the Chronobot exactly.
   const endGameNow = () => {
-    setLastDraw(null);
+    setUi((u) => ({ ...u, lastDraw: null }));
     setState((s) => ({ ...s, phase: 'endgame', finished: true }));
   };
   const goPhase = (p: Phase) => {
     closePanel();
+    // Leaving Power Up consumes this Era's draw (so it can't re-show / re-draw).
+    setUi((u) => ({ ...u, lastDraw: null }));
     setState((s) => ({ ...s, phase: p }));
   };
   const reset = () => {
@@ -938,7 +946,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     hookReset(initState(), emptyCxUi());
     closePanel();
     setLastResult([]);
-    setLastDraw(null);
     setCalibrate(false);
     setShowHistory(false);
     setShowFirstPlayer(false);
