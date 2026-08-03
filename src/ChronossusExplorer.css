@@ -502,6 +502,16 @@
 .cx-energy b {
   font-variant-numeric: tabular-nums;
 }
+/* Exosuit icon + count (replaces the 🦾 emoji). */
+.cx-exosuit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.cx-exosuit img {
+  width: auto;
+  display: block;
+}
 /* Let the icon flags sit inline nicely in the stat bar / Turn popover. */
 .cx-stats .cx-stats-energy,
 .eoa-flag.cx-energy-flag {

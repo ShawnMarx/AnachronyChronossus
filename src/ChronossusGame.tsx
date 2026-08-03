@@ -286,6 +286,17 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
 
 const EC_ICON = '/assets/solo/chronossus/energy-core.png';
 const EEC_ICON = '/assets/solo/chronossus/exhausted-energy-core.png';
+const EXOSUIT_ICON = '/assets/solo/chronossus/exosuit.png';
+
+/** The Exosuit icon + count (replaces the 🦾 emoji in the stat bar / Turn popover). */
+function CxExosuit({ count, size = 18 }: { count: number; size?: number }) {
+  return (
+    <span className="cx-exosuit">
+      <img src={EXOSUIT_ICON} alt="Powered Exosuits" style={{ height: size }} />
+      {count} Exo
+    </span>
+  );
+}
 
 /** The Chronossus Energy Pool shown with its component icons + counts
  *  (Energy Core ×N / Exhausted Energy Core ×N), e.g. the "EC5 / EEC3" display. */
@@ -954,7 +965,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   const stats = (
     <div className="cx-stats">
-      <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exo</span>
+      <span title="Powered Exosuits available">
+        <CxExosuit count={bot.exosuitsAvailable} size={18} />
+      </span>
       <span className="cx-stats-energy" title="Energy Pool — Energy Cores / Exhausted Energy Cores">
         <CxEnergyPool pool={bot.energyPool} size={18} />
       </span>
@@ -1453,8 +1466,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               countLabel="Turns"
               extraFlags={
                 <>
-                  <span className="eoa-flag" title="Powered Exosuits available">
-                    🦾 {bot.exosuitsAvailable} Exo
+                  <span className="eoa-flag cx-exosuit-flag" title="Powered Exosuits available">
+                    <CxExosuit count={bot.exosuitsAvailable} size={18} />
                   </span>
                   <span
                     className="eoa-flag cx-energy-flag"
