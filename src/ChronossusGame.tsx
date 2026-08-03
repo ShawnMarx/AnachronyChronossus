@@ -1459,6 +1459,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 variant="below"
               />
             )}
+            {showHistory && !calibrate && (
+              <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
+            )}
           </div>
           {calibrate && (
             <CalibrationPanel
@@ -1488,9 +1491,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 Continue to Clean Up ▶
               </button>
             </div>
-          )}
-          {showHistory && !calibrate && (
-            <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
           )}
           {!calibrate && showStatus && (
             <TurnBarOverview

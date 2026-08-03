@@ -300,17 +300,20 @@
 }
 
 /* History pane — right-docked column */
+/* In-flow flex child docked to the RIGHT of the board (mirrors .scv-side on the
+   left) rather than fixed to the screen edge. Opening it shifts the board left. */
 .history-pane {
-  position: fixed;
-  top: 3.4rem; /* sit below the top bar so its controls stay reachable */
-  right: 0;
-  bottom: 0;
-  width: min(340px, 88vw);
-  background: var(--sp-panel-2);
-  border-left: 1px solid var(--sp-accent);
-  border-top: 1px solid rgba(var(--sp-accent-rgb), 0.4);
-  box-shadow: -6px 0 20px rgba(0, 0, 0, 0.5);
-  z-index: 60;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  align-self: stretch;
+  width: min(340px, 32vw);
+  max-height: 100%;
+  margin-left: 12px;
+  overflow-y: auto;
+  background: rgba(var(--sp-panel-rgb), 0.94);
+  border: 1px solid var(--sp-accent);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
   display: flex;
   flex-direction: column;
 }
@@ -610,14 +613,6 @@
   align-items: flex-start; /* keep the board pinned to the top; it shrinks to fit */
   justify-content: center;
   padding: 0.5rem;
-  transition: padding-right 0.2s ease;
-}
-/* When the History pane is open and there's room, reserve space so the board
-   shifts left instead of being covered. Narrow screens keep the overlay. */
-@media (min-width: 760px) {
-  .board-stage.with-history {
-    padding-right: calc(min(340px, 88vw) + 0.5rem);
-  }
 }
 .board-wrap {
   position: relative;

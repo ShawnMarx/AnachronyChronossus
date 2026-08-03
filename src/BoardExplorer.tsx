@@ -1539,6 +1539,9 @@ export default function BoardExplorer({
             variant="below"
           />
         )}
+        {showHistory && (
+          <HistoryPane entries={undoStack} onClose={() => setShowHistory(false)} />
+        )}
       </div>
   );
 
@@ -1593,10 +1596,6 @@ export default function BoardExplorer({
           passingRule={PASSING_RULE}
           onClose={() => setShowStatus(false)}
         />
-      )}
-
-      {showHistory && (
-        <HistoryPane entries={undoStack} onClose={() => setShowHistory(false)} />
       )}
 
       {calibrate && (
