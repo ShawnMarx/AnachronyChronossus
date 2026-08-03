@@ -409,6 +409,13 @@
   border-color: var(--cx-amber);
   box-shadow: 0 0 0 2px rgba(232, 146, 46, 0.6);
 }
+/* Chronossus action spots are transparent click targets over the printed tiles,
+   so drop the shared purple hover highlight (click + tooltip still work; the
+   active state is kept). */
+.chronossus-harness .hotspot:hover:not(.active) {
+  box-shadow: none;
+  background: transparent;
+}
 .chronossus-harness .tt-marker {
   filter:
     drop-shadow(1.6px 0 0 #2e8c8c) drop-shadow(-1.6px 0 0 #2e8c8c)
