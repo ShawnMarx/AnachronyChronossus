@@ -62,10 +62,10 @@ export const BOARD_COUNTERS: BoardCounter[] = [
   { key: 'gold', pos: [58.3, 36.5], label: 'Gold' },
   { key: 'titanium', pos: [58.3, 49.1], label: 'Titanium' },
   // Worker trackers — calibrated in-app (2026-07-26).
-  { key: 'genius', pos: [69.1, 9.8], label: 'Genius' },
-  { key: 'administrator', pos: [69.1, 22.1], label: 'Administrator' },
-  { key: 'engineer', pos: [69.1, 35], label: 'Engineer' },
-  { key: 'scientist', pos: [69.1, 47.4], label: 'Scientist' },
+  { key: 'genius', pos: [69.1, 12.3], label: 'Genius' },
+  { key: 'administrator', pos: [69.1, 24.7], label: 'Administrator' },
+  { key: 'engineer', pos: [69.1, 37.3], label: 'Engineer' },
+  { key: 'scientist', pos: [69.1, 49.9], label: 'Scientist' },
 ];
 
 // Action-tile hotspots — [left, top, width, height] %, calibrated in-app
