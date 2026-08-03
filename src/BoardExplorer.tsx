@@ -44,6 +44,14 @@ import {
   type Hotspot,
 } from './board/chronobotHotspots';
 import {
+  CHRONOBOT_OVERLAYS,
+  OVERLAY_KEYS,
+  OVERLAY_LABEL,
+  overlayKey,
+  type OverlayKey,
+} from './board/botOverlays';
+import { BotOverlayLayer } from './board/BotOverlayLayer';
+import {
   PARADOX_SLOTS,
   TIME_TRAVEL_TRACK,
   WARP_MARKER,
@@ -75,7 +83,9 @@ const PARADOX_KEYS = PARADOX_SLOTS.slots.map((_, i) => `paradox${i}`);
 /** Calibration key for one action-tile hotspot, anchored at its box top-left. */
 const hotspotKey = (id: string) => `hs_${id}`;
 const HOTSPOT_KEYS = CHRONOBOT_HOTSPOTS.map((h) => hotspotKey(h.id));
-/** Every calibratable point: count badges, 7 TT spots, path steps, warp, paradox, hotspots. */
+/** Calibration keys for the bot-placement overlay images (one per type). */
+const OV_KEYS = OVERLAY_KEYS.map((k) => overlayKey(k));
+/** Every calibratable point: count badges, 7 TT spots, path steps, warp, paradox, hotspots, overlays. */
 const CAL_KEYS: string[] = [
   ...HOTSPOT_KEYS,
   ...BOARD_COUNTERS.map((c) => c.key),
@@ -83,6 +93,7 @@ const CAL_KEYS: string[] = [
   ...PATH_KEYS,
   WARP_KEY,
   ...PARADOX_KEYS,
+  ...OV_KEYS,
 ];
 
 /** Phases the Debug jump-to-phase bar can hop between (both bots share this list). */
@@ -632,7 +643,12 @@ export default function BoardExplorer({
           [h.rect[0] + h.rect[2] / 2, h.rect[1] + h.rect[3] / 2],
         ]),
       ),
+      ...Object.fromEntries(CHRONOBOT_OVERLAYS.map((o) => [overlayKey(o.key), o.pos])),
     }),
+  );
+  // Per-type overlay-image widths (calibrated separately from position).
+  const [overlayWidths, setOverlayWidths] = useState<Record<string, number>>(() =>
+    Object.fromEntries(CHRONOBOT_OVERLAYS.map((o) => [o.key, o.width])),
   );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
@@ -1430,6 +1446,18 @@ export default function BoardExplorer({
             );
           })}
 
+          {/* Bot-placement overlay art — covers the real board spot when the bot
+              owns > 0 of a type (buildings, resources, workers, etc.). */}
+          <BotOverlayLayer
+            overlays={CHRONOBOT_OVERLAYS}
+            count={(k) => counterValue(bot, k)}
+            positions={positions}
+            widths={overlayWidths}
+            calibrate={calibrate}
+            selected={selected}
+            onSelect={setSelected}
+          />
+
           {/* Time Travel marker — at its track spot; all 7 shown while calibrating. */}
           {calibrate
             ? TT_KEYS.map((key, i) => {
@@ -1643,6 +1671,10 @@ export default function BoardExplorer({
           onHotspotWidth={setHotspotWidth}
           hotspotHeight={hotspotHeight}
           onHotspotHeight={setHotspotHeight}
+          overlayWidths={overlayWidths}
+          onOverlayWidth={(key, w) =>
+            setOverlayWidths((m) => ({ ...m, [key]: w }))
+          }
         />
       )}
     </>
@@ -2269,6 +2301,8 @@ function CalibrationPanel({
   onHotspotWidth,
   hotspotHeight,
   onHotspotHeight,
+  overlayWidths,
+  onOverlayWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -2285,6 +2319,8 @@ function CalibrationPanel({
   onHotspotWidth: (w: number) => void;
   hotspotHeight: number;
   onHotspotHeight: (h: number) => void;
+  overlayWidths: Record<string, number>;
+  onOverlayWidth: (key: OverlayKey, w: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -2336,6 +2372,15 @@ function CalibrationPanel({
       return `    [${x}, ${y}],`;
     }).join('\n') +
     `\n  ],\n  width: ${paradoxWidth},\n};`;
+  const overlayLiteral =
+    'export const CHRONOBOT_OVERLAYS: BotOverlay[] = [\n' +
+    OVERLAY_KEYS.map((key) => {
+      const [x, y] = positions[overlayKey(key)] ?? [50, 50];
+      const w = overlayWidths[key] ?? 6;
+      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w} },`;
+    }).join('\n') +
+    '\n];';
+  const selOverlay = OVERLAY_KEYS.find((k) => overlayKey(k) === selected);
   const ttLabel = (i: number) =>
     i === 0 ? 'TT start (0 VP)' : `TT +${i} (${Chronobot.TIME_TRAVEL_VP[i]} VP)`;
   const pathLabel = (path: PathId, i: number) =>
@@ -2454,6 +2499,35 @@ function CalibrationPanel({
           )}
         </div>
         <textarea className="cal-out" readOnly value={paradoxLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Bot overlays ({OVERLAY_KEYS.length})</summary>
+        <p className="cal-note">
+          Art that covers the real board spot; shows when the bot owns &gt; 0.
+          Select a type to resize just that image.
+        </p>
+        {selOverlay ? (
+          sizeSlider(
+            `${OVERLAY_LABEL[selOverlay]} width`,
+            overlayWidths[selOverlay] ?? 6,
+            (w) => onOverlayWidth(selOverlay, w),
+            20,
+          )
+        ) : (
+          <p className="cal-note">Pick a type below to enable its size slider.</p>
+        )}
+        <div className="cal-list">
+          {OVERLAY_KEYS.map((key) =>
+            item(
+              overlayKey(key),
+              OVERLAY_LABEL[key],
+              positions[overlayKey(key)] ?? [50, 50],
+              'overlay-item',
+            ),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={overlayLiteral} />
       </details>
     </div>
   );

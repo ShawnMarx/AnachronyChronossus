@@ -98,6 +98,14 @@ import {
 } from './board/chronossusPaths';
 import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
 import { CHRONOSSUS_TILES, TILE_ACTION_CODE } from './board/chronossusTiles';
+import {
+  CHRONOSSUS_OVERLAYS,
+  OVERLAY_KEYS,
+  OVERLAY_LABEL,
+  overlayKey,
+  type OverlayKey,
+} from './board/botOverlays';
+import { BotOverlayLayer } from './board/BotOverlayLayer';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 
@@ -225,6 +233,7 @@ const CAL_KEYS: string[] = [
   ...TT_KEYS,
   WARP_KEY,
   ...PDX_KEYS,
+  ...OVERLAY_KEYS.map((k) => overlayKey(k)),
 ];
 
 /** Short effect text for the modular tile actions (for slot tooltips). */
@@ -434,8 +443,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     CHRONOSSUS_TIME_TRAVEL_TRACK.spots.forEach((p, i) => (seed[ttKey(i)] = p));
     seed[WARP_KEY] = CHRONOSSUS_WARP_MARKER.pos;
     CHRONOSSUS_PARADOX_SLOTS.slots.forEach((p, i) => (seed[pdxKey(i)] = p));
+    for (const o of CHRONOSSUS_OVERLAYS) seed[overlayKey(o.key)] = o.pos;
     return seed;
   });
+  // Per-type overlay-image widths (calibrated separately from position).
+  const [overlayWidths, setOverlayWidths] = useState<Record<string, number>>(() =>
+    Object.fromEntries(CHRONOSSUS_OVERLAYS.map((o) => [o.key, o.width])),
+  );
   const [selected, setSelected] = useState<string>(CAL_KEYS[0]);
   const [hsWidth, setHsWidth] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[2]);
   const [hsHeight, setHsHeight] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[3]);
@@ -1391,6 +1405,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 );
               })}
 
+              {/* Bot-placement overlay art — covers the real board spot when the
+                  Chronossus owns > 0 of a type. Shared art with the Chronobot. */}
+              <BotOverlayLayer
+                overlays={CHRONOSSUS_OVERLAYS}
+                count={(k) => counterValue(bot, k)}
+                positions={positions}
+                widths={overlayWidths}
+                calibrate={calibrate}
+                selected={selected}
+                onSelect={setSelected}
+              />
+
               {/* Time Travel marker — at its track spot; all 7 shown while calibrating. */}
               {calibrate
                 ? TT_KEYS.map((key, i) => {
@@ -1540,6 +1566,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               onWarpWidth={setWarpWidth}
               paradoxWidth={paradoxWidth}
               onParadoxWidth={setParadoxWidth}
+              overlayWidths={overlayWidths}
+              onOverlayWidth={(key, w) =>
+                setOverlayWidths((m) => ({ ...m, [key]: w }))
+              }
             />
           )}
           {bothPassed && !showFirstPlayer && (
@@ -2055,6 +2085,8 @@ function CalibrationPanel({
   onWarpWidth,
   paradoxWidth,
   onParadoxWidth,
+  overlayWidths,
+  onOverlayWidth,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -2073,6 +2105,8 @@ function CalibrationPanel({
   onWarpWidth: (w: number) => void;
   paradoxWidth: number;
   onParadoxWidth: (w: number) => void;
+  overlayWidths: Record<string, number>;
+  onOverlayWidth: (key: OverlayKey, w: number) => void;
 }) {
   const hotspotLiteral =
     'export const CHRONOSSUS_ACTION_HOTSPOTS: Hotspot[] = [\n' +
@@ -2123,6 +2157,15 @@ function CalibrationPanel({
       return `    [${x}, ${y}],`;
     }).join('\n') +
     `\n  ],\n  width: ${paradoxWidth},\n};`;
+  const overlayLiteral =
+    'export const CHRONOSSUS_OVERLAYS: BotOverlay[] = [\n' +
+    OVERLAY_KEYS.map((key) => {
+      const [x, y] = positions[overlayKey(key)] ?? [50, 50];
+      const w = overlayWidths[key] ?? 6;
+      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w} },`;
+    }).join('\n') +
+    '\n];';
+  const selOverlay = OVERLAY_KEYS.find((k) => overlayKey(k) === selected);
   const ttLabel = (i: number) => (i === 0 ? 'TT start (0 VP)' : `TT +${i}`);
 
   const item = (key: string, label: React.ReactNode, def: [number, number]) => (
@@ -2229,6 +2272,30 @@ function CalibrationPanel({
           {PDX_KEYS.map((key, i) => item(key, `Paradox ${i + 1}`, CHRONOSSUS_PARADOX_SLOTS.slots[i]))}
         </div>
         <textarea className="cal-out" readOnly value={paradoxLiteral} />
+      </details>
+
+      <details className="cal-group">
+        <summary>Bot overlays ({OVERLAY_KEYS.length})</summary>
+        <p className="cal-note">
+          Art that covers the real board spot; shows when the bot owns &gt; 0.
+          Select a type to resize just that image.
+        </p>
+        {selOverlay ? (
+          sizeSlider(
+            `${OVERLAY_LABEL[selOverlay]} width`,
+            overlayWidths[selOverlay] ?? 6,
+            (w) => onOverlayWidth(selOverlay, w),
+            20,
+          )
+        ) : (
+          <p className="cal-note">Pick a type below to enable its size slider.</p>
+        )}
+        <div className="cal-list">
+          {OVERLAY_KEYS.map((key) =>
+            item(overlayKey(key), OVERLAY_LABEL[key], positions[overlayKey(key)] ?? [50, 50]),
+          )}
+        </div>
+        <textarea className="cal-out" readOnly value={overlayLiteral} />
       </details>
     </div>
   );

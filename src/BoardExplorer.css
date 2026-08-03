@@ -941,6 +941,42 @@
     drop-shadow(0 0 6px rgba(240, 171, 252, 0.9));
 }
 
+/* Bot-placement overlay art (buildings/resources/workers/etc. the bot owns) —
+   covers the real board spot; shows when count > 0. Shared by both boards. */
+.bot-overlay {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 3;
+  border-radius: 5px;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+}
+.board-wrap.calibrating .bot-overlay {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.bot-overlay.cal-ghost {
+  opacity: 0.4;
+}
+.bot-overlay.cal-selected {
+  opacity: 1;
+  outline: 2px solid var(--sp-accent-3, #f0abfc);
+  filter: drop-shadow(0 0 7px rgba(240, 171, 252, 0.9));
+}
+/* Placeholder box for types whose art isn't made yet (calibrate only). */
+.bot-overlay-ghost {
+  display: grid;
+  place-items: center;
+  min-width: 3.5%;
+  padding: 0.25em 0.4em;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: center;
+  color: #fff;
+  background: rgba(90, 60, 120, 0.6);
+  border: 1px dashed rgba(255, 255, 255, 0.7);
+}
+
 /* Debug-only Paradox +/- control */
 .paradox-ctl {
   display: inline-flex;
