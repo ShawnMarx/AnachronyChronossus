@@ -508,6 +508,13 @@
   display: inline-flex;
   align-items: center;
 }
+/* Power Up phase: the current Energy Pool makeup shown above the Draw button. */
+.cx-pool-makeup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.2rem 0 0.9rem;
+}
 /* Exosuit-badge popover: exosuit line + Energy Pool row. */
 .cx-mech-pop {
   display: flex;

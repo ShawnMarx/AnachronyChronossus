@@ -1571,7 +1571,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>
             </>
           ) : (
-            <button className="phase-primary" onClick={drawAndPowerUp}>🔋 Draw 3 from the Energy Pool</button>
+            <>
+              <div className="cx-pool-makeup" title="Current Energy Pool makeup">
+                <CxEnergyPool pool={bot.energyPool} size={26} />
+              </div>
+              <button className="phase-primary" onClick={drawAndPowerUp}>
+                Draw 3 from the Energy Pool
+              </button>
+            </>
           )}
         </>
       );
