@@ -50,6 +50,10 @@
   border-color: rgba(var(--sp-accent-2-rgb), 0.9);
   background: rgba(var(--sp-accent-rgb), 0.16);
 }
+/* Ready-to-begin / First-Player dialog — hardcodes the Chronobot purple bg. */
+:root[data-bot='chronossus'] .fp-dialog {
+  background: var(--sp-panel);
+}
 
 .chronossus-harness {
   --cx-orange: #c4551f;
