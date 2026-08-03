@@ -1563,22 +1563,45 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           {meta?.rules && <p className="phase-note">{meta.rules}</p>}
           {lastDraw ? (
             <>
-              <p className="cx-drawn">
-                Drew <b>{lastDraw.energized}</b> Energy + <b>{lastDraw.exhausted}</b> Exhausted →
-                powered up <b>{bot.exosuitsAvailable}</b> Exosuit{bot.exosuitsAvailable === 1 ? '' : 's'}.
-                Pool now {bot.energyPool.energized}/{bot.energyPool.exhausted}.
-              </p>
+              <div className="cx-drawn">
+                <div className="cx-drawn-row">
+                  <span className="cx-drawn-label">
+                    Drew {lastDraw.energized + lastDraw.exhausted}:
+                  </span>
+                  <CxEnergyPool
+                    pool={{ energized: lastDraw.energized, exhausted: lastDraw.exhausted }}
+                    size={24}
+                  />
+                </div>
+                <div className="cx-drawn-row">
+                  <span className="cx-drawn-label">Back to the pool:</span>
+                  {lastDraw.exhausted > 0 ? (
+                    <span className="cx-energy" title="One Exhausted Energy Core returns">
+                      <img src={EEC_ICON} alt="Exhausted Energy Core" style={{ height: 24 }} />
+                      <b>1</b>
+                    </span>
+                  ) : (
+                    <span className="cx-drawn-none">nothing</span>
+                  )}
+                  <span className="cx-drawn-note">
+                    (the rest are removed from the game)
+                  </span>
+                </div>
+                <div className="cx-drawn-row">
+                  <span className="cx-drawn-label">Pool now:</span>
+                  <CxEnergyPool pool={bot.energyPool} size={24} />
+                </div>
+                <p className="phase-note">
+                  Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
+                  {bot.exosuitsAvailable === 1 ? '' : 's'}.
+                </p>
+              </div>
               <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>
             </>
           ) : (
-            <>
-              <div className="cx-pool-makeup" title="Current Energy Pool makeup">
-                <CxEnergyPool pool={bot.energyPool} size={26} />
-              </div>
-              <button className="phase-primary" onClick={drawAndPowerUp}>
-                Draw 3 from the Energy Pool
-              </button>
-            </>
+            <button className="phase-primary" onClick={drawAndPowerUp}>
+              Draw 3 from the Energy Pool
+            </button>
           )}
         </>
       );
