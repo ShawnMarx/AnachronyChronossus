@@ -26,6 +26,7 @@ import {
   AnchoredPopover,
   BadgePopover,
   ShapeIcon,
+  SettingsMenu,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -42,7 +43,6 @@ import { ActionIcon } from './board/ActionIcon';
 import RulesBox from './phases/RulesBox';
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import { rulesFrameUrl } from './rules/gamebrain';
-import { useAuth } from './auth/useAuth';
 import {
   Chronobot,
   Chronossus,
@@ -412,10 +412,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // re-hitting Take Bot Action repeats the same roll / action rather than re-rolling.
   const pendingDieRef = useRef<CommandNum | null>(null);
 
-  const { user } = useAuth();
-
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
+  const [outline, setOutline] = useState(false); // debug: show tile hit-boxes
   const [paradoxes, setParadoxes] = useState(0); // debug: fill 0–3 Paradox slots
   const [positions, setPositions] = useState<Record<string, [number, number]>>(() => {
     const seed: Record<string, [number, number]> = {};
@@ -996,6 +995,41 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   );
   const turnsThisEra = thisEraEntries.length;
 
+  // Debug toggle: turning it OFF also forces the dev-only outline/calibrate off
+  // (so they can't get stuck on) and closes any open panel — mirrors the Chronobot.
+  const toggleDebug = () => {
+    setDebug((d) => {
+      const next = !d;
+      if (!next) {
+        setOutline(false);
+        setCalibrate(false);
+      }
+      return next;
+    });
+  };
+
+  // The shared ⚙ settings menu (identical to the Chronobot; themed via the
+  // Chronossus tokens). One element, rendered in both the top bar and the rules
+  // frame — each gets its own open state.
+  const settingsMenu = (
+    <SettingsMenu
+      debug={debug}
+      onToggleDebug={toggleDebug}
+      outline={outline}
+      onToggleOutline={() => setOutline((o) => !o)}
+      calibrate={calibrate}
+      onToggleCalibrate={() => {
+        closePanel();
+        setCalibrate((c) => !c);
+      }}
+      onReset={reset}
+      historyOpen={showHistory}
+      onToggleHistory={() => setShowHistory((v) => !v)}
+      simpleView={simpleView}
+      onToggleSimpleView={() => setSimpleView((v) => !v)}
+    />
+  );
+
   const stats = (
     <div className="cx-stats">
       <span title="Powered Exosuits available">
@@ -1072,21 +1106,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       )}
       <div className="stats-controls">
         <RulesButton onClick={() => setModeRules(true)} />
-        <CxSettingsMenu
-          debug={debug}
-          isAdmin={!!user?.isAdmin}
-          onToggleDebug={() => setDebug((d) => !d)}
-          calibrate={calibrate}
-          onToggleCalibrate={() => {
-            closePanel();
-            setCalibrate((c) => !c);
-          }}
-          historyOpen={showHistory}
-          onToggleHistory={() => setShowHistory((v) => !v)}
-          simpleView={simpleView}
-          onToggleSimpleView={() => setSimpleView((v) => !v)}
-          onReset={reset}
-        />
+        {settingsMenu}
       </div>
     </div>
   );
@@ -1100,23 +1120,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       onBack={() => setModeRules(false)}
       onHome={onHome}
       src={rulesFrameUrl('Solo Chronossus')}
-      settings={
-        <CxSettingsMenu
-          debug={debug}
-          isAdmin={!!user?.isAdmin}
-          onToggleDebug={() => setDebug((d) => !d)}
-          calibrate={calibrate}
-          onToggleCalibrate={() => {
-            closePanel();
-            setCalibrate((c) => !c);
-          }}
-          historyOpen={showHistory}
-          onToggleHistory={() => setShowHistory((v) => !v)}
-          simpleView={simpleView}
-          onToggleSimpleView={() => setSimpleView((v) => !v)}
-          onReset={reset}
-        />
-      }
+      settings={settingsMenu}
     />
   );
 
@@ -1190,7 +1194,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     key={h.id}
                     // Transparent click target over the tile printed on the board
                     // (no overlaid image). `outlined` only while calibrating.
-                    className={`hotspot ${calibrate ? 'outlined' : ''} ${isActive ? 'active' : ''} ${sel ? 'cal-selected' : ''}`}
+                    className={`hotspot ${outline || calibrate ? 'outlined' : ''} ${isActive ? 'active' : ''} ${sel ? 'cal-selected' : ''}`}
                     style={{
                       left: `${l}%`,
                       top: `${t}%`,
@@ -2233,111 +2237,3 @@ function CxVpPill({
   );
 }
 
-/** Top-right ⚙ menu: Debug toggle + Calibrate (admin), and Reset Game. */
-function CxSettingsMenu({
-  debug,
-  isAdmin,
-  onToggleDebug,
-  calibrate,
-  onToggleCalibrate,
-  historyOpen,
-  onToggleHistory,
-  simpleView,
-  onToggleSimpleView,
-  onReset,
-}: {
-  debug: boolean;
-  isAdmin: boolean;
-  onToggleDebug: () => void;
-  calibrate: boolean;
-  onToggleCalibrate: () => void;
-  historyOpen: boolean;
-  onToggleHistory: () => void;
-  simpleView: boolean;
-  onToggleSimpleView: () => void;
-  onReset: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!(e.target as HTMLElement).closest('.settings-menu')) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    window.addEventListener('mousedown', onDown);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('mousedown', onDown);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-  return (
-    <div className="settings-menu">
-      <button
-        className={`gear-btn ${debug ? 'debug-on' : ''} ${open ? 'on' : ''}`}
-        onClick={() => setOpen((o) => !o)}
-        title="Settings"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        ⚙
-      </button>
-      {open && (
-        <div className="settings-dropdown" role="menu">
-          {/* Debug defaults ON for the Chronossus preview; always let it be turned
-              OFF (the view is already admin/local-gated at the landing). */}
-          {(isAdmin || debug) && (
-            <>
-              <button
-                className="settings-item toggle"
-                onClick={onToggleDebug}
-                role="menuitemcheckbox"
-                aria-checked={debug}
-              >
-                <span>Debug mode</span>
-                <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
-              </button>
-              {debug && (
-                <button
-                  className="settings-item toggle sub"
-                  onClick={onToggleCalibrate}
-                  role="menuitemcheckbox"
-                  aria-checked={calibrate}
-                >
-                  <span>Calibrate positions</span>
-                  <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
-                </button>
-              )}
-              <div className="settings-sep" />
-            </>
-          )}
-          <button
-            className="settings-item toggle"
-            onClick={onToggleSimpleView}
-            role="menuitemcheckbox"
-            aria-checked={simpleView}
-          >
-            <span>Simple Command View</span>
-            <span className={`sw ${simpleView ? 'on' : ''}`}>{simpleView ? 'ON' : 'OFF'}</span>
-          </button>
-          <button
-            className="settings-item toggle"
-            onClick={onToggleHistory}
-            role="menuitemcheckbox"
-            aria-checked={historyOpen}
-          >
-            <span>🕑 History</span>
-            <span className={`sw ${historyOpen ? 'on' : ''}`}>{historyOpen ? 'ON' : 'OFF'}</span>
-          </button>
-          <button className="settings-item" disabled role="menuitem" title="Coming soon">
-            Log in (soon)
-          </button>
-          <div className="settings-sep" />
-          <button className="settings-item danger" onClick={onReset} role="menuitem">
-            ⟳ Reset Game
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}

@@ -2802,8 +2802,9 @@ function SimpleCommandView({
   );
 }
 
-/** Top-right ⚙ menu: play/debug, dev toggles (in debug), and Reset Game. */
-function SettingsMenu({
+/** Top-right ⚙ menu: play/debug, dev toggles (in debug), and Reset Game.
+ *  Shared by both solo-bot views so the menu items/behavior stay identical. */
+export function SettingsMenu({
   debug,
   onToggleDebug,
   outline,
