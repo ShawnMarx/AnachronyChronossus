@@ -44,7 +44,10 @@ export const OVERLAY_KEYS: OverlayKey[] = [
 const A = '/assets/solo/chronossus';
 export const OVERLAY_ART: Partial<Record<OverlayKey, string>> = {
   mech: `${A}/exosuit-marker.png`,
+  neutronium: `${A}/resource-neutronium.png`,
+  uranium: `${A}/resource-uranium.png`,
   gold: `${A}/resource-gold.png`,
+  titanium: `${A}/resource-titanium.png`,
   genius: `${A}/worker-genius.png`,
   administrator: `${A}/worker-administrator.png`,
   engineer: `${A}/worker-engineer.png`,
@@ -55,7 +58,7 @@ export const OVERLAY_ART: Partial<Record<OverlayKey, string>> = {
   lab: `${A}/building-lab.png`,
   anomaly: `${A}/anomaly.png`,
   superproject: `${A}/superproject.png`,
-  // TODO art: neutronium, uranium, titanium, breakthrough
+  // TODO art: breakthrough
 };
 
 /** Short human label for each type (calibrate list + tooltips). */
