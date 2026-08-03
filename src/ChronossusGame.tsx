@@ -1720,7 +1720,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       break;
     case 'warp':
-      body = <WarpPhaseBody state={state} meta={meta!} onCommit={commitWarp} botName="Chronossus" />;
+      body = (
+        <WarpPhaseBody
+          state={state}
+          meta={meta!}
+          onCommit={commitWarp}
+          botName="Chronossus"
+          warpTileSrc="/assets/solo/chronossus/warp-tile.png"
+        />
+      );
       break;
     case 'cleanup': {
       // Impact + game-end flow, identical to the Chronobot: the Impact resolves at

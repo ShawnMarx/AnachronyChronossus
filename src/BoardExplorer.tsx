@@ -1854,12 +1854,15 @@ export function WarpPhaseBody({
   meta,
   onCommit,
   botName = 'Chronobot',
+  warpTileSrc = '/assets/solo/warp-tile.png',
 }: {
   state: GameState;
   meta: PhaseMeta;
   onCommit: (paradoxes: number) => void;
   /** Bot name shown in the copy (defaults to the Chronobot). */
   botName?: string;
+  /** The bot's Warp-tile art (placed on the Main board), shown next to the roll. */
+  warpTileSrc?: string;
 }) {
   const [rolled, setRolled] = useState<number | null>(null);
   const botFirst = state.firstPlayer === 'bot';
@@ -1886,6 +1889,9 @@ export function WarpPhaseBody({
         <>
           <div className="warp-roll-result">
             <span className="warp-roll-num">{rolled}</span>
+            {rolled > 0 && (
+              <img className="warp-roll-tile" src={warpTileSrc} alt={`${botName} Warp tile`} />
+            )}
             <p className="phase-note">
               {rolled === 0
                 ? `The ${botName} rolled no Paradoxes — it places no Warp tiles this phase.`
