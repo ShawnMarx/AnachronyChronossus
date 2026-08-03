@@ -354,11 +354,6 @@ export default function ChronossusSetupFlow({
                     Objective cards, revealing 3. Return the rest to the box.
                   </li>
                   <li>
-                    Place the Action tiles (marked side up) on the Chronossus board’s
-                    empty spaces: <b>C01A</b>, <b>C02A</b>, <b>C03A</b>. (Suggested for
-                    your first game; later you may assign them randomly.)
-                  </li>
-                  <li>
                     Fill the Chronossus’s Energy Pool container with 5 Energy Core tokens
                     and 5 Exhausted Energy Core tokens.
                   </li>
@@ -379,10 +374,17 @@ export default function ChronossusSetupFlow({
                     </li>
                   )}
                 </ul>
-                <p className="phase-note">
+                <p>
                   This app tracks <b>all</b> of the Chronossus’s VP for you and explains
                   each Action’s rules as it takes them. Building VP is counted as tiles
-                  are discarded, rather than placed on the bot’s board.
+                  are discarded, rather than placed on the bot’s board. Be ready to place
+                  Exosuits and Warp tiles to the board and discard pieces for the bot as
+                  prompted.
+                </p>
+                <p>
+                  In addition to your points collected during the game, you score points
+                  for the highest level you reached on each Solo Objective. The bot
+                  doesn’t score for Solo Objectives.
                 </p>
               </div>
 
