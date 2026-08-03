@@ -179,20 +179,30 @@ export default function ChronossusSetupFlow({
           {/* ---- Step 1: Intro ------------------------------------------- */}
           {step === 'intro' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-primary" onClick={() => setStep('modules')}>
+                  Continue ▶
+                </button>
+              </div>
               {FLAVOR.split('\n\n').map((para, i) => (
                 <p key={i} className="setup-flavor">
                   {para}
                 </p>
               ))}
-              <button className="phase-primary" onClick={() => setStep('modules')}>
-                Continue ▶
-              </button>
             </>
           )}
 
           {/* ---- Step 2: Modules ----------------------------------------- */}
           {step === 'modules' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-secondary" onClick={() => setStep('intro')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                  Continue ▶
+                </button>
+              </div>
               <p className="phase-note">
                 Choose the module to play. Only <b>Base</b> is available for now — the
                 others are listed for the modes we’ll be filling in.
@@ -252,21 +262,20 @@ export default function ChronossusSetupFlow({
                 The Interlocking buildings and Neutronide buildings are supported and
                 require no additional components or adjustments to the rules.
               </p>
-
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('intro')}>
-                  ◀ Back
-                </button>
-                <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                  Continue ▶
-                </button>
-              </div>
             </>
           )}
 
           {/* ---- Step 3: Difficulty (stubbed, disabled) ------------------ */}
           {step === 'difficulty' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-secondary" onClick={() => setStep('modules')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('setup')}>
+                  Continue ▶
+                </button>
+              </div>
               <p className="phase-note">
                 Select one or more options to increase the difficulty against the
                 Chronossus, or play with none for the standard game. These are stubbed
@@ -295,20 +304,20 @@ export default function ChronossusSetupFlow({
                   </label>
                 ))}
               </div>
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('modules')}>
-                  ◀ Back
-                </button>
-                <button className="phase-primary" onClick={() => setStep('setup')}>
-                  Continue ▶
-                </button>
-              </div>
             </>
           )}
 
           {/* ---- Step 4: Setup ------------------------------------------- */}
           {step === 'setup' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-secondary" onClick={() => setStep('difficulty')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => onBegin([...difficulty])}>
+                  Begin Era 1 ▶
+                </button>
+              </div>
               <RulesBox label="Setup — rulebook text" showPreamble>
                 <p>
                   Set up a 2-player game with the Chronossus as one of the players. In
@@ -386,15 +395,6 @@ export default function ChronossusSetupFlow({
                   for the highest level you reached on each Solo Objective. The bot
                   doesn’t score for Solo Objectives.
                 </p>
-              </div>
-
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('difficulty')}>
-                  ◀ Back
-                </button>
-                <button className="phase-primary" onClick={() => onBegin([...difficulty])}>
-                  Begin Era 1 ▶
-                </button>
               </div>
             </>
           )}

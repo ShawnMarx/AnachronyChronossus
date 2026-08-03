@@ -112,15 +112,25 @@ export default function SetupFlow({
         <div className="phase-body">
           {step === 'flavor' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                  Continue ▶
+                </button>
+              </div>
               <p className="setup-flavor">{FLAVOR}</p>
-              <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                Continue ▶
-              </button>
             </>
           )}
 
           {step === 'difficulty' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-secondary" onClick={() => setStep('flavor')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('setup')}>
+                  Continue ▶
+                </button>
+              </div>
               <p className="phase-note">
                 Select one or more of these options to increase the difficulty of the
                 solo game against the Chronobot. You can also play with none for the
@@ -144,19 +154,19 @@ export default function SetupFlow({
                   </label>
                 ))}
               </div>
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('flavor')}>
-                  ◀ Back
-                </button>
-                <button className="phase-primary" onClick={() => setStep('setup')}>
-                  Continue ▶
-                </button>
-              </div>
             </>
           )}
 
           {step === 'setup' && (
             <>
+              <div className="setup-actions setup-actions-top">
+                <button className="phase-secondary" onClick={() => setStep('difficulty')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => onBegin([...selected])}>
+                  Begin Era 1 ▶
+                </button>
+              </div>
               <RulesBox label="Setup — rulebook text" showPreamble>
                 <p>
                   Set up a 2-player game, with the Chronobot as one of the players. Use
@@ -212,18 +222,6 @@ export default function SetupFlow({
                   each Action’s rules as it takes them. Building VP is counted as tiles
                   are discarded, rather than placed on the bot’s board.
                 </p>
-              </div>
-
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('difficulty')}>
-                  ◀ Back
-                </button>
-                <button
-                  className="phase-primary"
-                  onClick={() => onBegin([...selected])}
-                >
-                  Begin Era 1 ▶
-                </button>
               </div>
             </>
           )}

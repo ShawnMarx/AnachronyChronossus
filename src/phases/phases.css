@@ -267,6 +267,13 @@
   gap: 0.7rem;
   align-items: center;
 }
+/* Nav shown at the TOP of a setup step (above the text) so you can proceed
+   without scrolling past long rulebook copy. */
+.setup-actions-top {
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.25);
+}
 .setup-modified h3 {
   margin: 0 0 0.5rem;
   font-size: 1.05rem;
