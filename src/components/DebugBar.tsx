@@ -40,6 +40,10 @@ export interface DebugBarProps {
   /** Optional Warp-tile stepper (views that seed Warp tiles). */
   warpTiles?: number;
   onWarpTiles?: (delta: number) => void;
+  /** Optional Time Travel marker stepper (spot 0–6). */
+  timeTravel?: number;
+  maxTimeTravel?: number;
+  onTimeTravel?: (delta: number) => void;
   /** Any bot-specific debug controls, rendered at the bottom of the dropdown. */
   extra?: React.ReactNode;
 }
@@ -59,6 +63,9 @@ export default function DebugBar(props: DebugBarProps) {
     onEndActions,
     warpTiles,
     onWarpTiles,
+    timeTravel,
+    maxTimeTravel = 6,
+    onTimeTravel,
     extra,
   } = props;
 
@@ -113,6 +120,14 @@ export default function DebugBar(props: DebugBarProps) {
             {stepper('Paradoxes', paradoxes, onParadox, paradoxes > 0, paradoxes < 3)}
             {onWarpTiles != null &&
               stepper('Warp tiles', warpTiles ?? 0, onWarpTiles, (warpTiles ?? 0) > 0, true)}
+            {onTimeTravel != null &&
+              stepper(
+                'Time Travel',
+                timeTravel ?? 0,
+                onTimeTravel,
+                (timeTravel ?? 0) > 0,
+                (timeTravel ?? 0) < maxTimeTravel,
+              )}
             <div className="debug-row">
               <span className="debug-row-label">Impact</span>
               <button className="debug-flag" onClick={onToggleImpact}>

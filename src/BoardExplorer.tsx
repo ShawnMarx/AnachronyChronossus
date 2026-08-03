@@ -1192,6 +1192,20 @@ export default function BoardExplorer({
       onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
       impact={state.impact}
       onToggleImpact={toggleImpact}
+      timeTravel={Chronobot.timeTravelSpot(bot)}
+      maxTimeTravel={Chronobot.TIME_TRAVEL_VP.length - 1}
+      onTimeTravel={(d) =>
+        setState((s) => ({
+          ...s,
+          chronobot: {
+            ...s.chronobot,
+            timeTravelTrack: Math.max(
+              0,
+              Math.min(Chronobot.TIME_TRAVEL_VP.length - 1, s.chronobot.timeTravelTrack + d),
+            ),
+          },
+        }))
+      }
       extra={
         <OverlayDebugControls
           count={(k) => overlayCount(bot, k)}

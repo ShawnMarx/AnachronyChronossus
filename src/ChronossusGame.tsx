@@ -1217,6 +1217,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           },
         }))
       }
+      timeTravel={Math.min(bot.timeTravelTrack, Chronobot.TIME_TRAVEL_VP.length - 1)}
+      maxTimeTravel={Chronobot.TIME_TRAVEL_VP.length - 1}
+      onTimeTravel={(d) =>
+        setState((s) => ({
+          ...s,
+          chronossus: {
+            ...s.chronossus!,
+            timeTravelTrack: Math.max(
+              0,
+              Math.min(Chronobot.TIME_TRAVEL_VP.length - 1, s.chronossus!.timeTravelTrack + d),
+            ),
+          },
+        }))
+      }
       extra={
         <OverlayDebugControls
           count={(k) => overlayCount(bot, k)}
