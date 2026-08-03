@@ -82,13 +82,13 @@ export const CHRONOSSUS_COUNTERS: BoardCounter[] = [
 /** Time Travel marker's 7 spots (0/2/4/6/8/10/12 VP) + marker width. Calibrate. */
 export const CHRONOSSUS_TIME_TRAVEL_TRACK: TimeTravelTrackLayout = {
   spots: [
-    [58.2, 66.7],
-    [62.7, 66.7],
-    [67.5, 66.7],
-    [72, 66.7],
-    [76.7, 66.7],
-    [81.5, 66.7],
-    [85.9, 66.7],
+    [58.2, 66.8],
+    [62.7, 66.8],
+    [67.5, 66.8],
+    [72, 66.8],
+    [76.7, 66.8],
+    [81.5, 66.8],
+    [85.9, 66.8],
   ],
   markerWidth: 5,
 };
