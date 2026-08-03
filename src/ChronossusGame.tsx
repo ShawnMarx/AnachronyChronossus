@@ -45,6 +45,8 @@ import { ActionIcon } from './board/ActionIcon';
 import RulesBox from './phases/RulesBox';
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import { rulesFrameUrl } from './rules/gamebrain';
+import { useAuth } from './auth/useAuth';
+import { recordGame } from './data/gameData';
 import {
   Chronobot,
   Chronossus,
@@ -1629,20 +1631,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         {rulesModal}
         {topBar}
         {debugBar}
-        <div className="cx-score">
-          <h2>Chronossus score</h2>
-          <table>
-            <tbody>
-              <tr><td>During-game VP</td><td>{score.duringGameVP}</td></tr>
-              <tr><td>Time Travel track</td><td>{score.timeTravelVP}</td></tr>
-              <tr><td>Breakthroughs (1 each)</td><td>{score.breakthroughVP}</td></tr>
-              <tr><td>Complete shape sets (+2 each)</td><td>{score.shapeSetBonus}</td></tr>
-              <tr><td>Anomalies (−3 each)</td><td>{score.anomalyVP}</td></tr>
-              <tr className="cx-score-total"><td>Total</td><td>{score.total}</td></tr>
-            </tbody>
-          </table>
-          <p className="phase-note">{CHRONOSSUS_ENDGAME_RULES}</p>
-        </div>
+        <CxScoreScreen
+          state={state}
+          score={score}
+          totalActions={bot.totalActions}
+          onHome={onHome}
+          onNewGame={reset}
+        />
       </div>
     );
   }
@@ -2310,6 +2305,200 @@ function CxVpPill({
           </ul>
         </AnchoredPopover>
       )}
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// End-game score screen — the Chronossus total + breakdown, the player's score
+// (Number or Tally), win/lose, and an auto-save to the player's history. Mirrors
+// the Chronobot's ScoreScreen; the player's tally swaps the base game's Endgame
+// Conditions for Solo Objectives (the Chronossus never scores objectives).
+// --------------------------------------------------------------------------
+const CX_TALLY_FIELDS: { key: string; label: string; mult: number; sub?: boolean }[] = [
+  { key: 'buildings', label: 'Buildings', mult: 1 },
+  { key: 'anomalies', label: 'Anomalies', mult: 1 },
+  { key: 'superprojects', label: 'Superprojects', mult: 1 },
+  { key: 'timeTravel', label: 'Time Travel', mult: 1 },
+  { key: 'morale', label: 'Morale', mult: 1 },
+  { key: 'vpTokens', label: 'Victory Point tokens', mult: 1 },
+  { key: 'soloObjectives', label: 'Solo Objectives (highest levels)', mult: 1 },
+  { key: 'breakthroughs', label: 'Breakthroughs (×1 each)', mult: 1 },
+  { key: 'breakthroughSets', label: 'Breakthrough sets (×2 each)', mult: 2 },
+  { key: 'timelinePenalties', label: 'Timeline penalties (−)', mult: 1, sub: true },
+];
+
+const CX_PLAYER_SCORING_RULE =
+  'Tally your points from Buildings, Anomalies, Superprojects, Time Travel, Morale, ' +
+  'Victory Point tokens and Timeline penalties as normal. Each Breakthrough is worth ' +
+  '1 VP; a set of three different shapes is worth an additional 2 VP. In addition, ' +
+  'score points for the highest level you reached on each of your 3 Solo Objectives — ' +
+  'the Chronossus never scores Solo Objectives.';
+
+function CxScoreScreen({
+  state,
+  score,
+  totalActions,
+  onHome,
+  onNewGame,
+}: {
+  state: GameState;
+  score: ReturnType<typeof Chronossus.scoreChronossus>;
+  totalActions: number;
+  onHome: () => void;
+  onNewGame: () => void;
+}) {
+  const { user } = useAuth();
+  const [mode, setMode] = useState<'number' | 'tally'>('number');
+  const [num, setNum] = useState('');
+  const [tally, setTally] = useState<Record<string, number>>({});
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  const tallyTotal = CX_TALLY_FIELDS.reduce((sum, f) => {
+    const v = (tally[f.key] ?? 0) * f.mult;
+    return sum + (f.sub ? -v : v);
+  }, 0);
+  const playerScore =
+    mode === 'number' ? (num.trim() === '' ? null : Number(num)) : tallyTotal;
+  const result =
+    playerScore == null || Number.isNaN(playerScore)
+      ? null
+      : playerScore > score.total
+        ? 'win'
+        : 'lose';
+
+  const saveGame = async () => {
+    if (result == null || playerScore == null) return;
+    setSaveState('saving');
+    try {
+      await recordGame({
+        won: result === 'win',
+        bot_score: score.total,
+        player_score: playerScore,
+        difficulty: 'Chronossus',
+        era_reached: state.era,
+        payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
+      });
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  };
+  // Auto-save once the game has a player score (debounced, once per game).
+  useEffect(() => {
+    if (!user || result == null || playerScore == null || Number.isNaN(playerScore)) return;
+    if (saveState !== 'idle') return;
+    const id = setTimeout(() => saveGame(), 900);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, result, playerScore, saveState]);
+
+  return (
+    <div className="modal-overlay">
+      <div className="score-screen" onClick={(e) => e.stopPropagation()}>
+        <div className="score-head">
+          <h2>Final Score — Era {state.era}</h2>
+          <button className="dp-close" onClick={onHome} aria-label="Close">
+            ×
+          </button>
+        </div>
+
+        {/* Bot total + breakdown */}
+        <div className="score-bot">
+          <div className="score-total">
+            <span className="score-total-num">{score.total}</span>
+            <span className="score-total-label">Chronossus VP</span>
+          </div>
+          <ul className="score-breakdown">
+            <li><span>Token VP</span><b>{score.tokenVP}</b></li>
+            <li><span>Building VP</span><b>{score.buildingVP}</b></li>
+            <li><span>Time Travel</span><b>{score.timeTravelVP}</b></li>
+            <li><span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b></li>
+            <li><span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b></li>
+            <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
+            <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
+            <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
+          </ul>
+          <div className="score-rules">
+            <RulesBox label="End Game scoring — rulebook text">
+              <p>{CHRONOSSUS_ENDGAME_RULES}</p>
+            </RulesBox>
+          </div>
+        </div>
+
+        {/* Player score */}
+        <div className="score-player">
+          <div className="score-player-head">
+            <h3>Your score</h3>
+            <div className="score-mode">
+              <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
+                Number
+              </button>
+              <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
+                Tally sheet
+              </button>
+            </div>
+          </div>
+
+          {mode === 'number' ? (
+            <input
+              className="score-num-input"
+              type="number"
+              placeholder="Enter your total VP (including Solo Objectives)"
+              value={num}
+              onChange={(e) => setNum(e.target.value)}
+            />
+          ) : (
+            <>
+              <p className="score-rule">{CX_PLAYER_SCORING_RULE}</p>
+              <div className="tally-grid">
+                {CX_TALLY_FIELDS.map((f) => (
+                  <label key={f.key} className="tally-row">
+                    <span>{f.label}</span>
+                    <input
+                      type="number"
+                      value={tally[f.key] ?? ''}
+                      onChange={(e) =>
+                        setTally((t) => ({ ...t, [f.key]: Number(e.target.value) || 0 }))
+                      }
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="tally-total">
+                Your total: <b>{tallyTotal}</b>
+              </div>
+            </>
+          )}
+        </div>
+
+        {result && (
+          <div className={`score-result ${result}`}>
+            {result === 'win'
+              ? '🎉 You win! (more points than the Chronossus)'
+              : 'You lose — the Chronossus has at least as many points.'}
+          </div>
+        )}
+
+        {user && saveState !== 'idle' && (
+          <div className="score-save">
+            {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}
+            {saveState === 'saved' && <span className="score-save-ok">✓ Saved to your history</span>}
+            {saveState === 'error' && (
+              <span className="score-save-err">Couldn't save automatically.</span>
+            )}
+          </div>
+        )}
+
+        <div className="score-actions">
+          <button className="modal-no" onClick={onHome}>
+            Close
+          </button>
+          <button className="modal-yes" onClick={onNewGame}>
+            ⟳ New Game
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
