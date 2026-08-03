@@ -37,6 +37,20 @@
   --pass-border: #db774f;
 }
 
+/* Phase-screen elements (Setup flow + every non-Phase-5 phase) hardcode the
+   Chronobot purple in phases.css. They render OUTSIDE .chronossus-harness, so
+   retint them on the themed document root (set while ChronossusGame is mounted)
+   to keep the whole flow on the Chronossus palette. */
+:root[data-bot='chronossus'] .phase-note,
+:root[data-bot='chronossus'] .difficulty-opt-text span,
+:root[data-bot='chronossus'] .rules-box-preamble {
+  color: var(--sp-text-mute);
+}
+:root[data-bot='chronossus'] .difficulty-opt.on {
+  border-color: rgba(var(--sp-accent-2-rgb), 0.9);
+  background: rgba(var(--sp-accent-rgb), 0.16);
+}
+
 .chronossus-harness {
   --cx-orange: #c4551f;
   --cx-amber: #e8922e;
