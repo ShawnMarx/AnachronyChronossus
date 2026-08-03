@@ -177,7 +177,7 @@ export const CHRONOSSUS_OVERLAYS: BotOverlay[] = [
   { key: 'mech', pos: [88.5, 12.5], width: 15.8 },
   { key: 'neutronium', pos: [63, 8.2], width: 6 },
   { key: 'uranium', pos: [62.8, 20.6], width: 6 },
-  { key: 'gold', pos: [62.9, 33.4], width: 7.7 },
+  { key: 'gold', pos: [62.9, 33.4], width: 7.7, curve: 24.2 },
   { key: 'titanium', pos: [62.7, 45.9], width: 6 },
   { key: 'genius', pos: [73.7, 7.9], width: 6 },
   { key: 'administrator', pos: [73.7, 20.4], width: 6 },

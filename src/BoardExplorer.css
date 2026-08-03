@@ -984,9 +984,11 @@
   border-radius: 5px;
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
 }
+/* During calibration, let clicks pass THROUGH the overlay art to the board so a
+   badge/spot sitting on top of an overlay can be placed. Overlays are selected
+   from the calibrate panel list instead. */
 .board-wrap.calibrating .bot-overlay {
-  pointer-events: auto;
-  cursor: pointer;
+  pointer-events: none;
 }
 .bot-overlay.cal-ghost {
   opacity: 0.4;
