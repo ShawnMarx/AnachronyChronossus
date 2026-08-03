@@ -447,6 +447,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   const bot = state.chronossus!;
   const score = Chronossus.scoreChronossus(bot);
+  // The board is interactive only in Action Rounds; elsewhere (the PhaseScreen
+  // "Status" tab) it's the read-only bot-status view.
+  const isActionsPhase = state.phase === 'actions';
 
   // Arrow-key nudge for the selected calibration point.
   useEffect(() => {
@@ -1087,18 +1090,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     />
   );
 
-  const stats = (
-    <div className="cx-stats">
-      <span title="Powered Exosuits available">
-        <CxExosuit count={bot.exosuitsAvailable} size={18} />
-      </span>
-      <span className="cx-stats-energy" title="Energy Pool — Energy Cores / Exhausted Energy Cores">
-        <CxEnergyPool pool={bot.energyPool} size={18} />
-      </span>
-      <span title="Total VP (projected)">⭐ {score.total} VP</span>
-    </div>
-  );
-
   // Full top bar — mirrors the Chronobot StatsBar (recolored to the Chronossus
   // scheme). The AI-die / pass / undo / history controls are visible-but-disabled
   // stubs for now (those systems land with the Command-token feature).
@@ -1210,12 +1201,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   ) : null;
 
   // ---- Phase 5: Action Rounds (the real board) ---------------------------
-  if (state.phase === 'actions') {
-    return (
-      <div className="chronossus-harness">
-        {rulesModal}
-        {topBar}
-        {debugBar}
+  // The full board stage (Phase 5 board + SCV + dialogs). Reused read-only as the
+  // "Status" tab of the shared PhaseScreen in the non-Action phases.
+  const boardStage = (
         <div
           className={`board-stage cx-stage ${showHistory ? 'with-history' : ''}`}
           ref={setStageEl}
@@ -1258,10 +1246,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       width: `${hsWidth}%`,
                       height: `${hsHeight}%`,
                     }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onTileClick(h);
-                    }}
+                    onClick={
+                      isActionsPhase || calibrate
+                        ? (e) => {
+                            e.stopPropagation();
+                            onTileClick(h);
+                          }
+                        : undefined
+                    }
                     title={CHRONOBOT_ACTIONS[h.action].label}
                     aria-label={CHRONOBOT_ACTIONS[h.action].label}
                   />
@@ -1520,6 +1512,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               <HistoryPane entries={entries} onClose={() => setShowHistory(false)} />
             )}
           </div>
+  );
+
+  if (state.phase === 'actions') {
+    return (
+      <div className="chronossus-harness">
+        {rulesModal}
+        {topBar}
+        {debugBar}
+        {boardStage}
           {calibrate && (
             <CalibrationPanel
               positions={positions}
@@ -1653,7 +1654,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     hero: HERO,
     statusLabel: 'Chronossus Status',
     heroAlt: 'Chronossus',
-    headerRight: stats,
+    headerRight: (
+      <>
+        <CxVpPill score={score} totalActions={bot.totalActions} />
+        <RulesButton onClick={() => setModeRules(true)} />
+      </>
+    ),
+    statusView: boardStage,
   };
 
   let body: React.ReactNode;
