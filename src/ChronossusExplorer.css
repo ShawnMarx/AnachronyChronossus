@@ -603,13 +603,13 @@
   font-size: 0.85em;
 }
 
-/* Tile art shown in the mod-tile dialog head, sized to match the action-icon
-   (ActionIcon size=92 in the base-action DetailPanel head). */
+/* Tile art shown in the mod-tile dialog head. Fix the HEIGHT and let width follow
+   the aspect (like ActionIcon size=92), so the landscape tile isn't shrunk to fit
+   a square box. */
 .cx-tile-dialog-art {
   flex: 0 0 auto;
-  width: 92px;
   height: 92px;
-  object-fit: contain;
+  width: auto;
   border-radius: 6px;
 }
 
