@@ -90,6 +90,8 @@ export interface BotOverlay {
   width: number;
   /** Corner rounding as a % of the image (border-radius); 0/undefined = square. */
   curve?: number;
+  /** Per-board art override (defaults to the shared OVERLAY_ART[key]). */
+  art?: string;
 }
 
 /** Calibration key for one overlay (kept distinct from the count-badge key). */
@@ -172,7 +174,7 @@ export function withOverlayCount<T extends OverlayCountable>(
 // Chronobot — calibrated (2026-08-03). Columns/rows aligned (resources x=58.3,
 // workers x=69, bottom row y=89.2); widths/curves mirror CHRONOSSUS_OVERLAYS.
 export const CHRONOBOT_OVERLAYS: BotOverlay[] = [
-  { key: 'mech', pos: [84, 12.2], width: 15.8 },
+  { key: 'mech', pos: [84, 12.2], width: 15.8, art: `${A}/chronobot-exosuit-marker.png` },
   { key: 'neutronium', pos: [58.3, 8.2], width: 7.6, curve: 24.2 },
   { key: 'uranium', pos: [58.3, 20.7], width: 7.7, curve: 24.4 },
   { key: 'gold', pos: [58.3, 33], width: 7.7, curve: 24.2 },

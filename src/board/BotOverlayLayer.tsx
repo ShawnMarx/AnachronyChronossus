@@ -39,7 +39,7 @@ export function BotOverlayLayer({
     <>
       {overlays.map((o) => {
         const key = overlayKey(o.key);
-        const art = OVERLAY_ART[o.key];
+        const art = o.art ?? OVERLAY_ART[o.key];
         const has = count(o.key) > 0;
         if (!calibrate && (!art || !has)) return null;
         const [x, y] = positions[key] ?? o.pos;
