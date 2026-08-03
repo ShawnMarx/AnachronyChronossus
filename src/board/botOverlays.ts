@@ -85,6 +85,8 @@ export interface BotOverlay {
   pos: [number, number];
   /** Image width as a percentage of the board width (per-type resize). */
   width: number;
+  /** Corner rounding as a % of the image (border-radius); 0/undefined = square. */
+  curve?: number;
 }
 
 /** Calibration key for one overlay (kept distinct from the count-badge key). */
@@ -172,20 +174,20 @@ export const CHRONOBOT_OVERLAYS: BotOverlay[] = seed(6);
 
 // Chronossus — calibrated in-app (2026-08-03).
 export const CHRONOSSUS_OVERLAYS: BotOverlay[] = [
-  { key: 'mech', pos: [50, 50], width: 6 }, // TODO calibrate
+  { key: 'mech', pos: [88.5, 12.5], width: 15.8 },
   { key: 'neutronium', pos: [63, 8.2], width: 6 },
   { key: 'uranium', pos: [62.8, 20.6], width: 6 },
-  { key: 'gold', pos: [62.9, 33], width: 7.2 },
+  { key: 'gold', pos: [62.9, 33.4], width: 7.7 },
   { key: 'titanium', pos: [62.7, 45.9], width: 6 },
   { key: 'genius', pos: [73.7, 7.9], width: 6 },
-  { key: 'administrator', pos: [73.9, 20.4], width: 6 },
+  { key: 'administrator', pos: [73.7, 20.4], width: 6 },
   { key: 'engineer', pos: [73.7, 33.1], width: 6 },
-  { key: 'scientist', pos: [73.7, 45.7], width: 11.5 },
+  { key: 'scientist', pos: [73.7, 45.7], width: 6 },
   { key: 'powerplant', pos: [43, 89.3], width: 12.4 },
   { key: 'factory', pos: [55.2, 89.3], width: 12.4 },
   { key: 'support', pos: [67.6, 89.3], width: 12.4 },
   { key: 'lab', pos: [79.8, 89.3], width: 12.4 },
   { key: 'anomaly', pos: [94.5, 89.3], width: 12.4 },
-  { key: 'superproject', pos: [22.9, 89.3], width: 23 },
+  { key: 'superproject', pos: [22.9, 89.3], width: 25 },
   { key: 'breakthrough', pos: [5.1, 88.8], width: 4.5 },
 ];

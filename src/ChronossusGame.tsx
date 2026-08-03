@@ -452,6 +452,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [overlayWidths, setOverlayWidths] = useState<Record<string, number>>(() =>
     Object.fromEntries(CHRONOSSUS_OVERLAYS.map((o) => [o.key, o.width])),
   );
+  // Per-type overlay corner rounding (border-radius %).
+  const [overlayCurves, setOverlayCurves] = useState<Record<string, number>>(() =>
+    Object.fromEntries(CHRONOSSUS_OVERLAYS.map((o) => [o.key, o.curve ?? 0])),
+  );
   const [selected, setSelected] = useState<string>(CAL_KEYS[0]);
   const [hsWidth, setHsWidth] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[2]);
   const [hsHeight, setHsHeight] = useState<number>(CHRONOSSUS_ACTION_HOTSPOTS[0].rect[3]);
@@ -1425,6 +1429,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 count={(k) => counterValue(bot, k)}
                 positions={positions}
                 widths={overlayWidths}
+                curves={overlayCurves}
                 calibrate={calibrate}
                 selected={selected}
                 onSelect={setSelected}
@@ -1582,6 +1587,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               overlayWidths={overlayWidths}
               onOverlayWidth={(key, w) =>
                 setOverlayWidths((m) => ({ ...m, [key]: w }))
+              }
+              overlayCurves={overlayCurves}
+              onOverlayCurve={(key, c) =>
+                setOverlayCurves((m) => ({ ...m, [key]: c }))
               }
             />
           )}
@@ -2100,6 +2109,8 @@ function CalibrationPanel({
   onParadoxWidth,
   overlayWidths,
   onOverlayWidth,
+  overlayCurves,
+  onOverlayCurve,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -2120,6 +2131,8 @@ function CalibrationPanel({
   onParadoxWidth: (w: number) => void;
   overlayWidths: Record<string, number>;
   onOverlayWidth: (key: OverlayKey, w: number) => void;
+  overlayCurves: Record<string, number>;
+  onOverlayCurve: (key: OverlayKey, c: number) => void;
 }) {
   const hotspotLiteral =
     'export const CHRONOSSUS_ACTION_HOTSPOTS: Hotspot[] = [\n' +
@@ -2175,7 +2188,9 @@ function CalibrationPanel({
     OVERLAY_KEYS.map((key) => {
       const [x, y] = positions[overlayKey(key)] ?? [50, 50];
       const w = overlayWidths[key] ?? 6;
-      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w} },`;
+      const c = overlayCurves[key] ?? 0;
+      const curve = c > 0 ? `, curve: ${c}` : '';
+      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w}${curve} },`;
     }).join('\n') +
     '\n];';
   const selOverlay = OVERLAY_KEYS.find((k) => overlayKey(k) === selected);
@@ -2294,14 +2309,22 @@ function CalibrationPanel({
           Select a type to resize just that image.
         </p>
         {selOverlay ? (
-          sizeSlider(
-            `${OVERLAY_LABEL[selOverlay]} width`,
-            overlayWidths[selOverlay] ?? 6,
-            (w) => onOverlayWidth(selOverlay, w),
-            30,
-          )
+          <>
+            {sizeSlider(
+              `${OVERLAY_LABEL[selOverlay]} width`,
+              overlayWidths[selOverlay] ?? 6,
+              (w) => onOverlayWidth(selOverlay, w),
+              30,
+            )}
+            {sizeSlider(
+              `${OVERLAY_LABEL[selOverlay]} curve`,
+              overlayCurves[selOverlay] ?? 0,
+              (c) => onOverlayCurve(selOverlay, c),
+              50,
+            )}
+          </>
         ) : (
-          <p className="cal-note">Pick a type below to enable its size slider.</p>
+          <p className="cal-note">Pick a type below to enable its size + curve sliders.</p>
         )}
         <div className="cal-list">
           {OVERLAY_KEYS.map((key) =>

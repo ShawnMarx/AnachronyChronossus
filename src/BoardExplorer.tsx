@@ -652,6 +652,10 @@ export default function BoardExplorer({
   const [overlayWidths, setOverlayWidths] = useState<Record<string, number>>(() =>
     Object.fromEntries(CHRONOBOT_OVERLAYS.map((o) => [o.key, o.width])),
   );
+  // Per-type overlay corner rounding (border-radius %).
+  const [overlayCurves, setOverlayCurves] = useState<Record<string, number>>(() =>
+    Object.fromEntries(CHRONOBOT_OVERLAYS.map((o) => [o.key, o.curve ?? 0])),
+  );
   const [markerWidth, setMarkerWidth] = useState<number>(TIME_TRAVEL_TRACK.markerWidth);
   const [cmdMarkerWidth, setCmdMarkerWidth] = useState<number>(MARKER_WIDTH);
   const [warpMarkerWidth, setWarpMarkerWidth] = useState<number>(WARP_MARKER.width);
@@ -1463,6 +1467,7 @@ export default function BoardExplorer({
             count={(k) => counterValue(bot, k)}
             positions={positions}
             widths={overlayWidths}
+            curves={overlayCurves}
             calibrate={calibrate}
             selected={selected}
             onSelect={setSelected}
@@ -1684,6 +1689,10 @@ export default function BoardExplorer({
           overlayWidths={overlayWidths}
           onOverlayWidth={(key, w) =>
             setOverlayWidths((m) => ({ ...m, [key]: w }))
+          }
+          overlayCurves={overlayCurves}
+          onOverlayCurve={(key, c) =>
+            setOverlayCurves((m) => ({ ...m, [key]: c }))
           }
         />
       )}
@@ -2313,6 +2322,8 @@ function CalibrationPanel({
   onHotspotHeight,
   overlayWidths,
   onOverlayWidth,
+  overlayCurves,
+  onOverlayCurve,
 }: {
   positions: Record<string, [number, number]>;
   selected: string;
@@ -2331,6 +2342,8 @@ function CalibrationPanel({
   onHotspotHeight: (h: number) => void;
   overlayWidths: Record<string, number>;
   onOverlayWidth: (key: OverlayKey, w: number) => void;
+  overlayCurves: Record<string, number>;
+  onOverlayCurve: (key: OverlayKey, c: number) => void;
 }) {
   const literal =
     'export const BOARD_COUNTERS: BoardCounter[] = [\n' +
@@ -2387,7 +2400,9 @@ function CalibrationPanel({
     OVERLAY_KEYS.map((key) => {
       const [x, y] = positions[overlayKey(key)] ?? [50, 50];
       const w = overlayWidths[key] ?? 6;
-      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w} },`;
+      const c = overlayCurves[key] ?? 0;
+      const curve = c > 0 ? `, curve: ${c}` : '';
+      return `  { key: '${key}', pos: [${x}, ${y}], width: ${w}${curve} },`;
     }).join('\n') +
     '\n];';
   const selOverlay = OVERLAY_KEYS.find((k) => overlayKey(k) === selected);
@@ -2518,14 +2533,22 @@ function CalibrationPanel({
           Select a type to resize just that image.
         </p>
         {selOverlay ? (
-          sizeSlider(
-            `${OVERLAY_LABEL[selOverlay]} width`,
-            overlayWidths[selOverlay] ?? 6,
-            (w) => onOverlayWidth(selOverlay, w),
-            30,
-          )
+          <>
+            {sizeSlider(
+              `${OVERLAY_LABEL[selOverlay]} width`,
+              overlayWidths[selOverlay] ?? 6,
+              (w) => onOverlayWidth(selOverlay, w),
+              30,
+            )}
+            {sizeSlider(
+              `${OVERLAY_LABEL[selOverlay]} curve`,
+              overlayCurves[selOverlay] ?? 0,
+              (c) => onOverlayCurve(selOverlay, c),
+              50,
+            )}
+          </>
         ) : (
-          <p className="cal-note">Pick a type below to enable its size slider.</p>
+          <p className="cal-note">Pick a type below to enable its size + curve sliders.</p>
         )}
         <div className="cal-list">
           {OVERLAY_KEYS.map((key) =>

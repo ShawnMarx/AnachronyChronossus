@@ -17,6 +17,7 @@ export function BotOverlayLayer({
   count,
   positions,
   widths,
+  curves,
   calibrate,
   selected,
   onSelect,
@@ -28,6 +29,8 @@ export function BotOverlayLayer({
   positions: Record<string, [number, number]>;
   /** Calibrated per-type widths, keyed by the raw overlay key. */
   widths: Record<string, number>;
+  /** Per-type corner rounding (border-radius %), keyed by the raw overlay key. */
+  curves: Record<string, number>;
   calibrate: boolean;
   selected: string;
   onSelect: (k: string) => void;
@@ -41,11 +44,13 @@ export function BotOverlayLayer({
         if (!calibrate && (!art || !has)) return null;
         const [x, y] = positions[key] ?? o.pos;
         const width = widths[o.key] ?? o.width;
+        const curve = curves[o.key] ?? o.curve ?? 0;
         const sel = calibrate && selected === key;
         const style: React.CSSProperties = {
           left: `${x}%`,
           top: `${y}%`,
           width: `${width}%`,
+          borderRadius: `${curve}%`,
         };
         if (art) {
           return (
