@@ -62,6 +62,7 @@ import {
   type Worker,
   type BreakthroughShape,
   type Instruction,
+  type EnergyPool,
 } from './engine';
 import { finishEra, advanceFromPreparation, startFirstEra } from './game/flow';
 import ChronossusSetupFlow from './phases/ChronossusSetupFlow';
@@ -281,6 +282,26 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
     default:
       return bot.buildings[key];
   }
+}
+
+const EC_ICON = '/assets/solo/chronossus/energy-core.png';
+const EEC_ICON = '/assets/solo/chronossus/exhausted-energy-core.png';
+
+/** The Chronossus Energy Pool shown with its component icons + counts
+ *  (Energy Core ×N / Exhausted Energy Core ×N), e.g. the "EC5 / EEC3" display. */
+function CxEnergyPool({ pool, size = 20 }: { pool: EnergyPool; size?: number }) {
+  return (
+    <span className="cx-energy-pool">
+      <span className="cx-energy" title="Energy Cores in the Energy Pool">
+        <img src={EC_ICON} alt="Energy Cores" style={{ height: size }} />
+        <b>{pool.energized}</b>
+      </span>
+      <span className="cx-energy" title="Exhausted Energy Cores in the Energy Pool">
+        <img src={EEC_ICON} alt="Exhausted Energy Cores" style={{ height: size }} />
+        <b>{pool.exhausted}</b>
+      </span>
+    </span>
+  );
 }
 
 export default function ChronossusGame({ onHome }: { onHome: () => void }) {
@@ -822,6 +843,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastDraw(null);
     setState(next);
   };
+  // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
+  // 5–6 when flipping Collapsing Capital tiles). Mirrors the Chronobot exactly.
+  const endGameNow = () => {
+    setLastDraw(null);
+    setState((s) => ({ ...s, phase: 'endgame', finished: true }));
+  };
   const goPhase = (p: Phase) => {
     closePanel();
     setState((s) => ({ ...s, phase: p }));
@@ -928,8 +955,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const stats = (
     <div className="cx-stats">
       <span title="Powered Exosuits available">🦾 {bot.exosuitsAvailable} Exo</span>
-      <span title="Energy Pool — energized / exhausted">
-        🔋 {bot.energyPool.energized}/{bot.energyPool.exhausted}
+      <span className="cx-stats-energy" title="Energy Pool — Energy Cores / Exhausted Energy Cores">
+        <CxEnergyPool pool={bot.energyPool} size={18} />
       </span>
       <span title="Total VP (projected)">⭐ {score.total} VP</span>
     </div>
@@ -1240,7 +1267,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         ))}
                       </BadgePopover>
                     )}
-                    {open && c.key !== 'breakthrough' && (
+                    {/* The Exosuit tracker also surfaces the Energy Pool (the two
+                        feed each other: the pool powers up Exosuits each Era). */}
+                    {open && c.key === 'mech' && (
+                      <BadgePopover rect={tappedRect} variant="text">
+                        <div className="cx-mech-pop">
+                          <div>
+                            {bot.exosuitsAvailable} powered Exosuit
+                            {bot.exosuitsAvailable === 1 ? '' : 's'} available
+                          </div>
+                          <div className="cx-mech-pop-energy">
+                            <span className="cx-mech-pop-label">Energy Pool</span>
+                            <CxEnergyPool pool={bot.energyPool} size={24} />
+                          </div>
+                        </div>
+                      </BadgePopover>
+                    )}
+                    {open && c.key !== 'breakthrough' && c.key !== 'mech' && (
                       <BadgePopover rect={tappedRect} variant="text">
                         {counterInfo(bot, c)}
                       </BadgePopover>
@@ -1413,8 +1456,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   <span className="eoa-flag" title="Powered Exosuits available">
                     🦾 {bot.exosuitsAvailable} Exo
                   </span>
-                  <span className="eoa-flag" title="Energy Pool — energized / exhausted">
-                    🔋 {bot.energyPool.energized}/{bot.energyPool.exhausted}
+                  <span
+                    className="eoa-flag cx-energy-flag"
+                    title="Energy Pool — Energy Cores / Exhausted Energy Cores"
+                  >
+                    <CxEnergyPool pool={bot.energyPool} size={18} />
                   </span>
                 </>
               }
@@ -1538,16 +1584,60 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         </>
       );
       break;
-    case 'cleanup':
+    case 'cleanup': {
+      // Impact + game-end flow, identical to the Chronobot: the Impact resolves at
+      // the end of Era 4; in the post-Impact Eras 5–6 flipping the Collapsing
+      // Capital tiles decides whether the game continues; Era 7 always ends.
+      const era = state.era;
+      const postImpact = era === 5 || era === 6;
+      const finalEra = era >= Chronossus.MAX_ERA;
       body = (
         <>
+          <p className="phase-note">
+            Retrieve the Chronossus’s Exosuits along with your own.
+          </p>
+          {era === 4 && (
+            <p className="phase-note">
+              <b>The Impact occurs now</b> — resolve it using the usual procedure at
+              the end of Era 4. From Era 5 on, the Chronossus powers up 2+X Exosuits
+              (max 4) instead of 3+X (max 6).
+            </p>
+          )}
+          {postImpact && (
+            <p className="phase-note">
+              Flip the Collapsing Capital tiles using the usual procedure, then check
+              for game end.
+            </p>
+          )}
           {meta?.rules && <p className="phase-note">{meta.rules}</p>}
-          <button className="phase-primary" onClick={afterCleanUp}>
-            {state.era >= Chronossus.MAX_ERA ? 'End the Game ▶' : `Finish Era ${state.era} ▶`}
-          </button>
+          {finalEra ? (
+            <button className="phase-primary" onClick={afterCleanUp}>
+              🏁 Finish &amp; Score ▶
+            </button>
+          ) : postImpact ? (
+            <>
+              <div className="capital-check">
+                Are all Collapsing Capital tiles flipped? If so, proceed to Game Ended
+                below.
+              </div>
+              <div className="setup-actions">
+                <button className="phase-primary" onClick={afterCleanUp}>
+                  Game continues — start Era {era + 1} ▶
+                </button>
+                <button className="phase-end-pink" onClick={endGameNow}>
+                  Game Ended — Finish &amp; Score
+                </button>
+              </div>
+            </>
+          ) : (
+            <button className="phase-primary" onClick={afterCleanUp}>
+              End the Era — start Era {era + 1} ▶
+            </button>
+          )}
         </>
       );
       break;
+    }
     case 'preparation':
       body = (
         <button className="phase-primary" onClick={() => setState(advanceFromPreparation(state))}>

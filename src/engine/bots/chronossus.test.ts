@@ -12,6 +12,8 @@ import {
   passChronossus,
   actionRoundsEnded,
   startNextEra,
+  isPostImpact,
+  POST_IMPACT_ERA,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -271,5 +273,20 @@ describe('startNextEra', () => {
 
   it('MAX_ERA matches the base game', () => {
     expect(MAX_ERA).toBe(7);
+  });
+
+  it('derives the Impact flag from the new Era (post-Impact from Era 5)', () => {
+    // Era 3 → 4 stays pre-Impact; Era 4 → 5 flips to post-Impact and stays true.
+    expect(startNextEra(chronossusState({ era: 3, phase: 'cleanup' })).impact).toBe(false);
+    expect(startNextEra(chronossusState({ era: 4, phase: 'cleanup' })).impact).toBe(true);
+    expect(startNextEra(chronossusState({ era: 5, phase: 'cleanup' })).impact).toBe(true);
+  });
+});
+
+describe('isPostImpact — same Impact Era as the Chronobot', () => {
+  it('is false for Eras 1–4, true for Era 5+', () => {
+    expect(POST_IMPACT_ERA).toBe(5);
+    expect([1, 2, 3, 4].map(isPostImpact)).toEqual([false, false, false, false]);
+    expect([5, 6, 7].map(isPostImpact)).toEqual([true, true, true]);
   });
 });

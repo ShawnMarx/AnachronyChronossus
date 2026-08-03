@@ -30,6 +30,19 @@ import {
 /** Highest Era before the game always ends (same as the Chronobot). */
 export const MAX_ERA = 7;
 
+/**
+ * The first post-Impact Era. The Impact happens during the Clean Up of Era 4, so
+ * Eras 1–4 are pre-Impact and Eras 5+ are post-Impact — identical to the Chronobot,
+ * and the default for every mode. (Fractures of Time is the planned exception; when
+ * it lands it will override this per its own Impact timing.)
+ */
+export const POST_IMPACT_ERA = 5;
+
+/** Whether a given Era is post-Impact (2+X / max-4 power-up, Collapsing Capital). */
+export function isPostImpact(era: number): boolean {
+  return era >= POST_IMPACT_ERA;
+}
+
 // --------------------------------------------------------------------------
 // Phase 3: Power Up (the Energy Pool)
 // --------------------------------------------------------------------------
@@ -573,14 +586,19 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
 /** Reset per-Era state and enter the next Era's Preparation (Phase 1). */
 export function startNextEra(state: GameState): GameState {
   if (!state.chronossus) throw new Error('startNextEra: no Chronossus state');
+  const era = state.era + 1;
   return {
     ...state,
-    era: state.era + 1,
+    era,
+    // The Impact occurs during Era 4's Clean Up, so it is in effect from Era 5 on
+    // (same threshold as the Chronobot). Deriving it here keeps the flag correct
+    // for the next Era's Power Up without a manual toggle.
+    impact: isPostImpact(era),
     phase: 'preparation',
     playerPassed: false,
     extraTurnAfterPassUsed: false,
     chronossus: { ...state.chronossus, passed: false },
     currentInstructions: [],
-    log: [...state.log, `— Era ${state.era + 1} begins —`],
+    log: [...state.log, `— Era ${era} begins —`],
   };
 }

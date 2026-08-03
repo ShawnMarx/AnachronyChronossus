@@ -483,6 +483,47 @@
   cursor: pointer;
 }
 
+/* Energy Pool display: the Energy Core / Exhausted Energy Core icons + counts
+   (shared by the stat bar, the Turn popover, and the Exosuit-badge popover). */
+.cx-energy-pool {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.cx-energy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+.cx-energy img {
+  width: auto;
+  display: block;
+}
+.cx-energy b {
+  font-variant-numeric: tabular-nums;
+}
+/* Let the icon flags sit inline nicely in the stat bar / Turn popover. */
+.cx-stats .cx-stats-energy,
+.eoa-flag.cx-energy-flag {
+  display: inline-flex;
+  align-items: center;
+}
+/* Exosuit-badge popover: exosuit line + Energy Pool row. */
+.cx-mech-pop {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.cx-mech-pop-energy {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.cx-mech-pop-label {
+  opacity: 0.8;
+  font-size: 0.85em;
+}
+
 /* Tile art shown in the mod-tile dialog head, sized to match the action-icon. */
 .cx-tile-dialog-art {
   flex: 0 0 auto;
