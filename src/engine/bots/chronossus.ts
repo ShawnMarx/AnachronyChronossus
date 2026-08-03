@@ -551,8 +551,13 @@ export interface ChronossusScore {
   breakthroughVP: number;
   /** +2 VP per complete shape set (one of each). */
   shapeSetBonus: number;
+  /** Negative: −3 per remaining Anomaly (same penalty as the Chronobot). */
+  anomalyVP: number;
   total: number;
 }
+
+/** VP lost per Anomaly the Chronossus still holds at game end (same as Chronobot). */
+export const ANOMALY_VP = -3;
 
 /**
  * The Chronossus's VP breakdown. It does NOT lose VP for Warp tiles left on the
@@ -568,6 +573,7 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
   const timeTravelVP = TIME_TRAVEL_VP[spot];
   const buildingVP = bot.buildingVp;
   const tokenVP = bot.vp - buildingVP;
+  const anomalyVP = bot.anomalies * ANOMALY_VP;
   return {
     tokenVP,
     buildingVP,
@@ -575,7 +581,8 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
     timeTravelVP,
     breakthroughVP,
     shapeSetBonus,
-    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus,
+    anomalyVP,
+    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP,
   };
 }
 

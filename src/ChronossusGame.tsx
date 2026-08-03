@@ -1545,6 +1545,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               <tr><td>Time Travel track</td><td>{score.timeTravelVP}</td></tr>
               <tr><td>Breakthroughs (1 each)</td><td>{score.breakthroughVP}</td></tr>
               <tr><td>Complete shape sets (+2 each)</td><td>{score.shapeSetBonus}</td></tr>
+              <tr><td>Anomalies (−3 each)</td><td>{score.anomalyVP}</td></tr>
               <tr className="cx-score-total"><td>Total</td><td>{score.total}</td></tr>
             </tbody>
           </table>
@@ -2186,6 +2187,9 @@ function CxVpPill({
             </li>
             <li title="+2 VP per complete shape set (one of each)">
               <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
+            </li>
+            <li title="−3 VP per Anomaly the Chronossus still holds at game end">
+              <span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b>
             </li>
             <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
