@@ -605,6 +605,10 @@ export default function BoardExplorer({
   // (state updates are async, so `resolve` reads these instead).
   const botDieRef = useRef<number | null>(null);
   const activeTokenRef = useRef<CommandToken | null>(null);
+  // A rolled-but-not-yet-committed AI die: cleared only when a turn commits (or on
+  // a full reset), NOT when the dialog is cancelled — so closing a bot dialog and
+  // re-hitting Take Bot Action repeats the same roll / action rather than re-rolling.
+  const pendingDieRef = useRef<number | null>(null);
   // Marks the open Time Travel dialog as the bot's forced final Time Travel
   // before passing (out of Exosuits): committing it resolves the pass, not a
   // normal Action turn.
@@ -725,7 +729,8 @@ export default function BoardExplorer({
     };
   }, [tappedBadge]);
 
-  const closePanel = () => {
+  // Close the dialog UI + selections (not the pending roll or the shown die).
+  const clearDialogState = () => {
     setActive(null);
     setPending(null);
     setResult([]);
@@ -733,12 +738,29 @@ export default function BoardExplorer({
     setSelectedResources([]);
     setSelectedWorker(null);
     setRolledShape(null);
-    setBotDie(null);
-    setActiveToken(null);
     setRuleView(false);
-    botDieRef.current = null;
     activeTokenRef.current = null;
     passTimeTravelRef.current = false;
+  };
+  // Full close: dialog + the rolled die + token. Used after a committed turn and on
+  // resets — the next Take Bot Action rolls fresh.
+  const closePanel = () => {
+    clearDialogState();
+    setBotDie(null);
+    setActiveToken(null);
+    botDieRef.current = null;
+    pendingDieRef.current = null;
+  };
+  // Cancel (the dialog ×): close the dialog but KEEP the rolled die + token so
+  // re-hitting Take Bot Action repeats the same roll. If the turn already committed
+  // (or this was a rule-view tap), pendingDieRef is null, so clear the die too.
+  const cancelPanel = () => {
+    clearDialogState();
+    if (pendingDieRef.current == null) {
+      setBotDie(null);
+      setActiveToken(null);
+      botDieRef.current = null;
+    }
   };
 
   // Commit a state change: push the current (pre-commit) snapshot + a history
@@ -781,6 +803,7 @@ export default function BoardExplorer({
     setBotDie(snap.botDie); // …then restore the die/token from the snapshot
     setActiveToken(snap.activeToken);
     botDieRef.current = snap.botDie;
+    pendingDieRef.current = snap.botDie; // pending again → next Take repeats the roll
     activeTokenRef.current = null;
     setPassMsg(null);
     setUndoStack((s) => s.slice(0, -1));
@@ -860,6 +883,7 @@ export default function BoardExplorer({
       // remove, so resolve the (failed) Time Travel + pass straight away.
       botDieRef.current = null;
       activeTokenRef.current = null;
+      pendingDieRef.current = null;
       setBotDie(null);
       setActiveToken(null);
       setPassMsg(null);
@@ -887,11 +911,14 @@ export default function BoardExplorer({
       setActiveToken(null);
       botDieRef.current = null;
       activeTokenRef.current = null;
+      pendingDieRef.current = null;
       return;
     }
     // 'continue' / 'must-continue-min3' → take a normal die-driven Action turn.
-    // Reuse a die already shown (e.g. restored by Undo) so it repeats the same roll.
-    const die = botDie ?? rollAiDie();
+    // Reuse a rolled-but-uncommitted die (after cancelling the dialog, or Undo) so
+    // it repeats the same roll / action; otherwise roll fresh.
+    const die = pendingDieRef.current ?? rollAiDie();
+    pendingDieRef.current = die;
     const token = die as CommandToken;
     const pos = tokens.positions[token];
     const action = Chronobot.tokenAction(pos);
@@ -949,6 +976,7 @@ export default function BoardExplorer({
     setResult(instructions);
     setPending(null);
     activeTokenRef.current = null;
+    pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
   };
 
   // `force` bypasses play-mode read-only: the die-driven bot turn always resolves,
@@ -1288,7 +1316,7 @@ export default function BoardExplorer({
         onToggleResource={onToggleResource}
         onPickWorker={onPickWorker}
         onStartTurn={startTurn}
-        onClose={closePanel}
+        onClose={cancelPanel}
       />
     ) : null;
 
