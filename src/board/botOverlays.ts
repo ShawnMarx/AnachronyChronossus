@@ -58,7 +58,7 @@ export const OVERLAY_ART: Partial<Record<OverlayKey, string>> = {
   lab: `${A}/building-lab.png`,
   anomaly: `${A}/anomaly.png`,
   superproject: `${A}/superproject.png`,
-  // TODO art: breakthrough
+  breakthrough: `${A}/breakthrough.png`,
 };
 
 /** Short human label for each type (calibrate list + tooltips). */
