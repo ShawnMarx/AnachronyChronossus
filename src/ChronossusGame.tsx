@@ -1689,10 +1689,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   <span className="cx-drawn-label">Pool now:</span>
                   <CxEnergyPool pool={bot.energyPool} size={24} />
                 </div>
-                <p className="phase-note">
-                  Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
-                  {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
-                  place on the board for this Era.
+                <p className="cx-user-action">
+                  <span className="cx-user-action-icon" aria-hidden="true">🖐</span>
+                  <span>
+                    Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
+                    {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
+                    place on the board for this Era.
+                  </span>
                 </p>
               </div>
               <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>

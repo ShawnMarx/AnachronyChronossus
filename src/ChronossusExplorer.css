@@ -523,6 +523,27 @@
   display: inline-flex;
   align-items: center;
 }
+/* A player-action callout — something the human must physically do on the board
+   (e.g. set aside the powered Exosuits). Stands out from the muted phase notes. */
+.cx-user-action {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  margin: 0.2rem 0 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--cx-amber);
+  border-left: 4px solid var(--cx-amber);
+  border-radius: 10px;
+  background: rgba(232, 146, 46, 0.14);
+  color: var(--sp-text-base);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+.cx-user-action-icon {
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
 /* Power Up phase: the post-draw breakdown (drawn / returned / final pool). */
 .cx-drawn {
   display: flex;
