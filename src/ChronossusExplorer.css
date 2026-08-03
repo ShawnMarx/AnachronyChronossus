@@ -603,11 +603,12 @@
   font-size: 0.85em;
 }
 
-/* Tile art shown in the mod-tile dialog head, sized to match the action-icon. */
+/* Tile art shown in the mod-tile dialog head, sized to match the action-icon
+   (ActionIcon size=92 in the base-action DetailPanel head). */
 .cx-tile-dialog-art {
   flex: 0 0 auto;
-  width: 72px;
-  height: 72px;
+  width: 92px;
+  height: 92px;
   object-fit: contain;
   border-radius: 6px;
 }
