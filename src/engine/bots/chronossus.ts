@@ -25,6 +25,7 @@ import {
   chooseBreakthroughDiscard,
   chooseMineResources,
   TIME_TRAVEL_VP,
+  type ParadoxRollResult,
 } from './chronobot';
 
 /** Highest Era before the game always ends (same as the Chronobot). */
@@ -583,6 +584,79 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
     shapeSetBonus,
     anomalyVP,
     total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP,
+  };
+}
+
+// --------------------------------------------------------------------------
+// Phase 2: Paradox (identical rules to the Chronobot, on the Chronossus slice)
+// --------------------------------------------------------------------------
+
+/**
+ * Resolve one Paradox-die roll during the Paradox phase — same rules as the
+ * Chronobot: add the roll to the tracker; on reaching 3 it gains 1 Anomaly (−3 VP),
+ * removes 1 Warp tile (if any), resets the tracker, and stops rolling.
+ */
+export function rollParadox(state: GameState, rolled: number): ParadoxRollResult {
+  if (!state.chronossus) throw new Error('rollParadox: no Chronossus state');
+  const bot = { ...state.chronossus };
+  const instructions: Instruction[] = [];
+  const gain = Math.max(0, rolled);
+  let total = bot.paradoxes + gain;
+  let gainedAnomaly = false;
+  let stop = false;
+
+  if (total >= 3) {
+    gainedAnomaly = true;
+    stop = true;
+    total -= 3;
+    bot.paradoxes = total;
+    if (bot.anomalies >= 3) {
+      instructions.push({
+        id: 'paradox-capped',
+        text: 'The Chronossus already has 3 Anomalies — it gains no Anomaly and removes no Warp tile. It stops rolling.',
+      });
+    } else {
+      bot.anomalies += 1;
+      const removed = bot.warpTilesOnTimeline > 0;
+      if (removed) bot.warpTilesOnTimeline -= 1;
+      instructions.push({
+        id: 'paradox-anomaly',
+        text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
+        detail: removed
+          ? 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied). Its Paradox tracker resets' +
+            (total > 0 ? ` to ${total}.` : ' to 0.')
+          : 'It has no Warp tiles on the Timeline to remove.',
+      });
+    }
+  } else {
+    bot.paradoxes = total;
+    instructions.push({
+      id: 'paradox-roll',
+      text:
+        gain === 0
+          ? 'The Chronossus rolls a blank — no Paradox this roll. It keeps rolling.'
+          : `The Chronossus rolls +${gain} Paradox — its tracker is now ${total}. It keeps rolling.`,
+    });
+  }
+
+  const next: GameState = {
+    ...state,
+    chronossus: bot,
+    currentInstructions: instructions,
+    log: [...state.log, `Paradox roll (Era ${state.era}): +${gain} → tracker ${bot.paradoxes}.`],
+  };
+  return { state: next, instructions, paradoxes: bot.paradoxes, gainedAnomaly, stop };
+}
+
+/** Advance out of the Paradox phase to Power Up (call after rolling resolves). */
+export function endParadoxPhase(state: GameState): GameState {
+  if (!state.chronossus) throw new Error('endParadoxPhase: no Chronossus state');
+  return {
+    ...state,
+    chronossus: { ...state.chronossus },
+    phase: 'powerup',
+    currentInstructions: [],
+    log: [...state.log, `Paradox phase done (Era ${state.era}).`],
   };
 }
 

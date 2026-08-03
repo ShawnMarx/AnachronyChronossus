@@ -14,6 +14,9 @@ import {
   startNextEra,
   isPostImpact,
   POST_IMPACT_ERA,
+  rollParadox,
+  endParadoxPhase,
+  resolveWarp,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -288,5 +291,42 @@ describe('isPostImpact — same Impact Era as the Chronobot', () => {
     expect(POST_IMPACT_ERA).toBe(5);
     expect([1, 2, 3, 4].map(isPostImpact)).toEqual([false, false, false, false]);
     expect([5, 6, 7].map(isPostImpact)).toEqual([true, true, true]);
+  });
+});
+
+describe('resolveWarp — places the rolled Warp tiles', () => {
+  it('adds N Warp tiles and advances to Actions', () => {
+    const s = chronossusState({ era: 3, phase: 'warp' });
+    s.chronossus!.warpTilesOnTimeline = 1;
+    const next = resolveWarp(s, 2);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(3);
+    expect(next.phase).toBe('actions');
+  });
+  it('places nothing on a 0 roll', () => {
+    const next = resolveWarp(chronossusState({ era: 3, phase: 'warp' }), 0);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(0);
+  });
+});
+
+describe('rollParadox — same rules as the Chronobot, on the Chronossus slice', () => {
+  it('a blank roll keeps the tracker and does not stop', () => {
+    const res = rollParadox(chronossusState({ era: 2, phase: 'paradox' }), 0);
+    expect(res.state.chronossus!.paradoxes).toBe(0);
+    expect(res.stop).toBe(false);
+    expect(res.gainedAnomaly).toBe(false);
+  });
+  it('reaching 3 gains an Anomaly, removes a Warp tile, resets, and stops', () => {
+    const s = chronossusState({ era: 3, phase: 'paradox' });
+    s.chronossus!.paradoxes = 2;
+    s.chronossus!.warpTilesOnTimeline = 2;
+    const res = rollParadox(s, 2); // 2 + 2 = 4 → over 3
+    expect(res.gainedAnomaly).toBe(true);
+    expect(res.stop).toBe(true);
+    expect(res.state.chronossus!.anomalies).toBe(1);
+    expect(res.state.chronossus!.warpTilesOnTimeline).toBe(1);
+    expect(res.state.chronossus!.paradoxes).toBe(1); // 4 - 3
+  });
+  it('endParadoxPhase advances to Power Up', () => {
+    expect(endParadoxPhase(chronossusState({ era: 2, phase: 'paradox' })).phase).toBe('powerup');
   });
 });

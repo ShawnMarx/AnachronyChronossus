@@ -28,6 +28,7 @@ import {
   ShapeIcon,
   SettingsMenu,
   WarpPhaseBody,
+  ParadoxPhaseBody,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -875,6 +876,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       ],
     );
   };
+  // Paradox phase (Era 2+): roll the Paradox die for the Chronossus and commit
+  // each roll — same logic as the Chronobot's rollBotParadox.
+  const rollBotParadox = (rolled: number) => {
+    const res = Chronossus.rollParadox(state, rolled);
+    const pre = state.chronossus!;
+    const post = res.state.chronossus!;
+    const effects: string[] = [];
+    if (post.paradoxes !== pre.paradoxes) effects.push(`Paradox tracker → ${post.paradoxes}/3`);
+    if (post.anomalies > pre.anomalies) effects.push('Gained 1 Anomaly (−3 VP)');
+    if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline)
+      effects.push('Warp tile removed from the Timeline');
+    commit(res.state, ui, `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`, effects);
+    return res;
+  };
+  const advanceParadox = () => setState(Chronossus.endParadoxPhase(state));
   // Warp phase: place the Chronossus's rolled Warp tiles and commit (so the
   // placement lands in History) — mirrors the Chronobot's commitWarp.
   const commitWarp = (paradoxes: number) => {
@@ -1746,6 +1762,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       break;
     }
+    case 'paradox':
+      body = (
+        <ParadoxPhaseBody
+          state={state}
+          bot={bot}
+          meta={meta!}
+          onRoll={rollBotParadox}
+          onAdvance={advanceParadox}
+          botName="Chronossus"
+        />
+      );
+      break;
     case 'preparation':
       body = (
         <button className="phase-primary" onClick={() => setState(advanceFromPreparation(state))}>
@@ -1753,7 +1781,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         </button>
       );
       break;
-    default: // setup, paradox — skeletons for now (reconcile later)
+    default: // setup — skeleton for now (reconciled later)
       body = (
         <>
           {meta?.rules && <p className="phase-note">{meta.rules}</p>}

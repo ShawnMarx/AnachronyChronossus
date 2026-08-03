@@ -1669,6 +1669,7 @@ export default function BoardExplorer({
           ) : state.phase === 'paradox' ? (
             <ParadoxPhaseBody
               state={state}
+              bot={state.chronobot}
               meta={meta}
               onRoll={rollBotParadox}
               onAdvance={advancePhase}
@@ -1906,21 +1907,26 @@ export function WarpPhaseBody({
  * rolls the Paradox die — answering "yes" rolls immediately, no separate button.
  * It stops early if it gains an Anomaly or has no Warp tiles left on the Timeline.
  */
-function ParadoxPhaseBody({
+export function ParadoxPhaseBody({
   state,
+  bot,
   meta,
   onRoll,
   onAdvance,
+  botName = 'Chronobot',
 }: {
   state: GameState;
+  /** The active bot's slice fields the Paradox phase reads (shared shape). */
+  bot: { warpTilesOnTimeline: number; paradoxes: number; anomalies: number };
   meta: PhaseMeta;
-  onRoll: (rolled: number) => ReturnType<typeof Chronobot.rollParadox>;
+  onRoll: (rolled: number) => { instructions: Instruction[]; stop: boolean };
   onAdvance: () => void;
+  /** Bot name shown in the copy (defaults to the Chronobot). */
+  botName?: string;
 }) {
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
   const [rolls, setRolls] = useState<string[]>([]);
-  const bot = state.chronobot;
 
   const maxChecks = Math.max(0, state.era - 1);
   const noWarp = bot.warpTilesOnTimeline === 0;
@@ -1937,7 +1943,7 @@ function ParadoxPhaseBody({
   return (
     <>
       <p className="phase-note">
-        The Chronobot rolls for Paradoxes on each past Timeline tile where it has the
+        The {botName} rolls for Paradoxes on each past Timeline tile where it has the
         most (or tied-most) Warp tiles. It has <b>{bot.warpTilesOnTimeline}</b> Warp
         tile{bot.warpTilesOnTimeline === 1 ? '' : 's'} on the Timeline and keeps checking
         until it gains an Anomaly.
@@ -1971,7 +1977,7 @@ function ParadoxPhaseBody({
         <>
           {noWarp && asked === 0 && (
             <p className="phase-note">
-              The Chronobot has no Warp tiles on the Timeline — it rolls no Paradoxes
+              The {botName} has no Warp tiles on the Timeline — it rolls no Paradoxes
               this phase.
             </p>
           )}
@@ -1982,7 +1988,7 @@ function ParadoxPhaseBody({
       ) : (
         <div className="paradox-question">
           <p className="phase-note">
-            Past Timeline tile {asked + 1} of {maxChecks}: does the Chronobot have the
+            Past Timeline tile {asked + 1} of {maxChecks}: does the {botName} have the
             most (or tied-most) Warp tiles on it?
           </p>
           <div className="setup-actions">
