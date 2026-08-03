@@ -289,6 +289,7 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
 const EC_ICON = '/assets/solo/chronossus/energy-core.png';
 const EEC_ICON = '/assets/solo/chronossus/exhausted-energy-core.png';
 const EXOSUIT_ICON = '/assets/solo/chronossus/exosuit.png';
+const PATH_ICON = '/assets/solo/chronossus/path-marker.png';
 
 /** The Exosuit icon + count (replaces the 🦾 emoji in the stat bar / Turn popover). */
 function CxExosuit({ count, size = 18 }: { count: number; size?: number }) {
@@ -1690,7 +1691,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   <CxEnergyPool pool={bot.energyPool} size={24} />
                 </div>
                 <p className="cx-user-action">
-                  <span className="cx-user-action-icon" aria-hidden="true">🖐</span>
+                  <span className="cx-user-action-icon" aria-hidden="true">
+                    <img src={EXOSUIT_ICON} alt="" />
+                    <img src={PATH_ICON} alt="" />
+                  </span>
                   <span>
                     Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
                     {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
