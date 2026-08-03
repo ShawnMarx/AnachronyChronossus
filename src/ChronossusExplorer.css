@@ -50,6 +50,11 @@
   border-color: rgba(var(--sp-accent-2-rgb), 0.9);
   background: rgba(var(--sp-accent-rgb), 0.16);
 }
+/* Turn popover tracker pills — teal tint instead of the hardcoded Chronobot purple. */
+:root[data-bot='chronossus'] .eoa-flag {
+  background: rgba(var(--sp-accent-rgb), 0.16);
+  border-color: rgba(var(--sp-accent-rgb), 0.45);
+}
 /* Ready-to-begin / First-Player dialog — hardcodes the Chronobot purple bg. */
 :root[data-bot='chronossus'] .fp-dialog {
   background: var(--sp-panel);
