@@ -946,7 +946,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const endActions = () => {
     closePanel();
     const era = state.era;
-    if (era >= Chronossus.MAX_ERA || era === 5 || era === 6) {
+    if (era >= Chronossus.MAX_ERA) {
+      // Last Era: no Clean Up step — go straight to scoring.
+      endGameNow();
+      return;
+    }
+    if (era === 5 || era === 6) {
       setState(Chronossus.resolveCleanUp(state));
       return;
     }

@@ -1250,7 +1250,13 @@ export default function BoardExplorer({
   //  • Eras 1–4: no end-game branch, so ask now, then Clean Up.
   const endActions = () => {
     const era = state.era;
-    if (era >= Chronobot.MAX_ERA || era === 5 || era === 6) {
+    if (era >= Chronobot.MAX_ERA) {
+      // Last Era: no Clean Up step — go straight to scoring.
+      setShowStatus(false);
+      endGameNow();
+      return;
+    }
+    if (era === 5 || era === 6) {
       setShowStatus(false);
       setState((s) => Chronobot.resolveCleanUp(s));
       return;
