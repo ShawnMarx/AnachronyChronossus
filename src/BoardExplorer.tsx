@@ -1938,7 +1938,7 @@ function CleanUpPhaseBody({
       )}
       {finalEra ? (
         <button className="phase-primary" onClick={onEndGame}>
-          🏁 Finish &amp; Score ▶
+          Finish &amp; Score ▶
         </button>
       ) : postImpact ? (
         <>

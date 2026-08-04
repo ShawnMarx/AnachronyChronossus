@@ -1843,7 +1843,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           {meta?.rules && <p className="phase-note">{meta.rules}</p>}
           {finalEra ? (
             <button className="phase-primary" onClick={afterCleanUp}>
-              🏁 Finish &amp; Score ▶
+              Finish &amp; Score ▶
             </button>
           ) : postImpact ? (
             <>
