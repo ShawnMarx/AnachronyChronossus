@@ -518,6 +518,31 @@ export default function ChronossusSetupFlow({
                   doesn’t score for Solo Objectives.
                 </p>
               </div>
+
+              {/* Visible per-mode setup steps (below the app rules) — the verbatim
+                  Hypersync setup MINUS the tile-layout line the app handles for you. */}
+              {moduleId === 'hypersync' && (
+                <div className="setup-modified">
+                  <h3>Hypersync Future Actions setup</h3>
+                  <ul>
+                    <li>
+                      Use the 2-player side of the Hypersync board, and cover the right
+                      World Council Action space on the Main board with a Hex Unavailable
+                      tile (as noted in the Hypersync rules for 2 players).
+                    </li>
+                    <li>Place the Solo Hypersync tiles next to the Chronossus board.</li>
+                  </ul>
+                  <img
+                    className="setup-tiles-img"
+                    src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
+                    alt="Solo Hypersync setup tiles"
+                  />
+                  <p className="phase-note">
+                    The app places C12A in slot I, keeps C02A/C03A, and covers the Time
+                    Travel space with C13A for you.
+                  </p>
+                </div>
+              )}
             </>
           )}
         </div>
