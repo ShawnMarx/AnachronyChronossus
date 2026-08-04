@@ -254,7 +254,7 @@ export function resolveAction(
     bot.hypersyncTiles = [...bot.hypersyncTiles, state.era];
     instr.push({
       id: `hs-tile-${n}`,
-      text: `No Action space remained — the Chronossus places a Solo Hypersync tile on Era ${state.era} and performs the Action normally (no Exosuit placed, not a Failed Action).`,
+      text: `No Action space remained — the Chronossus places a Solo Hypersync tile above Era ${state.era} and performs the Action normally (no Exosuit placed, not a Failed Action).`,
       detail:
         'It has a maximum of one Hypersync tile per Era and 3 pending Hypersync tiles total.',
     });

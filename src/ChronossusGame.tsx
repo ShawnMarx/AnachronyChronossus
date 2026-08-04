@@ -1803,7 +1803,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 <HypersyncTilePrompt
                   era={state.era}
                   actionLabel={CHRONOBOT_ACTIONS[active.action].label}
-                  pending={bot.hypersyncTiles.length}
                   panel={CHRONOSSUS_PANEL}
                   onConfirm={confirmHypersyncTile}
                   onCancel={cancelHypersyncTile}
@@ -1892,7 +1891,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {hypersyncMode && (
                     <span
                       className="eoa-flag cx-hypersync-flag"
-                      title="Pending Solo Hypersync tiles"
+                      title="Solo Hypersync tiles"
                     >
                       <img
                         src="/assets/solo/chronossus/hypersync-solo-tile.png"
@@ -2436,14 +2435,12 @@ function HypersyncDialog({
 function HypersyncTilePrompt({
   era,
   actionLabel,
-  pending,
   panel,
   onConfirm,
   onCancel,
 }: {
   era: number;
   actionLabel: string;
-  pending: number;
   panel: [number, number, number, number];
   onConfirm: () => void;
   onCancel: () => void;
@@ -2473,12 +2470,8 @@ function HypersyncTilePrompt({
         <div className="place-prompt">
           <p className="pp-instruct">
             No Action space remained for the “{actionLabel}” Action. Place one of the
-            Chronossus’s Solo Hypersync tiles on <b>Era {era}</b> and perform the Action
+            Chronossus’s Solo Hypersync tiles <b>above Era {era}</b> and perform the Action
             normally — no Exosuit is placed, and this is <b>not</b> a Failed Action.
-          </p>
-          <p className="pp-sub">
-            Pending Hypersync tiles: {pending}/{Chronossus.MAX_HYPERSYNC_TILES} (max one
-            per Era).
           </p>
           <button className="start-turn" onClick={onConfirm}>
             ▶ Place tile &amp; perform the Action
