@@ -1228,18 +1228,29 @@ export default function BoardExplorer({
 
   // Answer the First-Player question and advance to Clean Up (Phase 6). Whoever
   // took the First Player spot leads the next Era's Warp + Action Rounds.
-  const proceedToCleanup = (playerFirst: boolean) => {
+  // Answer "who took the First Player spot next Era?". Where it leads depends on
+  // WHEN it's asked: at the end of Action Rounds (Eras 1–4) it flows into Clean Up;
+  // deferred to after the Clean Up game-end check (Eras 5–6) it starts the next Era.
+  const answerFirstPlayer = (playerFirst: boolean) => {
     setShowFirstPlayer(false);
     setShowStatus(false);
-    setState((s) =>
-      Chronobot.resolveCleanUp({ ...s, firstPlayer: playerFirst ? 'player' : 'bot' }),
-    );
+    setState((s) => {
+      const withFp: GameState = { ...s, firstPlayer: playerFirst ? 'player' : 'bot' };
+      return s.phase === 'cleanup'
+        ? Chronobot.startNextEra(withFp)
+        : Chronobot.resolveCleanUp(withFp);
+    });
   };
 
-  // End of Action Rounds → who's First Player next Era, then Clean Up. On the last
-  // Era there is no next Era, so skip the prompt and go straight to Clean Up.
+  // End of Action Rounds → Clean Up. The First-Player prompt (who leads next Era)
+  // is only worth asking when a next Era is guaranteed to happen:
+  //  • Final Era (7): the game ends in Clean Up — no prompt.
+  //  • Post-Impact Eras (5–6): the game MIGHT end when flipping Collapsing Capital,
+  //    so go to Clean Up first and defer the prompt to the "Game continues" choice.
+  //  • Eras 1–4: no end-game branch, so ask now, then Clean Up.
   const endActions = () => {
-    if (state.era >= Chronobot.MAX_ERA) {
+    const era = state.era;
+    if (era >= Chronobot.MAX_ERA || era === 5 || era === 6) {
       setShowStatus(false);
       setState((s) => Chronobot.resolveCleanUp(s));
       return;
@@ -1721,6 +1732,13 @@ export default function BoardExplorer({
           }
         />
       )}
+
+      {showFirstPlayer && (
+        <FirstPlayerPrompt
+          onAnswer={answerFirstPlayer}
+          onCancel={() => setShowFirstPlayer(false)}
+        />
+      )}
     </>
   );
 
@@ -1782,7 +1800,11 @@ export default function BoardExplorer({
             <CleanUpPhaseBody
               state={state}
               meta={meta}
-              onNextEra={startNextEraNow}
+              onNextEra={
+                state.era === 5 || state.era === 6
+                  ? () => setShowFirstPlayer(true)
+                  : startNextEraNow
+              }
               onEndGame={endGameNow}
             />
           ) : (
@@ -1823,12 +1845,6 @@ export default function BoardExplorer({
             Continue to Clean Up ▶
           </button>
         </div>
-      )}
-      {showFirstPlayer && (
-        <FirstPlayerPrompt
-          onAnswer={proceedToCleanup}
-          onCancel={() => setShowFirstPlayer(false)}
-        />
       )}
       {modals}
     </div>

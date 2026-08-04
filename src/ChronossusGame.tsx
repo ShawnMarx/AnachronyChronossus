@@ -939,19 +939,31 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   // On the last Era there is no next Era, so skip the prompt and go to Clean Up.
+  // End of Action Rounds → Clean Up. Only ask who leads next Era when a next Era is
+  // guaranteed: the final Era (7) ends in Clean Up (no prompt); post-Impact Eras
+  // (5–6) might end when flipping Collapsing Capital, so defer the prompt to the
+  // "Game continues" choice; Eras 1–4 ask now.
   const endActions = () => {
     closePanel();
-    if (state.era >= Chronossus.MAX_ERA) {
+    const era = state.era;
+    if (era >= Chronossus.MAX_ERA || era === 5 || era === 6) {
       setState(Chronossus.resolveCleanUp(state));
       return;
     }
     setShowFirstPlayer(true);
   };
-  const proceedToCleanup = (playerFirst: boolean) => {
+  // Answer the First-Player question. Asked at the end of Action Rounds (Eras 1–4)
+  // it flows into Clean Up; deferred past the Clean Up game-end check (Eras 5–6) it
+  // starts the next Era.
+  const answerFirstPlayer = (playerFirst: boolean) => {
     setShowFirstPlayer(false);
-    setState(
-      Chronossus.resolveCleanUp({ ...state, firstPlayer: playerFirst ? 'player' : 'bot' }),
-    );
+    setUi((u) => ({ ...u, lastDraw: null }));
+    setState((s) => {
+      const withFp: GameState = { ...s, firstPlayer: playerFirst ? 'player' : 'bot' };
+      return s.phase === 'cleanup'
+        ? finishEra(withFp)
+        : Chronossus.resolveCleanUp(withFp);
+    });
   };
   const afterCleanUp = () => {
     const next = finishEra(state);
@@ -1677,7 +1689,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         {showFirstPlayer && (
           <FirstPlayerPrompt
             botName="Chronossus"
-            onAnswer={proceedToCleanup}
+            onAnswer={answerFirstPlayer}
             onCancel={() => setShowFirstPlayer(false)}
           />
         )}
@@ -1840,7 +1852,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 below.
               </div>
               <div className="setup-actions">
-                <button className="phase-primary" onClick={afterCleanUp}>
+                <button
+                  className="phase-primary"
+                  onClick={() => setShowFirstPlayer(true)}
+                >
                   Game continues — start Era {era + 1} ▶
                 </button>
                 <button className="phase-end-pink" onClick={endGameNow}>
@@ -1894,6 +1909,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {rulesModal}
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
+      {showFirstPlayer && (
+        <FirstPlayerPrompt
+          botName="Chronossus"
+          onAnswer={answerFirstPlayer}
+          onCancel={() => setShowFirstPlayer(false)}
+        />
+      )}
     </>
   );
 }
