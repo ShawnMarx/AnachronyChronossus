@@ -159,6 +159,20 @@ export interface ChronossusActionInput {
   geniusAvailable?: boolean;
   /** Player override: no available Action space at all (Failed, discards Exosuit). */
   noSpaceAvailable?: boolean;
+  /**
+   * Hypersync mode: no Action space remained, so the Chronossus places a Solo
+   * Hypersync tile on the current Era and performs the Capital Action normally
+   * (no Exosuit placed, NOT a Failed Action). The UI only sets this when
+   * `canPlaceHypersyncTile` is true.
+   */
+  placeHypersyncTile?: boolean;
+  /**
+   * Hypersync mode: a Capital Action had no space AND no Hypersync tile could be
+   * placed (already one this Era, or 3 pending). Per the Hypersync rules this is a
+   * Failed Action worth +1 VP — but, unlike the base no-space fail, it does NOT
+   * discard an active Exosuit.
+   */
+  hypersyncNoTile?: boolean;
   /** For a successful Construct: the printed VP of the tile the player took. */
   buildingVP?: number;
   /** For a Mine action: the 2 Resources granted (defaults to priority choice). */
@@ -210,6 +224,7 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
     },
     superprojectVps: [...bot.superprojectVps],
     energyPool: { ...bot.energyPool },
+    hypersyncTiles: [...bot.hypersyncTiles],
   };
 }
 
@@ -231,9 +246,31 @@ export function resolveAction(
     text: `The Chronossus takes the "${chronossusActionLabel(input.actionId)}" action.`,
   });
 
-  // Failed from no available space: +1 VP AND discard an active Exosuit (the
-  // Chronossus-only nuance vs. the Chronobot).
-  if (input.noSpaceAvailable) {
+  // Hypersync fallback: no Action space, but a Solo Hypersync tile is placed on
+  // this Era and the Capital Action is performed normally (no Exosuit, NOT a
+  // Failed Action). Falls through to the normal switch with placement suppressed.
+  const usingHypersyncTile = input.placeHypersyncTile === true;
+  if (usingHypersyncTile) {
+    bot.hypersyncTiles = [...bot.hypersyncTiles, state.era];
+    instr.push({
+      id: `hs-tile-${n}`,
+      text: `No Action space remained — the Chronossus places a Solo Hypersync tile on Era ${state.era} and performs the Action normally (no Exosuit placed, not a Failed Action).`,
+      detail:
+        'It has a maximum of one Hypersync tile per Era and 3 pending Hypersync tiles total.',
+    });
+  } else if (input.hypersyncNoTile) {
+    // Hypersync Capital Action, no space, and no Hypersync tile available: a Failed
+    // Action worth +1 VP — but no Exosuit is discarded (Hypersync override).
+    bot.vp += 1;
+    instr.push({
+      id: `hs-fail-notile-${n}`,
+      text: 'No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +1 VP.',
+      effect: { vp: 1 },
+    });
+    return finishAction(state, bot, instr);
+  } else if (input.noSpaceAvailable) {
+    // Failed from no available space: +1 VP AND discard an active Exosuit (the
+    // Chronossus-only nuance vs. the Chronobot).
     bot.vp += 1;
     if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     instr.push({
@@ -251,7 +288,10 @@ export function resolveAction(
 
   const def = actionDef(input.actionId);
   const placeExosuit = () => {
-    if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    // The Hypersync-tile fallback places a tile instead of an Exosuit.
+    if (!usingHypersyncTile && def.placesExosuit && bot.exosuitsAvailable > 0) {
+      bot.exosuitsAvailable -= 1;
+    }
   };
   const failCantPerform = (why: string) => {
     if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
@@ -536,6 +576,131 @@ export const CHRONOSSUS_PASSING_RULE =
   'Reboot) never trigger a pass.\n\n' +
   'Once both you and the Chronossus have passed, the Action Rounds Phase ends. Unlike ' +
   'the Chronobot, the Chronossus has no minimum number of Actions it must take.';
+
+// --------------------------------------------------------------------------
+// Hypersync mode — Solo Hypersync tiles + the C12/C13 Hypersync Action
+// --------------------------------------------------------------------------
+//
+// Two linked mechanics:
+//  1. The no-space Capital-Action fallback (handled in resolveAction) PLACES a
+//     Solo Hypersync tile on the current Era — max one per Era, 3 pending total.
+//  2. The C12/C13 Hypersync Action RETRIEVES the furthest-past pending tile:
+//     send an Exosuit to a random available Hypersync hex, score 2 VP, remove
+//     that tile (no Time Travel advance). If it has no pending tile / no Exosuit /
+//     no free hex, it performs a normal Time Travel Action instead. If neither is
+//     possible, it is a Failed Action (+1 VP). C12A/B then gain 1 Energy Core;
+//     C13B gains 1 VP instead; C13A gains nothing. C12B/C13B also Autoleap.
+
+/** Maximum pending Solo Hypersync tiles the Chronossus may hold at once. */
+export const MAX_HYPERSYNC_TILES = 3;
+/** The three Hypersync hex spaces (numbered 1–3 on the board). */
+export const HYPERSYNC_HEXES = [1, 2, 3] as const;
+
+/** Whether a Solo Hypersync tile can be placed this Era (no-space fallback). */
+export function canPlaceHypersyncTile(bot: ChronossusState, era: number): boolean {
+  return bot.hypersyncTiles.length < MAX_HYPERSYNC_TILES && !bot.hypersyncTiles.includes(era);
+}
+
+/** Summary the UI uses to branch the C12/C13 Hypersync Action. */
+export interface HypersyncPlan {
+  /** ≥1 pending Hypersync tile AND an available Exosuit → the Hypersync branch is open. */
+  canHypersync: boolean;
+  /** The furthest-past pending tile's Era (the one a Hypersync Action retrieves). */
+  oldestTileEra: number | null;
+  hasExosuit: boolean;
+  pendingCount: number;
+}
+
+export function hypersyncPlan(bot: ChronossusState): HypersyncPlan {
+  const pending = [...bot.hypersyncTiles].sort((a, b) => a - b);
+  const hasExosuit = bot.exosuitsAvailable > 0;
+  return {
+    canHypersync: pending.length > 0 && hasExosuit,
+    oldestTileEra: pending.length ? pending[0] : null,
+    hasExosuit,
+    pendingCount: pending.length,
+  };
+}
+
+export type HypersyncOutcome = 'hypersync' | 'time-travel' | 'failed';
+
+export interface HypersyncActionInput {
+  /** The tile driving this action (C12A/C12B/C13A/C13B) — sets the post-bonus. */
+  code: string;
+  outcome: HypersyncOutcome;
+  /** The chosen Hypersync hex (1–3), when `outcome` is 'hypersync'. */
+  hex?: number;
+}
+
+/**
+ * Resolve a C12/C13 Hypersync Action given the branch the UI walked the player
+ * through (Hypersync hex placement, the Time Travel fallback, or a Failed Action).
+ * Applies the retrieve/score, the post-action bonus, and reports Autoleap.
+ */
+export function resolveHypersyncAction(
+  state: GameState,
+  input: HypersyncActionInput,
+): ChronossusActionResult {
+  if (!state.chronossus) throw new Error('resolveHypersyncAction: no Chronossus state');
+  const bot = cloneChronossus(state.chronossus);
+  const instr: Instruction[] = [];
+  const n = bot.totalActions;
+  const tile = CHRONOSSUS_TILES[input.code];
+  const eff = tileEffect(input.code);
+  const name = tile?.name ?? input.code;
+  instr.push({ id: `hs-turn-${n}`, text: `The Chronossus takes the "${name}" action (${input.code}).` });
+
+  let succeeded = false;
+  if (input.outcome === 'hypersync') {
+    const pending = [...bot.hypersyncTiles].sort((a, b) => a - b);
+    const era = pending[0];
+    bot.hypersyncTiles = pending.slice(1);
+    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    bot.vp += 2;
+    const where = input.hex != null ? `Hypersync hex ${input.hex}` : 'the Hypersync space for its furthest-past pending tile';
+    instr.push({
+      id: `hs-place-${n}`,
+      text: `Send an Exosuit to ${where}; the Chronossus scores 2 VP and retrieves its pending Solo Hypersync tile from Era ${era}.`,
+      detail:
+        'Do NOT advance the Time Travel marker. In post-Impact Eras it ignores the printed effect of Supercharge tiles.',
+      effect: { vp: 2 },
+    });
+    succeeded = true;
+  } else if (input.outcome === 'time-travel') {
+    const hadWarp = state.chronossus.warpTilesOnTimeline > 0;
+    resolveTimeTravel(bot, instr, n);
+    succeeded = hadWarp;
+  } else {
+    bot.vp += 1;
+    instr.push({
+      id: `hs-fail-${n}`,
+      text: 'Neither a Hypersync nor a Time Travel Action is possible — Failed Action: the Chronossus takes +1 VP.',
+      effect: { vp: 1 },
+    });
+  }
+
+  // Post-action bonus, applied only when the action succeeded (C12A/B: +1 Energy
+  // Core; C13B: +1 VP; C13A: nothing).
+  if (succeeded) {
+    if (eff.energyCores) {
+      bot.energyPool.energized += eff.energyCores;
+      instr.push({
+        id: `hs-bonus-e-${n}`,
+        text: `Finally, the Chronossus gains ${eff.energyCores} Energy Core${eff.energyCores === 1 ? '' : 's'}.`,
+      });
+    }
+    if (eff.vp) {
+      bot.vp += eff.vp;
+      instr.push({
+        id: `hs-bonus-v-${n}`,
+        text: `The Chronossus gains ${eff.vp} VP instead of an Energy Core.`,
+        effect: { vp: eff.vp },
+      });
+    }
+  }
+
+  return { ...finishAction(state, bot, instr), autoleap: eff.autoleap === true };
+}
 
 // --------------------------------------------------------------------------
 // Phase 6: Clean Up

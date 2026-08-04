@@ -262,6 +262,16 @@
   font-size: 0.88rem;
   line-height: 1.45;
 }
+/* A setup-tiles reference image inside a rulebook box (e.g. Hypersync solo tiles). */
+.setup-tiles-img {
+  display: block;
+  max-width: 220px;
+  width: 100%;
+  height: auto;
+  margin: 0.6rem auto 0.2rem;
+  border-radius: 8px;
+}
+
 /* Per-tile A/B flip picker, revealed under the "Flip to B side" difficulty. */
 .tile-flip-list {
   display: flex;

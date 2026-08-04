@@ -17,6 +17,10 @@ import {
   rollParadox,
   endParadoxPhase,
   resolveWarp,
+  canPlaceHypersyncTile,
+  hypersyncPlan,
+  resolveHypersyncAction,
+  MAX_HYPERSYNC_TILES,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -282,6 +286,87 @@ describe('passing & end of Action Rounds', () => {
     const botPassed = passChronossus(base).state;
     expect(actionRoundsEnded(botPassed)).toBe(false); // player hasn't passed
     expect(actionRoundsEnded({ ...botPassed, playerPassed: true })).toBe(true);
+  });
+});
+
+describe('Hypersync mode', () => {
+  function hsState(era: number, exosuits: number, tiles: number[] = []): GameState {
+    const s = chronossusState({ era, phase: 'actions' });
+    s.config.chronossusMode = 'hypersync';
+    s.chronossus!.exosuitsAvailable = exosuits;
+    s.chronossus!.hypersyncTiles = tiles;
+    return s;
+  }
+
+  it('canPlaceHypersyncTile: one per Era, max 3 total', () => {
+    const bot = emptyChronossusState();
+    expect(canPlaceHypersyncTile(bot, 3)).toBe(true);
+    bot.hypersyncTiles = [3];
+    expect(canPlaceHypersyncTile(bot, 3)).toBe(false); // already one this Era
+    expect(canPlaceHypersyncTile(bot, 4)).toBe(true);
+    bot.hypersyncTiles = [1, 2, 3];
+    expect(canPlaceHypersyncTile(bot, 4)).toBe(false); // at the cap
+    expect(bot.hypersyncTiles.length).toBe(MAX_HYPERSYNC_TILES);
+  });
+
+  it('no-space Capital Action fallback places a tile and performs normally (no Exosuit, no VP penalty)', () => {
+    const s = hsState(3, 4);
+    const { state } = resolveAction(s, {
+      actionId: 'construct-factory',
+      placeHypersyncTile: true,
+      buildingVP: 5,
+    });
+    const bot = state.chronossus!;
+    expect(bot.hypersyncTiles).toEqual([3]); // tile placed on this Era
+    expect(bot.exosuitsAvailable).toBe(4); // NO Exosuit spent
+    expect(bot.buildings.factory).toBe(1); // action performed normally
+    expect(bot.vp).toBe(5); // building VP, no Failed +1 VP
+  });
+
+  it('hypersyncPlan: needs a pending tile AND an Exosuit', () => {
+    expect(hypersyncPlan(hsState(4, 1, [2]).chronossus!).canHypersync).toBe(true);
+    expect(hypersyncPlan(hsState(4, 0, [2]).chronossus!).canHypersync).toBe(false); // no Exosuit
+    expect(hypersyncPlan(hsState(4, 1, []).chronossus!).canHypersync).toBe(false); // no tile
+    expect(hypersyncPlan(hsState(4, 1, [3, 1, 2]).chronossus!).oldestTileEra).toBe(1);
+  });
+
+  it('Hypersync Action retrieves the oldest tile, scores 2 VP + bonus, spends an Exosuit', () => {
+    const s = hsState(5, 2, [1, 3]);
+    const { state, autoleap } = resolveHypersyncAction(s, {
+      code: 'C12A',
+      outcome: 'hypersync',
+      hex: 2,
+    });
+    const bot = state.chronossus!;
+    expect(bot.hypersyncTiles).toEqual([3]); // Era 1 (oldest) retrieved
+    expect(bot.exosuitsAvailable).toBe(1); // one Exosuit sent
+    expect(bot.vp).toBe(2); // 2 VP (C12A energy bonus is a core, not VP)
+    expect(bot.energyPool.energized).toBe(6); // +1 Energy Core bonus
+    expect(autoleap).toBeFalsy(); // C12A does not autoleap
+  });
+
+  it('C13B scores +1 VP instead of an Energy Core; C12B autoleaps', () => {
+    const c13b = resolveHypersyncAction(hsState(5, 2, [1]), {
+      code: 'C13B',
+      outcome: 'hypersync',
+      hex: 1,
+    }).state.chronossus!;
+    expect(c13b.vp).toBe(3); // 2 + 1 VP bonus
+    expect(c13b.energyPool.energized).toBe(5); // no Energy Core
+    expect(resolveHypersyncAction(hsState(5, 2, [1]), { code: 'C12B', outcome: 'hypersync', hex: 1 }).autoleap).toBe(true);
+  });
+
+  it('Time Travel fallback: no bonus applied on the failed (no-warp) branch', () => {
+    const s = hsState(5, 2, []); // no pending tiles → TT branch
+    s.chronossus!.warpTilesOnTimeline = 0; // TT itself fails
+    const { state } = resolveHypersyncAction(s, { code: 'C12A', outcome: 'time-travel' });
+    expect(state.chronossus!.vp).toBe(1); // TT-failed +1 VP, no energy bonus
+    expect(state.chronossus!.energyPool.energized).toBe(5);
+  });
+
+  it('Failed outcome: +1 VP, no bonus', () => {
+    const { state } = resolveHypersyncAction(hsState(5, 0, []), { code: 'C13A', outcome: 'failed' });
+    expect(state.chronossus!.vp).toBe(1);
   });
 });
 

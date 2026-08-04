@@ -141,6 +141,13 @@ export interface ChronossusState {
   passed: boolean;
   /** The Energy Pool bag (drives Power Up). Starts `ENERGY_POOL_START`. */
   energyPool: EnergyPool;
+  /**
+   * Hypersync mode only: the Eras on which the Chronossus has a PENDING Solo
+   * Hypersync tile (placed via the no-space Capital-Action fallback). Max 3, at
+   * most one per Era. A Hypersync Action retrieves the furthest-past one. Empty in
+   * every other mode.
+   */
+  hypersyncTiles: number[];
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */
@@ -217,6 +224,7 @@ export function emptyChronossusState(): ChronossusState {
     totalActions: 0,
     passed: false,
     energyPool: { ...ENERGY_POOL_START },
+    hypersyncTiles: [],
   };
 }
 

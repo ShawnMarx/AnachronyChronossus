@@ -104,6 +104,13 @@ import {
   tileEffect,
 } from './board/chronossusTiles';
 import {
+  getMode,
+  slotAtPos,
+  slotCovering,
+  tileCodeFor,
+} from './board/chronossusModes';
+import { DIFFICULTY_HYPERSYNC_TARGETED } from './phases/ChronossusSetupFlow';
+import {
   CHRONOSSUS_OVERLAYS,
   OVERLAY_KEYS,
   OVERLAY_LABEL,
@@ -232,6 +239,18 @@ const PDX_KEYS = CHRONOSSUS_PARADOX_SLOTS.slots.map((_, i) => pdxKey(i));
 const TRACK_KEYS = CHRONOSSUS_TRACK_POSITIONS.map((p) => p.key);
 /** The 3 modular tile slots (I/II/III) — their tile ART is calibrated separately. */
 const MOD_SLOTS = CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.tile);
+/** Capital Actions (Research / Recruit / Construct) — the ones the Hypersync
+ *  no-space fallback lets the Chronossus perform via a Solo Hypersync tile. */
+const CAPITAL_ACTIONS = new Set<ChronossusActionId>([
+  'research',
+  'recruit',
+  'recruit-genius-research',
+  'construct-factory',
+  'construct-lab',
+  'construct-powerplant',
+  'construct-support',
+  'construct-superproject',
+]);
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
   ...TRACK_KEYS,
@@ -380,6 +399,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A modular-tile dialog opened read-only (play-mode tap / SCV row): shows the
   // tile's rules with no ▶ Start, taking no turn (mirrors the action rule view).
   const [tileRuleView, setTileRuleView] = useState(false);
+  // A pending C12/C13 Hypersync Action (Hypersync mode): the tile code driving it,
+  // plus whether the dialog is read-only (rules view). Its own multi-step flow
+  // lives in HypersyncDialog.
+  const [pendingHypersync, setPendingHypersync] = useState<{ code: string; readOnly: boolean } | null>(null);
+  // Hypersync no-space fallback: showing the "place a Solo Hypersync tile" prompt
+  // after the player says a Capital Action cannot be placed.
+  const [showHypersyncTilePrompt, setShowHypersyncTilePrompt] = useState(false);
 
   // Simple Command View (play aid) + the board-stage sizing mechanism, ported
   // verbatim from the Chronobot so the board + SCV reflow identically on mobile.
@@ -436,6 +462,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // a full reset), NOT when the dialog is cancelled — so closing a bot dialog and
   // re-hitting Take Bot Action repeats the same roll / action rather than re-rolling.
   const pendingDieRef = useRef<CommandNum | null>(null);
+  // Hypersync mode: set while the current Capital Action is being performed via a
+  // Solo Hypersync tile (no-space fallback) — threaded into resolve()'s input.
+  const hypersyncTileRef = useRef<boolean>(false);
 
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
@@ -472,6 +501,34 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   const bot = state.chronossus!;
   const score = Chronossus.scoreChronossus(bot);
+
+  // ---- Mode / Hypersync helpers -----------------------------------------
+  const mode = getMode(state.config.chronossusMode);
+  const tileSides = state.config.tileSides;
+  const hypersyncMode = mode.slots.some((s) => tileEffect(`${s.family}A`).hypersync === true);
+  const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
+  // The live Hypersync tile code (C12/C13 + side) triggered at a given board spot,
+  // or null when this mode has no Hypersync tile there.
+  const hypersyncCodeAtSlot = (posKey: string): string | null => {
+    const slot = slotAtPos(mode, posKey);
+    if (slot && tileEffect(`${slot.family}A`).hypersync) return tileCodeFor(slot.family, tileSides);
+    return null;
+  };
+  const hypersyncCodeForTimeTravel = (): string | null => {
+    const slot = slotCovering(mode, 'time-travel');
+    if (slot && tileEffect(`${slot.family}A`).hypersync) return tileCodeFor(slot.family, tileSides);
+    return null;
+  };
+  // The live tile code shown at a track position (mode family + selected side),
+  // falling back to the base tile-action family, then the static tile art.
+  const slotTileCode = (p: TrackPos): string => {
+    const s = slotAtPos(mode, p.key);
+    if (s) return tileCodeFor(s.family, tileSides);
+    if (p.action && p.action in TILE_ACTION_FAMILY) {
+      return liveTileCode(p.action as keyof typeof TILE_ACTION_FAMILY, tileSides);
+    }
+    return p.tile ?? '';
+  };
   // The board is interactive only in Action Rounds; elsewhere (the PhaseScreen
   // "Status" tab) it's the read-only bot-status view.
   const isActionsPhase = state.phase === 'actions';
@@ -636,6 +693,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       recruitedWorker?: Worker;
       shape?: BreakthroughShape;
       geniusAvailable?: boolean;
+      hypersyncNoTile?: boolean;
     },
   ) => {
     const input: ChronossusActionInput = { actionId: h.action };
@@ -645,6 +703,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (opts.recruitedWorker) input.recruitedWorker = opts.recruitedWorker;
     if (opts.shape) input.shape = opts.shape;
     if (opts.geniusAvailable) input.geniusAvailable = true;
+    // Hypersync no-space fallback: perform the Capital Action via a Solo Hypersync
+    // tile (no Exosuit, not a Failed Action).
+    if (hypersyncTileRef.current) input.placeHypersyncTile = true;
+    if (opts.hypersyncNoTile) input.hypersyncNoTile = true;
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     commit(
       next,
@@ -657,6 +719,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastResult(instructions);
     setPending(null);
     activeMarkerRef.current = null;
+    hypersyncTileRef.current = false; // consumed
     pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
   };
 
@@ -737,8 +800,27 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
 
   const onCannotPlace = () => {
-    if (active) resolve(active, { cannotPlace: true });
+    if (!active) return;
+    // Hypersync mode: a Capital Action with no space places a Solo Hypersync tile
+    // instead (if allowed) rather than Failing.
+    if (hypersyncMode && CAPITAL_ACTIONS.has(active.action)) {
+      if (Chronossus.canPlaceHypersyncTile(bot, state.era)) {
+        setShowHypersyncTilePrompt(true);
+        return;
+      }
+      resolve(active, { hypersyncNoTile: true }); // no tile available → Failed +1 VP
+      return;
+    }
+    resolve(active, { cannotPlace: true });
   };
+  // Confirm placing a Solo Hypersync tile: run the Capital Action's normal input
+  // sub-flow, but with the tile flag set (no Exosuit, not a Failed Action).
+  const confirmHypersyncTile = () => {
+    hypersyncTileRef.current = true;
+    setShowHypersyncTilePrompt(false);
+    onConfirmPlace();
+  };
+  const cancelHypersyncTile = () => setShowHypersyncTilePrompt(false);
   const onMineHasSpace = () => {
     setSelectedResources(Chronobot.mineResourceOrder(bot).slice(0, 2));
     setPending('mineResources');
@@ -820,6 +902,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (!p.action) return;
+    // Hypersync slot (C12): show / take the Hypersync Action instead of the tile.
+    const hs = hypersyncCodeAtSlot(p.key);
+    if (hs) {
+      botDieRef.current = null;
+      activeMarkerRef.current = null;
+      setResult([]);
+      setPendingHypersync({ code: hs, readOnly: !debug });
+      return;
+    }
     const tileAction = p.action as ChronossusTileActionId;
     if (!debug) {
       showTileRules(tileAction);
@@ -838,19 +929,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const key = markerPosKey(num, markerSteps[num]);
     const tp = trackPos(key);
     if (tp?.action) {
-      const code =
-        tp.action in TILE_ACTION_FAMILY
-          ? liveTileCode(tp.action as keyof typeof TILE_ACTION_FAMILY, state.config.tileSides)
-          : (tp.tile ?? null);
-      return {
-        num,
-        action: tp.action,
-        label: Chronossus.chronossusActionLabel(tp.action),
-        tile: code,
-      };
+      const code = slotTileCode(tp);
+      const modeSlot = slotAtPos(mode, key);
+      const label = modeSlot
+        ? (CHRONOSSUS_TILES[code]?.name ?? Chronossus.chronossusActionLabel(tp.action))
+        : Chronossus.chronossusActionLabel(tp.action);
+      return { num, action: tp.action, label, tile: code };
     }
     const [x, y] = positions[key] ?? [0, 0];
     const h = nearestHotspot(x, y);
+    // Hypersync mode covers the Time Travel space with C13.
+    if (h.action === 'time-travel') {
+      const hs = hypersyncCodeForTimeTravel();
+      if (hs) return { num, action: h.action, label: CHRONOSSUS_TILES[hs]?.name ?? 'Hypersync', tile: hs };
+    }
     return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: null };
   });
 
@@ -1042,7 +1134,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Take Bot Action: roll the AI die (faces 2/3/4/5), activate that Command
   // marker, resolve the Action space it currently sits on, then advance it.
   const takeBotTurn = () => {
-    if (bot.passed || active || pendingTile) return;
+    if (bot.passed || active || pendingTile || pendingHypersync) return;
     // Reuse a rolled-but-uncommitted die (e.g. after cancelling the dialog, or an
     // Undo) so it repeats the same roll; otherwise roll fresh.
     const die = (pendingDieRef.current ?? rollAiDie()) as CommandNum;
@@ -1057,13 +1149,30 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // than resolving instantly. Every other spot sits on a printed Action space,
     // resolved via the nearest Action hotspot (the full DetailPanel flow).
     if (tp?.action) {
+      // Hypersync mode replaces slot I's tile (C01) with C12 → the Hypersync flow.
+      const hs = hypersyncCodeAtSlot(key);
+      if (hs) {
+        setResult([]);
+        setPendingHypersync({ code: hs, readOnly: false });
+        return;
+      }
       // TrackPos.action on a tile slot is always a modular tile action.
       setResult([]);
       setPendingTile(tp.action as ChronossusTileActionId);
       return;
     }
     const [x, y] = positions[key] ?? [0, 0];
-    onTileClick(nearestHotspot(x, y), true); // die-driven turn: activate, not rule-view
+    const h = nearestHotspot(x, y);
+    // Hypersync mode covers the Time Travel space with C13 → the Hypersync flow.
+    if (h.action === 'time-travel') {
+      const hs = hypersyncCodeForTimeTravel();
+      if (hs) {
+        setResult([]);
+        setPendingHypersync({ code: hs, readOnly: false });
+        return;
+      }
+    }
+    onTileClick(h, true); // die-driven turn: activate, not rule-view
   };
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
@@ -1106,6 +1215,31 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     pendingDieRef.current = null;
     setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
   };
+
+  // Commit a C12/C13 Hypersync Action once the HypersyncDialog has walked the
+  // player through its branch (hex placement / Time Travel fallback / Failed).
+  const resolveHypersyncTurn = (input: Chronossus.HypersyncActionInput) => {
+    const { state: next, instructions, autoleap } = Chronossus.resolveHypersyncAction(state, input);
+    commit(
+      next,
+      advancedUi(autoleap ? 1 : 0),
+      turnLabel(instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code),
+      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
+      botDieRef.current,
+    );
+    setResult(instructions);
+    setLastResult(instructions);
+    activeMarkerRef.current = null;
+    pendingDieRef.current = null;
+    closeHypersync();
+  };
+  const closeHypersync = () => {
+    setPendingHypersync(null);
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+    pendingDieRef.current = null;
+    setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
+  };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
   const playerPass = () => {
@@ -1117,7 +1251,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // While it is, the turn controls hide and only the rolled die shows (like the
   // Chronobot), returning once the dialog completes.
   const actionInProgress =
-    (active != null && !ruleView) || (pendingTile != null && !tileRuleView);
+    (active != null && !ruleView) ||
+    (pendingTile != null && !tileRuleView) ||
+    (pendingHypersync != null && !pendingHypersync.readOnly);
 
   // This Era's committed bot Action turns (drives the Turn tracker + its hover
   // list). Excludes the pre-Action phase events (Power Up / Warp / Paradox), which
@@ -1415,13 +1551,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 const k = tileKey(p.key);
                 const [x, y] = positions[k] ?? p.tilePos ?? p.pos;
                 const sel = calibrate && selected === k;
-                // Render the live side (A/B) the player selected at setup.
-                const code = p.action
-                  ? liveTileCode(
-                      p.action as keyof typeof TILE_ACTION_FAMILY,
-                      state.config.tileSides,
-                    )
-                  : (p.tile ?? '');
+                // Render the live tile for this mode (family + selected A/B side).
+                const code = slotTileCode(p);
                 return (
                   <img
                     key={k}
@@ -1437,6 +1568,35 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   />
                 );
               })}
+
+              {/* Hypersync mode: C13 tile COVERS the printed Time Travel space.
+                  Render its art centered on the Time Travel hotspot; a tap opens
+                  the Hypersync rules (or, in debug, takes the Action). */}
+              {(() => {
+                const ttCode = hypersyncCodeForTimeTravel();
+                if (!ttCode) return null;
+                const ttHs = CHRONOSSUS_ACTION_HOTSPOTS.find((h) => h.action === 'time-travel');
+                if (!ttHs) return null;
+                const [x, y] = positions[hsKey(ttHs.id)] ?? HS_CENTER(ttHs);
+                return (
+                  <img
+                    className="cx-tile-art cx-tile-cover"
+                    src={`/assets/solo/chronossus/tiles/${ttCode}.png`}
+                    alt={`Modular tile ${ttCode} (covers Time Travel)`}
+                    style={{
+                      left: `${x}%`,
+                      top: `${y}%`,
+                      width: `${tileWidth}%`,
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                    title={`Covers Time Travel · ${ttCode} — ${CHRONOSSUS_TILES[ttCode]?.name ?? ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPendingHypersync({ code: ttCode, readOnly: !debug });
+                    }}
+                  />
+                );
+              })()}
 
               {/* Count/track badges (buildings, resources, workers, etc.). Tap a
                   badge (outside calibrate) for a themed info popover. */}
@@ -1484,6 +1644,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                             <span className="cx-mech-pop-label">Energy Pool</span>
                             <CxEnergyPool pool={bot.energyPool} size={24} />
                           </div>
+                          {hypersyncMode && (
+                            <div className="cx-mech-pop-energy">
+                              <span className="cx-mech-pop-label">Hypersync tiles</span>
+                              <span>
+                                {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
+                                {bot.hypersyncTiles.length > 0
+                                  ? ` (Eras ${[...bot.hypersyncTiles].sort((a, b) => a - b).join(', ')})`
+                                  : ''}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </BadgePopover>
                     )}
@@ -1617,6 +1788,27 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onClose={cancelPanel}
                 />
               )}
+              {pendingHypersync && (
+                <HypersyncDialog
+                  code={pendingHypersync.code}
+                  bot={bot}
+                  targeted={hypersyncTargeted}
+                  readOnly={pendingHypersync.readOnly}
+                  panel={CHRONOSSUS_PANEL}
+                  onResolve={resolveHypersyncTurn}
+                  onClose={closeHypersync}
+                />
+              )}
+              {showHypersyncTilePrompt && active && (
+                <HypersyncTilePrompt
+                  era={state.era}
+                  actionLabel={CHRONOBOT_ACTIONS[active.action].label}
+                  pending={bot.hypersyncTiles.length}
+                  panel={CHRONOSSUS_PANEL}
+                  onConfirm={confirmHypersyncTile}
+                  onCancel={cancelHypersyncTile}
+                />
+              )}
             </div>
             {simpleView && !calibrate && scvMode === 'below' && (
               <CxSimpleCommandView
@@ -1697,6 +1889,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   >
                     <CxEnergyPool pool={bot.energyPool} size={18} />
                   </span>
+                  {hypersyncMode && (
+                    <span
+                      className="eoa-flag cx-hypersync-flag"
+                      title="Pending Solo Hypersync tiles"
+                    >
+                      <img
+                        src="/assets/solo/chronossus/hypersync-solo-tile.png"
+                        alt="Hypersync tiles"
+                        width={18}
+                        height={18}
+                      />
+                      {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
+                    </span>
+                  )}
                 </>
               }
               hint={chronossusTurnHint(bot)}
@@ -2062,6 +2268,253 @@ function CxTileDialog({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// --------------------------------------------------------------------------
+// Hypersync Action dialog (C12 / C13). Walks the player through the branch:
+//   1. Intro — the tile + plan. If it has a pending tile AND an Exosuit, offer to
+//      check the Hypersync hexes; otherwise it Time-Travels (or Fails).
+//   2. Hexes — mark any of the 3 Hypersync hex spaces already occupied.
+//   3a. Hypersync — pick a random available hex (or, with the difficulty, the one
+//       matching the furthest-past pending tile), place an Exosuit, retrieve the
+//       oldest pending tile (2 VP), and apply the tile's post-bonus.
+//   3b. Fallback — perform a normal Time Travel Action, or a Failed Action.
+// --------------------------------------------------------------------------
+function HypersyncDialog({
+  code,
+  bot,
+  targeted,
+  readOnly = false,
+  panel,
+  onResolve,
+  onClose,
+}: {
+  code: string;
+  bot: ChronossusState;
+  targeted: boolean;
+  readOnly?: boolean;
+  panel: [number, number, number, number];
+  onResolve: (input: Chronossus.HypersyncActionInput) => void;
+  onClose: () => void;
+}) {
+  const tile = CHRONOSSUS_TILES[code];
+  const plan = Chronossus.hypersyncPlan(bot);
+  const canTimeTravel = bot.warpTilesOnTimeline > 0;
+  const [step, setStep] = useState<'intro' | 'hexes'>('intro');
+  const [occupied, setOccupied] = useState<Set<number>>(new Set());
+  const [l, t, w, h] = panel;
+
+  const toggleHex = (n: number) =>
+    setOccupied((s) => {
+      const next = new Set(s);
+      if (next.has(n)) next.delete(n);
+      else next.add(n);
+      return next;
+    });
+
+  const available = Chronossus.HYPERSYNC_HEXES.filter((n) => !occupied.has(n));
+
+  // "Continue" from the hex step: place on an available hex (random, or the
+  // oldest-tile space with the difficulty), else fall back.
+  const commitHexes = () => {
+    if (available.length === 0) {
+      // No free hex → Time Travel fallback, or a Failed Action.
+      onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' });
+      return;
+    }
+    const hex = targeted
+      ? undefined // the player uses the space for their furthest-past pending tile
+      : available[Math.floor(Math.random() * available.length)];
+    onResolve({ code, outcome: 'hypersync', hex });
+  };
+
+  return (
+    <div
+      className="detail-panel cx-tile-dialog"
+      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      role="dialog"
+      aria-label={tile?.name ?? code}
+    >
+      <div className="dp-head">
+        <div className="dp-title">
+          <img
+            className="cx-tile-dialog-art"
+            src={`/assets/solo/chronossus/tiles/${code}.png`}
+            alt={`${tile?.name ?? code} tile (${code})`}
+          />
+          <h2>{tile?.name ?? code}</h2>
+        </div>
+        <button className="dp-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div className="dp-body">
+        {readOnly ? (
+          <div className="rule-body">
+            {(tile?.rule ?? '').split('\n').map((line, i) => (
+              <p key={i} className="dp-rule">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : step === 'intro' ? (
+          <div className="place-prompt">
+            {plan.canHypersync ? (
+              <>
+                <p className="pp-instruct">
+                  The Chronossus has {plan.pendingCount} pending Hypersync tile
+                  {plan.pendingCount === 1 ? '' : 's'} (furthest in the past: Era{' '}
+                  {plan.oldestTileEra}) and an available Exosuit. Check which Hypersync
+                  hex spaces are open on your board.
+                </p>
+                <button className="start-turn" onClick={() => setStep('hexes')}>
+                  ▶ Check Hypersync hexes
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="pp-instruct">
+                  {plan.pendingCount === 0
+                    ? 'The Chronossus has no pending Hypersync tile'
+                    : 'The Chronossus has no available Exosuit'}
+                  , so it cannot take a Hypersync Action — it performs a normal{' '}
+                  {canTimeTravel ? 'Time Travel Action' : 'Action, which Fails'} instead.
+                </p>
+                <button
+                  className="start-turn"
+                  onClick={() => onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' })}
+                >
+                  {canTimeTravel ? '▶ Perform Time Travel' : '▶ Failed Action (+1 VP)'}
+                </button>
+              </>
+            )}
+            <HypersyncRules tile={tile} code={code} startOpen={false} />
+          </div>
+        ) : (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Tap any Hypersync hex space that is already occupied on your board, then
+              continue. The Chronossus takes a{targeted ? '' : ' random'} free space.
+            </p>
+            <div className="hs-hex-row">
+              {Chronossus.HYPERSYNC_HEXES.map((n) => {
+                const off = occupied.has(n);
+                return (
+                  <button
+                    key={n}
+                    className={`hs-hex ${off ? 'occupied' : ''}`}
+                    onClick={() => toggleHex(n)}
+                    aria-pressed={off}
+                    title={off ? 'Occupied — unavailable' : 'Available'}
+                  >
+                    {off ? '⊘' : n}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="pp-sub">
+              {available.length === 0
+                ? `No free hex — the Chronossus performs a ${canTimeTravel ? 'Time Travel Action' : 'Failed Action'} instead.`
+                : targeted
+                  ? `It sends an Exosuit to the space matching its furthest-past pending tile (Era ${plan.oldestTileEra}), scores 2 VP, and retrieves that tile.`
+                  : `It sends an Exosuit to a random free space, scores 2 VP, and retrieves its oldest pending tile (Era ${plan.oldestTileEra}).`}
+            </p>
+            <button className="start-turn" onClick={commitHexes}>
+              ▶ Take Turn
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// The no-space Capital-Action fallback: place a Solo Hypersync tile on this Era
+// and perform the Action normally (no Exosuit, not a Failed Action).
+function HypersyncTilePrompt({
+  era,
+  actionLabel,
+  pending,
+  panel,
+  onConfirm,
+  onCancel,
+}: {
+  era: number;
+  actionLabel: string;
+  pending: number;
+  panel: [number, number, number, number];
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const [l, t, w, h] = panel;
+  return (
+    <div
+      className="detail-panel cx-tile-dialog"
+      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      role="dialog"
+      aria-label="Place a Solo Hypersync tile"
+    >
+      <div className="dp-head">
+        <div className="dp-title">
+          <img
+            className="cx-tile-dialog-art"
+            src="/assets/solo/chronossus/hypersync-solo-tile.png"
+            alt="Solo Hypersync tile"
+          />
+          <h2>Hypersync tile</h2>
+        </div>
+        <button className="dp-close" onClick={onCancel} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <div className="dp-body">
+        <div className="place-prompt">
+          <p className="pp-instruct">
+            No Action space remained for the “{actionLabel}” Action. Place one of the
+            Chronossus’s Solo Hypersync tiles on <b>Era {era}</b> and perform the Action
+            normally — no Exosuit is placed, and this is <b>not</b> a Failed Action.
+          </p>
+          <p className="pp-sub">
+            Pending Hypersync tiles: {pending}/{Chronossus.MAX_HYPERSYNC_TILES} (max one
+            per Era).
+          </p>
+          <button className="start-turn" onClick={onConfirm}>
+            ▶ Place tile &amp; perform the Action
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Collapsible verbatim rulebook text for a Hypersync tile. */
+function HypersyncRules({
+  tile,
+  code,
+  startOpen,
+}: {
+  tile: (typeof CHRONOSSUS_TILES)[string] | undefined;
+  code: string;
+  startOpen: boolean;
+}) {
+  const [open, setOpen] = useState(startOpen);
+  if (!tile) return null;
+  return (
+    <div className="mech-rules">
+      <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
+        📖 {tile.name} rules ({code}) {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="rule-body">
+          {tile.rule.split('\n').map((line, i) => (
+            <p key={i} className="dp-rule">
+              {line}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

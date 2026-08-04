@@ -8,6 +8,21 @@ const TILE_ART = (code: string) => `/assets/solo/chronossus/tiles/${code}.png`;
 
 /** The "Flip Action tiles to their B side" difficulty flag (shared with the view). */
 export const DIFFICULTY_TILES_B_SIDE = 'chronossus-tiles-b-side';
+/** Hypersync-only: take the oldest pending tile's space instead of a random roll. */
+export const DIFFICULTY_HYPERSYNC_TARGETED = 'chronossus-hypersync-targeted';
+
+/** Extra difficulty options that only apply to specific modules. */
+const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
+  hypersync: [
+    {
+      flag: DIFFICULTY_HYPERSYNC_TARGETED,
+      label: 'Hypersync: take your oldest tile’s space (no random roll)',
+      detail:
+        'Instead of randomly selecting a Hypersync Action space, the Chronossus takes the ' +
+        'one corresponding to your pending Hypersync tile furthest in the past.',
+    },
+  ],
+};
 
 // Step 1 — intro flavor (verbatim, Solo Opponents rulebook p. 7).
 const FLAVOR =
@@ -31,7 +46,7 @@ const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'doomsday', label: 'Doomsday', available: false },
   { id: 'pioneers', label: 'Pioneers of New Earth', available: false },
   { id: 'guardians', label: 'Guardians of the Council', available: false },
-  { id: 'hypersync', label: 'Hypersync Future Actions', available: false },
+  { id: 'hypersync', label: 'Hypersync Future Actions', available: true },
   { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: false },
   { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: false },
   { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: false },
@@ -236,8 +251,8 @@ export default function ChronossusSetupFlow({
                 </button>
               </div>
               <p className="phase-note">
-                Choose the module to play. Only <b>Base</b> is available for now — the
-                others are listed for the modes we’ll be filling in.
+                Choose the module to play. <b>Base</b> and <b>Hypersync Future Actions</b>{' '}
+                are available; the others are listed for the modes we’ll be filling in.
               </p>
               <div className="difficulty-list">
                 {MODULE_CONFIGS.map((m) => (
@@ -314,16 +329,18 @@ export default function ChronossusSetupFlow({
                 stubbed for now; <b>Flip Action tiles to their B side</b> is active.
               </p>
               <div className="difficulty-list">
-                {DIFFICULTY_OPTIONS.map((o) => {
+                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])].map((o) => {
                   const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
+                  // Active (selectable) options: the tile flip + any mode-specific ones.
+                  const enabled = isFlip || o.flag === DIFFICULTY_HYPERSYNC_TARGETED;
                   const on = difficulty.has(o.flag);
                   return (
                     <div key={o.flag}>
-                      <label className={`difficulty-opt ${isFlip ? '' : 'disabled'} ${on ? 'on' : ''}`}>
+                      <label className={`difficulty-opt ${enabled ? '' : 'disabled'} ${on ? 'on' : ''}`}>
                         <input
                           type="checkbox"
                           checked={on}
-                          disabled={!isFlip}
+                          disabled={!enabled}
                           onChange={() =>
                             setDifficulty((s) => {
                               const next = new Set(s);
@@ -423,6 +440,28 @@ export default function ChronossusSetupFlow({
                   with a Hex Unavailable tile.
                 </p>
               </RulesBox>
+
+              {/* Per-mode setup additions (verbatim). Each module drops its own
+                  section here on top of the base setup above. */}
+              {moduleId === 'hypersync' && (
+                <RulesBox label="Hypersync Future Actions — setup" showPreamble>
+                  <p>
+                    Use the 2-player side of the Hypersync board, and cover the right World
+                    Council Action space on the Main board with a Hex Unavailable tile (as
+                    noted in the Hypersync rules for 2 players).
+                  </p>
+                  <p>
+                    Replace C01A with C12A. Leave C02A and C03A in play. Cover the Time
+                    Travel Action space with C13A.
+                  </p>
+                  <p>Place the Solo Hypersync tiles next to the Chronossus board.</p>
+                  <img
+                    className="setup-tiles-img"
+                    src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
+                    alt="Solo Hypersync setup tiles"
+                  />
+                </RulesBox>
+              )}
 
               <div className="setup-modified">
                 <h3>Setup for this app</h3>
