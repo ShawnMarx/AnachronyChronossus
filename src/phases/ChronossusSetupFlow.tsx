@@ -537,10 +537,6 @@ export default function ChronossusSetupFlow({
                     src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
                     alt="Solo Hypersync setup tiles"
                   />
-                  <p className="phase-note">
-                    The app places C12A in slot I, keeps C02A/C03A, and covers the Time
-                    Travel space with C13A for you.
-                  </p>
                 </div>
               )}
             </>
