@@ -251,6 +251,13 @@ const CAPITAL_ACTIONS = new Set<ChronossusActionId>([
   'construct-support',
   'construct-superproject',
 ]);
+/** Reverse of TILE_ACTION_FAMILY: a tile family → its in-play tile-action id. */
+const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
+  C01: 'tile-reboot',
+  C02: 'tile-score',
+  C03: 'tile-energy-pack',
+};
+
 /** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since
  *  the Hypersync Action falls back to a normal Time Travel Action. */
 const TIME_TRAVEL_RULE = CHRONOBOT_ACTIONS['time-travel'].rule;
@@ -268,6 +275,29 @@ function TimeTravelRuleBlock() {
             {line}
           </p>
         ) : null,
+      )}
+    </div>
+  );
+}
+
+/** Collapsible "Time Travel rules ▸" — matches the printed-action rules toggle. */
+function TimeTravelRuleBlockCollapsible() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mech-rules">
+      <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
+        📖 Time Travel rules {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="rule-body">
+          {TIME_TRAVEL_RULE.split('\n').map((line, i) =>
+            line ? (
+              <p key={i} className="dp-rule">
+                {line}
+              </p>
+            ) : null,
+          )}
+        </div>
       )}
     </div>
   );
@@ -490,7 +520,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // ---- Calibrate mode ----------------------------------------------------
   const [calibrate, setCalibrate] = useState(false);
   const [outline, setOutline] = useState(false); // debug: show tile hit-boxes
-  const [paradoxes, setParadoxes] = useState(0); // debug: fill 0–3 Paradox slots
   const [positions, setPositions] = useState<Record<string, [number, number]>>(() => {
     const seed: Record<string, [number, number]> = {};
     for (const h of CHRONOSSUS_ACTION_HOTSPOTS) seed[hsKey(h.id)] = HS_CENTER(h);
@@ -522,6 +551,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   const bot = state.chronossus!;
   const score = Chronossus.scoreChronossus(bot);
+
+  // Paradoxes are tracked on the engine state (chronossus.paradoxes, 0–2; the
+  // Paradox phase drives it, resetting to 0 on gaining an Anomaly). The debug
+  // P +/- control nudges the same value for testing — mirrors the Chronobot.
+  const paradoxes = bot.paradoxes;
+  const setParadoxes = (updater: number | ((n: number) => number)) =>
+    setState((s) => {
+      const nextVal = typeof updater === 'function' ? updater(s.chronossus!.paradoxes) : updater;
+      return {
+        ...s,
+        chronossus: { ...s.chronossus!, paradoxes: Math.max(0, Math.min(3, nextVal)) },
+      };
+    });
 
   // ---- Mode / Hypersync helpers -----------------------------------------
   const mode = getMode(state.config.chronossusMode);
@@ -927,6 +969,25 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult([]);
     setTileRuleView(true);
     setPendingTile(tileAction);
+  };
+
+  // Show a modular tile's rules from its live CODE (used by the SCV, where a mode
+  // slot may carry a Hypersync tile or a flipped side, not the base tile action).
+  const showTileRulesByCode = (tileCode: string) => {
+    botDieRef.current = null;
+    activeMarkerRef.current = null;
+    closeDialogs();
+    if (tileEffect(tileCode).hypersync) {
+      setResult([]);
+      setPendingHypersync({ code: tileCode, readOnly: true });
+      return;
+    }
+    const action = FAMILY_TO_TILE_ACTION[tileCode.slice(0, -1)];
+    if (action) {
+      setResult([]);
+      setTileRuleView(true);
+      setPendingTile(action);
+    }
   };
 
   // A tap on a modular tile SPACE (I/II/III). Calibrate → select; play mode →
@@ -1488,7 +1549,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               rows={scvRows}
               activeMarker={activeMarker}
               onShowRules={showActionRules}
-              onShowTileRules={showTileRules}
+              onShowTileRules={showTileRulesByCode}
               variant="side"
             />
           )}
@@ -1813,7 +1874,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   shown={simpleViewShown}
                   onToggleShown={() => setSimpleViewShown((v) => !v)}
                   onShowRules={showActionRules}
-              onShowTileRules={showTileRules}
+              onShowTileRules={showTileRulesByCode}
                 />
               )}
               {scvMode !== 'below' && renderDetailPanel(false)}
@@ -1854,7 +1915,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 rows={scvRows}
                 activeMarker={activeMarker}
                 onShowRules={showActionRules}
-              onShowTileRules={showTileRules}
+              onShowTileRules={showTileRulesByCode}
                 variant="below"
               />
             )}
@@ -2343,7 +2404,7 @@ function HypersyncDialog({
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
   const canTimeTravel = bot.warpTilesOnTimeline > 0;
-  const [step, setStep] = useState<'intro' | 'hexes' | 'roll'>('intro');
+  const [step, setStep] = useState<'intro' | 'hexes' | 'roll' | 'timetravel'>('intro');
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
   // The randomized Hypersync space (once rolled) the player blocks with an Exosuit.
   const [rolledHex, setRolledHex] = useState<number | null>(null);
@@ -2359,10 +2420,12 @@ function HypersyncDialog({
 
   const available = Chronossus.HYPERSYNC_HEXES.filter((n) => !occupied.has(n));
 
-  // Confirm the available spaces → roll step, or fall back if none are free.
+  // Confirm the available spaces → roll step, or fall back if none are free
+  // (the Time Travel dialog step, or a Failed Action when no Warp tiles remain).
   const confirmHexes = () => {
     if (available.length === 0) {
-      onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' });
+      if (canTimeTravel) setStep('timetravel');
+      else onResolve({ code, outcome: 'failed' });
       return;
     }
     setRolledHex(null);
@@ -2383,12 +2446,25 @@ function HypersyncDialog({
     >
       <div className="dp-head">
         <div className="dp-title">
-          <img
-            className="cx-tile-dialog-art"
-            src={`/assets/solo/chronossus/tiles/${code}.png`}
-            alt={`${tile?.name ?? code} tile (${code})`}
-          />
-          <h2>{tile?.name ?? code}</h2>
+          {step === 'timetravel' ? (
+            <>
+              <img
+                className="cx-tile-dialog-art"
+                src="/assets/solo/actions/time-travel.png"
+                alt="Time Travel"
+              />
+              <h2>Time Travel</h2>
+            </>
+          ) : (
+            <>
+              <img
+                className="cx-tile-dialog-art"
+                src={`/assets/solo/chronossus/tiles/${code}.png`}
+                alt={`${tile?.name ?? code} tile (${code})`}
+              />
+              <h2>{tile?.name ?? code}</h2>
+            </>
+          )}
         </div>
         <button className="dp-close" onClick={onClose} aria-label="Close">
           ×
@@ -2432,7 +2508,9 @@ function HypersyncDialog({
                 </p>
                 <button
                   className="start-turn"
-                  onClick={() => onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' })}
+                  onClick={() =>
+                    canTimeTravel ? setStep('timetravel') : onResolve({ code, outcome: 'failed' })
+                  }
                 >
                   {canTimeTravel ? '▶ Go to Time Travel' : '▶ Failed Action (+1 VP)'}
                 </button>
@@ -2470,12 +2548,12 @@ function HypersyncDialog({
             <button className="start-turn" onClick={confirmHexes}>
               {available.length === 0
                 ? canTimeTravel
-                  ? '▶ Perform Time Travel'
+                  ? '▶ Go to Time Travel'
                   : '▶ Failed Action (+1 VP)'
                 : '▶ Confirm Available Hypersync space'}
             </button>
           </div>
-        ) : (
+        ) : step === 'roll' ? (
           // Roll step: randomize among the available spaces → show where to place
           // the blocking bot Exosuit.
           <div className="place-prompt">
@@ -2536,6 +2614,19 @@ function HypersyncDialog({
                 </button>
               </>
             )}
+          </div>
+        ) : (
+          // Time Travel step: the Hypersync Action fell back to a normal Time
+          // Travel Action — shown like the printed Time Travel dialog.
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Remove one of the Chronossus’s <b>Warp tiles</b> from the past Timeline tile
+              where it has the most (oldest if tied), then advance its Time Travel marker.
+            </p>
+            <button className="start-turn" onClick={() => onResolve({ code, outcome: 'time-travel' })}>
+              ▶ Start Your Turn
+            </button>
+            <TimeTravelRuleBlockCollapsible />
           </div>
         )}
       </div>
@@ -2645,7 +2736,7 @@ function CxSimpleCommandView({
   shown?: boolean;
   onToggleShown?: () => void;
   onShowRules: (action: ChronossusActionId) => void;
-  onShowTileRules: (action: ChronossusTileActionId) => void;
+  onShowTileRules: (tileCode: string) => void;
   variant?: 'overlay' | 'side' | 'below';
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -2658,11 +2749,7 @@ function CxSimpleCommandView({
             type="button"
             className={`scv-row ${activeMarker === r.num ? 'active-row' : ''}`}
             key={r.num}
-            onClick={() =>
-              r.tile
-                ? onShowTileRules(r.action as ChronossusTileActionId)
-                : onShowRules(r.action)
-            }
+            onClick={() => (r.tile ? onShowTileRules(r.tile) : onShowRules(r.action))}
             title={`Show the ${r.label} rules`}
           >
             <div className="scv-markers">

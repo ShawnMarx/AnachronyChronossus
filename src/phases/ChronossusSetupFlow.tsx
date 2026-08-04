@@ -532,11 +532,6 @@ export default function ChronossusSetupFlow({
                     </li>
                     <li>Place the Solo Hypersync tiles next to the Chronossus board.</li>
                   </ul>
-                  <img
-                    className="setup-tiles-img"
-                    src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
-                    alt="Solo Hypersync setup tiles"
-                  />
                 </div>
               )}
             </>
