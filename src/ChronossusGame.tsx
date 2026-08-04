@@ -938,8 +938,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     );
   };
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
+  // On the last Era there is no next Era, so skip the prompt and go to Clean Up.
   const endActions = () => {
     closePanel();
+    if (state.era >= Chronossus.MAX_ERA) {
+      setState(Chronossus.resolveCleanUp(state));
+      return;
+    }
     setShowFirstPlayer(true);
   };
   const proceedToCleanup = (playerFirst: boolean) => {

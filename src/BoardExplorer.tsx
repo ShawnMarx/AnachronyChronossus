@@ -1236,6 +1236,17 @@ export default function BoardExplorer({
     );
   };
 
+  // End of Action Rounds → who's First Player next Era, then Clean Up. On the last
+  // Era there is no next Era, so skip the prompt and go straight to Clean Up.
+  const endActions = () => {
+    if (state.era >= Chronobot.MAX_ERA) {
+      setShowStatus(false);
+      setState((s) => Chronobot.resolveCleanUp(s));
+      return;
+    }
+    setShowFirstPlayer(true);
+  };
+
   // Seed the chosen difficulty and enter Era 1, Phase 1 (Preparation).
   const beginWithDifficulty = (difficulty: string[]) => {
     // A brand-new Chronobot game is now the only cached opponent.
@@ -1808,7 +1819,7 @@ export default function BoardExplorer({
       {canEndActions && !showFirstPlayer && (
         <div className="end-phase-banner">
           <span>✓ Everyone has passed — the Action Rounds Phase is complete.</span>
-          <button className="phase-primary" onClick={() => setShowFirstPlayer(true)}>
+          <button className="phase-primary" onClick={endActions}>
             Continue to Clean Up ▶
           </button>
         </div>
