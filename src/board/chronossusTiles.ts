@@ -146,25 +146,25 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C12A: {
     code: 'C12A',
     name: 'Hypersync or Time Travel',
-    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. (See page 17 for details). Finally, it gains 1 Energy Core.',
+    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. Finally, it gains 1 Energy Core.',
     future: true,
   },
   C12B: {
     code: 'C12B',
     name: 'Hypersync (Autoleap)',
-    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. (See page 17 for details). Finally, it gains 1 Energy Core, then move the Command token to the next position.',
+    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. Finally, it gains 1 Energy Core, then move the Command token to the next position.',
     future: true,
   },
   C13A: {
     code: 'C13A',
     name: 'Hypersync',
-    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. (See page 17 for details).',
+    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action.',
     future: true,
   },
   C13B: {
     code: 'C13B',
     name: 'Hypersync',
-    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. (See page 17 for details). Finally, it gains 1 VP.',
+    rule: 'The Chronossus sends an Exosuit to a random available Hypersync hex space, receives 2 VPs, and then retrieves the earliest pending Hypersync tile on the Timeline (if able). It ignores the effects of Supercharge tiles. If this is not possible, it performs a normal Time Travel Action. Finally, it gains 1 VP.',
     future: true,
   },
   C14A: {

@@ -566,6 +566,12 @@
   line-height: 1.4;
   margin: 0.4rem 0;
 }
+/* The Time Travel fallback rule shown beneath a Hypersync tile's rules. */
+.hs-tt-rule {
+  margin-top: 0.6rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(var(--sp-accent-rgb), 0.3);
+}
 /* A player-action callout — something the human must physically do on the board
    (e.g. set aside the powered Exosuits). Stands out from the muted phase notes. */
 .cx-user-action {

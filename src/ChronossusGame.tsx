@@ -251,6 +251,27 @@ const CAPITAL_ACTIONS = new Set<ChronossusActionId>([
   'construct-support',
   'construct-superproject',
 ]);
+/** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since
+ *  the Hypersync Action falls back to a normal Time Travel Action. */
+const TIME_TRAVEL_RULE = CHRONOBOT_ACTIONS['time-travel'].rule;
+
+/** The Time Travel rulebook text block (the Hypersync fallback Action). */
+function TimeTravelRuleBlock() {
+  return (
+    <div className="hs-tt-rule">
+      <p className="dp-rule">
+        <b>Time Travel Action (the fallback):</b>
+      </p>
+      {TIME_TRAVEL_RULE.split('\n').map((line, i) =>
+        line ? (
+          <p key={i} className="dp-rule">
+            {line}
+          </p>
+        ) : null,
+      )}
+    </div>
+  );
+}
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
   ...TRACK_KEYS,
@@ -723,11 +744,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
   };
 
+  // Close every open read/action dialog (DetailPanel + modular tile + Hypersync)
+  // so tapping a new tile REPLACES the current one rather than stacking on it.
+  const closeDialogs = () => {
+    setActive(null);
+    setRuleView(false);
+    setPending(null);
+    setPendingTile(null);
+    setTileRuleView(false);
+    setPendingHypersync(null);
+    setResult([]);
+  };
+
   const onTileClick = (h: Hotspot, force = false) => {
     if (calibrate) {
       setSelected(hsKey(h.id)); // select instead of activating
       return;
     }
+    closeDialogs();
     setActive(h);
     setResult([]);
     setSelectedVP(null);
@@ -877,6 +911,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (!h) return;
     botDieRef.current = null;
     activeMarkerRef.current = null;
+    closeDialogs();
     setActive(h);
     setPending(null);
     setResult([]);
@@ -888,6 +923,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const showTileRules = (tileAction: ChronossusTileActionId) => {
     botDieRef.current = null;
     activeMarkerRef.current = null;
+    closeDialogs();
     setResult([]);
     setTileRuleView(true);
     setPendingTile(tileAction);
@@ -907,6 +943,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (hs) {
       botDieRef.current = null;
       activeMarkerRef.current = null;
+      closeDialogs();
       setResult([]);
       setPendingHypersync({ code: hs, readOnly: !debug });
       return;
@@ -918,6 +955,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
     botDieRef.current = null;
     activeMarkerRef.current = null;
+    closeDialogs();
     setResult([]);
     setTileRuleView(false);
     setPendingTile(tileAction);
@@ -1592,6 +1630,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     title={`Covers Time Travel · ${ttCode} — ${CHRONOSSUS_TILES[ttCode]?.name ?? ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
+                      closeDialogs();
                       setPendingHypersync({ code: ttCode, readOnly: !debug });
                     }}
                   />
@@ -2357,6 +2396,7 @@ function HypersyncDialog({
                 {line}
               </p>
             ))}
+            <TimeTravelRuleBlock />
           </div>
         ) : step === 'intro' ? (
           <div className="place-prompt">
@@ -2506,6 +2546,7 @@ function HypersyncRules({
               {line}
             </p>
           ))}
+          <TimeTravelRuleBlock />
         </div>
       )}
     </div>
