@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
+import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
+import { getMode } from '../board/chronossusModes';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
+const TILE_ART = (code: string) => `/assets/solo/chronossus/tiles/${code}.png`;
+
+/** The "Flip Action tiles to their B side" difficulty flag (shared with the view). */
+export const DIFFICULTY_TILES_B_SIDE = 'chronossus-tiles-b-side';
 
 // Step 1 — intro flavor (verbatim, Solo Opponents rulebook p. 7).
 const FLAVOR =
@@ -53,9 +59,9 @@ interface DifficultyOption {
 // for now (visible, not selectable) — behavior lands later.
 const DIFFICULTY_OPTIONS: DifficultyOption[] = [
   {
-    flag: 'chronossus-tiles-b-side',
+    flag: DIFFICULTY_TILES_B_SIDE,
     label: 'Flip Action tiles to their B side',
-    detail: 'Flip some or all of the Action tiles to their B side.',
+    detail: 'Flip some or all of the Action tiles to their B side (pick which below).',
   },
   {
     flag: 'chronossus-swap-tiles',
@@ -117,20 +123,46 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
  * available; difficulty options are disabled) — the screens exist so the future
  * modes have a home.
  */
+/** What the setup flow hands back when the player begins the game. */
+export interface ChronossusSetupResult {
+  difficulty: string[];
+  /** Selected module id (from CHRONOSSUS_MODES). */
+  mode: string;
+  /** Per-tile A/B side selection (only families flipped to B appear). */
+  tileSides: Record<string, 'A' | 'B'>;
+}
+
 export default function ChronossusSetupFlow({
   onHome,
   onBegin,
 }: {
   onHome?: () => void;
-  onBegin: (difficulty: string[]) => void;
+  onBegin: (result: ChronossusSetupResult) => void;
 }) {
   type Step = 'intro' | 'modules' | 'difficulty' | 'setup';
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
   const [extras, setExtras] = useState<Set<string>>(new Set());
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
+  // Per-tile side selection; only families set to 'B' are stored.
+  const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
 
   const blockWorldCouncil = difficulty.has(DIFFICULTY_WORLD_COUNCIL);
+  const flipTiles = difficulty.has(DIFFICULTY_TILES_B_SIDE);
+  const modeSlots = getMode(moduleId).slots;
+
+  const toggleTileSide = (family: string) =>
+    setTileSides((s) => {
+      const next = { ...s };
+      if (next[family]) delete next[family];
+      else next[family] = 'B';
+      return next;
+    });
+
+  // Only honour B-side flips when the difficulty option is on.
+  const effectiveTileSides = (): Record<string, 'A' | 'B'> => (flipTiles ? { ...tileSides } : {});
+  const begin = () =>
+    onBegin({ difficulty: [...difficulty], mode: moduleId, tileSides: effectiveTileSides() });
 
   const eyebrow =
     step === 'intro'
@@ -278,31 +310,76 @@ export default function ChronossusSetupFlow({
               </div>
               <p className="phase-note">
                 Select one or more options to increase the difficulty against the
-                Chronossus, or play with none for the standard game. These are stubbed
-                for now — visible, but not yet selectable.
+                Chronossus, or play with none for the standard game. Most options are
+                stubbed for now; <b>Flip Action tiles to their B side</b> is active.
               </p>
               <div className="difficulty-list">
-                {DIFFICULTY_OPTIONS.map((o) => (
-                  <label key={o.flag} className="difficulty-opt disabled">
-                    <input
-                      type="checkbox"
-                      checked={difficulty.has(o.flag)}
-                      disabled
-                      onChange={() =>
-                        setDifficulty((s) => {
-                          const next = new Set(s);
-                          if (next.has(o.flag)) next.delete(o.flag);
-                          else next.add(o.flag);
-                          return next;
-                        })
-                      }
-                    />
-                    <span className="difficulty-opt-text">
-                      <b>{o.label}</b>
-                      <span>{o.detail}</span>
-                    </span>
-                  </label>
-                ))}
+                {DIFFICULTY_OPTIONS.map((o) => {
+                  const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
+                  const on = difficulty.has(o.flag);
+                  return (
+                    <div key={o.flag}>
+                      <label className={`difficulty-opt ${isFlip ? '' : 'disabled'} ${on ? 'on' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={on}
+                          disabled={!isFlip}
+                          onChange={() =>
+                            setDifficulty((s) => {
+                              const next = new Set(s);
+                              if (next.has(o.flag)) next.delete(o.flag);
+                              else next.add(o.flag);
+                              return next;
+                            })
+                          }
+                        />
+                        <span className="difficulty-opt-text">
+                          <b>{o.label}</b>
+                          <span>{o.detail}</span>
+                        </span>
+                      </label>
+
+                      {/* Per-tile A/B flip picker — revealed when the option is on. */}
+                      {isFlip && on && (
+                        <div className="tile-flip-list">
+                          {modeSlots.map((slot) => {
+                            const side = tileSides[slot.family] ? 'B' : 'A';
+                            const code = `${slot.family}${side}`;
+                            const tile = CHRONOSSUS_TILES[code];
+                            return (
+                              <div
+                                key={slot.family}
+                                className={`tile-flip-card ${side === 'B' ? 'flipped' : ''}`}
+                              >
+                                <img
+                                  className="tile-flip-art"
+                                  src={TILE_ART(code)}
+                                  alt={`${tile?.name ?? code} (${code})`}
+                                />
+                                <div className="tile-flip-text">
+                                  <div className="tile-flip-head">
+                                    <b>
+                                      Slot {slot.slot} · {code} — {tile?.name}
+                                    </b>
+                                    <button
+                                      type="button"
+                                      className={`tile-flip-toggle ${side === 'B' ? 'on' : ''}`}
+                                      onClick={() => toggleTileSide(slot.family)}
+                                      aria-pressed={side === 'B'}
+                                    >
+                                      {side === 'B' ? 'B side ▸ flip to A' : 'A side ▸ flip to B'}
+                                    </button>
+                                  </div>
+                                  <p>{tile?.rule}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
@@ -314,7 +391,7 @@ export default function ChronossusSetupFlow({
                 <button className="phase-secondary" onClick={() => setStep('difficulty')}>
                   ◀ Back
                 </button>
-                <button className="phase-primary" onClick={() => onBegin([...difficulty])}>
+                <button className="phase-primary" onClick={begin}>
                   Begin Era 1 ▶
                 </button>
               </div>
@@ -376,6 +453,16 @@ export default function ChronossusSetupFlow({
                     <li>
                       <b>Cover the right World Council space</b> with a Hex Unavailable
                       tile (difficulty option selected).
+                    </li>
+                  )}
+                  {flipTiles && Object.keys(tileSides).length > 0 && (
+                    <li>
+                      <b>Flip to the B side</b> (difficulty):{' '}
+                      {modeSlots
+                        .filter((s) => tileSides[s.family])
+                        .map((s) => `${s.family}B (${CHRONOSSUS_TILES[`${s.family}B`]?.name})`)
+                        .join(', ')}
+                      . Leave the rest on their A side.
                     </li>
                   )}
                 </ul>

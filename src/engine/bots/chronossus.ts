@@ -19,6 +19,7 @@ import {
   RECRUIT_PRIORITY,
   type ChronobotActionId,
 } from '../rules/chronobotActions';
+import { CHRONOSSUS_TILES, TILE_ACTION_CODE, tileEffect } from '../../board/chronossusTiles';
 import {
   chooseRecruitWorker,
   chooseRemoveAnomalyDiscards,
@@ -164,11 +165,19 @@ export interface ChronossusActionInput {
   minedResources?: Resource[];
   /** For a Recruit action: the Worker granted (defaults to priority choice). */
   recruitedWorker?: Worker;
+  /** For a modular tile action: which side is in play (default 'A'). */
+  tileSide?: 'A' | 'B';
 }
 
 export interface ChronossusActionResult {
   state: GameState;
   instructions: Instruction[];
+  /**
+   * True when the resolved action was an Autoleap tile — the caller should
+   * advance the Command marker ONE EXTRA step (on top of the usual per-turn
+   * advance). Only set by tile actions whose B side (or C12B/C13B) autoleaps.
+   */
+  autoleap?: boolean;
 }
 
 const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
@@ -236,8 +245,8 @@ export function resolveAction(
   }
 
   if (isTileAction(input.actionId)) {
-    resolveTileAction(bot, instr, input.actionId, n);
-    return finishAction(state, bot, instr);
+    const autoleap = resolveTileAction(bot, instr, input.actionId, input.tileSide ?? 'A', n);
+    return { ...finishAction(state, bot, instr), autoleap };
   }
 
   const def = actionDef(input.actionId);
@@ -369,28 +378,45 @@ export function resolveAction(
   return finishAction(state, bot, instr);
 }
 
+/**
+ * Resolve a modular tile action from its machine-readable effect (the single
+ * source of truth in `TILE_EFFECTS`), for whichever side (A/B) is in play. Applies
+ * the flat VP / Energy-Core gains and returns whether the tile Autoleaps (so the
+ * view can advance the Command marker one extra step). Hypersync tiles never reach
+ * here — they resolve through the Hypersync flow, not the flat effect.
+ */
 function resolveTileAction(
   bot: ChronossusState,
   instr: Instruction[],
   id: ChronossusTileActionId,
+  side: 'A' | 'B',
   n: number,
-): void {
-  switch (id) {
-    case 'tile-reboot':
-      instr.push({ id: `t-reboot-${n}`, text: 'C01A Reboot: the Chronossus does nothing.' });
-      break;
-    case 'tile-score':
-      bot.vp += 2;
-      instr.push({ id: `t-score-${n}`, text: 'C02A Score: the Chronossus gains 2 VP.', effect: { vp: 2 } });
-      break;
-    case 'tile-energy-pack':
-      bot.energyPool.energized += 1;
-      instr.push({
-        id: `t-energy-${n}`,
-        text: 'C03A Energy Pack: add 1 (non-exhausted) Energy Core to the Chronossus Energy Pool.',
-      });
-      break;
+): boolean {
+  const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
+  const code = `${family}${side}`;
+  const tile = CHRONOSSUS_TILES[code];
+  const eff = tileEffect(code);
+  const gains: string[] = [];
+  if (eff.vp) {
+    bot.vp += eff.vp;
+    gains.push(`gains ${eff.vp} VP`);
   }
+  if (eff.energyCores) {
+    bot.energyPool.energized += eff.energyCores;
+    gains.push(`gains ${eff.energyCores} Energy Core${eff.energyCores === 1 ? '' : 's'}`);
+  }
+  const name = tile?.name ?? id;
+  let text =
+    gains.length > 0
+      ? `${code} ${name}: the Chronossus ${gains.join(' and ')}.`
+      : `${code} ${name}: the Chronossus does nothing.`;
+  if (eff.autoleap) text += ' Then advance its Command marker to the next position (Autoleap).';
+  instr.push({
+    id: `tile-${code}-${n}`,
+    text,
+    ...(eff.vp ? { effect: { vp: eff.vp } } : {}),
+  });
+  return eff.autoleap === true;
 }
 
 function resolveResearch(bot: ChronossusState, instr: Instruction[], shape: BreakthroughShape | undefined, n: number): void {

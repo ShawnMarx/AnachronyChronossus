@@ -187,3 +187,60 @@ export const TILE_ACTION_CODE = {
   'tile-score': 'C02A',
   'tile-energy-pack': 'C03A',
 } as const;
+
+/** The side-agnostic tile family for each in-play modular tile action. */
+export const TILE_ACTION_FAMILY = {
+  'tile-reboot': 'C01',
+  'tile-score': 'C02',
+  'tile-energy-pack': 'C03',
+} as const;
+
+/** The live tile code (family + selected side) for an in-play tile action. */
+export function liveTileCode(
+  id: keyof typeof TILE_ACTION_FAMILY,
+  tileSides: Record<string, 'A' | 'B'> | undefined,
+): string {
+  const family = TILE_ACTION_FAMILY[id];
+  return `${family}${tileSides?.[family] ?? 'A'}`;
+}
+
+/**
+ * Machine-readable effect for each implemented tile side. This is the single
+ * source of truth the engine applies (the verbatim `rule` text in
+ * `CHRONOSSUS_TILES` is what we SHOW the player). Every mode we add drops its
+ * tiles in here; anything not listed is treated as "no effect" (a Reboot).
+ *
+ *  • `vp` / `energyCores` — flat gains the Chronossus applies.
+ *  • `autoleap` — after the tile resolves, advance the Command marker an extra
+ *    step (the printed "then move the Command token to the next position").
+ *  • `hypersync` — the tile performs the C12/C13 Hypersync-or-Time-Travel flow;
+ *    its `vp` / `energyCores` are the *post-action* bonus (applied by that flow),
+ *    not a flat gain. See the Hypersync mode.
+ */
+export interface TileEffect {
+  vp?: number;
+  energyCores?: number;
+  autoleap?: boolean;
+  hypersync?: boolean;
+}
+
+export const TILE_EFFECTS: Record<string, TileEffect> = {
+  C01A: {},
+  C01B: { vp: 1, autoleap: true },
+  C02A: { vp: 2 },
+  C02B: { vp: 2, energyCores: 1 },
+  C03A: { energyCores: 1 },
+  C03B: { energyCores: 1, autoleap: true },
+  // Hypersync mode (C12 covers slot I / C13 covers the Time Travel space). The
+  // `vp`/`energyCores` here are the bonus the Hypersync flow grants after it
+  // resolves (C12: +1 Energy Core; C13A: nothing; C13B: +1 VP).
+  C12A: { hypersync: true, energyCores: 1 },
+  C12B: { hypersync: true, energyCores: 1, autoleap: true },
+  C13A: { hypersync: true },
+  C13B: { hypersync: true, vp: 1 },
+};
+
+/** Effect lookup for a tile code, defaulting to "no effect". */
+export function tileEffect(code: string): TileEffect {
+  return TILE_EFFECTS[code] ?? {};
+}

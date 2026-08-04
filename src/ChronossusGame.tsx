@@ -69,7 +69,7 @@ import {
   type EnergyPool,
 } from './engine';
 import { finishEra, advanceFromPreparation, startFirstEra } from './game/flow';
-import ChronossusSetupFlow from './phases/ChronossusSetupFlow';
+import ChronossusSetupFlow, { type ChronossusSetupResult } from './phases/ChronossusSetupFlow';
 import type {
   ChronossusActionInput,
   ChronossusActionId,
@@ -97,7 +97,12 @@ import {
   type TrackPos,
 } from './board/chronossusPaths';
 import type { BoardCounter, Hotspot } from './board/chronobotHotspots';
-import { CHRONOSSUS_TILES, TILE_ACTION_CODE } from './board/chronossusTiles';
+import {
+  CHRONOSSUS_TILES,
+  TILE_ACTION_FAMILY,
+  liveTileCode,
+  tileEffect,
+} from './board/chronossusTiles';
 import {
   CHRONOSSUS_OVERLAYS,
   OVERLAY_KEYS,
@@ -582,10 +587,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // The ui slice to store for a committed turn: advance the marker driving the
   // turn one step (no-op on a player free-tap, where activeMarkerRef is null).
-  const advancedUi = (): ChronossusUi => {
+  // `extraLeaps` adds more steps — Autoleap tiles move the marker one extra spot.
+  const advancedUi = (extraLeaps = 0): ChronossusUi => {
     const m = activeMarkerRef.current;
-    const nextMarkerSteps =
-      m != null ? { ...ui.markerSteps, [m]: nextStep(m, ui.markerSteps[m]) } : ui.markerSteps;
+    let steps = ui.markerSteps;
+    if (m != null) {
+      let s = steps[m];
+      for (let i = 0; i < 1 + extraLeaps; i++) s = nextStep(m, s);
+      steps = { ...steps, [m]: s };
+    }
+    const nextMarkerSteps = steps;
     return {
       markerSteps: nextMarkerSteps,
       botDie: botDieRef.current,
@@ -827,11 +838,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const key = markerPosKey(num, markerSteps[num]);
     const tp = trackPos(key);
     if (tp?.action) {
+      const code =
+        tp.action in TILE_ACTION_FAMILY
+          ? liveTileCode(tp.action as keyof typeof TILE_ACTION_FAMILY, state.config.tileSides)
+          : (tp.tile ?? null);
       return {
         num,
         action: tp.action,
         label: Chronossus.chronossusActionLabel(tp.action),
-        tile: tp.tile ?? null,
+        tile: code,
       };
     }
     const [x, y] = positions[key] ?? [0, 0];
@@ -884,9 +899,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     ) : null;
 
   // ---- Phase transitions -------------------------------------------------
-  // Finish Setup: seed the chosen difficulty and enter Era 1, Phase 1.
-  const beginGame = (difficulty: string[]) => {
-    setState((s) => startFirstEra({ ...s, config: { ...s.config, difficulty } }));
+  // Finish Setup: seed the chosen module / difficulty / tile sides, enter Era 1.
+  const beginGame = (result: ChronossusSetupResult) => {
+    setState((s) =>
+      startFirstEra({
+        ...s,
+        config: {
+          ...s.config,
+          difficulty: result.difficulty,
+          chronossusMode: result.mode,
+          tileSides: result.tileSides,
+        },
+      }),
+    );
   };
   const drawAndPowerUp = () => {
     if (ui.lastDraw) return; // already drawn this Era — never deplete the pool twice
@@ -1044,10 +1069,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
   // so ▶ Start resolves it and advances the marker (the caller then closes).
   const resolveTileSlot = (actionId: ChronossusActionId) => {
-    const { state: next, instructions } = Chronossus.resolveAction(state, { actionId });
+    const family = TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
+    const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
+    const { state: next, instructions, autoleap } = Chronossus.resolveAction(state, {
+      actionId,
+      tileSide,
+    });
     commit(
       next,
-      advancedUi(),
+      // Autoleap tiles advance the Command marker one EXTRA step.
+      advancedUi(autoleap ? 1 : 0),
       turnLabel(instructions, Chronossus.chronossusActionLabel(actionId)),
       summarizeTurn(state.chronossus!, next.chronossus!, instructions),
       botDieRef.current,
@@ -1384,14 +1415,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 const k = tileKey(p.key);
                 const [x, y] = positions[k] ?? p.tilePos ?? p.pos;
                 const sel = calibrate && selected === k;
+                // Render the live side (A/B) the player selected at setup.
+                const code = p.action
+                  ? liveTileCode(
+                      p.action as keyof typeof TILE_ACTION_FAMILY,
+                      state.config.tileSides,
+                    )
+                  : (p.tile ?? '');
                 return (
                   <img
                     key={k}
                     className={`cx-tile-art ${sel ? 'cal-selected' : ''}`}
-                    src={`/assets/solo/chronossus/tiles/${p.tile}.png`}
-                    alt={`Modular tile ${p.tile}`}
+                    src={`/assets/solo/chronossus/tiles/${code}.png`}
+                    alt={`Modular tile ${code}`}
                     style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
-                    title={`Slot ${p.label} · ${p.tile}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
+                    title={`Slot ${p.label} · ${code}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onTileArtClick(p);
@@ -1572,6 +1610,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               {pendingTile && (
                 <CxTileDialog
                   action={pendingTile}
+                  tileSides={state.config.tileSides}
                   panel={CHRONOSSUS_PANEL}
                   readOnly={tileRuleView}
                   onStart={startTileTurn}
@@ -1937,33 +1976,41 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 // to TILES_WITH_RULES_BOX and the box renders automatically.
 // --------------------------------------------------------------------------
 
-/** Friendly, player-facing instruction for each in-play tile action. */
-const TILE_INSTRUCT: Record<ChronossusTileActionId, string> = {
-  'tile-reboot': 'The Chronossus does nothing this turn — its Command marker still advances.',
-  'tile-score': 'The Chronossus scores +2 VP.',
-  'tile-energy-pack': 'Add 1 non-exhausted Energy Core to the Chronossus’s Energy Pool.',
-};
-
-/** Tile codes whose effect warrants the verbatim rules box (empty for now — the
- *  base tiles are simple; the Autoleap/skip tiles go here when implemented). */
-const TILES_WITH_RULES_BOX = new Set<string>([]);
+/** Friendly, player-facing instruction derived from a tile code's effect. */
+function tileInstruction(code: string): string {
+  const eff = tileEffect(code);
+  const parts: string[] = [];
+  if (eff.vp) parts.push(`scores +${eff.vp} VP`);
+  if (eff.energyCores)
+    parts.push(
+      `adds ${eff.energyCores} non-exhausted Energy Core${eff.energyCores === 1 ? '' : 's'} to its Energy Pool`,
+    );
+  let s = parts.length
+    ? `The Chronossus ${parts.join(' and ')}.`
+    : 'The Chronossus does nothing this turn — its Command marker still advances.';
+  if (eff.autoleap) s += ' Its Command marker then advances one EXTRA step (Autoleap).';
+  return s;
+}
 
 function CxTileDialog({
   action,
+  tileSides,
   panel,
   readOnly = false,
   onStart,
   onClose,
 }: {
   action: ChronossusTileActionId;
+  tileSides?: Record<string, 'A' | 'B'>;
   panel: [number, number, number, number];
   readOnly?: boolean;
   onStart: () => void;
   onClose: () => void;
 }) {
-  const code = TILE_ACTION_CODE[action];
+  const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
-  const showRulesBox = TILES_WITH_RULES_BOX.has(code);
+  // Surface the verbatim rules box for B-side tiles (Autoleap / combined effects).
+  const showRulesBox = code.endsWith('B');
   const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
   const [l, t, w, h] = panel;
   return (
@@ -1988,7 +2035,7 @@ function CxTileDialog({
       </div>
       <div className="dp-body">
         <div className="place-prompt">
-          <p className="pp-instruct">{TILE_INSTRUCT[action]}</p>
+          <p className="pp-instruct">{tileInstruction(code)}</p>
           {!readOnly && (
             <button className="start-turn" onClick={onStart}>
               ▶ Start Your Turn

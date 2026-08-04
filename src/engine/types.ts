@@ -70,6 +70,14 @@ export interface GameConfig {
   difficulty: string[];
   /** Which side of the player board the human chose (cosmetic to the bot). */
   playerBoardSide?: 'A' | 'B';
+  /** Chronossus module in play (id from CHRONOSSUS_MODES; default 'base'). */
+  chronossusMode?: string;
+  /**
+   * Per-tile side selection, keyed by tile family (e.g. 'C01' → 'B'). Only tiles
+   * the player flipped to B appear; anything absent is the A side. Set by the
+   * "Flip Action tiles to their B side" difficulty option.
+   */
+  tileSides?: Record<string, 'A' | 'B'>;
 }
 
 /** A resource bundle, e.g. gains or costs. */

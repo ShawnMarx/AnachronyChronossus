@@ -216,6 +216,27 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     expect(pack.chronossus!.energyPool.energized).toBe(6); // 5 + 1
   });
 
+  it('B-side tiles apply their effects and flag Autoleap', () => {
+    // C01B Score (Autoleap): +1 VP, autoleap.
+    const c01b = resolveAction(withExosuits(4), { actionId: 'tile-reboot', tileSide: 'B' });
+    expect(c01b.state.chronossus!.vp).toBe(1);
+    expect(c01b.autoleap).toBe(true);
+    // C02B Score and Energy Pack: +2 VP, +1 Energy Core, no autoleap.
+    const c02b = resolveAction(withExosuits(4), { actionId: 'tile-score', tileSide: 'B' });
+    expect(c02b.state.chronossus!.vp).toBe(2);
+    expect(c02b.state.chronossus!.energyPool.energized).toBe(6);
+    expect(c02b.autoleap).toBeFalsy();
+    // C03B Energy Pack (Autoleap): +1 Energy Core, autoleap.
+    const c03b = resolveAction(withExosuits(4), { actionId: 'tile-energy-pack', tileSide: 'B' });
+    expect(c03b.state.chronossus!.energyPool.energized).toBe(6);
+    expect(c03b.autoleap).toBe(true);
+  });
+
+  it('A-side tiles never autoleap', () => {
+    const a = resolveAction(withExosuits(4), { actionId: 'tile-score' });
+    expect(a.autoleap).toBeFalsy();
+  });
+
   it('increments totalActions each resolve', () => {
     let s = withExosuits(6);
     s = resolveAction(s, { actionId: 'reboot' }).state;
