@@ -16,7 +16,7 @@
   align-items: center;
   gap: 0.75rem;
   padding: 0.4rem 0.9rem;
-  border-bottom: 1px solid rgba(139, 92, 246, 0.35);
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   background: #120e1c;
 }
 
@@ -26,15 +26,15 @@
   font-weight: 700;
   padding: 0.4rem 0.8rem;
   border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
   background: #1a1330;
   color: #ede9fe;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .rules-back:hover {
-  border-color: rgba(167, 139, 250, 0.9);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+  border-color: rgba(var(--sp-accent-rgb), 0.9);
+  box-shadow: 0 0 0 2px rgba(var(--sp-accent-rgb), 0.25);
 }
 
 /* Chat · Resources · Split segmented control, centered in the bar. */
@@ -46,7 +46,7 @@
   padding: 3px;
   border-radius: 10px;
   background: #171226;
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.3);
 }
 .rules-seg > button,
 .rules-resources > button {
@@ -88,13 +88,13 @@
   padding: 6px;
   border-radius: 10px;
   background: #171226;
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   z-index: 10;
 }
 .rules-res-group + .rules-res-group {
   margin-top: 6px;
-  border-top: 1px solid rgba(139, 92, 246, 0.18);
+  border-top: 1px solid rgba(var(--sp-accent-rgb), 0.18);
   padding-top: 6px;
 }
 .rules-res-group-label {
@@ -142,15 +142,15 @@
   font-weight: 700;
   padding: 0.4rem 0.7rem;
   border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
   background: #1a1330;
   color: #ede9fe;
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .rules-open-btn:hover {
-  border-color: rgba(167, 139, 250, 0.9);
-  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+  border-color: rgba(var(--sp-accent-rgb), 0.9);
+  box-shadow: 0 0 0 2px rgba(var(--sp-accent-rgb), 0.25);
 }
 /* On small screens the Rules button collapses to just its 📖 icon. */
 @media (max-width: 760px) {

@@ -362,10 +362,6 @@ export default function ChronossusSetupFlow({
                     Leave all Endgame Condition cards in the box and shuffle all Solo
                     Objective cards, revealing 3. Return the rest to the box.
                   </li>
-                  <li>
-                    Fill the Chronossus’s Energy Pool container with 5 Energy Core tokens
-                    and 5 Exhausted Energy Core tokens.
-                  </li>
                   <li>The Chronossus does not use a Focus marker.</li>
                   <li>
                     Place the Chronossus’s Banner on the First Player spot; it is the

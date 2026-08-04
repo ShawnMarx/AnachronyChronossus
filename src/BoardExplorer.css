@@ -266,7 +266,7 @@
   background: rgba(var(--sp-accent-rgb), 0.2);
 }
 .settings-item.active {
-  background: rgba(124, 58, 237, 0.4);
+  background: rgba(var(--sp-accent-rgb), 0.4);
   color: #fff;
 }
 .settings-item.sub {
@@ -1325,6 +1325,12 @@
     align-items: center;
     justify-content: flex-start;
     overflow-y: auto;
+  }
+  /* Docked under the board (not beside it) — span the full screen width. */
+  .history-pane {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
   }
 }
 
