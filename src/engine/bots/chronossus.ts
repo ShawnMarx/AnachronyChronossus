@@ -603,22 +603,28 @@ export function canPlaceHypersyncTile(bot: ChronossusState, era: number): boolea
 
 /** Summary the UI uses to branch the C12/C13 Hypersync Action. */
 export interface HypersyncPlan {
-  /** ≥1 pending Hypersync tile AND an available Exosuit → the Hypersync branch is open. */
+  /** ≥1 pending tile in a PRIOR Era AND an available Exosuit → the branch is open. */
   canHypersync: boolean;
-  /** The furthest-past pending tile's Era (the one a Hypersync Action retrieves). */
+  /** The furthest-past retrievable tile's Era (a Hypersync Action retrieves this). */
   oldestTileEra: number | null;
   hasExosuit: boolean;
+  /** How many pending tiles sit in prior Eras (the retrievable ones). */
   pendingCount: number;
 }
 
-export function hypersyncPlan(bot: ChronossusState): HypersyncPlan {
-  const pending = [...bot.hypersyncTiles].sort((a, b) => a - b);
+/**
+ * Branch summary for a C12/C13 Hypersync Action in `era`. Only tiles placed in a
+ * PRIOR Era are retrievable — a tile placed THIS Era (via the same-Era no-space
+ * fallback) is not "in the past" yet, so it never opens the Hypersync branch.
+ */
+export function hypersyncPlan(bot: ChronossusState, era: number): HypersyncPlan {
+  const prior = bot.hypersyncTiles.filter((e) => e < era).sort((a, b) => a - b);
   const hasExosuit = bot.exosuitsAvailable > 0;
   return {
-    canHypersync: pending.length > 0 && hasExosuit,
-    oldestTileEra: pending.length ? pending[0] : null,
+    canHypersync: prior.length > 0 && hasExosuit,
+    oldestTileEra: prior.length ? prior[0] : null,
     hasExosuit,
-    pendingCount: pending.length,
+    pendingCount: prior.length,
   };
 }
 
@@ -652,9 +658,12 @@ export function resolveHypersyncAction(
 
   let succeeded = false;
   if (input.outcome === 'hypersync') {
-    const pending = [...bot.hypersyncTiles].sort((a, b) => a - b);
-    const era = pending[0];
-    bot.hypersyncTiles = pending.slice(1);
+    // Retrieve the furthest-past tile in a PRIOR Era (not one placed this Era).
+    const prior = bot.hypersyncTiles.filter((e) => e < state.era).sort((a, b) => a - b);
+    const era = prior[0];
+    const arr = [...bot.hypersyncTiles];
+    arr.splice(arr.indexOf(era), 1);
+    bot.hypersyncTiles = arr;
     if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     bot.vp += 2;
     const where = input.hex != null ? `Hypersync hex ${input.hex}` : 'the Hypersync space for its furthest-past pending tile';

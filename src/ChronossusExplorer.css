@@ -560,6 +560,14 @@
   color: #ffd0d0;
   opacity: 0.85;
 }
+.hs-hex.rolled {
+  background: #2fae66;
+  box-shadow: 0 0 0 3px rgba(47, 174, 102, 0.4);
+}
+.hs-hex.dimmed {
+  background: #3a3352;
+  opacity: 0.55;
+}
 .pp-sub {
   color: #b3a9d0;
   font-size: 0.86rem;

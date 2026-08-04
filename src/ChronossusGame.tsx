@@ -1831,6 +1831,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 <HypersyncDialog
                   code={pendingHypersync.code}
                   bot={bot}
+                  era={state.era}
                   targeted={hypersyncTargeted}
                   readOnly={pendingHypersync.readOnly}
                   panel={CHRONOSSUS_PANEL}
@@ -2323,6 +2324,7 @@ function CxTileDialog({
 function HypersyncDialog({
   code,
   bot,
+  era,
   targeted,
   readOnly = false,
   panel,
@@ -2331,6 +2333,7 @@ function HypersyncDialog({
 }: {
   code: string;
   bot: ChronossusState;
+  era: number;
   targeted: boolean;
   readOnly?: boolean;
   panel: [number, number, number, number];
@@ -2338,10 +2341,12 @@ function HypersyncDialog({
   onClose: () => void;
 }) {
   const tile = CHRONOSSUS_TILES[code];
-  const plan = Chronossus.hypersyncPlan(bot);
+  const plan = Chronossus.hypersyncPlan(bot, era);
   const canTimeTravel = bot.warpTilesOnTimeline > 0;
-  const [step, setStep] = useState<'intro' | 'hexes'>('intro');
+  const [step, setStep] = useState<'intro' | 'hexes' | 'roll'>('intro');
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
+  // The randomized Hypersync space (once rolled) the player blocks with an Exosuit.
+  const [rolledHex, setRolledHex] = useState<number | null>(null);
   const [l, t, w, h] = panel;
 
   const toggleHex = (n: number) =>
@@ -2354,19 +2359,20 @@ function HypersyncDialog({
 
   const available = Chronossus.HYPERSYNC_HEXES.filter((n) => !occupied.has(n));
 
-  // "Continue" from the hex step: place on an available hex (random, or the
-  // oldest-tile space with the difficulty), else fall back.
-  const commitHexes = () => {
+  // Confirm the available spaces → roll step, or fall back if none are free.
+  const confirmHexes = () => {
     if (available.length === 0) {
-      // No free hex → Time Travel fallback, or a Failed Action.
       onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' });
       return;
     }
-    const hex = targeted
-      ? undefined // the player uses the space for their furthest-past pending tile
-      : available[Math.floor(Math.random() * available.length)];
-    onResolve({ code, outcome: 'hypersync', hex });
+    setRolledHex(null);
+    setStep('roll');
   };
+  // Randomize between the available spaces (the app does the roll for you).
+  const rollSpace = () => setRolledHex(available[Math.floor(Math.random() * available.length)]);
+  // Commit the Hypersync Action on the rolled (or targeted) space.
+  const takeHypersync = () =>
+    onResolve({ code, outcome: 'hypersync', hex: targeted ? undefined : (rolledHex ?? undefined) });
 
   return (
     <div
@@ -2415,27 +2421,30 @@ function HypersyncDialog({
             ) : (
               <>
                 <p className="pp-instruct">
-                  {plan.pendingCount === 0
-                    ? 'The Chronossus has no pending Hypersync tile'
-                    : 'The Chronossus has no available Exosuit'}
-                  , so it cannot take a Hypersync Action — it performs a normal{' '}
-                  {canTimeTravel ? 'Time Travel Action' : 'Action, which Fails'} instead.
+                  No pending Hypersync Action is available
+                  {plan.pendingCount === 0 && !plan.hasExosuit
+                    ? ' (no retrievable tile in a prior Era, and no available Exosuit)'
+                    : plan.pendingCount === 0
+                      ? ' (no retrievable Hypersync tile in a prior Era)'
+                      : ' (no available Exosuit)'}
+                  . The Chronossus performs a normal Time Travel Action instead
+                  {canTimeTravel ? '' : ', but no Warp tiles remain, so it is a Failed Action'}.
                 </p>
                 <button
                   className="start-turn"
                   onClick={() => onResolve({ code, outcome: canTimeTravel ? 'time-travel' : 'failed' })}
                 >
-                  {canTimeTravel ? '▶ Perform Time Travel' : '▶ Failed Action (+1 VP)'}
+                  {canTimeTravel ? '▶ Go to Time Travel' : '▶ Failed Action (+1 VP)'}
                 </button>
               </>
             )}
             <HypersyncRules tile={tile} code={code} startOpen={false} />
           </div>
-        ) : (
+        ) : step === 'hexes' ? (
           <div className="place-prompt">
             <p className="pp-instruct">
               Tap any Hypersync hex space that is already occupied on your board, then
-              continue. The Chronossus takes a{targeted ? '' : ' random'} free space.
+              confirm which spaces are available.
             </p>
             <div className="hs-hex-row">
               {Chronossus.HYPERSYNC_HEXES.map((n) => {
@@ -2455,14 +2464,78 @@ function HypersyncDialog({
             </div>
             <p className="pp-sub">
               {available.length === 0
-                ? `No free hex — the Chronossus performs a ${canTimeTravel ? 'Time Travel Action' : 'Failed Action'} instead.`
-                : targeted
-                  ? `It sends an Exosuit to the space matching its furthest-past pending tile (Era ${plan.oldestTileEra}), scores 2 VP, and retrieves that tile.`
-                  : `It sends an Exosuit to a random free space, scores 2 VP, and retrieves its oldest pending tile (Era ${plan.oldestTileEra}).`}
+                ? `No available space — the Chronossus performs a ${canTimeTravel ? 'Time Travel Action' : 'Failed Action'} instead.`
+                : `Available: ${available.join(', ')}.`}
             </p>
-            <button className="start-turn" onClick={commitHexes}>
-              ▶ Take Turn
+            <button className="start-turn" onClick={confirmHexes}>
+              {available.length === 0
+                ? canTimeTravel
+                  ? '▶ Perform Time Travel'
+                  : '▶ Failed Action (+1 VP)'
+                : '▶ Confirm Available Hypersync space'}
             </button>
+          </div>
+        ) : (
+          // Roll step: randomize among the available spaces → show where to place
+          // the blocking bot Exosuit.
+          <div className="place-prompt">
+            {targeted ? (
+              <>
+                <p className="pp-instruct">
+                  Difficulty: no random roll — the Chronossus takes the Hypersync space
+                  matching its furthest-past pending tile (Era {plan.oldestTileEra}).
+                </p>
+                <p className="pp-sub">
+                  Place a bot Exosuit on that space to block it; it scores 2 VP and
+                  retrieves the tile. (No Time Travel advance.)
+                </p>
+                <button className="start-turn" onClick={takeHypersync}>
+                  ▶ Take Turn
+                </button>
+              </>
+            ) : rolledHex == null ? (
+              <>
+                <p className="pp-instruct">
+                  Roll to randomize between the available Hypersync spaces (
+                  {available.join(', ')}).
+                </p>
+                <div className="hs-hex-row">
+                  {available.map((n) => (
+                    <div key={n} className="hs-hex" aria-hidden>
+                      {n}
+                    </div>
+                  ))}
+                </div>
+                <button className="start-turn" onClick={rollSpace}>
+                  🎲 Roll available space
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="pp-instruct">
+                  Rolled Hypersync space <b>{rolledHex}</b> — place a bot Exosuit there to
+                  block it.
+                </p>
+                <div className="hs-hex-row">
+                  {available.map((n) => (
+                    <div
+                      key={n}
+                      className={`hs-hex ${n === rolledHex ? 'rolled' : 'dimmed'}`}
+                      aria-hidden
+                    >
+                      {n}
+                    </div>
+                  ))}
+                </div>
+                <p className="pp-sub">
+                  It scores 2 VP and retrieves its oldest pending tile (Era{' '}
+                  {plan.oldestTileEra}). Do not advance the Time Travel marker.
+                </p>
+                <button className="start-turn" onClick={takeHypersync}>
+                  ▶ Take Turn
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

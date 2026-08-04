@@ -323,11 +323,23 @@ describe('Hypersync mode', () => {
     expect(bot.vp).toBe(5); // building VP, no Failed +1 VP
   });
 
-  it('hypersyncPlan: needs a pending tile AND an Exosuit', () => {
-    expect(hypersyncPlan(hsState(4, 1, [2]).chronossus!).canHypersync).toBe(true);
-    expect(hypersyncPlan(hsState(4, 0, [2]).chronossus!).canHypersync).toBe(false); // no Exosuit
-    expect(hypersyncPlan(hsState(4, 1, []).chronossus!).canHypersync).toBe(false); // no tile
-    expect(hypersyncPlan(hsState(4, 1, [3, 1, 2]).chronossus!).oldestTileEra).toBe(1);
+  it('hypersyncPlan: needs a prior-Era tile AND an Exosuit', () => {
+    expect(hypersyncPlan(hsState(4, 1, [2]).chronossus!, 4).canHypersync).toBe(true);
+    expect(hypersyncPlan(hsState(4, 0, [2]).chronossus!, 4).canHypersync).toBe(false); // no Exosuit
+    expect(hypersyncPlan(hsState(4, 1, []).chronossus!, 4).canHypersync).toBe(false); // no tile
+    expect(hypersyncPlan(hsState(4, 1, [3, 1, 2]).chronossus!, 4).oldestTileEra).toBe(1);
+  });
+
+  it('hypersyncPlan: a tile in the CURRENT Era is not retrievable', () => {
+    // Only a current-Era (4) tile → the Hypersync branch stays closed.
+    const plan = hypersyncPlan(hsState(4, 2, [4]).chronossus!, 4);
+    expect(plan.canHypersync).toBe(false);
+    expect(plan.pendingCount).toBe(0);
+    // A prior tile (2) is counted; the current-Era one (4) is not.
+    const mixed = hypersyncPlan(hsState(4, 2, [2, 4]).chronossus!, 4);
+    expect(mixed.canHypersync).toBe(true);
+    expect(mixed.pendingCount).toBe(1);
+    expect(mixed.oldestTileEra).toBe(2);
   });
 
   it('Hypersync Action retrieves the oldest tile, scores 2 VP + bonus, spends an Exosuit', () => {
