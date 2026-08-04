@@ -2508,6 +2508,9 @@ function CxScoreScreen({
   const [mode, setMode] = useState<'number' | 'tally'>('number');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
+  // Tally mode always sums to a number (0 to start), so don't treat it as a
+  // finished score until the player clicks Done — otherwise it auto-saves 0.
+  const [tallyDone, setTallyDone] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const tallyTotal = CX_TALLY_FIELDS.reduce((sum, f) => {
@@ -2515,7 +2518,13 @@ function CxScoreScreen({
     return sum + (f.sub ? -v : v);
   }, 0);
   const playerScore =
-    mode === 'number' ? (num.trim() === '' ? null : Number(num)) : tallyTotal;
+    mode === 'number'
+      ? num.trim() === ''
+        ? null
+        : Number(num)
+      : tallyDone
+        ? tallyTotal
+        : null;
   const result =
     playerScore == null || Number.isNaN(playerScore)
       ? null
@@ -2624,6 +2633,11 @@ function CxScoreScreen({
               <div className="tally-total">
                 Your total: <b>{tallyTotal}</b>
               </div>
+              {!tallyDone && (
+                <button className="tally-done" onClick={() => setTallyDone(true)}>
+                  Done — use this total
+                </button>
+              )}
             </>
           )}
         </div>

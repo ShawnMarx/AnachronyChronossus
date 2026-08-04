@@ -2420,6 +2420,21 @@
   font-size: 0.95rem;
   color: var(--sp-text-2);
 }
+/* Confirms the player has finished the tally — gates the auto-save/result. */
+.tally-done {
+  display: block;
+  margin: 0.6rem 0 0 auto;
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.6);
+  background: rgba(var(--sp-accent-rgb), 0.18);
+  color: var(--sp-text-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+.tally-done:hover {
+  background: rgba(var(--sp-accent-rgb), 0.3);
+}
 .score-result {
   padding: 0.7rem 0.9rem;
   border-radius: 10px;
