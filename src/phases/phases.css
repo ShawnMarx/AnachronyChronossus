@@ -262,6 +262,69 @@
   font-size: 0.88rem;
   line-height: 1.45;
 }
+/* Flavor "Uploading…" progress bar on the intro screen (build completeness). */
+.upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 1.1rem;
+}
+.upload-bar-label {
+  font-size: 0.82rem;
+  color: var(--sp-accent);
+  white-space: nowrap;
+}
+.upload-bar-track {
+  flex: 1;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: var(--sp-panel-2);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
+  overflow: hidden;
+}
+.upload-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sp-accent-deep), var(--sp-accent));
+}
+.upload-bar-pct {
+  font-size: 0.82rem;
+  color: #b3a9d0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsible "Coming soon" list for stubbed modules / difficulty options. */
+.coming-soon {
+  margin: 0.6rem 0 0.2rem;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.3);
+  border-radius: 10px;
+  background: var(--sp-panel-2);
+}
+.coming-soon > summary {
+  cursor: pointer;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  color: #b3a9d0;
+  list-style: none;
+}
+.coming-soon > summary::-webkit-details-marker {
+  display: none;
+}
+.coming-soon > summary::before {
+  content: '▸ ';
+  color: var(--sp-accent);
+}
+.coming-soon[open] > summary::before {
+  content: '▾ ';
+}
+.coming-soon ul {
+  margin: 0;
+  padding: 0 0.9rem 0.7rem 1.8rem;
+  color: #b3a9d0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
 /* A setup-tiles reference image inside a rulebook box (e.g. Hypersync solo tiles). */
 .setup-tiles-img {
   display: block;

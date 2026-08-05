@@ -8,7 +8,8 @@ import ChronossusGame, { peekSavedChronossus } from './ChronossusGame';
  * (rehydrated by its view on mount); the top-left home button returns here to
  * Landing. At most one opponent is ever cached at a time — starting/continuing
  * one clears the other — so this check is unambiguous and a refresh always
- * returns to the last active game. Chronossus is admin-gated on the Landing.
+ * returns to the last active game. Both opponents are available to everyone;
+ * only Debug mode (and the admin stats view) remain admin-gated.
  */
 export default function AppRoot() {
   const [view, setView] = useState<'home' | 'chronobot' | 'chronossus'>(() =>

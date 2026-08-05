@@ -147,6 +147,21 @@ export interface ChronossusSetupResult {
   tileSides: Record<string, 'A' | 'B'>;
 }
 
+/** A collapsible "Coming soon" list of not-yet-available modules / options. */
+function ComingSoon({ items }: { items: string[] }) {
+  if (items.length === 0) return null;
+  return (
+    <details className="coming-soon">
+      <summary>Coming soon ({items.length})</summary>
+      <ul>
+        {items.map((label) => (
+          <li key={label}>{label}</li>
+        ))}
+      </ul>
+    </details>
+  );
+}
+
 export default function ChronossusSetupFlow({
   onHome,
   onBegin,
@@ -157,7 +172,6 @@ export default function ChronossusSetupFlow({
   type Step = 'intro' | 'modules' | 'difficulty' | 'setup';
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
-  const [extras, setExtras] = useState<Set<string>>(new Set());
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
   // Per-tile side selection; only families set to 'B' are stored.
   const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
@@ -231,6 +245,14 @@ export default function ChronossusSetupFlow({
                   Continue ▶
                 </button>
               </div>
+              {/* Flavor "progress" bar — a fake upload of our build completeness. */}
+              <div className="upload-bar" role="img" aria-label="Uploading: 40 percent">
+                <div className="upload-bar-label">Uploading…</div>
+                <div className="upload-bar-track">
+                  <div className="upload-bar-fill" style={{ width: '40%' }} />
+                </div>
+                <div className="upload-bar-pct">40%</div>
+              </div>
               {FLAVOR.split('\n\n').map((para, i) => (
                 <p key={i} className="setup-flavor">
                   {para}
@@ -251,59 +273,35 @@ export default function ChronossusSetupFlow({
                 </button>
               </div>
               <p className="phase-note">
-                Choose the module to play. <b>Base</b> and <b>Hypersync Future Actions</b>{' '}
-                are available; the others are listed for the modes we’ll be filling in.
+                <b>Base</b> is the app designer’s suggested start. The app itself handles
+                the extra bookkeeping and complexity of the other modules, giving you a
+                more complete opponent as they come online across the game modes.
               </p>
               <div className="difficulty-list">
-                {MODULE_CONFIGS.map((m) => (
+                {MODULE_CONFIGS.filter((m) => m.available).map((m) => (
                   <label
                     key={m.id}
-                    className={`difficulty-opt ${moduleId === m.id ? 'on' : ''} ${
-                      m.available ? '' : 'disabled'
-                    }`}
+                    className={`difficulty-opt ${moduleId === m.id ? 'on' : ''}`}
                   >
                     <input
                       type="radio"
                       name="cx-module"
                       checked={moduleId === m.id}
-                      disabled={!m.available}
                       onChange={() => setModuleId(m.id)}
                     />
                     <span className="difficulty-opt-text">
                       <b>{m.label}</b>
-                      {!m.available && <span>Coming soon</span>}
                     </span>
                   </label>
                 ))}
               </div>
 
-              <p className="phase-note">
-                In addition, any number of these modules may be added (none, some, or
-                all). Not available yet — listed for future modes.
-              </p>
-              <div className="difficulty-list">
-                {EXTRA_MODULES.map((m) => (
-                  <label key={m.id} className="difficulty-opt disabled">
-                    <input
-                      type="checkbox"
-                      checked={extras.has(m.id)}
-                      disabled
-                      onChange={() =>
-                        setExtras((s) => {
-                          const next = new Set(s);
-                          if (next.has(m.id)) next.delete(m.id);
-                          else next.add(m.id);
-                          return next;
-                        })
-                      }
-                    />
-                    <span className="difficulty-opt-text">
-                      <b>{m.label}</b>
-                      <span>Coming soon</span>
-                    </span>
-                  </label>
-                ))}
-              </div>
+              <ComingSoon
+                items={[
+                  ...MODULE_CONFIGS.filter((m) => !m.available).map((m) => m.label),
+                  ...EXTRA_MODULES.map((m) => m.label),
+                ]}
+              />
 
               <p className="phase-note">
                 The Interlocking buildings and Neutronide buildings are supported and
@@ -325,39 +323,41 @@ export default function ChronossusSetupFlow({
               </div>
               <p className="phase-note">
                 Select one or more options to increase the difficulty against the
-                Chronossus, or play with none for the standard game. Most options are
-                stubbed for now; <b>Flip Action tiles to their B side</b> is active.
+                Chronossus, or play with none for the standard game.
               </p>
               <div className="difficulty-list">
-                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])].map((o) => {
-                  const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
-                  // Active (selectable) options: the tile flip + any mode-specific ones.
-                  const enabled = isFlip || o.flag === DIFFICULTY_HYPERSYNC_TARGETED;
-                  const on = difficulty.has(o.flag);
-                  return (
-                    <div key={o.flag}>
-                      <label className={`difficulty-opt ${enabled ? '' : 'disabled'} ${on ? 'on' : ''}`}>
-                        <input
-                          type="checkbox"
-                          checked={on}
-                          disabled={!enabled}
-                          onChange={() =>
-                            setDifficulty((s) => {
-                              const next = new Set(s);
-                              if (next.has(o.flag)) next.delete(o.flag);
-                              else next.add(o.flag);
-                              return next;
-                            })
-                          }
-                        />
-                        <span className="difficulty-opt-text">
-                          <b>{o.label}</b>
-                          <span>{o.detail}</span>
-                        </span>
-                      </label>
+                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])]
+                  .filter(
+                    (o) =>
+                      o.flag === DIFFICULTY_TILES_B_SIDE ||
+                      o.flag === DIFFICULTY_HYPERSYNC_TARGETED,
+                  )
+                  .map((o) => {
+                    const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
+                    const on = difficulty.has(o.flag);
+                    return (
+                      <div key={o.flag}>
+                        <label className={`difficulty-opt ${on ? 'on' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() =>
+                              setDifficulty((s) => {
+                                const next = new Set(s);
+                                if (next.has(o.flag)) next.delete(o.flag);
+                                else next.add(o.flag);
+                                return next;
+                              })
+                            }
+                          />
+                          <span className="difficulty-opt-text">
+                            <b>{o.label}</b>
+                            <span>{o.detail}</span>
+                          </span>
+                        </label>
 
-                      {/* Per-tile A/B flip picker — revealed when the option is on. */}
-                      {isFlip && on && (
+                        {/* Per-tile A/B flip picker — revealed when the option is on. */}
+                        {isFlip && on && (
                         <div className="tile-flip-list">
                           {modeSlots.map((slot) => {
                             const side = tileSides[slot.family] ? 'B' : 'A';
@@ -398,6 +398,12 @@ export default function ChronossusSetupFlow({
                   );
                 })}
               </div>
+
+              <ComingSoon
+                items={DIFFICULTY_OPTIONS.filter(
+                  (o) => o.flag !== DIFFICULTY_TILES_B_SIDE,
+                ).map((o) => o.label)}
+              />
             </>
           )}
 

@@ -3,7 +3,6 @@ import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
 import { peekSavedChronossus, clearSavedChronossus } from './ChronossusGame';
 import { useAuth } from './auth/useAuth';
-import { isLocalRun, isStaging } from './auth/bgeAuth';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -99,12 +98,6 @@ export default function Landing({
     | { bot: BotId; kind: 'other'; otherBot: BotId; savedAt: number }
     | null
   >(null);
-  const { user } = useAuth();
-
-  // Chronossus is admin-gated during development: visible to admins, any local run
-  // (dev), and the staging preview host; "Coming Soon" for everyone else on prod.
-  const chronossusUnlocked = isLocalRun() || isStaging() || Boolean(user?.isAdmin);
-
   const otherOf = (b: BotId): BotId => (b === 'chronobot' ? 'chronossus' : 'chronobot');
   const botName = (b: BotId) => (b === 'chronobot' ? 'Chronobot' : 'Chronossus');
   const peekFor = (b: BotId) => (b === 'chronobot' ? peekSavedChronobot() : peekSavedChronossus());
@@ -162,18 +155,10 @@ export default function Landing({
         <BotCard
           name="Chronossus"
           image="/assets/solo/chronossus-hero.jpg"
-          tagline={
-            chronossusUnlocked
-              ? 'The advanced automa · admin preview'
-              : 'The advanced automa · more modes, more depth'
-          }
-          status={chronossusUnlocked ? 'ready' : 'soon'}
-          description={
-            chronossusUnlocked
-              ? 'Admin preview: boots into the Phase-5 Action Rounds debug harness. Tap each action space to see the Chronossus resolve it. Work in progress.'
-              : "A deeper opponent that supports most of the game's modes and expansions. Not available yet — it's next on the roadmap once the Chronobot is complete."
-          }
-          onLaunch={chronossusUnlocked ? () => launch('chronossus') : undefined}
+          tagline="The advanced automa · more modes, more depth"
+          status="ready"
+          description="A deeper opponent supporting the base game and the Hypersync Future Actions module, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
+          onLaunch={() => launch('chronossus')}
         />
       </div>
 
