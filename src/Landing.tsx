@@ -28,9 +28,11 @@ interface BotCardProps {
   description: string;
   status: 'ready' | 'soon';
   onLaunch?: () => void;
+  /** Optional build-completeness bar shown at the bottom of the card (0–100). */
+  progress?: number;
 }
 
-function BotCard({ name, image, tagline, description, status, onLaunch }: BotCardProps) {
+function BotCard({ name, image, tagline, description, status, onLaunch, progress }: BotCardProps) {
   const ready = status === 'ready';
   return (
     <button
@@ -48,6 +50,19 @@ function BotCard({ name, image, tagline, description, status, onLaunch }: BotCar
         <p className="bot-tagline">{tagline}</p>
         <p className="bot-desc">{description}</p>
         {ready && <span className="bot-cta">Play ▶</span>}
+        {progress != null && (
+          <div
+            className="upload-bar"
+            role="img"
+            aria-label={`Uploading: ${progress} percent`}
+          >
+            <div className="upload-bar-label">Uploading…</div>
+            <div className="upload-bar-track">
+              <div className="upload-bar-fill" style={{ width: `${progress}%` }} />
+            </div>
+            <div className="upload-bar-pct">{progress}%</div>
+          </div>
+        )}
       </div>
     </button>
   );
@@ -143,15 +158,6 @@ export default function Landing({
         (or be willing to learn) the base game on your own.
       </p>
 
-      {/* Flavor "progress" bar — a fake upload of our overall build completeness. */}
-      <div className="upload-bar" role="img" aria-label="Uploading: 40 percent">
-        <div className="upload-bar-label">Uploading…</div>
-        <div className="upload-bar-track">
-          <div className="upload-bar-fill" style={{ width: '40%' }} />
-        </div>
-        <div className="upload-bar-pct">40%</div>
-      </div>
-
       <div className="bot-grid">
         <BotCard
           name="Chronobot"
@@ -168,6 +174,7 @@ export default function Landing({
           status="ready"
           description="A deeper opponent supporting the base game and the Hypersync Future Actions module, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
+          progress={40}
         />
       </div>
 
