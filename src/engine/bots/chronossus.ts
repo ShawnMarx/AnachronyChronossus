@@ -259,12 +259,14 @@ export function resolveAction(
         'It has a maximum of one Hypersync tile per Era and 3 pending Hypersync tiles total.',
     });
   } else if (input.hypersyncNoTile) {
-    // Hypersync Capital Action, no space, and no Hypersync tile available: a Failed
-    // Action worth +1 VP — but no Exosuit is discarded (Hypersync override).
+    // Hypersync Capital Action, no space, and no Hypersync tile available: still a
+    // Failed Action from lack of free spaces, so the base rule applies — +1 VP AND
+    // discard an active Exosuit.
     bot.vp += 1;
+    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     instr.push({
       id: `hs-fail-notile-${n}`,
-      text: 'No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +1 VP.',
+      text: 'No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +1 VP and additionally discards one active Exosuit.',
       effect: { vp: 1 },
     });
     return finishAction(state, bot, instr);

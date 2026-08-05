@@ -323,6 +323,15 @@ describe('Hypersync mode', () => {
     expect(bot.vp).toBe(5); // building VP, no Failed +1 VP
   });
 
+  it('no-tile Failed (no space + Hypersync tile unavailable) discards an active Exosuit', () => {
+    const s = hsState(4, 3, [4]); // already a tile this Era → cannot place another
+    const { state } = resolveAction(s, { actionId: 'construct-factory', hypersyncNoTile: true });
+    const bot = state.chronossus!;
+    expect(bot.vp).toBe(1); // Failed Action +1 VP
+    expect(bot.exosuitsAvailable).toBe(2); // discarded one (3 → 2), base rule applies
+    expect(bot.buildings.factory).toBe(0); // action not performed
+  });
+
   it('hypersyncPlan: needs a prior-Era tile AND an Exosuit', () => {
     expect(hypersyncPlan(hsState(4, 1, [2]).chronossus!, 4).canHypersync).toBe(true);
     expect(hypersyncPlan(hsState(4, 0, [2]).chronossus!, 4).canHypersync).toBe(false); // no Exosuit
