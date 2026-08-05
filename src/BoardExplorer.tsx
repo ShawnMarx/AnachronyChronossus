@@ -2046,6 +2046,7 @@ export function ParadoxPhaseBody({
   onRoll,
   onAdvance,
   botName = 'Chronobot',
+  hypersyncTiles,
 }: {
   state: GameState;
   /** The active bot's slice fields the Paradox phase reads (shared shape). */
@@ -2055,10 +2056,20 @@ export function ParadoxPhaseBody({
   onAdvance: () => void;
   /** Bot name shown in the copy (defaults to the Chronobot). */
   botName?: string;
+  /**
+   * Hypersync mode only: the bot's total Solo Hypersync tiles in play. When set,
+   * two Future-Imperfect rules apply (rulebook p.5): a Hypersync tile counts as a
+   * Warp tile for the per-Timeline-tile majority, and after the Warp checks the
+   * player(s) with the most TOTAL Hypersync tiles make one more Paradox roll
+   * (unless they gained an Anomaly this phase). Undefined = not Hypersync mode.
+   */
+  hypersyncTiles?: number;
 }) {
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
   const [rolls, setRolls] = useState<string[]>([]);
+  // Hypersync extra-roll step: resolved once (rolled or skipped) after the Warp checks.
+  const [hsAsked, setHsAsked] = useState(false);
 
   const maxChecks = Math.max(0, state.era - 1);
   const noWarp = bot.warpTilesOnTimeline === 0;
@@ -2072,6 +2083,17 @@ export function ParadoxPhaseBody({
   };
   const answerNo = () => setAsked((a) => a + 1);
 
+  // Hypersync extra roll: offered once the Warp checks are done, only if the bot
+  // has ≥1 Hypersync tile and did NOT gain an Anomaly this phase (rulebook p.5).
+  const hypersyncEligible = hypersyncTiles != null && hypersyncTiles > 0 && !stopped;
+  const hsAnswerYes = () => {
+    const res = onRoll(rollParadoxDie());
+    setRolls((r) => [...r, res.instructions[0]?.text ?? '']);
+    setHsAsked(true);
+    if (res.stop) setStopped(true);
+  };
+  const hsAnswerNo = () => setHsAsked(true);
+
   return (
     <>
       <p className="phase-note">
@@ -2080,6 +2102,15 @@ export function ParadoxPhaseBody({
         tile{bot.warpTilesOnTimeline === 1 ? '' : 's'} on the Timeline and keeps checking
         until it gains an Anomaly.
       </p>
+      {hypersyncTiles != null && (
+        <p className="phase-note">
+          <b>Hypersync:</b> a Hypersync tile counts as a Warp tile when deciding who has
+          the most Warp tiles on a Timeline tile — but a tile with <b>zero</b> Warp tiles
+          never rolls, even with a Hypersync tile present. The Chronossus has{' '}
+          <b>{hypersyncTiles}</b> Hypersync tile{hypersyncTiles === 1 ? '' : 's'} in play.
+        </p>
+      )}
+
       <div className="paradox-status">
         <span>
           Paradox tracker <b>{bot.paradoxes}</b>/3
@@ -2105,23 +2136,11 @@ export function ParadoxPhaseBody({
         </div>
       )}
 
-      {done ? (
-        <>
-          {noWarp && asked === 0 && (
-            <p className="phase-note">
-              The {botName} has no Warp tiles on the Timeline — it rolls no Paradoxes
-              this phase.
-            </p>
-          )}
-          <button className="phase-primary" onClick={onAdvance}>
-            Continue to Power Up ▶
-          </button>
-        </>
-      ) : (
+      {!done ? (
         <div className="paradox-question">
           <p className="phase-note">
             Past Timeline tile {asked + 1} of {maxChecks}: does the {botName} have the
-            most (or tied-most) Warp tiles on it?
+            most (or tied-most) Warp tiles on it{hypersyncTiles != null ? ' (Hypersync tiles count)' : ''}?
           </p>
           <div className="setup-actions">
             <button className="phase-primary" onClick={answerYes}>
@@ -2132,6 +2151,34 @@ export function ParadoxPhaseBody({
             </button>
           </div>
         </div>
+      ) : hypersyncEligible && !hsAsked ? (
+        <div className="paradox-question">
+          <p className="phase-note">
+            <b>Extra Hypersync roll:</b> the player(s) with the most total Hypersync tiles
+            in play make one more Paradox roll. Does the {botName} have the most (or
+            tied-most) total Hypersync tiles in play (it has <b>{hypersyncTiles}</b>)?
+          </p>
+          <div className="setup-actions">
+            <button className="phase-primary" onClick={hsAnswerYes}>
+              Yes — it ties or leads (roll)
+            </button>
+            <button className="phase-secondary" onClick={hsAnswerNo}>
+              No
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {noWarp && asked === 0 && (
+            <p className="phase-note">
+              The {botName} has no Warp tiles on the Timeline
+              {hypersyncTiles != null ? ' — its Warp-tile Paradox checks are skipped' : ' — it rolls no Paradoxes this phase'}.
+            </p>
+          )}
+          <button className="phase-primary" onClick={onAdvance}>
+            Continue to Power Up ▶
+          </button>
+        </>
       )}
     </>
   );

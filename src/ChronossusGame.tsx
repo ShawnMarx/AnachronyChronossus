@@ -2234,6 +2234,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onRoll={rollBotParadox}
           onAdvance={advanceParadox}
           botName="Chronossus"
+          hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
         />
       );
       break;
