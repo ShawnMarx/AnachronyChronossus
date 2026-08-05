@@ -198,10 +198,20 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     expect(state.chronossus!.timeTravelTrack).toBe(1);
   });
 
-  it('no-space Failed: +1 VP AND discards an active Exosuit (Chronossus nuance)', () => {
-    const { state } = resolveAction(withExosuits(4), { actionId: 'mine-resource', noSpaceAvailable: true });
-    expect(state.chronossus!.vp).toBe(1);
-    expect(state.chronossus!.exosuitsAvailable).toBe(3); // discarded one
+  it('no-space Failed: +1 VP AND discards an active Exosuit (every placing action)', () => {
+    // The no-space branch runs before the action switch, so it discards for ANY
+    // Exosuit-placing action — Mine, Construct, Recruit, Research alike.
+    for (const actionId of [
+      'mine-resource',
+      'construct-factory',
+      'recruit',
+      'research',
+    ] as const) {
+      const { state } = resolveAction(withExosuits(4), { actionId, noSpaceAvailable: true });
+      expect(state.chronossus!.vp).toBe(1);
+      expect(state.chronossus!.exosuitsAvailable).toBe(3); // discarded one, none placed
+      expect(state.chronossus!.buildings.factory).toBe(0); // Construct not performed
+    }
   });
 
   it('Construct is Failed when already at 3 of a type (still places an Exosuit)', () => {
