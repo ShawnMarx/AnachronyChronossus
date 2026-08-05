@@ -2075,9 +2075,17 @@ export function ParadoxPhaseBody({
   const noWarp = bot.warpTilesOnTimeline === 0;
   const done = stopped || noWarp || asked >= maxChecks;
 
+  // A roll's log line: the result text PLUS its detail (e.g. the "remove one Warp
+  // tile from the tile where it has the most (oldest if tied)" instruction on an
+  // Anomaly) so the player is actually told to remove the tile.
+  const rollLine = (res: { instructions: Instruction[] }) => {
+    const ins = res.instructions[0];
+    return ins ? `${ins.text}${ins.detail ? ' ' + ins.detail : ''}` : '';
+  };
+
   const answerYes = () => {
     const res = onRoll(rollParadoxDie());
-    setRolls((r) => [...r, res.instructions[0]?.text ?? '']);
+    setRolls((r) => [...r, rollLine(res)]);
     setAsked((a) => a + 1);
     if (res.stop) setStopped(true);
   };
@@ -2088,7 +2096,7 @@ export function ParadoxPhaseBody({
   const hypersyncEligible = hypersyncTiles != null && hypersyncTiles > 0 && !stopped;
   const hsAnswerYes = () => {
     const res = onRoll(rollParadoxDie());
-    setRolls((r) => [...r, res.instructions[0]?.text ?? '']);
+    setRolls((r) => [...r, rollLine(res)]);
     setHsAsked(true);
     if (res.stop) setStopped(true);
   };
