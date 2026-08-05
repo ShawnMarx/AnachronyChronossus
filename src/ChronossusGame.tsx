@@ -125,7 +125,10 @@ const HERO = '/assets/solo/chronossus-hero.jpg';
 
 // Persistence (own key so it survives refresh, separate from the Chronobot's).
 const CX_PERSIST_KEY = 'anachrony:chronossus';
-const CX_PERSIST_VERSION = 1;
+// v2: added ChronossusState.hypersyncTiles + config.chronossusMode / tileSides
+// (Hypersync mode + B-side tiles). Bumping discards pre-change saves that lack
+// these fields so a stale game can't rehydrate into an inconsistent state.
+const CX_PERSIST_VERSION = 2;
 
 /** Landing/AppRoot helpers: the saved Chronossus game's timestamp, or null. */
 export function peekSavedChronossus(): { savedAt: number } | null {
