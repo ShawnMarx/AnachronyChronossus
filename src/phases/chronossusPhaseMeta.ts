@@ -20,7 +20,12 @@ export const CHRONOSSUS_PHASE_META: Partial<Record<Phase, PhaseMeta>> = {
     overview:
       'Paradox phase – Players who strained the Timeline with Warping roll for ' +
       'Paradoxes. Skipped in the first Era.',
-    rules: 'The rules for the Paradox Phase are the same as for the Chronobot.',
+    rules:
+      'The Chronossus rolls for Paradoxes last. If the Chronossus gains an Anomaly, ' +
+      'it stops rolling (like you would), then removes any one Warp tile from the ' +
+      'Timeline tile where it has the most Warp tiles (oldest if tied). If it would ' +
+      'gain an Anomaly when it already has 3 Anomalies, it does not receive another ' +
+      'one, nor does it remove a Warp tile.',
   },
   powerup: {
     number: 3,
@@ -42,9 +47,11 @@ export const CHRONOSSUS_PHASE_META: Partial<Record<Phase, PhaseMeta>> = {
       'Warp phase – Players may place Warp tiles on the current Timeline tile to ' +
       'bring assets from the future to the present.',
     rules:
-      'Just like with the Chronobot, warping happens in player order. You choose ' +
-      '0–2 Warp tiles as usual, while the Chronossus places Warp tiles equal to the ' +
-      'rolled number of Paradoxes.',
+      'Warping occurs in player order. For the Chronossus’s Warp, roll the Paradox ' +
+      'die. Place Warp tiles for the Chronossus equal to the rolled number of ' +
+      'Paradoxes. The Chronossus does not gain anything for its Warp tiles, and it ' +
+      'does not matter which warp tile it places. You choose 0-2 Warp tiles to ' +
+      'place as normal.',
   },
   actions: {
     number: 5,

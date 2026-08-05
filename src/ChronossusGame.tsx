@@ -1983,19 +1983,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               countLabel="Turns"
               extraFlags={
                 <>
-                  <span className="eoa-flag cx-exosuit-flag" title="Powered Exosuits available">
+                  <TapFlag className="cx-exosuit-flag" hint="Powered Exosuits available this Era">
                     <CxExosuit count={bot.exosuitsAvailable} size={18} />
-                  </span>
-                  <span
-                    className="eoa-flag cx-energy-flag"
-                    title="Energy Pool — Energy Cores / Exhausted Energy Cores"
+                  </TapFlag>
+                  <TapFlag
+                    className="cx-energy-flag"
+                    hint="Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores"
                   >
                     <CxEnergyPool pool={bot.energyPool} size={18} />
-                  </span>
+                  </TapFlag>
                   {hypersyncMode && (
-                    <span
-                      className="eoa-flag cx-hypersync-flag"
-                      title="Solo Hypersync tiles"
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint="Pending Solo Hypersync tiles (max one per Era, 3 total)"
                     >
                       <img
                         src="/assets/solo/chronossus/hypersync-solo-tile.png"
@@ -2004,7 +2004,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         height={18}
                       />
                       {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
-                    </span>
+                    </TapFlag>
                   )}
                 </>
               }
@@ -2137,7 +2137,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 </div>
                 <p className="cx-user-action">
                   <span className="cx-user-action-icon" aria-hidden="true">
-                    <img src={EXOSUIT_ICON} alt="" />
+                    <img className="cx-exosuit-outlined" src={EXOSUIT_ICON} alt="" />
                     <img src={PATH_ICON} alt="" />
                   </span>
                   <span>
@@ -2423,19 +2423,20 @@ function HypersyncDialog({
 
   const available = Chronossus.HYPERSYNC_HEXES.filter((n) => !occupied.has(n));
 
-  // Confirm the available spaces → roll step, or fall back if none are free
-  // (the Time Travel dialog step, or a Failed Action when no Warp tiles remain).
+  // Randomize between the available spaces (the app does the roll for you).
+  const rollSpace = () => setRolledHex(available[Math.floor(Math.random() * available.length)]);
+  // Confirm the available spaces → auto-roll and show the result, or fall back if
+  // none are free (the Time Travel dialog step, or a Failed Action when no Warp
+  // tiles remain). Non-targeted play rolls FOR you here (no separate roll click).
   const confirmHexes = () => {
     if (available.length === 0) {
       if (canTimeTravel) setStep('timetravel');
       else onResolve({ code, outcome: 'failed' });
       return;
     }
-    setRolledHex(null);
+    rollSpace();
     setStep('roll');
   };
-  // Randomize between the available spaces (the app does the roll for you).
-  const rollSpace = () => setRolledHex(available[Math.floor(Math.random() * available.length)]);
   // Commit the Hypersync Action on the rolled (or targeted) space.
   const takeHypersync = () =>
     onResolve({ code, outcome: 'hypersync', hex: targeted ? undefined : (rolledHex ?? undefined) });
@@ -2594,8 +2595,9 @@ function HypersyncDialog({
             ) : (
               <>
                 <p className="pp-instruct">
-                  Rolled Hypersync space <b>{rolledHex}</b> — place a bot Exosuit there to
-                  block it.
+                  Place a Bot Exosuit on <b>Hypersync space {rolledHex}</b> — the
+                  Chronossus takes the Hypersync tile from the oldest Era (Era{' '}
+                  {plan.oldestTileEra}).
                 </p>
                 <div className="hs-hex-row">
                   {available.map((n) => (
@@ -2609,12 +2611,18 @@ function HypersyncDialog({
                   ))}
                 </div>
                 <p className="pp-sub">
-                  It scores 2 VP and retrieves its oldest pending tile (Era{' '}
-                  {plan.oldestTileEra}). Do not advance the Time Travel marker.
+                  It scores 2 VP. Do not advance the Time Travel marker.
                 </p>
-                <button className="start-turn" onClick={takeHypersync}>
-                  ▶ Take Turn
-                </button>
+                <div className="hs-roll-actions">
+                  <button className="start-turn" onClick={takeHypersync}>
+                    ▶ Take Turn
+                  </button>
+                  {available.length > 1 && (
+                    <button className="hs-reroll" onClick={rollSpace}>
+                      🎲 Re-roll
+                    </button>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -2717,6 +2725,38 @@ function HypersyncRules({
         </div>
       )}
     </div>
+  );
+}
+
+// A Turn-bar tracker chip whose description opens on TAP (works on iPad, where a
+// `title` hover-tooltip never appears) as well as on hover.
+function TapFlag({
+  className,
+  hint,
+  children,
+}: {
+  className: string;
+  hint: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="tap-flag-wrap">
+      <button
+        type="button"
+        className={`eoa-flag tap-flag ${className}`}
+        title={hint}
+        aria-label={hint}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {children}
+      </button>
+      {open && (
+        <span className="tap-flag-pop" role="tooltip" onClick={() => setOpen(false)}>
+          {hint}
+        </span>
+      )}
+    </span>
   );
 }
 

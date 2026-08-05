@@ -535,6 +535,32 @@
   align-items: center;
   gap: 0.25rem;
 }
+/* Tap-to-open description on the Turn-bar tracker chips (iPad-friendly). */
+.tap-flag-wrap {
+  position: relative;
+  display: inline-flex;
+}
+button.eoa-flag.tap-flag {
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.tap-flag-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  max-width: 220px;
+  width: max-content;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: #1b1430;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.6);
+  color: #ece8f5;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
 
 /* Hypersync Action — the 3 hex-space picker (mark occupied ones). */
 .hs-hex-row {
@@ -567,6 +593,21 @@
 .hs-hex.dimmed {
   background: #3a3352;
   opacity: 0.55;
+}
+.hs-roll-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.hs-reroll {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+  border-radius: 8px;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.6);
+  background: transparent;
+  color: var(--sp-accent-2);
+  cursor: pointer;
 }
 .pp-sub {
   color: #b3a9d0;
@@ -606,6 +647,11 @@
   height: 30px;
   width: auto;
   display: block;
+}
+/* A thin teal outline tracing the Exosuit icon's shape (Power Up phase). */
+.cx-user-action-icon img.cx-exosuit-outlined {
+  filter: drop-shadow(1px 0 0 var(--sp-accent-2)) drop-shadow(-1px 0 0 var(--sp-accent-2))
+    drop-shadow(0 1px 0 var(--sp-accent-2)) drop-shadow(0 -1px 0 var(--sp-accent-2));
 }
 
 /* Power Up phase: the post-draw breakdown (drawn / returned / final pool). */

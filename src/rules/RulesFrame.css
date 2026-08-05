@@ -161,3 +161,38 @@
     padding: 0.4rem 0.55rem;
   }
 }
+
+/* Chronossus theme — retint the purple fills to teal (borders already use the
+   accent variable, which is teal under this bot). */
+:root[data-bot='chronossus'] .rules-frame {
+  background: #08100f;
+}
+:root[data-bot='chronossus'] .rules-frame-bar {
+  background: #0e1a1a;
+}
+:root[data-bot='chronossus'] .rules-back,
+:root[data-bot='chronossus'] .rules-open-btn {
+  background: #14282a;
+  color: #e6f2f0;
+}
+:root[data-bot='chronossus'] .rules-seg,
+:root[data-bot='chronossus'] .rules-res-menu {
+  background: #122222;
+}
+:root[data-bot='chronossus'] .rules-seg > button,
+:root[data-bot='chronossus'] .rules-resources > button {
+  color: #a9c4c0;
+}
+:root[data-bot='chronossus'] .rules-seg > button:hover,
+:root[data-bot='chronossus'] .rules-resources > button:hover,
+:root[data-bot='chronossus'] .rules-res-item {
+  color: #e6f2f0;
+}
+:root[data-bot='chronossus'] .rules-seg > button.on,
+:root[data-bot='chronossus'] .rules-resources > button.on,
+:root[data-bot='chronossus'] .rules-res-item:hover {
+  background: #1c3838;
+}
+:root[data-bot='chronossus'] .rules-res-group-label {
+  color: #7fa8a3;
+}
