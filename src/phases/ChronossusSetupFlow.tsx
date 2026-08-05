@@ -245,14 +245,6 @@ export default function ChronossusSetupFlow({
                   Continue ▶
                 </button>
               </div>
-              {/* Flavor "progress" bar — a fake upload of our build completeness. */}
-              <div className="upload-bar" role="img" aria-label="Uploading: 40 percent">
-                <div className="upload-bar-label">Uploading…</div>
-                <div className="upload-bar-track">
-                  <div className="upload-bar-fill" style={{ width: '40%' }} />
-                </div>
-                <div className="upload-bar-pct">40%</div>
-              </div>
               {FLAVOR.split('\n\n').map((para, i) => (
                 <p key={i} className="setup-flavor">
                   {para}

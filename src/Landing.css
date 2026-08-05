@@ -90,6 +90,39 @@
   color: #c4b5fd;
 }
 
+/* Flavor "Uploading…" progress bar — our overall build completeness. */
+.upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  max-width: 960px;
+  margin: 1rem 0 0.4rem;
+}
+.upload-bar-label {
+  font-size: 0.85rem;
+  color: #c4b5fd;
+  white-space: nowrap;
+}
+.upload-bar-track {
+  flex: 1;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: #140f22;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  overflow: hidden;
+}
+.upload-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #7c3aed, #a78bfa);
+}
+.upload-bar-pct {
+  font-size: 0.85rem;
+  color: #b7abd6;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Bot cards ---- */
 .bot-grid {
   width: 100%;

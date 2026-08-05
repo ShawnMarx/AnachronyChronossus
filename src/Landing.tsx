@@ -143,13 +143,22 @@ export default function Landing({
         (or be willing to learn) the base game on your own.
       </p>
 
+      {/* Flavor "progress" bar — a fake upload of our overall build completeness. */}
+      <div className="upload-bar" role="img" aria-label="Uploading: 40 percent">
+        <div className="upload-bar-label">Uploading…</div>
+        <div className="upload-bar-track">
+          <div className="upload-bar-fill" style={{ width: '40%' }} />
+        </div>
+        <div className="upload-bar-pct">40%</div>
+      </div>
+
       <div className="bot-grid">
         <BotCard
           name="Chronobot"
           image="/assets/solo/chronobot-hero.jpg"
           tagline="The base-game automa · easiest place to start"
           status="ready"
-          description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens and the AI die — the best place to begin solo play."
+          description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens and the AI die."
           onLaunch={() => launch('chronobot')}
         />
         <BotCard

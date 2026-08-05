@@ -262,37 +262,6 @@
   font-size: 0.88rem;
   line-height: 1.45;
 }
-/* Flavor "Uploading…" progress bar on the intro screen (build completeness). */
-.upload-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  margin: 0 0 1.1rem;
-}
-.upload-bar-label {
-  font-size: 0.82rem;
-  color: var(--sp-accent);
-  white-space: nowrap;
-}
-.upload-bar-track {
-  flex: 1;
-  height: 0.7rem;
-  border-radius: 999px;
-  background: var(--sp-panel-2);
-  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
-  overflow: hidden;
-}
-.upload-bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, var(--sp-accent-deep), var(--sp-accent));
-}
-.upload-bar-pct {
-  font-size: 0.82rem;
-  color: #b3a9d0;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Collapsible "Coming soon" list for stubbed modules / difficulty options. */
 .coming-soon {
   margin: 0.6rem 0 0.2rem;
