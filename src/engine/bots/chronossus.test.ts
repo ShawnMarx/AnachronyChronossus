@@ -21,6 +21,7 @@ import {
   hypersyncPlan,
   resolveHypersyncAction,
   MAX_HYPERSYNC_TILES,
+  scoreChronossus,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -465,5 +466,22 @@ describe('rollParadox — same rules as the Chronobot, on the Chronossus slice',
   });
   it('endParadoxPhase advances to Power Up', () => {
     expect(endParadoxPhase(chronossusState({ era: 2, phase: 'paradox' })).phase).toBe('powerup');
+  });
+});
+
+describe('scoreChronossus breakout', () => {
+  it('separates Superproject VP from Building VP (and tokenVP excludes both)', () => {
+    const bot = emptyChronossusState();
+    // 4 building VP + 8 superproject VP + 3 token VP = 15 during-game VP.
+    bot.buildingVps.factory.push(4);
+    bot.superprojectVps.push(8);
+    bot.buildingVp = 12; // buildings (4) + superprojects (8), as the engine tracks it
+    bot.vp = 15; // includes 3 token VP
+    const score = scoreChronossus(bot);
+    expect(score.superprojectVP).toBe(8);
+    expect(score.buildingVP).toBe(4);
+    expect(score.tokenVP).toBe(3);
+    // The three during-game lines still reconstruct bot.vp.
+    expect(score.buildingVP + score.superprojectVP + score.tokenVP).toBe(bot.vp);
   });
 });

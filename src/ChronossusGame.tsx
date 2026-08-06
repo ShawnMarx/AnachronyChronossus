@@ -56,6 +56,7 @@ import {
   drawEnergyPool,
   rollShapeDie,
   rollAiDie,
+  rollParadoxDie,
   AI_DIE_FACES,
   PHASE_NUMBER,
   type GameState,
@@ -109,7 +110,11 @@ import {
   slotCovering,
   tileCodeFor,
 } from './board/chronossusModes';
-import { DIFFICULTY_HYPERSYNC_TARGETED } from './phases/ChronossusSetupFlow';
+import {
+  DIFFICULTY_HYPERSYNC_TARGETED,
+  chronossusDifficultyLabel,
+} from './phases/ChronossusSetupFlow';
+import { shareScoreImage, type ScoreShareRow } from './game/shareScore';
 import {
   CHRONOSSUS_OVERLAYS,
   OVERLAY_KEYS,
@@ -147,12 +152,21 @@ interface ChronossusUi {
   botDie: number | null;
   activeMarker: CommandNum | null;
   lastDraw: EnergyDraw | null;
+  // Persisted phase rolls, so backing to a phase (Undo) re-shows the SAME roll rather
+  // than re-randomizing (#4, #10): the Warp-phase Paradox-die roll, a reusable Paradox
+  // roll (restored from the undone entry's die), and the Hypersync target hex.
+  warpRoll: number | null;
+  paradoxRoll: number | null;
+  hsRolledHex: number | null;
 }
 const emptyCxUi = (): ChronossusUi => ({
   markerSteps: initialMarkerSteps(),
   botDie: null,
   activeMarker: null,
   lastDraw: null,
+  warpRoll: null,
+  paradoxRoll: null,
+  hsRolledHex: null,
 });
 
 // Simple Command View is a display preference shared across bots (own key).
@@ -708,24 +722,95 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
-  // The ui slice to store for a committed turn: advance the marker driving the
-  // turn one step (no-op on a player free-tap, where activeMarkerRef is null).
-  // `extraLeaps` adds more steps — Autoleap tiles move the marker one extra spot.
-  const advancedUi = (extraLeaps = 0): ChronossusUi => {
-    const m = activeMarkerRef.current;
-    let steps = ui.markerSteps;
-    if (m != null) {
-      let s = steps[m];
-      for (let i = 0; i < 1 + extraLeaps; i++) s = nextStep(m, s);
-      steps = { ...steps, [m]: s };
+  // ---- Autoleap ----------------------------------------------------------
+  // Rulebook (p.10): "If the Command token is moved to a space with the Autoleap
+  // Action symbol, the Action on that space's tile is immediately resolved. Then,
+  // the token is advanced one space further." So Autoleap fires when a token
+  // ADVANCES ONTO an Autoleap tile (never when it is rolled/rests on one — it
+  // always leaps past), resolving that tile as a second Action and advancing again.
+
+  /** The live tile code sitting at a track position, or null if it isn't a tile slot. */
+  const tileCodeAt = (posKey: string): string | null => {
+    const slot = slotAtPos(mode, posKey);
+    if (slot) return tileCodeFor(slot.family, tileSides);
+    const tp = trackPos(posKey);
+    if (tp?.action && tp.action in TILE_ACTION_FAMILY) {
+      return liveTileCode(tp.action as keyof typeof TILE_ACTION_FAMILY, tileSides);
     }
-    const nextMarkerSteps = steps;
-    return {
-      markerSteps: nextMarkerSteps,
+    return null;
+  };
+
+  /**
+   * After an Action resolves and its marker advanced onto `step`, resolve any
+   * Autoleap tiles it now sits on: each resolves immediately as another Action and
+   * the marker advances one more. Simple tiles (C01B/C03B) resolve here; a Hypersync
+   * Autoleap tile (C12B) stops the chain and is returned so the caller opens its dialog.
+   */
+  const runAutoleapChain = (
+    s0: GameState,
+    marker: CommandNum,
+    step0: number,
+  ): { state: GameState; step: number; instr: Instruction[]; hypersyncCode: string | null } => {
+    let s = s0;
+    let step = step0;
+    const instr: Instruction[] = [];
+    for (let guard = 0; guard < 8; guard++) {
+      const code = tileCodeAt(markerPosKey(marker, step));
+      if (!code || !tileEffect(code).autoleap) break;
+      if (tileEffect(code).hypersync) return { state: s, step, instr, hypersyncCode: code };
+      const actionId = FAMILY_TO_TILE_ACTION[code.slice(0, -1)];
+      if (!actionId) break;
+      const res = Chronossus.resolveAction(s, { actionId, tileSide: 'B' });
+      s = res.state;
+      instr.push({
+        id: `autoleap-${guard}`,
+        text: `Autoleap (${code}): the marker moved onto this tile, so its Action resolves immediately — then the marker advances one more space.`,
+      });
+      instr.push(...res.instructions.filter((i) => !i.id.startsWith('turn-')));
+      step = nextStep(marker, step);
+    }
+    return { state: s, step, instr, hypersyncCode: null };
+  };
+
+  /**
+   * Commit a resolved bot turn: advance the active marker one step for the Action,
+   * resolve any Autoleap tiles it lands on, and — if it lands on a Hypersync Autoleap
+   * tile — open that dialog to resolve it. On a free-tap (no active marker) nothing
+   * advances and no Autoleap fires.
+   */
+  const finishTurn = (stateA: GameState, instrA: Instruction[], actionLabel: string) => {
+    const preC = state.chronossus!;
+    const marker = activeMarkerRef.current;
+    if (marker == null) {
+      commit(stateA, ui, turnLabel(instrA, actionLabel), summarizeTurn(preC, stateA.chronossus!, instrA), botDieRef.current);
+      setResult(instrA);
+      setLastResult(instrA);
+      return;
+    }
+    const step1 = nextStep(marker, ui.markerSteps[marker]);
+    const chain = runAutoleapChain(stateA, marker, step1);
+    const allInstr = [...instrA, ...chain.instr];
+    const newUi: ChronossusUi = {
+      ...ui,
+      markerSteps: { ...ui.markerSteps, [marker]: chain.step },
       botDie: botDieRef.current,
-      activeMarker: activeMarkerRef.current,
+      activeMarker: marker,
       lastDraw: ui.lastDraw,
+      // A Hypersync roll (if this turn was one) is consumed by this commit; the snapshot
+      // pushed by commit still carries it, so Undo re-seeds the same hex (#4).
+      hsRolledHex: null,
     };
+    commit(chain.state, newUi, turnLabel(allInstr, actionLabel), summarizeTurn(preC, chain.state.chronossus!, allInstr), botDieRef.current);
+    setResult(allInstr);
+    setLastResult(allInstr);
+    pendingDieRef.current = null;
+    if (chain.hypersyncCode) {
+      // The marker moved onto a Hypersync Autoleap tile — resolve it as the next
+      // Action (keep activeMarkerRef so it advances from here).
+      setPendingHypersync({ code: chain.hypersyncCode, readOnly: false });
+    } else {
+      activeMarkerRef.current = null;
+    }
   };
 
   // One-line History label for a resolved turn (Era · action · +VP).
@@ -774,19 +859,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (hypersyncTileRef.current) input.placeHypersyncTile = true;
     if (opts.hypersyncNoTile) input.hypersyncNoTile = true;
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
-    commit(
-      next,
-      advancedUi(), // the marker advances after its action resolves
-      turnLabel(instructions, CHRONOBOT_ACTIONS[h.action].label),
-      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
-      botDieRef.current,
-    );
-    setResult(instructions);
-    setLastResult(instructions);
     setPending(null);
-    activeMarkerRef.current = null;
     hypersyncTileRef.current = false; // consumed
-    pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
+    // Advance the marker + resolve any Autoleap tiles it lands on, then commit.
+    finishTurn(next, instructions, CHRONOBOT_ACTIONS[h.action].label);
   };
 
   // Close every open read/action dialog (DetailPanel + modular tile + Hypersync)
@@ -1138,9 +1214,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (post.anomalies > pre.anomalies) effects.push('Gained 1 Anomaly (−3 VP)');
     if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline)
       effects.push('Warp tile removed from the Timeline');
-    commit(res.state, ui, `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`, effects);
+    // Store the rolled value on the entry (die) so Undo can re-seed the same roll
+    // (no re-randomize); clear the reusable roll going forward.
+    commit(
+      res.state,
+      { ...ui, paradoxRoll: null },
+      `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`,
+      effects,
+      rolled,
+    );
     return res;
   };
+  // Roll the Warp-phase Paradox die once and stash it in the ui slice so backing to
+  // the Warp phase (Undo) re-shows the same roll instead of re-rolling (#10).
+  const rollWarp = () => setUi((u) => ({ ...u, warpRoll: rollParadoxDie() }));
   const advanceParadox = () => setState(Chronossus.endParadoxPhase(state));
   // Warp phase: place the Chronossus's rolled Warp tiles and commit (so the
   // placement lands in History) — mirrors the Chronobot's commitWarp.
@@ -1149,7 +1236,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const next = Chronossus.resolveWarp(state, place);
     commit(
       next,
-      ui,
+      { ...ui, warpRoll: null },
       `Era ${state.era} · Warp: placed ${place}`,
       place > 0
         ? [`Placed ${place} Warp tile${place === 1 ? '' : 's'} on the Timeline`]
@@ -1228,6 +1315,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (snap) {
       botDieRef.current = snap.ui.botDie;
       pendingDieRef.current = snap.ui.botDie as CommandNum | null;
+      // Re-seed a reusable Paradox roll from the undone entry's die so re-rolling in the
+      // Paradox phase repeats the same value instead of re-randomizing (#10). Only a
+      // Paradox-roll entry restores to a paradox-phase state.
+      if (snap.state.phase === 'paradox' && snap.die != null) {
+        setUi((u) => ({ ...u, paradoxRoll: snap.die as number }));
+      }
     }
     activeMarkerRef.current = null;
     setLastResult([]);
@@ -1282,22 +1375,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const resolveTileSlot = (actionId: ChronossusActionId) => {
     const family = TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
     const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
-    const { state: next, instructions, autoleap } = Chronossus.resolveAction(state, {
-      actionId,
-      tileSide,
-    });
-    commit(
-      next,
-      // Autoleap tiles advance the Command marker one EXTRA step.
-      advancedUi(autoleap ? 1 : 0),
-      turnLabel(instructions, Chronossus.chronossusActionLabel(actionId)),
-      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
-      botDieRef.current,
-    );
-    setResult(instructions);
-    setLastResult(instructions);
-    activeMarkerRef.current = null;
-    pendingDieRef.current = null; // roll consumed — the next turn rolls fresh
+    const { state: next, instructions } = Chronossus.resolveAction(state, { actionId, tileSide });
+    // A rested-on tile is never an Autoleap tile (tokens leap past those); the
+    // marker still advances one step + resolves any Autoleap it lands on.
+    finishTurn(next, instructions, Chronossus.chronossusActionLabel(actionId));
   };
   // ▶ Start on the tile dialog: resolve and close immediately (like the printed
   // actions) — the result lands in History / the turn-status aside, no Done step.
@@ -1321,26 +1402,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Commit a C12/C13 Hypersync Action once the HypersyncDialog has walked the
   // player through its branch (hex placement / Time Travel fallback / Failed).
   const resolveHypersyncTurn = (input: Chronossus.HypersyncActionInput) => {
-    const { state: next, instructions, autoleap } = Chronossus.resolveHypersyncAction(state, input);
-    commit(
-      next,
-      advancedUi(autoleap ? 1 : 0),
-      turnLabel(instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code),
-      summarizeTurn(state.chronossus!, next.chronossus!, instructions),
-      botDieRef.current,
-    );
-    setResult(instructions);
-    setLastResult(instructions);
-    activeMarkerRef.current = null;
-    pendingDieRef.current = null;
-    closeHypersync();
+    const { state: next, instructions } = Chronossus.resolveHypersyncAction(state, input);
+    setPendingHypersync(null); // close the Hypersync dialog
+    // Advance the marker + resolve any Autoleap it lands on (may re-open a Hypersync
+    // dialog if the marker moves onto a Hypersync Autoleap tile).
+    finishTurn(next, instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code);
   };
   const closeHypersync = () => {
     setPendingHypersync(null);
     botDieRef.current = null;
     activeMarkerRef.current = null;
     pendingDieRef.current = null;
-    setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
+    // Cancelling (not committing) abandons any rolled hex → next open rolls fresh.
+    setUi((u) => ({ ...u, botDie: null, activeMarker: null, hsRolledHex: null }));
   };
   const changeEra = (d: number) =>
     setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
@@ -1899,6 +1973,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   targeted={hypersyncTargeted}
                   readOnly={pendingHypersync.readOnly}
                   panel={CHRONOSSUS_PANEL}
+                  rolledHex={ui.hsRolledHex}
+                  onRollHex={(hex) => setUi((u) => ({ ...u, hsRolledHex: hex }))}
                   onResolve={resolveHypersyncTurn}
                   onClose={closeHypersync}
                 />
@@ -2165,6 +2241,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onCommit={commitWarp}
           botName="Chronossus"
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
+          roll={ui.warpRoll}
+          onRoll={rollWarp}
         />
       );
       break;
@@ -2235,6 +2313,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onAdvance={advanceParadox}
           botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
+          pendingRoll={ui.paradoxRoll}
         />
       );
       break;
@@ -2393,6 +2472,8 @@ function HypersyncDialog({
   targeted,
   readOnly = false,
   panel,
+  rolledHex,
+  onRollHex,
   onResolve,
   onClose,
 }: {
@@ -2402,16 +2483,23 @@ function HypersyncDialog({
   targeted: boolean;
   readOnly?: boolean;
   panel: [number, number, number, number];
+  /** Persisted rolled hex (ui slice), so an Undo → re-take re-shows the same roll (#4). */
+  rolledHex: number | null;
+  /** Persist a rolled hex to the ui slice (survives Undo). */
+  onRollHex: (hex: number) => void;
   onResolve: (input: Chronossus.HypersyncActionInput) => void;
   onClose: () => void;
 }) {
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
   const canTimeTravel = bot.warpTilesOnTimeline > 0;
-  const [step, setStep] = useState<'intro' | 'hexes' | 'roll' | 'timetravel'>('intro');
+  // When a Hypersync Action is possible (pending tile + available Exosuit), skip the
+  // intro and open straight on the 3 hexes; only fall back to Time Travel / Failed once
+  // all 3 are marked unavailable (#11). The intro is kept for the not-canHypersync case.
+  const [step, setStep] = useState<'intro' | 'hexes' | 'roll' | 'timetravel'>(
+    plan.canHypersync ? 'hexes' : 'intro',
+  );
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
-  // The randomized Hypersync space (once rolled) the player blocks with an Exosuit.
-  const [rolledHex, setRolledHex] = useState<number | null>(null);
   const [l, t, w, h] = panel;
 
   const toggleHex = (n: number) =>
@@ -2424,18 +2512,20 @@ function HypersyncDialog({
 
   const available = Chronossus.HYPERSYNC_HEXES.filter((n) => !occupied.has(n));
 
-  // Randomize between the available spaces (the app does the roll for you).
-  const rollSpace = () => setRolledHex(available[Math.floor(Math.random() * available.length)]);
+  // Randomize between the available spaces (the app does the roll for you); the value
+  // is persisted in the ui slice so an Undo → re-take shows the same roll (#4).
+  const rollSpace = () => onRollHex(available[Math.floor(Math.random() * available.length)]);
   // Confirm the available spaces → auto-roll and show the result, or fall back if
   // none are free (the Time Travel dialog step, or a Failed Action when no Warp
-  // tiles remain). Non-targeted play rolls FOR you here (no separate roll click).
+  // tiles remain). Reuse a persisted roll (after Undo) when it's still available rather
+  // than re-randomizing; otherwise roll fresh.
   const confirmHexes = () => {
     if (available.length === 0) {
       if (canTimeTravel) setStep('timetravel');
       else onResolve({ code, outcome: 'failed' });
       return;
     }
-    rollSpace();
+    if (rolledHex == null || !available.some((n) => n === rolledHex)) rollSpace();
     setStep('roll');
   };
   // Commit the Hypersync Action on the rolled (or targeted) space.
@@ -3179,8 +3269,11 @@ function CxVpPill({
             <li title="Everything except Buildings, Time Travel & Breakthroughs">
               <span>Token VP</span><b>{score.tokenVP}</b>
             </li>
-            <li title="From Construct actions (Buildings & Superprojects)">
+            <li title="From Construct actions — Buildings only">
               <span>Building VP</span><b>{score.buildingVP}</b>
+            </li>
+            <li title="From Construct actions — Superprojects only">
+              <span>Superproject VP</span><b>{score.superprojectVP}</b>
             </li>
             <li title="From the Time Travel marker's track position (0/2/4/…/12)">
               <span>Time Travel</span><b>{score.timeTravelVP}</b>
@@ -3222,6 +3315,25 @@ const CX_TALLY_FIELDS: { key: string; label: string; mult: number; sub?: boolean
   { key: 'timelinePenalties', label: 'Timeline penalties (−)', mult: 1, sub: true },
 ];
 
+// Side-by-side score rows: shared rows carry both a player tally key and the bot's
+// pre-filled value; player-only rows omit botValue, the bot-only row omits playerKey.
+// Order groups the aligned rows first, then bot-only, then player-only (#6).
+const CX_SCORE_ROWS = (
+  score: ReturnType<typeof Chronossus.scoreChronossus>,
+): { label: string; playerKey?: string; botValue?: number }[] => [
+  { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
+  { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
+  { label: 'Time Travel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
+  { label: 'Breakthroughs (×1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
+  { label: 'Breakthrough sets (×2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
+  { label: 'Anomalies (−3 each)', playerKey: 'anomalies', botValue: score.anomalyVP },
+  { label: 'Token / Action VP', botValue: score.tokenVP },
+  { label: 'Morale', playerKey: 'morale' },
+  { label: 'Victory Point tokens', playerKey: 'vpTokens' },
+  { label: 'Solo Objectives (highest levels)', playerKey: 'soloObjectives' },
+  { label: 'Timeline penalties (−)', playerKey: 'timelinePenalties' },
+];
+
 const CX_PLAYER_SCORING_RULE =
   'Tally your points from Buildings, Anomalies, Superprojects, Time Travel, Morale, ' +
   'Victory Point tokens and Timeline penalties as normal. Each Breakthrough is worth ' +
@@ -3250,6 +3362,8 @@ function CxScoreScreen({
   // finished score until the player clicks Done — otherwise it auto-saves 0.
   const [tallyDone, setTallyDone] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // A human-readable reason for a failed save (session expired vs. a generic error).
+  const [saveErr, setSaveErr] = useState<string>('');
 
   const tallyTotal = CX_TALLY_FIELDS.reduce((sum, f) => {
     const v = (tally[f.key] ?? 0) * f.mult;
@@ -3283,11 +3397,52 @@ function CxScoreScreen({
         payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
       });
       setSaveState('saved');
-    } catch {
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      // 401/403 → the shared BGE session lapsed; anything else is network/server.
+      setSaveErr(
+        /\b40[13]\b/.test(msg)
+          ? 'Your login session expired — log in again to save this game.'
+          : "Couldn't reach your history service.",
+      );
       setSaveState('error');
     }
   };
-  // Auto-save once the game has a player score (debounced, once per game).
+  // Share / save the score summary as a PNG (native share sheet on mobile, download
+  // on desktop). Includes the top line, the breakdown, and the modes + difficulty (#7).
+  const [shareMsg, setShareMsg] = useState<string>('');
+  const handleShare = async () => {
+    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score).map((r) => ({
+      label: r.label,
+      you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
+      bot: r.botValue ?? null,
+    }));
+    rows.push({ label: 'Bot turns taken', you: null, bot: totalActions });
+    const setup: string[] = [`Mode: ${getMode(state.config.chronossusMode).label}`];
+    const bSides = Object.entries(state.config.tileSides ?? {})
+      .filter(([, s]) => s === 'B')
+      .map(([k]) => k);
+    if (bSides.length) setup.push(`B-side tiles: ${bSides.join(', ')}`);
+    for (const flag of state.config.difficulty) {
+      setup.push(`Difficulty: ${chronossusDifficultyLabel(flag)}`);
+    }
+    try {
+      const how = await shareScoreImage({
+        title: `Anachrony — Solo vs Chronossus (Era ${state.era})`,
+        playerScore,
+        botScore: score.total,
+        result,
+        rows,
+        setup,
+        footer: `anachrony.boardgameedge.com · ${new Date().toLocaleDateString()}`,
+      });
+      setShareMsg(how === 'downloaded' ? '✓ Image downloaded' : '');
+    } catch {
+      setShareMsg("Couldn't create the image.");
+    }
+  };
+  // Auto-save once the game has a player score (debounced, once per game). A failed
+  // attempt leaves saveState 'error'; the player can Retry (which resets to idle).
   useEffect(() => {
     if (!user || result == null || playerScore == null || Number.isNaN(playerScore)) return;
     if (saveState !== 'idle') return;
@@ -3295,6 +3450,41 @@ function CxScoreScreen({
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, result, playerScore, saveState]);
+
+  // A tally input cell (number field + clear button), shared by the side-by-side rows.
+  const tallyCell = (key: string) => (
+    <div className="cx-scell">
+      <input
+        type="number"
+        inputMode="numeric"
+        value={tally[key] ?? ''}
+        onChange={(e) =>
+          setTally((t) => {
+            const next = { ...t };
+            if (e.target.value === '') delete next[key];
+            else next[key] = Number(e.target.value);
+            return next;
+          })
+        }
+      />
+      <button
+        type="button"
+        className="tally-clear"
+        aria-label={`Clear ${key}`}
+        title="Clear"
+        disabled={tally[key] == null}
+        onClick={() =>
+          setTally((t) => {
+            const next = { ...t };
+            delete next[key];
+            return next;
+          })
+        }
+      >
+        ×
+      </button>
+    </div>
+  );
 
   return (
     <div className="modal-overlay">
@@ -3306,44 +3496,30 @@ function CxScoreScreen({
           </button>
         </div>
 
-        {/* Bot total + breakdown */}
-        <div className="score-bot">
-          <div className="score-total">
-            <span className="score-total-num">{score.total}</span>
-            <span className="score-total-label">Chronossus VP</span>
+        {/* Top line: Chronossus vs You */}
+        <div className={`score-vs ${result ?? ''}`}>
+          <div className="score-vs-side">
+            <span className="score-vs-num">{playerScore ?? '—'}</span>
+            <span className="score-vs-label">You</span>
           </div>
-          <ul className="score-breakdown">
-            <li><span>Token VP</span><b>{score.tokenVP}</b></li>
-            <li><span>Building VP</span><b>{score.buildingVP}</b></li>
-            <li><span>Time Travel</span><b>{score.timeTravelVP}</b></li>
-            <li><span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b></li>
-            <li><span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b></li>
-            <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
-            <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
-            <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
-          </ul>
-          <div className="score-rules">
-            <RulesBox label="End Game scoring — rulebook text">
-              <p>{CHRONOSSUS_ENDGAME_RULES}</p>
-            </RulesBox>
+          <span className="score-vs-x">vs</span>
+          <div className="score-vs-side">
+            <span className="score-vs-num">{score.total}</span>
+            <span className="score-vs-label">Chronossus</span>
           </div>
         </div>
 
-        {/* Player score */}
-        <div className="score-player">
-          <div className="score-player-head">
-            <h3>Your score</h3>
-            <div className="score-mode">
-              <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
-                Number
-              </button>
-              <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
-                Tally sheet
-              </button>
-            </div>
-          </div>
+        <div className="score-mode">
+          <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
+            Number
+          </button>
+          <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
+            Tally sheet
+          </button>
+        </div>
 
-          {mode === 'number' ? (
+        {mode === 'number' ? (
+          <>
             <input
               className="score-num-input"
               type="number"
@@ -3351,33 +3527,61 @@ function CxScoreScreen({
               value={num}
               onChange={(e) => setNum(e.target.value)}
             />
-          ) : (
-            <>
-              <p className="score-rule">{CX_PLAYER_SCORING_RULE}</p>
-              <div className="tally-grid">
-                {CX_TALLY_FIELDS.map((f) => (
-                  <label key={f.key} className="tally-row">
-                    <span>{f.label}</span>
-                    <input
-                      type="number"
-                      value={tally[f.key] ?? ''}
-                      onChange={(e) =>
-                        setTally((t) => ({ ...t, [f.key]: Number(e.target.value) || 0 }))
-                      }
-                    />
-                  </label>
-                ))}
+            {/* Bot breakdown still shown for reference in Number mode. */}
+            <ul className="score-breakdown">
+              <li><span>Token VP</span><b>{score.tokenVP}</b></li>
+              <li><span>Building VP</span><b>{score.buildingVP}</b></li>
+              <li><span>Superproject VP</span><b>{score.superprojectVP}</b></li>
+              <li><span>Time Travel</span><b>{score.timeTravelVP}</b></li>
+              <li><span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b></li>
+              <li><span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b></li>
+              <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
+              <li className="score-sum"><span>Chronossus total</span><b>{score.total}</b></li>
+            </ul>
+          </>
+        ) : (
+          <>
+            <p className="score-rule">{CX_PLAYER_SCORING_RULE}</p>
+            {/* Side-by-side: shared rows align (You left, Chronossus right); player-only
+                and bot-only rows leave the other column blank. */}
+            <div className="cx-tally">
+              <div className="cx-trow cx-thead">
+                <span className="cx-tlabel"></span>
+                <span className="cx-tyou">You</span>
+                <span className="cx-tbot">Chronossus</span>
               </div>
-              <div className="tally-total">
-                Your total: <b>{tallyTotal}</b>
+              {CX_SCORE_ROWS(score).map((r) => (
+                <div key={r.label} className="cx-trow">
+                  <span className="cx-tlabel">{r.label}</span>
+                  <span className="cx-tyou">
+                    {r.playerKey ? tallyCell(r.playerKey) : <span className="cx-dash">—</span>}
+                  </span>
+                  <span className="cx-tbot">
+                    {r.botValue != null ? r.botValue : <span className="cx-dash">—</span>}
+                  </span>
+                </div>
+              ))}
+              <div className="cx-trow cx-tsum">
+                <span className="cx-tlabel">Total</span>
+                <span className="cx-tyou">{tallyTotal}</span>
+                <span className="cx-tbot">{score.total}</span>
               </div>
-              {!tallyDone && (
-                <button className="tally-done" onClick={() => setTallyDone(true)}>
-                  Done — use this total
-                </button>
-              )}
-            </>
-          )}
+            </div>
+            {!tallyDone && (
+              <button className="tally-done" onClick={() => setTallyDone(true)}>
+                Done — use this total
+              </button>
+            )}
+          </>
+        )}
+
+        <ul className="score-breakdown score-meta">
+          <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
+        </ul>
+        <div className="score-rules">
+          <RulesBox label="End Game scoring — rulebook text">
+            <p>{CHRONOSSUS_ENDGAME_RULES}</p>
+          </RulesBox>
         </div>
 
         {result && (
@@ -3393,14 +3597,30 @@ function CxScoreScreen({
             {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}
             {saveState === 'saved' && <span className="score-save-ok">✓ Saved to your history</span>}
             {saveState === 'error' && (
-              <span className="score-save-err">Couldn't save automatically.</span>
+              <span className="score-save-err">
+                {saveErr || "Couldn't save automatically."}{' '}
+                <button
+                  className="score-save-retry"
+                  onClick={() => {
+                    setSaveErr('');
+                    setSaveState('idle'); // re-arms the auto-save effect
+                  }}
+                >
+                  Retry
+                </button>
+              </span>
             )}
           </div>
         )}
 
+        {shareMsg && <div className="score-share-msg">{shareMsg}</div>}
+
         <div className="score-actions">
           <button className="modal-no" onClick={onHome}>
             Close
+          </button>
+          <button className="score-share-btn" onClick={handleShare}>
+            📤 Share / Save image
           </button>
           <button className="modal-yes" onClick={onNewGame}>
             ⟳ New Game

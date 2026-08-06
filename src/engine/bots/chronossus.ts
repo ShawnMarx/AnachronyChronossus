@@ -742,11 +742,13 @@ export function resolveCleanUp(state: GameState): GameState {
 // --------------------------------------------------------------------------
 
 export interface ChronossusScore {
-  /** During-game VP from tokens/actions, excluding Buildings. */
+  /** During-game VP from tokens/actions, excluding Buildings & Superprojects. */
   tokenVP: number;
-  /** During-game VP from Construct actions (Buildings & Superprojects). */
+  /** During-game VP from Construct — Buildings only (Superprojects broken out). */
   buildingVP: number;
-  /** tokenVP + buildingVP = the running `bot.vp`. */
+  /** During-game VP from Construct — Superprojects only. */
+  superprojectVP: number;
+  /** tokenVP + buildingVP + superprojectVP = the running `bot.vp`. */
   duringGameVP: number;
   /** VP from the Time Travel marker's track position. */
   timeTravelVP: number;
@@ -774,12 +776,14 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
   const shapeSetBonus = completeSets * 2;
   const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
   const timeTravelVP = TIME_TRAVEL_VP[spot];
-  const buildingVP = bot.buildingVp;
-  const tokenVP = bot.vp - buildingVP;
+  const superprojectVP = bot.superprojectVps.reduce((n, v) => n + v, 0);
+  const buildingVP = bot.buildingVp - superprojectVP;
+  const tokenVP = bot.vp - bot.buildingVp;
   const anomalyVP = bot.anomalies * ANOMALY_VP;
   return {
     tokenVP,
     buildingVP,
+    superprojectVP,
     duringGameVP: bot.vp,
     timeTravelVP,
     breakthroughVP,

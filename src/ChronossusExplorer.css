@@ -859,3 +859,138 @@ button.eoa-flag.tap-flag {
   line-height: 1.05;
   padding: 2px;
 }
+
+/* ---- Final-score screen: top "You vs Chronossus" line + side-by-side tally ---- */
+.score-vs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.1rem;
+  margin: 0.4rem 0 0.8rem;
+  padding: 0.6rem 0.4rem;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
+  border-radius: 10px;
+  background: rgba(var(--sp-accent-rgb), 0.08);
+}
+.score-vs.win {
+  border-color: rgba(120, 220, 140, 0.6);
+  background: rgba(120, 220, 140, 0.1);
+}
+.score-vs.lose {
+  border-color: rgba(255, 140, 140, 0.5);
+  background: rgba(255, 140, 140, 0.08);
+}
+.score-vs-side {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 5.5rem;
+}
+.score-vs-num {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--sp-text-base);
+}
+.score-vs-label {
+  margin-top: 0.15rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sp-text-2);
+}
+.score-vs-x {
+  font-size: 0.9rem;
+  color: var(--sp-text-2);
+}
+
+.cx-tally {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.3rem 0 0.5rem;
+}
+.cx-trow {
+  display: grid;
+  grid-template-columns: 1fr 6.2rem 4.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.12rem 0;
+  font-size: 0.86rem;
+  color: var(--sp-text-2);
+}
+.cx-thead {
+  font-size: 0.74rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--sp-text-2);
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.25);
+  padding-bottom: 0.2rem;
+}
+.cx-tlabel {
+  min-width: 0;
+}
+.cx-tyou,
+.cx-tbot {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.cx-thead .cx-tyou,
+.cx-thead .cx-tbot {
+  font-weight: 700;
+}
+.cx-tbot {
+  font-weight: 700;
+  color: var(--sp-text-1);
+}
+.cx-tsum {
+  border-top: 1px solid rgba(var(--sp-accent-rgb), 0.3);
+  margin-top: 0.2rem;
+  padding-top: 0.35rem;
+  font-weight: 800;
+  color: var(--sp-text-base);
+  font-size: 0.95rem;
+}
+.cx-dash {
+  color: var(--sp-text-2);
+  opacity: 0.5;
+}
+.cx-scell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+.cx-scell input {
+  width: 3.6rem;
+  padding: 0.25rem 0.4rem;
+  background: #0b0910;
+  color: var(--sp-text-base);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
+  border-radius: 6px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.score-meta {
+  margin-top: 0.4rem;
+}
+
+.score-share-btn {
+  padding: 0.5rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--sp-text-base);
+  background: rgba(var(--sp-accent-rgb), 0.16);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.score-share-btn:hover {
+  background: rgba(var(--sp-accent-rgb), 0.28);
+}
+.score-share-msg {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--sp-text-2);
+  margin: 0.3rem 0;
+}

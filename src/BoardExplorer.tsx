@@ -1981,6 +1981,8 @@ export function WarpPhaseBody({
   onCommit,
   botName = 'Chronobot',
   warpTileSrc = '/assets/solo/warp-tile.png',
+  roll,
+  onRoll,
 }: {
   state: GameState;
   meta: PhaseMeta;
@@ -1989,8 +1991,18 @@ export function WarpPhaseBody({
   botName?: string;
   /** The bot's Warp-tile art (placed on the Main board), shown next to the roll. */
   warpTileSrc?: string;
+  /**
+   * Optional controlled roll: when `onRoll` is provided the rolled value lives in the
+   * parent (persisted across Undo, so backing to this phase re-shows the same roll —
+   * #10). Otherwise the roll is held in local state (the Chronobot's current behavior).
+   */
+  roll?: number | null;
+  onRoll?: () => void;
 }) {
-  const [rolled, setRolled] = useState<number | null>(null);
+  const [localRolled, setLocalRolled] = useState<number | null>(null);
+  const controlled = onRoll != null;
+  const rolled = controlled ? (roll ?? null) : localRolled;
+  const doRoll = controlled ? onRoll! : () => setLocalRolled(rollParadoxDie());
   const botFirst = state.firstPlayer === 'bot';
   return (
     <>
@@ -2008,7 +2020,7 @@ export function WarpPhaseBody({
       )}
 
       {rolled == null ? (
-        <button className="phase-primary" onClick={() => setRolled(rollParadoxDie())}>
+        <button className="phase-primary" onClick={doRoll}>
           Roll for the {botName}'s Warp
         </button>
       ) : (
@@ -2047,6 +2059,7 @@ export function ParadoxPhaseBody({
   onAdvance,
   botName = 'Chronobot',
   hypersyncTiles,
+  pendingRoll,
 }: {
   state: GameState;
   /** The active bot's slice fields the Paradox phase reads (shared shape). */
@@ -2064,16 +2077,26 @@ export function ParadoxPhaseBody({
    * (unless they gained an Anomaly this phase). Undefined = not Hypersync mode.
    */
   hypersyncTiles?: number;
+  /**
+   * Optional reusable roll (restored from an undone Paradox-roll entry): when set, the
+   * NEXT roll reuses this value instead of re-randomizing, so backing to the phase can't
+   * fish for a different result (#10). Consumed once per commit by the parent.
+   */
+  pendingRoll?: number | null;
 }) {
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
+  // The player clicked "No / Done" — the bot no longer leads or ties any tile.
+  const [finished, setFinished] = useState(false);
   const [rolls, setRolls] = useState<string[]>([]);
   // Hypersync extra-roll step: resolved once (rolled or skipped) after the Warp checks.
   const [hsAsked, setHsAsked] = useState(false);
 
-  const maxChecks = Math.max(0, state.era - 1);
+  // Possible rolls are capped at the smaller of (Era − 1) and the bot's Warp tiles on
+  // the Timeline: it can only lead/tie a tile that has a Warp tile on it (#8).
+  const maxChecks = Math.max(0, Math.min(state.era - 1, bot.warpTilesOnTimeline));
   const noWarp = bot.warpTilesOnTimeline === 0;
-  const done = stopped || noWarp || asked >= maxChecks;
+  const done = stopped || noWarp || finished || asked >= maxChecks;
 
   // A roll's log line: the result text PLUS its detail (e.g. the "remove one Warp
   // tile from the tile where it has the most (oldest if tied)" instruction on an
@@ -2084,18 +2107,18 @@ export function ParadoxPhaseBody({
   };
 
   const answerYes = () => {
-    const res = onRoll(rollParadoxDie());
+    const res = onRoll(pendingRoll ?? rollParadoxDie());
     setRolls((r) => [...r, rollLine(res)]);
     setAsked((a) => a + 1);
     if (res.stop) setStopped(true);
   };
-  const answerNo = () => setAsked((a) => a + 1);
+  const answerNo = () => setFinished(true);
 
   // Hypersync extra roll: offered once the Warp checks are done, only if the bot
   // has ≥1 Hypersync tile and did NOT gain an Anomaly this phase (rulebook p.5).
   const hypersyncEligible = hypersyncTiles != null && hypersyncTiles > 0 && !stopped;
   const hsAnswerYes = () => {
-    const res = onRoll(rollParadoxDie());
+    const res = onRoll(pendingRoll ?? rollParadoxDie());
     setRolls((r) => [...r, rollLine(res)]);
     setHsAsked(true);
     if (res.stop) setStopped(true);
@@ -2147,15 +2170,24 @@ export function ParadoxPhaseBody({
       {!done ? (
         <div className="paradox-question">
           <p className="phase-note">
-            Past Timeline tile {asked + 1} of {maxChecks}: does the {botName} have the
-            most (or tied-most) Warp tiles on it{hypersyncTiles != null ? ' (Hypersync tiles count)' : ''}?
+            Does the {botName} still have the most (or tied-most) Warp tiles on a past
+            Timeline tile{hypersyncTiles != null ? ' (Hypersync tiles count)' : ''}? Keep
+            rolling for each such tile.
+            {maxChecks > 0 && (
+              <>
+                {' '}
+                <em>
+                  ({asked} of up to {maxChecks} roll{maxChecks === 1 ? '' : 's'} this phase.)
+                </em>
+              </>
+            )}
           </p>
           <div className="setup-actions">
             <button className="phase-primary" onClick={answerYes}>
               Yes — it ties or leads (roll)
             </button>
             <button className="phase-secondary" onClick={answerNo}>
-              No
+              No — done
             </button>
           </div>
         </div>
@@ -2363,16 +2395,38 @@ function ScoreScreen({
               <p className="score-rule">{PLAYER_SCORING_RULE}</p>
               <div className="tally-grid">
                 {TALLY_FIELDS.map((f) => (
-                  <label key={f.key} className="tally-row">
+                  <div key={f.key} className="tally-row">
                     <span>{f.label}</span>
                     <input
                       type="number"
+                      inputMode="numeric"
                       value={tally[f.key] ?? ''}
                       onChange={(e) =>
-                        setTally((t) => ({ ...t, [f.key]: Number(e.target.value) || 0 }))
+                        setTally((t) => {
+                          const next = { ...t };
+                          if (e.target.value === '') delete next[f.key];
+                          else next[f.key] = Number(e.target.value);
+                          return next;
+                        })
                       }
                     />
-                  </label>
+                    <button
+                      type="button"
+                      className="tally-clear"
+                      aria-label={`Clear ${f.label}`}
+                      title="Clear"
+                      disabled={tally[f.key] == null}
+                      onClick={() =>
+                        setTally((t) => {
+                          const next = { ...t };
+                          delete next[f.key];
+                          return next;
+                        })
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
               <div className="tally-total">
@@ -3371,7 +3425,7 @@ export function DetailPanel({
               {isSuperproject ? (
                 <>
                   Take the <b>highest-VP Superproject</b> (oldest if tied). Tap its
-                  printed VP (3–7).
+                  printed VP (3–8).
                 </>
               ) : (
                 <>
@@ -3381,7 +3435,7 @@ export function DetailPanel({
               )}
             </p>
             <div className="vp-digits">
-              {(isSuperproject ? [3, 4, 5, 6, 7] : [1, 2, 3, 4]).map((n) => (
+              {(isSuperproject ? [3, 4, 5, 6, 7, 8] : [1, 2, 3, 4]).map((n) => (
                 <button
                   key={n}
                   className={`vp-digit ${selectedVP === n ? 'selected' : ''}`}
@@ -3453,7 +3507,7 @@ export function DetailPanel({
               Recruit the highest-priority <b>Worker</b> the {botName} lacks by
               the priority order below (missing-first); if that type isn’t
               available, take the next available one. Pick the recruited Worker
-              (+1 VP).
+              (+1 VP) — then discard its Worker tile from the board.
             </p>
             <div className="resource-picks worker-picks">
               {workerOrder.map((w, i) => (

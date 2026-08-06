@@ -131,6 +131,16 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
   },
 ];
 
+/** Human-readable label for a stored difficulty flag (for the share/score summary). */
+export function chronossusDifficultyLabel(flag: string): string {
+  const all = [...DIFFICULTY_OPTIONS, ...Object.values(MODE_DIFFICULTY).flat()];
+  const found = all.find((o) => o.flag === flag);
+  if (found) return found.label;
+  // Fallback: prettify an unknown flag ("chronossus-extra-energy" → "Extra energy").
+  const s = flag.replace(/^chronossus-/, '').replace(/-/g, ' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
 /**
  * The Chronossus pre-game flow: Intro → Modules → Difficulty → Setup. On finish,
  * `onBegin` receives the chosen difficulty flags and the game enters Era 1,
