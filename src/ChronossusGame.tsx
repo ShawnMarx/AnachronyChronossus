@@ -319,6 +319,29 @@ function TimeTravelRuleBlockCollapsible() {
     </div>
   );
 }
+/** Verbatim Autoleap rule (Solo Opponents rulebook p. 10). */
+const AUTOLEAP_RULE =
+  "If the Command token is moved to a space with the Autoleap Action symbol, the " +
+  "Action on that space's tile is immediately resolved. Then, the token is advanced " +
+  'one space further.';
+
+/** Collapsible "Autoleap rules ▸" — shown on Autoleap tiles' dialogs. */
+function AutoleapRuleBlockCollapsible() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mech-rules">
+      <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
+        📖 Autoleap rules {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="rule-body">
+          <p className="dp-rule">{AUTOLEAP_RULE}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 const CAL_KEYS: string[] = [
   ...CHRONOSSUS_ACTION_HOTSPOTS.map((h) => hsKey(h.id)),
   ...TRACK_KEYS,
@@ -2493,6 +2516,7 @@ function HypersyncDialog({
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
   const canTimeTravel = bot.warpTilesOnTimeline > 0;
+  const isAutoleap = tileEffect(code).autoleap === true;
   // When a Hypersync Action is possible (pending tile + available Exosuit), skip the
   // intro and open straight on the 3 hexes; only fall back to Time Travel / Failed once
   // all 3 are marked unavailable (#11). The intro is kept for the not-canHypersync case.
@@ -2612,6 +2636,7 @@ function HypersyncDialog({
               </>
             )}
             <HypersyncRules tile={tile} code={code} startOpen={false} />
+            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         ) : step === 'hexes' ? (
           <div className="place-prompt">
@@ -2648,6 +2673,7 @@ function HypersyncDialog({
                 : '▶ Confirm Available Hypersync space'}
             </button>
             <HypersyncRules tile={tile} code={code} startOpen={false} />
+            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         ) : step === 'roll' ? (
           // Roll step: randomize among the available spaces → show where to place
@@ -2723,6 +2749,7 @@ function HypersyncDialog({
               ▶ Start Your Turn
             </button>
             <TimeTravelRuleBlockCollapsible />
+            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         )}
       </div>
