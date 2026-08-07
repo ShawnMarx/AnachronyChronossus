@@ -325,6 +325,32 @@ const AUTOLEAP_RULE =
   "Action on that space's tile is immediately resolved. Then, the token is advanced " +
   'one space further.';
 
+/**
+ * Concise, human-readable summary of ONE Chronossus action's state change — used to
+ * log each Autoleap-resolved tile (which takes no die roll) as its own History line.
+ * `summarizeTurn` (shared with the Chronobot) doesn't read the Energy Pool, so an
+ * energy-only Autoleap like C03B would otherwise leave no trace.
+ */
+function describeChronossusDelta(pre: ChronossusState, post: ChronossusState): string[] {
+  const out: string[] = [];
+  const ec = post.energyPool.energized - pre.energyPool.energized;
+  if (ec > 0) out.push(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
+  const vp = post.vp - pre.vp;
+  if (vp > 0) out.push(`+${vp} VP`);
+  (['circle', 'triangle', 'square'] as const).forEach((sh) => {
+    const d = post.breakthroughs[sh] - pre.breakthroughs[sh];
+    if (d > 0) out.push(`+${d > 1 ? d + ' ' : ''}${sh} Breakthrough`);
+  });
+  if (post.timeTravelTrack > pre.timeTravelTrack) out.push('Time Travel advances');
+  if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline) out.push('Warp tile removed');
+  if (post.anomalies < pre.anomalies) out.push('Anomaly removed');
+  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('Exosuit placed');
+  (['genius', 'administrator', 'engineer', 'scientist'] as const).forEach((w) => {
+    if (post.workers[w] > pre.workers[w]) out.push(`Recruited ${w}`);
+  });
+  return out;
+}
+
 /** Collapsible "Autoleap rules ▸" — shown on Autoleap tiles' dialogs. */
 function AutoleapRuleBlockCollapsible() {
   const [open, setOpen] = useState(false);
@@ -779,16 +805,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     s0: GameState,
     marker: CommandNum,
     step0: number,
-  ): { state: GameState; step: number; instr: Instruction[]; hypersyncCode: string | null } => {
+  ): {
+    state: GameState;
+    step: number;
+    instr: Instruction[];
+    effects: string[];
+    hypersyncCode: string | null;
+  } => {
     let s = s0;
     let step = step0;
     const instr: Instruction[] = [];
+    // Concise History lines for each Autoleap-resolved tile (die-less), so the
+    // resolution is visible in History (labelled "Autoleap") and never looks skipped.
+    const effects: string[] = [];
     for (let guard = 0; guard < 8; guard++) {
       const code = tileCodeAt(markerPosKey(marker, step));
       if (!code || !tileEffect(code).autoleap) break;
-      if (tileEffect(code).hypersync) return { state: s, step, instr, hypersyncCode: code };
+      if (tileEffect(code).hypersync) return { state: s, step, instr, effects, hypersyncCode: code };
       const actionId = FAMILY_TO_TILE_ACTION[code.slice(0, -1)];
       if (!actionId) break;
+      const before = s.chronossus!;
       const res = Chronossus.resolveAction(s, { actionId, tileSide: 'B' });
       s = res.state;
       instr.push({
@@ -796,9 +832,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         text: `Autoleap (${code}): the marker moved onto this tile, so its Action resolves immediately — then the marker advances one more space.`,
       });
       instr.push(...res.instructions.filter((i) => !i.id.startsWith('turn-')));
+      const delta = describeChronossusDelta(before, s.chronossus!);
+      const label = Chronossus.chronossusActionLabel(actionId);
+      effects.push(`Autoleap — ${label}${delta.length ? ` (${delta.join(', ')})` : ''}`);
       step = nextStep(marker, step);
     }
-    return { state: s, step, instr, hypersyncCode: null };
+    return { state: s, step, instr, effects, hypersyncCode: null };
   };
 
   /**
@@ -848,7 +887,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // pushed by commit still carries it, so Undo re-seeds the same hex (#4).
       hsRolledHex: null,
     };
-    commit(chain.state, newUi, turnLabel(allInstr, actionLabel), summarizeTurn(preC, chain.state.chronossus!, allInstr), botDieRef.current);
+    // History effects: the main (die-rolled) action's summary, then one line per
+    // Autoleap-resolved tile. Summarize only the MAIN action (pre → stateA) so the
+    // chain's tiles aren't double-counted; the chain adds its own "Autoleap — …" lines.
+    const effects = [...summarizeTurn(preC, stateA.chronossus!, instrA), ...chain.effects];
+    commit(chain.state, newUi, turnLabel(allInstr, actionLabel), effects, botDieRef.current);
     setResult(allInstr);
     setLastResult(allInstr);
     pendingDieRef.current = null;
@@ -3384,7 +3427,7 @@ const CX_SCORE_ROWS = (
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
   { label: 'Time Travel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
   { label: 'Breakthroughs (×1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
-  { label: 'Breakthrough sets', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
+  { label: 'Breakthrough sets (set of shapes ×2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
   { label: 'Anomalies (−3 each)', playerKey: 'anomalies', botValue: score.anomalyVP },
   { label: 'Victory Point tokens', playerKey: 'vpTokens', botValue: score.tokenVP },
   { label: 'Morale', playerKey: 'morale' },
@@ -3396,13 +3439,6 @@ const CX_SCORE_ROWS = (
     playerKey: 'timelinePenalties',
   },
 ];
-
-const CX_PLAYER_SCORING_RULE =
-  'Tally your points from Buildings, Anomalies, Superprojects, Time Travel, Morale, ' +
-  'Victory Point tokens and Timeline penalties as normal. Each Breakthrough is worth ' +
-  '1 VP; a set of three different shapes is worth an additional 2 VP. In addition, ' +
-  'score points for the highest level you reached on each of your 3 Solo Objectives — ' +
-  'the Chronossus never scores Solo Objectives.';
 
 function CxScoreScreen({
   state,
@@ -3423,7 +3459,7 @@ function CxScoreScreen({
   const hypersyncMode = getMode(state.config.chronossusMode).slots.some(
     (s) => tileEffect(`${s.family}A`).hypersync === true,
   );
-  const [mode, setMode] = useState<'number' | 'tally'>('number');
+  const [mode, setMode] = useState<'number' | 'tally'>('tally');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
   // Tally mode always sums to a number (0 to start), so don't treat it as a
@@ -3518,25 +3554,10 @@ function CxScoreScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, result, playerScore, saveState]);
 
-  // A tally input cell (number field + clear button), shared by the side-by-side rows.
+  // A tally input cell: clear button then the number field, so the input sits flush at
+  // the column's right edge — directly under the "You" header (not the × button).
   const tallyCell = (key: string) => (
     <div className="cx-scell">
-      <input
-        type="number"
-        inputMode="numeric"
-        value={tally[key] ?? ''}
-        onChange={(e) =>
-          setTally((t) => {
-            const next = { ...t };
-            if (e.target.value === '') delete next[key];
-            // neg fields (Anomalies / Timeline penalties) always store a negative:
-            // typing 3 records −3.
-            else if (CX_TALLY_BY_KEY[key]?.neg) next[key] = -Math.abs(Number(e.target.value));
-            else next[key] = Number(e.target.value);
-            return next;
-          })
-        }
-      />
       <button
         type="button"
         className="tally-clear"
@@ -3553,6 +3574,22 @@ function CxScoreScreen({
       >
         ×
       </button>
+      <input
+        type="number"
+        inputMode="numeric"
+        value={tally[key] ?? ''}
+        onChange={(e) =>
+          setTally((t) => {
+            const next = { ...t };
+            if (e.target.value === '') delete next[key];
+            // neg fields (Anomalies / Timeline penalties) always store a negative:
+            // typing 3 records −3.
+            else if (CX_TALLY_BY_KEY[key]?.neg) next[key] = -Math.abs(Number(e.target.value));
+            else next[key] = Number(e.target.value);
+            return next;
+          })
+        }
+      />
     </div>
   );
 
@@ -3611,7 +3648,6 @@ function CxScoreScreen({
           </>
         ) : (
           <>
-            <p className="score-rule">{CX_PLAYER_SCORING_RULE}</p>
             {/* Side-by-side: shared rows align (You left, Chronossus right); player-only
                 and bot-only rows leave the other column blank. */}
             <div className="cx-tally">
