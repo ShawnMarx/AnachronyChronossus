@@ -3352,36 +3352,49 @@ function CxVpPill({
 // the Chronobot's ScoreScreen; the player's tally swaps the base game's Endgame
 // Conditions for Solo Objectives (the Chronossus never scores objectives).
 // --------------------------------------------------------------------------
-const CX_TALLY_FIELDS: { key: string; label: string; mult: number; sub?: boolean }[] = [
-  { key: 'buildings', label: 'Buildings', mult: 1 },
-  { key: 'anomalies', label: 'Anomalies', mult: 1 },
-  { key: 'superprojects', label: 'Superprojects', mult: 1 },
-  { key: 'timeTravel', label: 'Time Travel', mult: 1 },
-  { key: 'morale', label: 'Morale', mult: 1 },
-  { key: 'vpTokens', label: 'Victory Point tokens', mult: 1 },
-  { key: 'soloObjectives', label: 'Solo Objectives (highest levels)', mult: 1 },
-  { key: 'breakthroughs', label: 'Breakthroughs (×1 each)', mult: 1 },
-  { key: 'breakthroughSets', label: 'Breakthrough sets (×2 each)', mult: 2 },
-  { key: 'timelinePenalties', label: 'Timeline penalties (−)', mult: 1, sub: true },
+// `neg`: this field can only reduce the score — typing 3 stores −3, and only these
+// (Anomalies + Timeline penalties) plus nothing else may go negative. Every field is an
+// absolute VP value (no ×2 multiplier — the player enters the points directly).
+interface CxTallyField { key: string; label: string; neg?: boolean }
+const CX_TALLY_FIELDS: CxTallyField[] = [
+  { key: 'buildings', label: 'Buildings' },
+  { key: 'anomalies', label: 'Anomalies', neg: true },
+  { key: 'superprojects', label: 'Superprojects' },
+  { key: 'timeTravel', label: 'Time Travel' },
+  { key: 'morale', label: 'Morale' },
+  { key: 'vpTokens', label: 'Victory Point tokens' },
+  { key: 'soloObjectives', label: 'Solo Objectives (highest levels)' },
+  { key: 'breakthroughs', label: 'Breakthroughs' },
+  { key: 'breakthroughSets', label: 'Breakthrough sets' },
+  { key: 'timelinePenalties', label: 'Timeline penalties', neg: true },
 ];
+const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
+  CX_TALLY_FIELDS.map((f) => [f.key, f]),
+);
 
 // Side-by-side score rows: shared rows carry both a player tally key and the bot's
-// pre-filled value; player-only rows omit botValue, the bot-only row omits playerKey.
-// Order groups the aligned rows first, then bot-only, then player-only (#6).
+// pre-filled value; player-only rows omit botValue. The bot's "Token / Action VP" is
+// shown on the "Victory Point tokens" line next to the player's own tally.
+// `hypersync` adds the Hypersync-tile note to the Timeline-penalties row (player-only).
 const CX_SCORE_ROWS = (
   score: ReturnType<typeof Chronossus.scoreChronossus>,
+  hypersync: boolean,
 ): { label: string; playerKey?: string; botValue?: number }[] => [
   { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
   { label: 'Time Travel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
   { label: 'Breakthroughs (×1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
-  { label: 'Breakthrough sets (×2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
+  { label: 'Breakthrough sets', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
   { label: 'Anomalies (−3 each)', playerKey: 'anomalies', botValue: score.anomalyVP },
-  { label: 'Token / Action VP', botValue: score.tokenVP },
+  { label: 'Victory Point tokens', playerKey: 'vpTokens', botValue: score.tokenVP },
   { label: 'Morale', playerKey: 'morale' },
-  { label: 'Victory Point tokens', playerKey: 'vpTokens' },
   { label: 'Solo Objectives (highest levels)', playerKey: 'soloObjectives' },
-  { label: 'Timeline penalties (−)', playerKey: 'timelinePenalties' },
+  {
+    label: hypersync
+      ? 'Timeline penalties (Hypersync tiles −4 each)'
+      : 'Timeline penalties',
+    playerKey: 'timelinePenalties',
+  },
 ];
 
 const CX_PLAYER_SCORING_RULE =
@@ -3405,6 +3418,11 @@ function CxScoreScreen({
   onNewGame: () => void;
 }) {
   const { user } = useAuth();
+  // Whether this game uses a Hypersync mode (adds the Hypersync-tile note to the
+  // player's Timeline-penalties line — the bot never loses VP for those tiles).
+  const hypersyncMode = getMode(state.config.chronossusMode).slots.some(
+    (s) => tileEffect(`${s.family}A`).hypersync === true,
+  );
   const [mode, setMode] = useState<'number' | 'tally'>('number');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -3415,10 +3433,9 @@ function CxScoreScreen({
   // A human-readable reason for a failed save (session expired vs. a generic error).
   const [saveErr, setSaveErr] = useState<string>('');
 
-  const tallyTotal = CX_TALLY_FIELDS.reduce((sum, f) => {
-    const v = (tally[f.key] ?? 0) * f.mult;
-    return sum + (f.sub ? -v : v);
-  }, 0);
+  // Every field is stored as a signed absolute VP value (neg fields already hold a
+  // negative number), so the total is a plain sum.
+  const tallyTotal = CX_TALLY_FIELDS.reduce((sum, f) => sum + (tally[f.key] ?? 0), 0);
   const playerScore =
     mode === 'number'
       ? num.trim() === ''
@@ -3462,7 +3479,7 @@ function CxScoreScreen({
   // on desktop). Includes the top line, the breakdown, and the modes + difficulty (#7).
   const [shareMsg, setShareMsg] = useState<string>('');
   const handleShare = async () => {
-    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score).map((r) => ({
+    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode).map((r) => ({
       label: r.label,
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
       bot: r.botValue ?? null,
@@ -3512,6 +3529,9 @@ function CxScoreScreen({
           setTally((t) => {
             const next = { ...t };
             if (e.target.value === '') delete next[key];
+            // neg fields (Anomalies / Timeline penalties) always store a negative:
+            // typing 3 records −3.
+            else if (CX_TALLY_BY_KEY[key]?.neg) next[key] = -Math.abs(Number(e.target.value));
             else next[key] = Number(e.target.value);
             return next;
           })
@@ -3600,7 +3620,7 @@ function CxScoreScreen({
                 <span className="cx-tyou">You</span>
                 <span className="cx-tbot">Chronossus</span>
               </div>
-              {CX_SCORE_ROWS(score).map((r) => (
+              {CX_SCORE_ROWS(score, hypersyncMode).map((r) => (
                 <div key={r.label} className="cx-trow">
                   <span className="cx-tlabel">{r.label}</span>
                   <span className="cx-tyou">
