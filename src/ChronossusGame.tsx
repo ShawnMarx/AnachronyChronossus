@@ -2647,6 +2647,7 @@ function HypersyncDialog({
                   : '▶ Failed Action (+1 VP)'
                 : '▶ Confirm Available Hypersync space'}
             </button>
+            <HypersyncRules tile={tile} code={code} startOpen={false} />
           </div>
         ) : step === 'roll' ? (
           // Roll step: randomize among the available spaces → show where to place
@@ -2704,16 +2705,9 @@ function HypersyncDialog({
                 <p className="pp-sub">
                   It scores 2 VP. Do not advance the Time Travel marker.
                 </p>
-                <div className="hs-roll-actions">
-                  <button className="start-turn" onClick={takeHypersync}>
-                    ▶ Take Turn
-                  </button>
-                  {available.length > 1 && (
-                    <button className="hs-reroll" onClick={rollSpace}>
-                      🎲 Re-roll
-                    </button>
-                  )}
-                </div>
+                <button className="start-turn" onClick={takeHypersync}>
+                  ▶ Take Turn
+                </button>
               </>
             )}
           </div>
