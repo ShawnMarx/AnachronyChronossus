@@ -493,7 +493,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A pending C12/C13 Hypersync Action (Hypersync mode): the tile code driving it,
   // plus whether the dialog is read-only (rules view). Its own multi-step flow
   // lives in HypersyncDialog.
-  const [pendingHypersync, setPendingHypersync] = useState<{ code: string; readOnly: boolean } | null>(null);
+  // `viaChain`: the dialog was opened by the Autoleap chain (marker moved onto the
+  // tile), so its resolve already advances the extra Autoleap step — don't add another.
+  const [pendingHypersync, setPendingHypersync] = useState<{
+    code: string;
+    readOnly: boolean;
+    viaChain?: boolean;
+  } | null>(null);
   // Hypersync no-space fallback: showing the "place a Solo Hypersync tile" prompt
   // after the player says a Capital Action cannot be placed.
   const [showHypersyncTilePrompt, setShowHypersyncTilePrompt] = useState(false);
@@ -801,7 +807,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * tile — open that dialog to resolve it. On a free-tap (no active marker) nothing
    * advances and no Autoleap fires.
    */
-  const finishTurn = (stateA: GameState, instrA: Instruction[], actionLabel: string) => {
+  const finishTurn = (
+    stateA: GameState,
+    instrA: Instruction[],
+    actionLabel: string,
+    extraLeap = false,
+  ) => {
     const preC = state.chronossus!;
     const marker = activeMarkerRef.current;
     if (marker == null) {
@@ -810,9 +821,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setLastResult(instrA);
       return;
     }
-    const step1 = nextStep(marker, ui.markerSteps[marker]);
+    // Autoleap tile resolved from a rest/tap: the marker advances the normal step AND
+    // one extra (Autoleap), even on a Failed Action. (The autoleap-chain path already
+    // advances the extra step on resolve, so it passes extraLeap=false to avoid double.)
+    let extraInstr: Instruction[] = [];
+    let baseStep = ui.markerSteps[marker];
+    if (extraLeap) {
+      baseStep = nextStep(marker, baseStep);
+      extraInstr = [
+        {
+          id: 'autoleap-self',
+          text: 'Autoleap: the Chronossus advances its Command marker one extra space.',
+        },
+      ];
+    }
+    const step1 = nextStep(marker, baseStep);
     const chain = runAutoleapChain(stateA, marker, step1);
-    const allInstr = [...instrA, ...chain.instr];
+    const allInstr = [...instrA, ...extraInstr, ...chain.instr];
     const newUi: ChronossusUi = {
       ...ui,
       markerSteps: { ...ui.markerSteps, [marker]: chain.step },
@@ -830,7 +855,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (chain.hypersyncCode) {
       // The marker moved onto a Hypersync Autoleap tile — resolve it as the next
       // Action (keep activeMarkerRef so it advances from here).
-      setPendingHypersync({ code: chain.hypersyncCode, readOnly: false });
+      setPendingHypersync({ code: chain.hypersyncCode, readOnly: false, viaChain: true });
     } else {
       activeMarkerRef.current = null;
     }
@@ -1425,11 +1450,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Commit a C12/C13 Hypersync Action once the HypersyncDialog has walked the
   // player through its branch (hex placement / Time Travel fallback / Failed).
   const resolveHypersyncTurn = (input: Chronossus.HypersyncActionInput) => {
-    const { state: next, instructions } = Chronossus.resolveHypersyncAction(state, input);
+    const { state: next, instructions, autoleap } = Chronossus.resolveHypersyncAction(state, input);
+    // Autoleap tiles (C12B/C13B): advance the marker one EXTRA space after resolving,
+    // on every outcome (including a Failed Action). Skip when the chain opened the
+    // dialog (its resolve already lands the extra step) to avoid a double-advance.
+    const extraLeap = autoleap === true && !pendingHypersync?.viaChain;
     setPendingHypersync(null); // close the Hypersync dialog
     // Advance the marker + resolve any Autoleap it lands on (may re-open a Hypersync
     // dialog if the marker moves onto a Hypersync Autoleap tile).
-    finishTurn(next, instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code);
+    finishTurn(next, instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code, extraLeap);
   };
   const closeHypersync = () => {
     setPendingHypersync(null);
