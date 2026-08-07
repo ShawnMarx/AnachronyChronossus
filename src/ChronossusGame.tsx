@@ -837,7 +837,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       ...ui,
       markerSteps: { ...ui.markerSteps, [marker]: step1 },
       botDie: botDieRef.current,
-      activeMarker: marker,
+      // Keep the marker highlighted only while an Autoleap dialog continues the turn;
+      // when the turn is fully done, clear it so no marker stays lit afterwards.
+      activeMarker: leap ? marker : null,
       lastDraw: ui.lastDraw,
       // A Hypersync roll (if this turn was one) is consumed by this commit; the snapshot
       // pushed by commit still carries it, so Undo re-seeds the same hex (#4).
@@ -1196,6 +1198,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: null };
   });
 
+  // Will completing the current turn advance the active marker onto an Autoleap tile?
+  // If so, the commit buttons read "Advance to Autoleap Action" as a heads-up that the
+  // Autoleap dialog comes next (shared by every action dialog).
+  const nextMarkerIsAutoleap =
+    activeMarker != null &&
+    autoleapAt(activeMarker, nextStep(activeMarker, ui.markerSteps[activeMarker])) != null;
+  const startLabel = nextMarkerIsAutoleap
+    ? '▶ Advance to Autoleap Action'
+    : '▶ Start Your Turn';
+
   // The action dialog. On mobile (flow=true) it renders in normal flow at the top
   // of the stage, pushing the board down; on desktop it's an absolute panel on the
   // board. Mirrors the Chronobot's renderDetailPanel.
@@ -1203,6 +1215,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     !calibrate && active ? (
       <DetailPanel
         flow={flow}
+        startLabel={startLabel}
         hotspot={{ ...active, panel: active.panel ?? CHRONOSSUS_PANEL }}
         readOnly={ruleView}
         pending={pending}
@@ -2042,6 +2055,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   panel={CHRONOSSUS_PANEL}
                   readOnly={tileRuleView}
                   autoleap={tileAutoleap}
+                  startLabel={startLabel}
                   onStart={startTileTurn}
                   onClose={cancelPanel}
                 />
@@ -2056,6 +2070,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   panel={CHRONOSSUS_PANEL}
                   rolledHex={ui.hsRolledHex}
                   onRollHex={(hex) => setUi((u) => ({ ...u, hsRolledHex: hex }))}
+                  startLabel={nextMarkerIsAutoleap ? startLabel : undefined}
                   onResolve={resolveHypersyncTurn}
                   onClose={closeHypersync}
                 />
@@ -2468,6 +2483,7 @@ function CxTileDialog({
   panel,
   readOnly = false,
   autoleap = false,
+  startLabel = '▶ Start Your Turn',
   onStart,
   onClose,
 }: {
@@ -2477,6 +2493,8 @@ function CxTileDialog({
   readOnly?: boolean;
   /** Reached by an Autoleap (marker moved onto it) — show the Autoleap note. */
   autoleap?: boolean;
+  /** Commit-button label ("Advance to Autoleap Action" when the next step autoleaps). */
+  startLabel?: string;
   onStart: () => void;
   onClose: () => void;
 }) {
@@ -2517,7 +2535,7 @@ function CxTileDialog({
           <p className="pp-instruct">{tileInstruction(code)}</p>
           {!readOnly && (
             <button className="start-turn" onClick={onStart}>
-              ▶ Start Your Turn
+              {startLabel}
             </button>
           )}
         </div>
@@ -2564,6 +2582,7 @@ function HypersyncDialog({
   panel,
   rolledHex,
   onRollHex,
+  startLabel,
   onResolve,
   onClose,
 }: {
@@ -2573,6 +2592,8 @@ function HypersyncDialog({
   targeted: boolean;
   readOnly?: boolean;
   panel: [number, number, number, number];
+  /** "Take Turn" (default) or "Advance to Autoleap Action" when the next step autoleaps. */
+  startLabel?: string;
   /** Persisted rolled hex (ui slice), so an Undo → re-take re-shows the same roll (#4). */
   rolledHex: number | null;
   /** Persist a rolled hex to the ui slice (survives Undo). */
@@ -2757,7 +2778,7 @@ function HypersyncDialog({
                   retrieves the tile. (No Time Travel advance.)
                 </p>
                 <button className="start-turn" onClick={takeHypersync}>
-                  ▶ Take Turn
+                  {startLabel ?? '▶ Take Turn'}
                 </button>
               </>
             ) : rolledHex == null ? (
@@ -2799,7 +2820,7 @@ function HypersyncDialog({
                   It scores 2 VP. Do not advance the Time Travel marker.
                 </p>
                 <button className="start-turn" onClick={takeHypersync}>
-                  ▶ Take Turn
+                  {startLabel ?? '▶ Take Turn'}
                 </button>
               </>
             )}

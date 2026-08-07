@@ -3327,6 +3327,7 @@ export function DetailPanel({
   onClose,
   flow = false,
   botName = 'Chronobot',
+  startLabel = '▶ Start Your Turn',
 }: {
   hotspot: Hotspot;
   readOnly: boolean;
@@ -3355,6 +3356,9 @@ export function DetailPanel({
   flow?: boolean;
   /** Bot name shown in the instruction copy (defaults to the Chronobot). */
   botName?: string;
+  /** Commit-button label — set to "Advance to Autoleap Action" when the marker's next
+   *  step lands on an Autoleap tile (Chronossus). Defaults to "▶ Start Your Turn". */
+  startLabel?: string;
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
@@ -3447,7 +3451,7 @@ export function DetailPanel({
             </div>
             {selectedVP != null && (
               <button className="start-turn" onClick={onStartTurn}>
-                ▶ Start Your Turn
+                {startLabel}
               </button>
             )}
           </div>
@@ -3494,7 +3498,7 @@ export function DetailPanel({
             </div>
             {selectedResources.length === 2 && (
               <button className="start-turn" onClick={onStartTurn}>
-                ▶ Start Your Turn
+                {startLabel}
               </button>
             )}
           </div>
@@ -3523,7 +3527,7 @@ export function DetailPanel({
             </div>
             {selectedWorker && (
               <button className="start-turn" onClick={onStartTurn}>
-                ▶ Start Your Turn
+                {startLabel}
               </button>
             )}
           </div>
@@ -3560,7 +3564,7 @@ export function DetailPanel({
               <WorkerSwatch worker="genius" selected onClick={() => {}} />
             </div>
             <button className="start-turn" onClick={onStartTurn}>
-              ▶ Start Your Turn
+              {startLabel}
             </button>
           </div>
         )}
@@ -3584,7 +3588,7 @@ export function DetailPanel({
               </div>
             </div>
             <button className="start-turn" onClick={onStartTurn}>
-              ▶ Start Your Turn
+              {startLabel}
             </button>
           </div>
         )}
@@ -3594,7 +3598,7 @@ export function DetailPanel({
           <div className="place-prompt">
             <p className="pp-instruct">Reboot: {botName} does nothing.</p>
             <button className="start-turn" onClick={onStartTurn}>
-              ▶ Start Your Turn
+              {startLabel}
             </button>
           </div>
         )}
@@ -3607,7 +3611,7 @@ export function DetailPanel({
               Timeline tile where it has the most (oldest if tied).
             </p>
             <button className="start-turn" onClick={onStartTurn}>
-              ▶ Start Your Turn
+              {startLabel}
             </button>
           </div>
         )}
@@ -3621,7 +3625,7 @@ export function DetailPanel({
                 remove 1 Anomaly. (Remove Anomaly places no Exosuit.)
               </p>
               <button className="start-turn" onClick={onStartTurn}>
-                ▶ Start Your Turn
+                {startLabel}
               </button>
             </div>
           ) : (
@@ -3631,7 +3635,7 @@ export function DetailPanel({
                 instead (no Exosuit placed).
               </p>
               <button className="start-turn" onClick={onStartTurn}>
-                ▶ Start Your Turn
+                {startLabel}
               </button>
             </div>
           ))}
@@ -3646,7 +3650,7 @@ export function DetailPanel({
         {/* Once the bot's action has resolved, hand control back to the player. */}
         {!pending && result.length > 0 && (
           <button className="start-turn" onClick={onStartTurn}>
-            ▶ Start Your Turn
+            {startLabel}
           </button>
         )}
 
