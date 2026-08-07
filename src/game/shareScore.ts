@@ -55,30 +55,36 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
   ctx.textBaseline = 'middle';
   ctx.fillText(d.title, PAD, 48);
 
-  // Big scores.
+  // Value columns: the You / Chronossus numbers are right-aligned at these edges, and
+  // the big totals sit directly above their own column (aligned to the same edge).
+  const colBotRight = W - PAD;
+  const colYouRight = W - PAD - 150;
+  const vsX = (colYouRight + colBotRight) / 2;
+
+  // Big scores, right-aligned over each column.
   const yBig = 160;
-  const colYou = W * 0.3;
-  const colBot = W * 0.7;
-  ctx.textAlign = 'center';
   ctx.fillStyle = '#efe9f5';
   ctx.font = '800 54px system-ui, sans-serif';
-  ctx.fillText(d.playerScore == null ? '—' : String(d.playerScore), colYou, yBig);
-  ctx.fillText(String(d.botScore), colBot, yBig);
+  ctx.textAlign = 'right';
+  ctx.fillText(d.playerScore == null ? '—' : String(d.playerScore), colYouRight, yBig);
+  ctx.fillText(String(d.botScore), colBotRight, yBig);
   ctx.fillStyle = ACCENT;
   ctx.font = '800 22px system-ui, sans-serif';
-  ctx.fillText('vs', W / 2, yBig);
+  ctx.textAlign = 'center';
+  ctx.fillText('vs', vsX, yBig);
   ctx.fillStyle = '#a89bb8';
   ctx.font = '600 15px system-ui, sans-serif';
-  ctx.fillText('YOU', colYou, yBig + 42);
-  ctx.fillText('CHRONOSSUS', colBot, yBig + 42);
+  ctx.textAlign = 'right';
+  ctx.fillText('YOU', colYouRight, yBig + 42);
+  ctx.fillText('CHRONOSSUS', colBotRight, yBig + 42);
 
   // Result badge.
   if (d.result) {
     ctx.font = '700 18px system-ui, sans-serif';
     ctx.fillStyle = d.result === 'win' ? '#7bdc8c' : '#ff8c8c';
+    ctx.textAlign = 'center';
     ctx.fillText(d.result === 'win' ? 'YOU WIN' : 'YOU LOSE', W / 2, 116);
   }
-  ctx.textAlign = 'left';
 
   // Rows.
   let y = headBlock + rowH / 2;
@@ -96,8 +102,8 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
       ctx.fillText(r.label, PAD, y);
       ctx.fillStyle = '#efe9f5';
       ctx.textAlign = 'right';
-      ctx.fillText(r.you == null ? '—' : String(r.you), colYou + 70, y);
-      ctx.fillText(r.bot == null ? '—' : String(r.bot), W - PAD, y);
+      ctx.fillText(r.you == null ? '—' : String(r.you), colYouRight, y);
+      ctx.fillText(r.bot == null ? '—' : String(r.bot), colBotRight, y);
     }
     y += rowH;
   }

@@ -3516,7 +3516,8 @@ function CxScoreScreen({
   const [shareMsg, setShareMsg] = useState<string>('');
   const handleShare = async () => {
     const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode).map((r) => ({
-      label: r.label,
+      // Strip the parenthetical rule hints for the compact share card (they don't wrap).
+      label: r.label.replace(/\s*\([^)]*\)/g, ''),
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
       bot: r.botValue ?? null,
     }));
