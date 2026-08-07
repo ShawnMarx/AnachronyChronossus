@@ -325,32 +325,6 @@ const AUTOLEAP_RULE =
   "Action on that space's tile is immediately resolved. Then, the token is advanced " +
   'one space further.';
 
-/**
- * Concise, human-readable summary of ONE Chronossus action's state change — used to
- * log each Autoleap-resolved tile (which takes no die roll) as its own History line.
- * `summarizeTurn` (shared with the Chronobot) doesn't read the Energy Pool, so an
- * energy-only Autoleap like C03B would otherwise leave no trace.
- */
-function describeChronossusDelta(pre: ChronossusState, post: ChronossusState): string[] {
-  const out: string[] = [];
-  const ec = post.energyPool.energized - pre.energyPool.energized;
-  if (ec > 0) out.push(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
-  const vp = post.vp - pre.vp;
-  if (vp > 0) out.push(`+${vp} VP`);
-  (['circle', 'triangle', 'square'] as const).forEach((sh) => {
-    const d = post.breakthroughs[sh] - pre.breakthroughs[sh];
-    if (d > 0) out.push(`+${d > 1 ? d + ' ' : ''}${sh} Breakthrough`);
-  });
-  if (post.timeTravelTrack > pre.timeTravelTrack) out.push('Time Travel advances');
-  if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline) out.push('Warp tile removed');
-  if (post.anomalies < pre.anomalies) out.push('Anomaly removed');
-  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('Exosuit placed');
-  (['genius', 'administrator', 'engineer', 'scientist'] as const).forEach((w) => {
-    if (post.workers[w] > pre.workers[w]) out.push(`Recruited ${w}`);
-  });
-  return out;
-}
-
 /** Collapsible "Autoleap rules ▸" — shown on Autoleap tiles' dialogs. */
 function AutoleapRuleBlockCollapsible() {
   const [open, setOpen] = useState(false);
@@ -513,6 +487,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A modular tile action (Reboot / Score / Energy Pack) awaiting its ▶ Start
   // (the marker landed on a tile slot). Its dialog waits like every other action.
   const [pendingTile, setPendingTile] = useState<ChronossusTileActionId | null>(null);
+  // The current pendingTile was reached by an Autoleap (marker moved onto it): its
+  // dialog shows the Autoleap note and its resolution is logged "Autoleap — …".
+  const [tileAutoleap, setTileAutoleap] = useState(false);
   // A modular-tile dialog opened read-only (play-mode tap / SCV row): shows the
   // tile's rules with no ▶ Start, taking no turn (mirrors the action rule view).
   const [tileRuleView, setTileRuleView] = useState(false);
@@ -581,6 +558,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // free-tap, so free taps never move a marker).
   const activeMarkerRef = useRef<CommandNum | null>(null);
   const botDieRef = useRef<number | null>(null);
+  // Set by finishTurn when a resolution advanced the marker onto an Autoleap tile
+  // (simple OR Hypersync) and opened its follow-up dialog — so the caller's teardown
+  // (startTurn's closePanel / startTileTurn's closeTile) preserves that dialog + the
+  // marker ref instead of tearing it down.
+  const chainOpenRef = useRef(false);
   // A rolled-but-not-yet-committed AI die: cleared only when a turn commits (or on
   // a full reset), NOT when the dialog is cancelled — so closing a bot dialog and
   // re-hitting Take Bot Action repeats the same roll / action rather than re-rolling.
@@ -776,6 +758,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
     }
   };
+  // Close the DetailPanel + its sub-step/selections, but KEEP pendingTile/pendingHypersync
+  // and the marker ref — used when a turn resolves straight into an Autoleap chain dialog.
+  const closeActionPanelForChain = () => {
+    setActive(null);
+    setPending(null);
+    setSelectedVP(null);
+    setSelectedResources([]);
+    setSelectedWorker(null);
+    setRolledShape(null);
+    setRuleView(false);
+  };
 
   // ---- Autoleap ----------------------------------------------------------
   // Rulebook (p.10): "If the Command token is moved to a space with the Autoleap
@@ -796,48 +789,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
 
   /**
-   * After an Action resolves and its marker advanced onto `step`, resolve any
-   * Autoleap tiles it now sits on: each resolves immediately as another Action and
-   * the marker advances one more. Simple tiles (C01B/C03B) resolve here; a Hypersync
-   * Autoleap tile (C12B) stops the chain and is returned so the caller opens its dialog.
+   * If the marker advanced onto an Autoleap tile at `step`, return it (with its tile
+   * Action, or the Hypersync flag) so the caller can open a dialog — Autoleap tiles are
+   * NOT auto-resolved: each shows a dialog stating its effect (it activates immediately,
+   * then the marker advances one extra space) with a ▶ Start Your Turn, like every other
+   * Action. Returns null when the marker just rests on a normal space.
    */
-  const runAutoleapChain = (
-    s0: GameState,
+  const autoleapAt = (
     marker: CommandNum,
-    step0: number,
-  ): {
-    state: GameState;
-    step: number;
-    instr: Instruction[];
-    effects: string[];
-    hypersyncCode: string | null;
-  } => {
-    let s = s0;
-    let step = step0;
-    const instr: Instruction[] = [];
-    // Concise History lines for each Autoleap-resolved tile (die-less), so the
-    // resolution is visible in History (labelled "Autoleap") and never looks skipped.
-    const effects: string[] = [];
-    for (let guard = 0; guard < 8; guard++) {
-      const code = tileCodeAt(markerPosKey(marker, step));
-      if (!code || !tileEffect(code).autoleap) break;
-      if (tileEffect(code).hypersync) return { state: s, step, instr, effects, hypersyncCode: code };
-      const actionId = FAMILY_TO_TILE_ACTION[code.slice(0, -1)];
-      if (!actionId) break;
-      const before = s.chronossus!;
-      const res = Chronossus.resolveAction(s, { actionId, tileSide: 'B' });
-      s = res.state;
-      instr.push({
-        id: `autoleap-${guard}`,
-        text: `Autoleap (${code}): the marker moved onto this tile, so its Action resolves immediately — then the marker advances one more space.`,
-      });
-      instr.push(...res.instructions.filter((i) => !i.id.startsWith('turn-')));
-      const delta = describeChronossusDelta(before, s.chronossus!);
-      const label = Chronossus.chronossusActionLabel(actionId);
-      effects.push(`Autoleap — ${label}${delta.length ? ` (${delta.join(', ')})` : ''}`);
-      step = nextStep(marker, step);
-    }
-    return { state: s, step, instr, effects, hypersyncCode: null };
+    step: number,
+  ): { code: string; actionId: ChronossusTileActionId | null; isHypersync: boolean } | null => {
+    const code = tileCodeAt(markerPosKey(marker, step));
+    if (!code || !tileEffect(code).autoleap) return null;
+    if (tileEffect(code).hypersync) return { code, actionId: null, isHypersync: true };
+    const actionId = (FAMILY_TO_TILE_ACTION[code.slice(0, -1)] ??
+      null) as ChronossusTileActionId | null;
+    return { code, actionId, isHypersync: false };
   };
 
   /**
@@ -860,26 +827,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setLastResult(instrA);
       return;
     }
-    // Autoleap tile resolved from a rest/tap: the marker advances the normal step AND
-    // one extra (Autoleap), even on a Failed Action. (The autoleap-chain path already
-    // advances the extra step on resolve, so it passes extraLeap=false to avoid double.)
-    let extraInstr: Instruction[] = [];
+    // Advance the marker. `extraLeap` (a rest/tap on a Hypersync Autoleap tile) adds one
+    // extra step for the Autoleap before the normal advance.
     let baseStep = ui.markerSteps[marker];
-    if (extraLeap) {
-      baseStep = nextStep(marker, baseStep);
-      extraInstr = [
-        {
-          id: 'autoleap-self',
-          text: 'Autoleap: the Chronossus advances its Command marker one extra space.',
-        },
-      ];
-    }
+    if (extraLeap) baseStep = nextStep(marker, baseStep);
     const step1 = nextStep(marker, baseStep);
-    const chain = runAutoleapChain(stateA, marker, step1);
-    const allInstr = [...instrA, ...extraInstr, ...chain.instr];
+    const leap = autoleapAt(marker, step1);
     const newUi: ChronossusUi = {
       ...ui,
-      markerSteps: { ...ui.markerSteps, [marker]: chain.step },
+      markerSteps: { ...ui.markerSteps, [marker]: step1 },
       botDie: botDieRef.current,
       activeMarker: marker,
       lastDraw: ui.lastDraw,
@@ -887,19 +843,40 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // pushed by commit still carries it, so Undo re-seeds the same hex (#4).
       hsRolledHex: null,
     };
-    // History effects: the main (die-rolled) action's summary, then one line per
-    // Autoleap-resolved tile. Summarize only the MAIN action (pre → stateA) so the
-    // chain's tiles aren't double-counted; the chain adds its own "Autoleap — …" lines.
-    const effects = [...summarizeTurn(preC, stateA.chronossus!, instrA), ...chain.effects];
-    commit(chain.state, newUi, turnLabel(allInstr, actionLabel), effects, botDieRef.current);
-    setResult(allInstr);
-    setLastResult(allInstr);
+    // History effects: the action's state-diff summary + Energy Cores gained
+    // (summarizeTurn doesn't read the Energy Pool, so an energy-only tile like C03B would
+    // otherwise leave no trace).
+    const effects = summarizeTurn(preC, stateA.chronossus!, instrA);
+    const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
+    if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
+    commit(stateA, newUi, turnLabel(instrA, actionLabel), effects, botDieRef.current);
+    setResult(instrA);
+    setLastResult(instrA);
     pendingDieRef.current = null;
-    if (chain.hypersyncCode) {
-      // The marker moved onto a Hypersync Autoleap tile — resolve it as the next
-      // Action (keep activeMarkerRef so it advances from here).
-      setPendingHypersync({ code: chain.hypersyncCode, readOnly: false, viaChain: true });
+    if (leap) {
+      // The follow-up Autoleap resolution takes NO die roll → clear the die so its
+      // History entry is die-less (only die-rolled turns show a die). Also close the
+      // just-resolved action's DetailPanel so the Autoleap dialog shows on its own.
+      botDieRef.current = null;
+      closeActionPanelForChain();
+    }
+    if (leap?.isHypersync) {
+      // Marker moved onto a Hypersync Autoleap tile → open its dialog (resolve advances
+      // the extra step). Keep activeMarkerRef so it advances from here.
+      chainOpenRef.current = true;
+      setPendingHypersync({ code: leap.code, readOnly: false, viaChain: true });
+      setPendingTile(null);
+      setTileAutoleap(false);
+    } else if (leap && leap.actionId) {
+      // Marker moved onto a simple Autoleap tile (C01B/C03B…) → open its dialog stating
+      // the effect + Autoleap note; ▶ Start Your Turn resolves it and advances one more,
+      // which may chain onto the next Autoleap tile. Keep activeMarkerRef.
+      chainOpenRef.current = true;
+      setTileAutoleap(true);
+      setPendingTile(leap.actionId);
     } else {
+      chainOpenRef.current = false;
+      setTileAutoleap(false);
       activeMarkerRef.current = null;
     }
   };
@@ -1096,6 +1073,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
 
   const startTurn = () => {
+    chainOpenRef.current = false; // finishTurn re-sets it if resolving opens a chain dialog
     if (pending === 'buildingVP' && selectedVP != null && active) {
       resolve(active, { buildingVP: selectedVP });
     } else if (pending === 'mineResources' && selectedResources.length === 2 && active) {
@@ -1113,7 +1091,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     } else if (pending === 'timeTravel' && active) {
       resolve(active, {});
     }
-    closePanel();
+    // If resolving advanced the marker onto an Autoleap tile, finishTurn already closed
+    // the DetailPanel and opened the follow-up dialog (keeping the marker ref) — so only
+    // tear everything down when the turn did NOT chain.
+    if (!chainOpenRef.current) closePanel();
   };
 
   // Show an action's rules read-only (from a Simple Command View row) — opens the
@@ -1467,26 +1448,30 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const family = TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
     const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
     const { state: next, instructions } = Chronossus.resolveAction(state, { actionId, tileSide });
-    // A rested-on tile is never an Autoleap tile (tokens leap past those); the
-    // marker still advances one step + resolves any Autoleap it lands on.
-    finishTurn(next, instructions, Chronossus.chronossusActionLabel(actionId));
+    // finishTurn advances the marker one step; if that lands on an Autoleap tile it
+    // opens its dialog (so the chain continues one tile at a time).
+    const label = Chronossus.chronossusActionLabel(actionId);
+    finishTurn(next, instructions, tileAutoleap ? `Autoleap — ${label}` : label);
   };
-  // ▶ Start on the tile dialog: resolve and close immediately (like the printed
-  // actions) — the result lands in History / the turn-status aside, no Done step.
+  // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
+  // Autoleap tile) close. The result lands in History / the turn-status aside.
   const startTileTurn = () => {
     if (!pendingTile) return;
+    chainOpenRef.current = false; // finishTurn re-sets it if the chain continues
     resolveTileSlot(pendingTile);
-    closeTile();
+    if (!chainOpenRef.current) closeTile();
   };
   // Close the tile dialog. If it hasn't resolved yet (no result), the marker does
   // not advance (a cancelled turn).
   const closeTile = () => {
     setPendingTile(null);
+    setTileAutoleap(false);
     setTileRuleView(false);
     setResult([]);
     botDieRef.current = null;
     activeMarkerRef.current = null;
     pendingDieRef.current = null;
+    chainOpenRef.current = false;
     setUi((u) => ({ ...u, botDie: null, activeMarker: null }));
   };
 
@@ -2056,6 +2041,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   tileSides={state.config.tileSides}
                   panel={CHRONOSSUS_PANEL}
                   readOnly={tileRuleView}
+                  autoleap={tileAutoleap}
                   onStart={startTileTurn}
                   onClose={cancelPanel}
                 />
@@ -2481,6 +2467,7 @@ function CxTileDialog({
   tileSides,
   panel,
   readOnly = false,
+  autoleap = false,
   onStart,
   onClose,
 }: {
@@ -2488,6 +2475,8 @@ function CxTileDialog({
   tileSides?: Record<string, 'A' | 'B'>;
   panel: [number, number, number, number];
   readOnly?: boolean;
+  /** Reached by an Autoleap (marker moved onto it) — show the Autoleap note. */
+  autoleap?: boolean;
   onStart: () => void;
   onClose: () => void;
 }) {
@@ -2519,6 +2508,12 @@ function CxTileDialog({
       </div>
       <div className="dp-body">
         <div className="place-prompt">
+          {autoleap && (
+            <p className="pp-sub">
+              <b>Autoleap:</b> the marker moved onto this tile, so its Action activates
+              now — then the Command marker advances one extra space.
+            </p>
+          )}
           <p className="pp-instruct">{tileInstruction(code)}</p>
           {!readOnly && (
             <button className="start-turn" onClick={onStart}>
