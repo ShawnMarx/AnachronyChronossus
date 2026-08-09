@@ -7,6 +7,6 @@ export const chronossus: BotModule = {
   description:
     'The advanced automa — a more human-like opponent with an Energy Pool, modular Action tiles, Autoleap, and Solo Objectives.',
   supportedExpansions: ['base'],
-  // Flipped on in Feature 7 once the guided engine + view are wired (admin-gated).
-  implemented: false,
+  // Shipped: base game + Hypersync module are live. More modes/options land over time.
+  implemented: true,
 };

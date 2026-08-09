@@ -43,12 +43,20 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       reroll-on-undo bug (#4/#10) and the generic save-error message (#1). Port the
       Chronossus fixes.
 
-## In progress — Chronossus base
-- [ ] **Chronossus** automa — active plan at `docs/plans/PLAN_chronossus_base.md`.
-      Part A (action-stage parity + shared UI) and B1 (action tiles + Autoleap +
-      energy-core gain + Hypersync) are done; remaining: Solo Objectives (B2), real
-      per-phase bodies (B3), module selection (B4), and ship (B5). Continue with
-      `/plan execute`. Likely revisits **stats + BG Stats import/export** then.
+## Chronossus base — ✅ shipped (2026-08-09)
+Base game + Hypersync module are live in prod. See
+`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`. Follow-ups / next candidates:
+
+- [ ] **Automated Chronossus playthrough test** — `playthrough.test.ts` is Chronobot-only.
+      Write one **before starting the next mode**; it's the guardrail protecting the shared
+      engine as modes pile on.
+- [ ] **More modules** — Fractures of Time (Flux Pool / Cores / Fracture Device, X-series
+      actions, expansion objectives); Doomsday, Pioneers, Guardians (stubbed in the Module
+      menu). Each becomes its own `/plan`.
+- [ ] **Per-module difficulty options** — the seam exists (`MODE_DIFFICULTY`); flesh out the
+      base-game difficulty options (currently only tile-B-side + Hypersync-targeted are live).
+- [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
+      Stats import/export**.
 
 Chronobot is the main stopping point — the guided Era loop, optional BGE login,
 server-backed My-history + admin Overall-stats with BG Stats import/export, and the

@@ -2420,17 +2420,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         </button>
       );
       break;
-    default: // setup — skeleton for now (reconciled later)
-      body = (
-        <>
-          {meta?.rules && <p className="phase-note">{meta.rules}</p>}
-          <p className="phase-note">
-            (This phase is a placeholder — its Chronossus-specific behavior is reconciled after
-            Phase 5.)
-          </p>
-          <button className="phase-primary" onClick={() => goPhase('powerup')}>Continue ▶</button>
-        </>
-      );
   }
 
   return (

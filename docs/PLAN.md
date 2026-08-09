@@ -5,14 +5,16 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-08): Chronobot is complete and live**; optional BGE login +
-> My-history/admin-stats + the in-app rules frame shipped too (2026-07-31).
-> **Chronossus base is now in active development** — the shared solo-bot core, the
-> Chronossus engine/view, action tiles, Autoleap, and Hypersync have landed; remaining
-> work is Solo Objectives, real per-phase bodies, module selection, and ship. The active
-> tracker is **`docs/plans/PLAN_chronossus_base.md`** (not this doc). The Chronossus
-> knowledge, references, and design decisions here remain the source material behind that
-> plan. Loose ends live in `TODO.md`; completed efforts are archived in `docs/complete/`.
+> **Status (2026-08-09): Chronobot and Chronossus base are both complete and live.**
+> Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
+> stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
+> shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
+> per-phase bodies, module selection, and scoring are all live
+> (`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`); `chronossus.implemented` is
+> `true`. **No active plan right now.** Next candidates (in `TODO.md`): an automated
+> Chronossus playthrough test, more modules (Fractures, Doomsday, Pioneers, Guardians),
+> per-module difficulty options, and Chronossus stats/history. The Chronossus knowledge,
+> references, and design decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
 
