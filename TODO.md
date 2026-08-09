@@ -32,11 +32,23 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
       the auth/stats work: offer a one-time "import my local (localStorage) finished
       games" action; currently local prior games are export/import only.
 
-## Next major effort — Chronossus
-- [ ] **Chronossus** automa — the advanced Solo opponent (Coming Soon on the landing
-      page). A finalized-but-not-started plan is parked at
-      `docs/concepts/PLAN_chronossus_base.md`; promote it with `/plan create` when
-      picked up. Likely revisits **stats + BG Stats import/export** improvements then.
+## Chronossus follow-ups (from the 2026-08-08 playtest fixes)
+See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
+
+- [ ] **On-device verification** — never ran a `/plan review`. Manually check on iPad/
+      iPhone: undo/roll-persistence (Paradox/Warp/Hypersync re-show the same roll), the
+      side-by-side tally at tablet width, and the share-sheet flow.
+- [ ] **Mirror roll-persistence + save-retry to the Chronobot** — the Chronobot
+      (`BoardExplorer`) uses its own separate snapshot system and still has the latent
+      reroll-on-undo bug (#4/#10) and the generic save-error message (#1). Port the
+      Chronossus fixes.
+
+## In progress — Chronossus base
+- [ ] **Chronossus** automa — active plan at `docs/plans/PLAN_chronossus_base.md`.
+      Part A (action-stage parity + shared UI) and B1 (action tiles + Autoleap +
+      energy-core gain + Hypersync) are done; remaining: Solo Objectives (B2), real
+      per-phase bodies (B3), module selection (B4), and ship (B5). Continue with
+      `/plan execute`. Likely revisits **stats + BG Stats import/export** then.
 
 Chronobot is the main stopping point — the guided Era loop, optional BGE login,
 server-backed My-history + admin Overall-stats with BG Stats import/export, and the

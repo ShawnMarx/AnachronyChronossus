@@ -193,6 +193,28 @@ new positions; use this script to verify.
   to the `Mods/Images/…<HASH>.jpg` file. Read PDFs/art with **PyMuPDF** (`import fitz`);
   flatten `.pdn` (Paint.NET) with **pypdn** — native Python, use `C:/…` paths.
 
+## Docs & notes maintenance
+
+Where written knowledge lives and **when to update it**. The `/recap` skill (end of a
+work session) is just "do the applicable items below." Only touch a doc when the session
+actually changed something it covers — don't churn docs for no-op sessions.
+
+| Doc | What it is | Update when |
+|---|---|---|
+| `docs/BUILD-LOG.md` | Running, **newest-first** narrative changelog (the "why" behind the code). | A meaningful feature/milestone shipped. Prepend a dated entry; link the `docs/complete/` archive if one exists. Group small same-session changes into one entry. |
+| `docs/PLAN.md` | Master design doc + **single pickup point**: what the app is/isn't, references, reading pipeline, phased roadmap, and links to the active scoped plan(s). **Not** a per-feature tracker. | The overall status/roadmap shifts — **including whenever `/plan cleanup` closes an effort** (refresh the `> Status (YYYY-MM-DD)` header + roadmap so the pickup point stays true). Leave design/reference sections stable; point at the active `docs/plans/PLAN_*` file rather than duplicating it. |
+| `docs/plans/PLAN_<name>.md` + `LOG_<name>.md` | Active per-effort plan + execution tracker (managed by the `/plan` skill). | During execution — mark `[x]`/`[~]`, note deviations. When an effort finishes, `/plan cleanup` archives it to `docs/complete/`, deletes the source files, updates `TODO.md`, **and refreshes `docs/PLAN.md`'s status/roadmap** (see above). |
+| `docs/complete/YYYYMMDD_*_COMPLETED.md` | Frozen archive of a finished effort (plan + log + review + production notes). | Created by `/plan cleanup`; **don't edit after archiving** (historical record). |
+| `docs/DEPLOYMENT.md` | Deployment runbook (hosting, nginx, CI, staging). | Deploy/infra/hosting details change. Living reference, not a log. |
+| `TODO.md` | Loose ends and deferred work; bigger items graduate to a `/plan`. | A follow-up/deferred item surfaces, or a listed item gets done (check/remove it). |
+| `CLAUDE.md` | This file — durable guidance for working here. | A permanent convention, architecture seam, or workflow changes. Keep accurate as code evolves. |
+| `~/.claude/projects/…/memory/` | Auto-memory (cross-session facts). | See the memory rules in the system prompt; not part of `/recap`. |
+
+**End-of-session recap flow:** BUILD-LOG entry for what shipped → tick/prune TODO.md →
+update any active `LOG_`/`PLAN_` in `docs/plans/` → refresh PLAN.md's status header only if
+the roadmap moved → update DEPLOYMENT.md / CLAUDE.md only if their subject changed. Note
+what you changed (or that nothing needed it) at the end.
+
 ## Conventions
 
 - Keep the engine pure and tested; add unit tests for new decision logic.

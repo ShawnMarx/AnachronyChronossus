@@ -2,6 +2,48 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-08 — Chronossus playtest fixes (11 items)
+
+A batch of bug/flow/score-screen fixes from an iPad solo play. Details in
+`docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
+
+- **Bugs:** persist Paradox/Warp/Hypersync rolls across Undo (`ChronossusUi` gains
+  `warpRoll`/`paradoxRoll`/`hsRolledHex`); save-error UX with a Retry button.
+- **Rules/flow:** Paradox roll cap `min(Era−1, warpTilesOnTimeline)` + repeating
+  leads/ties loop; Hypersync starts on the 3 hexes (skips the intro); Recruit tells the
+  player to discard the Worker tile; Superproject max VP → 8.
+- **Score screen:** Superproject VP broken out from Building VP in scoring + VP pill;
+  side-by-side You-vs-Chronossus tally; share/save the result as a PNG via the Web Share
+  API (`src/game/shareScore.ts`), download fallback on desktop.
+- **Follow-ups (TODO):** on-device verification; mirror roll-persistence + save-retry to
+  the Chronobot view (its own snapshot system).
+
+## 2026-08 — Chronossus base underway (Part A parity + B1 tiles/Autoleap)
+
+Active plan: `docs/plans/PLAN_chronossus_base.md`. Base-game Chronossus only; opened to
+everyone on the landing page.
+
+- **Shared solo-bot core:** `SoloEngine` interface + registry (`engine/bots/soloEngine.ts`);
+  `flow.ts` routes through `engineFor(state.config.bot)`; Chronobot re-expressed as an
+  implementation. `chronossus?` slice on `GameState`.
+- **Chronossus engine:** `ChronossusState`, `EnergyPool` draw + power-up math,
+  `resolveAction` (all base actions + A/B action tiles + energy-core gain), **Autoleap**,
+  `resolveHypersyncAction`, passing, `scoreChronossus`. Unit-tested.
+- **Chronossus view:** `ChronossusGame.tsx` full Era loop on the shared `PhaseScreen`;
+  Phase 5 renders the real board with the shared `DetailPanel`. 4 command-marker routes
+  (`chronossusPaths.ts`), calibrate mode, board overlays.
+- **Part A parity:** extracted shared modules used by both views — `useUndoableGame` +
+  `undo.ts` (Chronossus undo/history/persistence), `HistoryPane`, `ReadyToBegin`,
+  `FirstPlayerPrompt`, `TurnTracker`, `DebugBar`, `useMediaQuery`, `BadgePopover`/
+  `ShapeIcon`, Simple Command View.
+
+## 2026-07-31 — Optional BGE login: My-history + admin stats + in-app rules
+
+See `docs/complete/20260731_AUTH_STATS_HISTORY_RULES_COMPLETED.md`.
+
+- Optional shared-BGE login (whole app works logged-out); server-backed My-history +
+  admin Overall-stats with BG Stats import/export; in-app GameBrain rules frame.
+
 ## 2026-07-28 — Full guided Era loop + landing page (Chronobot complete)
 
 Chronobot is feature-complete and live. Details in

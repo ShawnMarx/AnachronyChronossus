@@ -36,6 +36,15 @@ Rulebook: `…/reference/Rules/Anachrony-Chronobot-and-Chronossus-Solo-Opponents
   trackers, Time Travel / Warp / Paradox overlays. Boots into Phase 5 (dev harness).
 - **F7 landing** — Chronossus card playable when `isAdmin || isLocalRun`; `AppRoot` launches
   the view. (`chronossus.implemented` still `false` — flip when the game view is complete.)
+  Since opened to **everyone** (commit `4c515f3`); the landing card carries the Uploading bar.
+- **PART A** — action-stage parity + shared UI: **complete** (see A1–A6 below).
+- **B1 (action tiles + Autoleap + energy-core gain)** — A/B tile catalog, Autoleap flow
+  (engine + UI + history + heads-up label + Start-Your-Turn dialog), gaining Energy Cores,
+  and the Hypersync Action/tile flow all landed and unit-tested (`chronossus.test.ts`;
+  `board/chronossusTiles.ts`). Note: no standalone `engine/rules/chronossusActions.ts` —
+  tile effects live in `resolveAction`/`resolveHypersyncAction` + `chronossusTiles.ts`.
+- **Playtest fixes (2026-08-08)** — 11 bug/flow/score-screen fixes shipped; see
+  `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 
 Deliberate, keep-as-is differences from Chronobot: board positions, extra/modular action
 spaces, art assets, warm theme, the 4 independent command-marker routes, and the simpler
@@ -46,7 +55,7 @@ a module-selection stage).
 
 ---
 
-## PART A — Action-stage parity with the Chronobot + shared UI  *(current focus)*
+## PART A — Action-stage parity with the Chronobot + shared UI  *(✅ complete)*
 
 The Chronossus Action stage reused the pop-up but stubbed/omitted the turn-loop scaffold
 around it. Bring it to parity by **extracting shared modules** used by both views
@@ -121,17 +130,21 @@ around it. Bring it to parity by **extracting shared modules** used by both view
 
 ---
 
-## PART B — Remaining Chronossus base features
+## PART B — Remaining Chronossus base features  *(current focus)*
 
-### B1. Action tiles + Autoleap + gaining Energy Cores (F4 remainder)
-- [ ] Action-tile (Cxx A/B) resolution catalog (`engine/rules/chronossusActions.ts`) — the
-  A/B variants from appendix pp.19–20 that differ from the base catalog.
-- [ ] **Autoleap** — when a token moves onto a `!` space, resolve that tile's action then
-  advance one more (two actions in one turn). Engine + UI flow.
-- [ ] **Gaining Energy Cores** — actions that add 1 non-exhausted core to the pool at end of
-  action (never touch Exhausted cores this way).
-- [ ] Failed-Action discard nuance already handled in `resolveAction`; add tests for tiles/
-  autoleap/core-gain.
+B1 is done (above). Remaining: **B2 Solo Objectives**, **B3 real per-phase bodies**,
+**B4 module selection**, **B5 ship**.
+
+### B1. Action tiles + Autoleap + gaining Energy Cores (F4 remainder) — ✅ DONE
+- [x] Action-tile (Cxx A/B) resolution catalog — the A/B variants from appendix pp.19–20.
+  **Deviation:** no standalone `engine/rules/chronossusActions.ts`; tile effects live in
+  `resolveAction`/`resolveHypersyncAction` + `board/chronossusTiles.ts`.
+- [x] **Autoleap** — token onto a `!` space resolves the tile then advances one more (two
+  actions in one turn). Engine + UI (history logging, heads-up label, Start-Your-Turn
+  dialog, Hypersync-autoleap extra advance).
+- [x] **Gaining Energy Cores** — actions add 1 non-exhausted core to the pool (never touch
+  Exhausted cores this way).
+- [x] Tests for tiles / autoleap / core-gain (`chronossus.test.ts`).
 
 ### B2. Solo Objectives (F5 remainder)
 - [ ] Solo Objective definitions (Bronze/Silver/Gold, appendix pp.21–22) — reveal 3, shuffle.
