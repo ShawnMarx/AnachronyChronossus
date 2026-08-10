@@ -201,7 +201,7 @@ entirely — nothing to ask, nothing to track.**
   across a full game and that the engine is caller-driven (doesn't itself gate on
   `extraModules` — the UI decides when to prompt).
 
-### A2. Variable Anomalies — confirmed design, ready to implement
+### A2. Variable Anomalies — ✅ shipped 2026-08-10
 **Dependency:** the physical Fractures of Time **expansion box** (for its 16 Variable
 Anomaly tiles + Anomaly Remover tiles) but **not** the Fractures **module**/mechanics —
 confirmed 2026-08-10 by the user ("can be played with or without the main Fractures of Time
@@ -256,15 +256,29 @@ player-reported) rather than the app simulating a shuffled deck.
 - Fractures' Anomaly Remover Water-cost delta (−1 W vs. base) doesn't affect the app — it
   doesn't track Water.
 
-- [ ] Engine: `anomalyVps?: number[]` on `ChronossusState`; a `pickVariableAnomaly` helper
-  implementing the gain-selection rule; `scoreChronossus` sums it when present; `remove-
+- [x] Engine: `anomalyVps?: number[]` on `ChronossusState`; `resolveVariableAnomalyGain`
+  implements the gain-selection rule; `scoreChronossus` sums it when present; `remove-
   anomaly` resolution removes `Math.min(...anomalyVps)` when the list is present.
-- [ ] New Extra-Module flag — un-stub `variable-anomalies` in `EXTRA_MODULES`
-  (`ChronossusSetupFlow.tsx`); combines with any base mode per the rulebook.
-- [ ] UI: gain-Anomaly prompt asks for the 2 offer tiles' (VP, retrieve-eligible) each;
-  Anomalies board counter tooltip lists held VPs (buildings-tooltip pattern).
-- [ ] Unit tests (tile-selection rule: unique-eligible, both/neither-eligible tie-break,
-  removal-picks-largest-penalty) + playthrough variation.
+  `rollParadox` defers the actual gain when Variable Anomalies is active (needs the 2
+  offered tiles' data, unavailable at roll time) — reaching 3 Paradoxes just flags
+  `requiresInput: true` and resets the tracker; the base flat-counter path (Chronobot +
+  every other Chronossus game) is untouched, zero regression risk.
+- [x] New Extra-Module flag `EXTRA_MODULE_VARIABLE_ANOMALIES` — un-stubbed in
+  `EXTRA_MODULES` (`ChronossusSetupFlow.tsx`, same multi-select mechanism A1 added);
+  combines with any base mode. No difficulty sub-option (Solo Opponents p.18 has none for
+  this module, unlike Alternate Timelines).
+- [x] UI: `VariableAnomalyGainPrompt` (new modal, `.modal-overlay`/`.modal-card`) asks for
+  the 2 offer tiles' (VP preset buttons −2..−6, retrieve-eligible toggle) each, blocking
+  the Paradox phase's "Continue to Power Up" until resolved (rendered as a sibling overlay
+  rather than replacing `ParadoxPhaseBody`, so its internal roll-history/stopped state
+  isn't lost to a remount). Anomalies board counter tooltip lists held VPs — same
+  `buildingVps`-style pattern as buildings. `ParadoxPhaseBody`'s "Anomalies X/3" display
+  and the Remove-Anomaly gate text both shimmed to read `anomalyVps?.length ?? anomalies`.
+- [x] Unit tests (`chronossus.test.ts`: setup seeding, scoring, deferred-gain roll
+  behavior + 3-cap, all 4 gain-selection branches, Warp-tile retrieval incl. zero-Warp
+  edge case, removal-picks-largest-penalty, regression checks) + a playthrough variation
+  (`chronossusPlaythrough.test.ts`) confirming a full game correctly holds/scores tiles
+  by their individual VPs. 169 tests passing total.
 
 ---
 
@@ -310,9 +324,8 @@ mode/tile machinery. Ends with a playthrough variation (Part 1 seam).
 ## Recommended implementation order
 1. **Part 1** (test harness: T1 → T2 → T3) — guardrail first. ✅ done
 2. **Part 2 D0** (scoring seam), then **D1…D10** one at a time (feedback pause each). ✅ done
-3. **Part 3** — A1 (Alternate Timelines, ready to implement) → A2 (Variable Anomalies, needs
-   the open design questions answered first). ← next up
-4. **Part 4** (F-R → F1 → F2 → F3 → F4 → F5 → F6).
+3. **Part 3** — A1 (Alternate Timelines) → A2 (Variable Anomalies). ✅ done
+4. **Part 4** (F-R → F1 → F2 → F3 → F4 → F5 → F6). ← next up
 
 ## Open questions
 - **New idea (not a strict difficulty increase, deferred):** a *randomized* tile-arrangement

@@ -23,6 +23,7 @@ import {
   DIFFICULTY_FAILED_ACTION_VP,
   DIFFICULTY_ALT_TIMELINES_3VP,
   EXTRA_MODULE_ALTERNATE_TIMELINES,
+  EXTRA_MODULE_VARIABLE_ANOMALIES,
 } from './bots/chronossus';
 import type { GameConfig } from './types';
 
@@ -192,5 +193,42 @@ describe('resolveWarp — Alternate Timelines VP is caller-driven, not module-ga
       positiveSpacesForEra: (_era, placed) => (placed > 0 ? 1 : 0),
     });
     expect(score.duringGameVP).toBeGreaterThan(0);
+  });
+});
+
+describe('Chronossus full-game playthrough — Variable Anomalies extra module', () => {
+  const VARIABLE_ANOMALIES_CONFIG: GameConfig = {
+    ...BASE_CONFIG,
+    extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES],
+  };
+
+  it('gains/holds Variable Anomaly tiles across a full game, always picking the eligible one', () => {
+    const { state, score } = playChronossus({
+      config: VARIABLE_ANOMALIES_CONFIG,
+      // Every offer: only the first tile can retrieve a Warp tile — the rule always
+      // takes it regardless of its worse VP penalty.
+      variableAnomalyCandidates: () => [
+        { vp: -2, retrieveEligible: true },
+        { vp: -5, retrieveEligible: false },
+      ],
+    });
+    expect(state.finished).toBe(true);
+    expect(state.chronossus!.anomalyVps).toBeDefined();
+    expect(state.chronossus!.anomalyVps!.length).toBeLessThanOrEqual(3); // capped, same as base
+    expect(state.chronossus!.anomalyVps!.every((v) => v === -2)).toBe(true);
+    expect(score.anomalyVP).toBe(state.chronossus!.anomalyVps!.reduce((n, v) => n + v, 0));
+  });
+
+  it('scores held tiles individually, not the base flat ANOMALY_VP', () => {
+    const { state, score } = playChronossus({
+      config: VARIABLE_ANOMALIES_CONFIG,
+      variableAnomalyCandidates: () => [
+        { vp: -6, retrieveEligible: false },
+        { vp: -6, retrieveEligible: false },
+      ],
+    });
+    const heldCount = state.chronossus!.anomalyVps!.length;
+    expect(heldCount).toBeGreaterThan(0);
+    expect(score.anomalyVP).toBe(heldCount * -6); // worse than base game's flat -3 each
   });
 });

@@ -25,6 +25,7 @@ import type {
   ChronossusScore,
   EnergyDraw,
   HypersyncActionInput,
+  VariableAnomalyCandidate,
 } from './bots/chronossus';
 
 /** One Chronossus turn during Action Rounds: a base/tile Action or a Hypersync Action. */
@@ -92,6 +93,9 @@ export interface PlaythroughOptions {
   /** Alternate Timelines: positive-effect Warp spaces reported for a given Era's
    *  placed Warp tiles. Default: 0 (no-op unless the module variation overrides it). */
   positiveSpacesForEra?: (era: number, placed: number) => number;
+  /** Variable Anomalies: the 2 offered tiles reported whenever `rollParadox` defers a
+   *  gain (module active). Default: two -2 VP, non-retrieve-eligible tiles. */
+  variableAnomalyCandidates?: () => [VariableAnomalyCandidate, VariableAnomalyCandidate];
 }
 
 export interface PlaythroughResult {
@@ -107,6 +111,10 @@ function assertInvariants(state: GameState): void {
     throw new Error(`invariant: exosuitsAvailable out of range (${bot.exosuitsAvailable}/${bot.exosuitsTotal})`);
   }
   if (bot.anomalies < 0 || bot.anomalies > 3) throw new Error(`invariant: anomalies out of range (${bot.anomalies})`);
+  // Variable Anomalies: the held-VP list replaces the flat counter (which stays 0/unused).
+  if (bot.anomalyVps && (bot.anomalyVps.length < 0 || bot.anomalyVps.length > 3)) {
+    throw new Error(`invariant: anomalyVps out of range (${bot.anomalyVps.length})`);
+  }
   if (bot.paradoxes < 0 || bot.paradoxes > 2) throw new Error(`invariant: paradoxes out of range (${bot.paradoxes})`);
   if (bot.energyPool.energized < 0 || bot.energyPool.exhausted < 0) {
     throw new Error('invariant: negative Energy Pool');
@@ -158,6 +166,10 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     warpRollForEra = (era) => era % 3,
     paradoxRollCycle = [1],
     positiveSpacesForEra = () => 0,
+    variableAnomalyCandidates = () => [
+      { vp: -2, retrieveEligible: false },
+      { vp: -2, retrieveEligible: false },
+    ],
   } = opts;
 
   let state = setupChronossus(config);
@@ -180,6 +192,12 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
         const res = Chronossus.rollParadox(state, rolled);
         state = res.state;
         stop = res.stop;
+        // Variable Anomalies: rollParadox defers the actual gain — resolve it now
+        // with the injected 2-tile offer, same as the UI would after player input.
+        if (res.instructions.some((i) => i.id === 'paradox-anomaly-variable')) {
+          const [a, b] = variableAnomalyCandidates();
+          state = Chronossus.resolveVariableAnomalyGain(state, a, b);
+        }
       }
       state = Chronossus.endParadoxPhase(state);
       assertInvariants(state);

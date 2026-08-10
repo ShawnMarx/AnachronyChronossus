@@ -30,7 +30,10 @@ import {
   DIFFICULTY_FAILED_ACTION_VP,
   DIFFICULTY_RESEARCH_NEW_SHAPE,
   DIFFICULTY_ALT_TIMELINES_3VP,
+  EXTRA_MODULE_VARIABLE_ANOMALIES,
+  resolveVariableAnomalyGain,
   type EnergyDraw,
+  type VariableAnomalyCandidate,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
 import {
@@ -665,5 +668,152 @@ describe('researchShapeCandidates — D8 "Research takes a new Breakthrough shap
     bot.breakthroughs.triangle = 1;
     bot.breakthroughs.square = 1;
     expect(researchShapeCandidates(bot).sort()).toEqual(['square', 'triangle']);
+  });
+});
+
+describe('applyDifficultySetup — Variable Anomalies seeding', () => {
+  it('seeds anomalyVps: [] when the module is selected', () => {
+    const bot = emptyChronossusState();
+    const config = { ...CONFIG, extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES] };
+    const next = applyDifficultySetup(bot, config);
+    expect(next.anomalyVps).toEqual([]);
+  });
+
+  it('leaves anomalyVps undefined when the module is off', () => {
+    const bot = emptyChronossusState();
+    const next = applyDifficultySetup(bot, CONFIG);
+    expect(next.anomalyVps).toBeUndefined();
+  });
+});
+
+describe('scoreChronossus — Variable Anomalies scoring', () => {
+  it('sums held tile VPs instead of the flat ANOMALY_VP when anomalyVps is present', () => {
+    const bot = emptyChronossusState();
+    bot.anomalyVps = [-2, -5, -4];
+    bot.anomalies = 0; // unused/stale in this mode
+    const score = scoreChronossus(bot);
+    expect(score.anomalyVP).toBe(-11);
+  });
+
+  it('falls back to the flat counter when anomalyVps is absent (regression)', () => {
+    const bot = emptyChronossusState();
+    bot.anomalies = 2;
+    const score = scoreChronossus(bot);
+    expect(score.anomalyVP).toBe(-6); // 2 × ANOMALY_VP (-3)
+  });
+});
+
+describe('rollParadox — Variable Anomalies defers the gain', () => {
+  function variableAnomaliesState(overrides: Partial<GameState> = {}): GameState {
+    const s = chronossusState({ config: { ...CONFIG, extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES] }, ...overrides });
+    s.chronossus!.anomalyVps = [];
+    return s;
+  }
+
+  it('reaching 3 requires input and does NOT touch anomalyVps/warpTilesOnTimeline', () => {
+    const s = variableAnomaliesState();
+    s.chronossus!.paradoxes = 2;
+    s.chronossus!.warpTilesOnTimeline = 3;
+    const res = rollParadox(s, 1);
+    expect(res.gainedAnomaly).toBe(true);
+    expect(res.stop).toBe(true);
+    expect(res.state.chronossus!.anomalyVps).toEqual([]); // deferred
+    expect(res.state.chronossus!.warpTilesOnTimeline).toBe(3); // untouched
+    const instr = res.instructions.find((i) => i.id === 'paradox-anomaly-variable');
+    expect(instr).toBeDefined();
+    expect(instr!.requiresInput).toBe(true);
+  });
+
+  it('caps at 3 held Anomalies, same as the flat-counter base game', () => {
+    const s = variableAnomaliesState();
+    s.chronossus!.paradoxes = 2;
+    s.chronossus!.anomalyVps = [-2, -3, -4];
+    const res = rollParadox(s, 1);
+    expect(res.instructions.find((i) => i.id === 'paradox-capped')).toBeDefined();
+    expect(res.state.chronossus!.anomalyVps).toEqual([-2, -3, -4]); // unchanged
+  });
+
+  it('base games (no Variable Anomalies) are unaffected (regression)', () => {
+    const s = chronossusState({ config: CONFIG });
+    s.chronossus!.paradoxes = 2;
+    s.chronossus!.warpTilesOnTimeline = 2;
+    const res = rollParadox(s, 1);
+    expect(res.state.chronossus!.anomalies).toBe(1);
+    expect(res.state.chronossus!.warpTilesOnTimeline).toBe(1);
+    expect(res.state.chronossus!.anomalyVps).toBeUndefined();
+  });
+});
+
+describe('resolveVariableAnomalyGain — RECEIVING ANOMALIES rule', () => {
+  function stateWithWarp(warpTilesOnTimeline: number): GameState {
+    const s = chronossusState({ config: { ...CONFIG, extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES] } });
+    s.chronossus!.anomalyVps = [];
+    s.chronossus!.warpTilesOnTimeline = warpTilesOnTimeline;
+    return s;
+  }
+
+  it('takes the eligible tile when only one of the two is retrieve-eligible', () => {
+    const a: VariableAnomalyCandidate = { vp: -5, retrieveEligible: true };
+    const b: VariableAnomalyCandidate = { vp: -2, retrieveEligible: false };
+    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
+    expect(next.chronossus!.anomalyVps).toEqual([-5]); // eligible one taken despite worse VP
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(1); // retrieved
+  });
+
+  it('takes the smaller penalty when both are eligible', () => {
+    const a: VariableAnomalyCandidate = { vp: -5, retrieveEligible: true };
+    const b: VariableAnomalyCandidate = { vp: -2, retrieveEligible: true };
+    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
+    expect(next.chronossus!.anomalyVps).toEqual([-2]);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(1); // still retrieves (chosen tile is eligible)
+  });
+
+  it('takes the smaller penalty when neither is eligible', () => {
+    const a: VariableAnomalyCandidate = { vp: -6, retrieveEligible: false };
+    const b: VariableAnomalyCandidate = { vp: -3, retrieveEligible: false };
+    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
+    expect(next.chronossus!.anomalyVps).toEqual([-3]);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(2); // no retrieval
+  });
+
+  it('does not retrieve below zero Warp tiles even when eligible', () => {
+    const a: VariableAnomalyCandidate = { vp: -2, retrieveEligible: true };
+    const b: VariableAnomalyCandidate = { vp: -3, retrieveEligible: false };
+    const next = resolveVariableAnomalyGain(stateWithWarp(0), a, b);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(0);
+  });
+
+  it('appends to existing held anomalies rather than replacing them', () => {
+    const s = stateWithWarp(0);
+    s.chronossus!.anomalyVps = [-4];
+    const next = resolveVariableAnomalyGain(
+      s,
+      { vp: -2, retrieveEligible: false },
+      { vp: -3, retrieveEligible: false },
+    );
+    expect(next.chronossus!.anomalyVps).toEqual([-4, -2]);
+  });
+});
+
+describe('resolveAction remove-anomaly — Variable Anomalies removal rule', () => {
+  function withHeldAnomalies(vps: number[]): GameState {
+    const s = chronossusState({
+      phase: 'actions',
+      config: { ...CONFIG, extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES] },
+    });
+    s.chronossus!.exosuitsAvailable = 4;
+    s.chronossus!.anomalyVps = vps;
+    s.chronossus!.resources.titanium = 2; // enough to pay the removal cost
+    return s;
+  }
+
+  it('always removes the largest penalty (most negative), regardless of order', () => {
+    const { state } = resolveAction(withHeldAnomalies([-2, -6, -4]), { actionId: 'remove-anomaly' });
+    expect(state.chronossus!.anomalyVps).toEqual([-2, -4]); // -6 removed
+  });
+
+  it('fails when there are no held Anomalies (Variable Anomalies mode)', () => {
+    const { state } = resolveAction(withHeldAnomalies([]), { actionId: 'remove-anomaly' });
+    expect(state.chronossus!.vp).toBe(1); // Failed Action, base +1 VP
   });
 });

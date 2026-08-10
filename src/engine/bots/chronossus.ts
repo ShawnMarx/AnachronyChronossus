@@ -54,17 +54,27 @@ export const DIFFICULTY_EXTRA_ENERGY = 'chronossus-extra-energy';
  *  Solo Objectives as one player-entered tally field regardless of count. */
 export const DIFFICULTY_FEWER_OBJECTIVES = 'chronossus-fewer-objectives';
 
+/** Variable Anomalies extra module — can combine with any base mode; standalone of
+ *  the main Fractures of Time module (needs only the physical expansion box). */
+export const EXTRA_MODULE_VARIABLE_ANOMALIES = 'variable-anomalies';
+
 /**
- * Apply setup-time difficulty adjustments to a fresh Chronossus slice — currently
- * just D3's extra starting Energy Cores (added energized). Called once when a game
- * begins, before Era 1.
+ * Apply setup-time adjustments to a fresh Chronossus slice — D3's extra starting
+ * Energy Cores (added energized), and Variable Anomalies seeding its held-Anomaly
+ * VP list (`anomalyVps: []`, distinguishing "using this module, 0 held" from
+ * `undefined`/not using it). Called once when a game begins, before Era 1.
  */
 export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): ChronossusState {
   const extra = config.difficulty.includes(DIFFICULTY_EXTRA_ENERGY)
     ? (config.difficultyValues?.[DIFFICULTY_EXTRA_ENERGY] ?? 0)
     : 0;
-  if (extra === 0) return bot;
-  return { ...bot, energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra } };
+  const variableAnomalies = config.extraModules?.includes(EXTRA_MODULE_VARIABLE_ANOMALIES) ?? false;
+  if (extra === 0 && !variableAnomalies) return bot;
+  return {
+    ...bot,
+    energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra },
+    ...(variableAnomalies ? { anomalyVps: [] } : {}),
+  };
 }
 
 // --------------------------------------------------------------------------
@@ -404,15 +414,28 @@ export function resolveAction(
 
     case 'remove-anomaly': {
       const discards = chooseRemoveAnomalyDiscards(bot);
-      if (bot.anomalies < 1 || !discards) {
-        failCantPerform(bot.anomalies < 1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend');
+      const variableAnomalies = bot.anomalyVps != null;
+      const anomalyCount = variableAnomalies ? bot.anomalyVps!.length : bot.anomalies;
+      if (anomalyCount < 1 || !discards) {
+        failCantPerform(anomalyCount < 1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend');
       } else {
         for (const r of discards) bot.resources[r] -= 1;
-        bot.anomalies -= 1;
         placeExosuit();
+        // Variable Anomalies: REMOVING ANOMALIES — always the largest VP penalty
+        // (most negative); no player input needed, the engine already knows every
+        // held tile's value.
+        let removedText = 'remove 1 Anomaly';
+        if (variableAnomalies) {
+          const worst = Math.min(...bot.anomalyVps!);
+          const idx = bot.anomalyVps!.indexOf(worst);
+          bot.anomalyVps = [...bot.anomalyVps!.slice(0, idx), ...bot.anomalyVps!.slice(idx + 1)];
+          removedText = `remove its largest-penalty Anomaly (${worst} VP)`;
+        } else {
+          bot.anomalies -= 1;
+        }
         instr.push({
           id: `ra-${n}`,
-          text: `Discard ${describeCubes(discards)} from the Chronossus and remove 1 Anomaly.`,
+          text: `Discard ${describeCubes(discards)} from the Chronossus and ${removedText}.`,
           detail: 'Discards the Resources it has most of; ties Titanium > Gold > Uranium > Neutronium (1 Neutronium = 2 cubes).',
         });
       }
@@ -863,7 +886,11 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
   const superprojectVP = bot.superprojectVps.reduce((n, v) => n + v, 0);
   const buildingVP = bot.buildingVp - superprojectVP;
   const tokenVP = bot.vp - bot.buildingVp;
-  const anomalyVP = bot.anomalies * ANOMALY_VP;
+  // Variable Anomalies (extra module): sum the held tiles' individual VP penalties
+  // instead of the flat per-Anomaly ANOMALY_VP.
+  const anomalyVP = bot.anomalyVps
+    ? bot.anomalyVps.reduce((n, v) => n + v, 0)
+    : bot.anomalies * ANOMALY_VP;
   const leftoverEnergyVP = difficulty?.includes(DIFFICULTY_LEFTOVER_ENERGY_VP)
     ? bot.energyPool.energized
     : 0;
@@ -889,6 +916,12 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
  * Resolve one Paradox-die roll during the Paradox phase — same rules as the
  * Chronobot: add the roll to the tracker; on reaching 3 it gains 1 Anomaly (−3 VP),
  * removes 1 Warp tile (if any), resets the tracker, and stops rolling.
+ *
+ * Variable Anomalies (extra module, `bot.anomalyVps != null`): gaining an Anomaly
+ * needs the 2 offered tiles' data from the player, which isn't available at roll
+ * time — this only flags `gainedAnomaly`/`stop` and resets the tracker; it does NOT
+ * touch `anomalyVps`/`warpTilesOnTimeline`. The caller must follow up with
+ * `resolveVariableAnomalyGain` once the player reports the 2 tiles.
  */
 export function rollParadox(state: GameState, rolled: number): ParadoxRollResult {
   if (!state.chronossus) throw new Error('rollParadox: no Chronossus state');
@@ -898,16 +931,25 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
   let total = bot.paradoxes + gain;
   let gainedAnomaly = false;
   let stop = false;
+  const variableAnomalies = bot.anomalyVps != null;
+  const anomalyCount = variableAnomalies ? bot.anomalyVps!.length : bot.anomalies;
 
   if (total >= 3) {
     gainedAnomaly = true;
     stop = true;
     total -= 3;
     bot.paradoxes = total;
-    if (bot.anomalies >= 3) {
+    if (anomalyCount >= 3) {
       instructions.push({
         id: 'paradox-capped',
         text: 'The Chronossus already has 3 Anomalies — it gains no Anomaly and removes no Warp tile. It stops rolling.',
+      });
+    } else if (variableAnomalies) {
+      instructions.push({
+        id: 'paradox-anomaly-variable',
+        text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains an Anomaly and stops rolling.`,
+        detail: 'Reveal the 2 visible Variable Anomaly tiles and resolve which one the Chronossus takes.',
+        requiresInput: true,
       });
     } else {
       bot.anomalies += 1;
@@ -940,6 +982,61 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
     log: [...state.log, `Paradox roll (Era ${state.era}): +${gain} → tracker ${bot.paradoxes}.`],
   };
   return { state: next, instructions, paradoxes: bot.paradoxes, gainedAnomaly, stop };
+}
+
+/** One of the 2 Variable Anomaly tiles offered when the Chronossus gains an Anomaly —
+ *  the player reads these straight off the physical tiles (no tile-code catalog). */
+export interface VariableAnomalyCandidate {
+  /** The tile's printed VP penalty (negative). */
+  vp: number;
+  /** Whether this tile lets the Chronossus retrieve a Warp tile right now (checked
+   *  against the tile's Before/After Impact icon and the current Impact status). */
+  retrieveEligible: boolean;
+}
+
+/**
+ * Variable Anomalies (extra module) — RECEIVING ANOMALIES: the Chronossus takes
+ * whichever of the 2 offered tiles lets it retrieve a Warp tile; if both or neither
+ * do, it takes the one with the smaller VP penalty (closer to 0). Call this after
+ * `rollParadox` signals `gainedAnomaly` with `bot.anomalyVps` present, once the
+ * player has reported the 2 tiles.
+ */
+export function resolveVariableAnomalyGain(
+  state: GameState,
+  a: VariableAnomalyCandidate,
+  b: VariableAnomalyCandidate,
+): GameState {
+  if (!state.chronossus) throw new Error('resolveVariableAnomalyGain: no Chronossus state');
+  const chosen =
+    a.retrieveEligible === b.retrieveEligible ? (a.vp >= b.vp ? a : b) : a.retrieveEligible ? a : b;
+  const bot = {
+    ...state.chronossus,
+    anomalyVps: [...(state.chronossus.anomalyVps ?? []), chosen.vp],
+  };
+  const removed = chosen.retrieveEligible && bot.warpTilesOnTimeline > 0;
+  if (removed) bot.warpTilesOnTimeline -= 1;
+  const instructions: Instruction[] = [
+    {
+      id: 'variable-anomaly-gain',
+      text:
+        `The Chronossus takes the ${chosen.vp} VP Anomaly` +
+        (chosen.retrieveEligible ? ' and retrieves a Warp tile.' : '.'),
+      detail: removed
+        ? 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied).'
+        : chosen.retrieveEligible
+          ? 'It has no Warp tiles on the Timeline to remove.'
+          : undefined,
+    },
+  ];
+  return {
+    ...state,
+    chronossus: bot,
+    currentInstructions: instructions,
+    log: [
+      ...state.log,
+      `Variable Anomaly gained (${chosen.vp} VP)${removed ? ', retrieved a Warp tile' : ''}.`,
+    ],
+  };
 }
 
 /** Advance out of the Paradox phase to Power Up (call after rolling resolves). */

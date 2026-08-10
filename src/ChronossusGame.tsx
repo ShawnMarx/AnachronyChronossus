@@ -381,7 +381,12 @@ function counterInfo(bot: ChronossusState, c: BoardCounter): string {
     case 'mech':
       return `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
     case 'anomaly':
-      return `${c.label}: ${count} (max 3)`;
+      // Variable Anomalies: list each held tile's VP, same pattern as buildings.
+      return bot.anomalyVps
+        ? bot.anomalyVps.length
+          ? `${c.label} ×${count} — VP: ${bot.anomalyVps.join(', ')} (max 3)`
+          : `${c.label}: 0 (max 3)`
+        : `${c.label}: ${count} (max 3)`;
     case 'neutronium':
     case 'uranium':
     case 'gold':
@@ -398,7 +403,7 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
     case 'superproject':
       return bot.superprojects;
     case 'anomaly':
-      return bot.anomalies;
+      return bot.anomalyVps?.length ?? bot.anomalies;
     case 'mech':
       return bot.exosuitsAvailable;
     case 'breakthrough':
@@ -549,6 +554,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Alternate Timelines: Warp tiles placed this phase, awaiting the player's
   // positive-effect-space count before the Warp phase actually commits.
   const [altTimelinesPending, setAltTimelinesPending] = useState<number | null>(null);
+  // Variable Anomalies: awaiting the player's report of the 2 offered tiles.
+  const [variableAnomalyPending, setVariableAnomalyPending] = useState(false);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
 
   // Tapped tracker-badge popover (like the Chronobot's board tooltips).
@@ -1252,11 +1259,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         breakthroughs={bot.breakthroughs}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
+          const anomalyCount = bot.anomalyVps?.length ?? bot.anomalies;
           return {
-            canRemove: bot.anomalies >= 1 && discards != null,
+            canRemove: anomalyCount >= 1 && discards != null,
             discards: discards ? describeCubes(discards) : '',
             reason:
-              bot.anomalies < 1
+              anomalyCount < 1
                 ? 'it has no Anomaly to remove'
                 : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
           };
@@ -1320,14 +1328,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     );
   };
   // Paradox phase (Era 2+): roll the Paradox die for the Chronossus and commit
-  // each roll — same logic as the Chronobot's rollBotParadox.
+  // each roll — same logic as the Chronobot's rollBotParadox. Variable Anomalies:
+  // when rollParadox defers the gain (needs the 2 offered tiles' data), open the
+  // gain-input prompt instead of showing a resolved Anomaly effect.
   const rollBotParadox = (rolled: number) => {
     const res = Chronossus.rollParadox(state, rolled);
     const pre = state.chronossus!;
     const post = res.state.chronossus!;
+    const needsVariableAnomalyInput = res.instructions.some((i) => i.id === 'paradox-anomaly-variable');
     const effects: string[] = [];
     if (post.paradoxes !== pre.paradoxes) effects.push(`Paradox tracker → ${post.paradoxes}/3`);
     if (post.anomalies > pre.anomalies) effects.push('Gained 1 Anomaly (−3 VP)');
+    if (needsVariableAnomalyInput) effects.push('Gained an Anomaly — resolve which Variable Anomaly tile');
     if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline)
       effects.push('Warp tile removed from the Timeline');
     // Store the rolled value on the entry (die) so Undo can re-seed the same roll
@@ -1339,7 +1351,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       effects,
       rolled,
     );
+    if (needsVariableAnomalyInput) setVariableAnomalyPending(true);
     return res;
+  };
+  // Variable Anomalies: the player reports the 2 offered tiles' VP + retrieve-
+  // eligibility; the engine picks per the rule and applies it.
+  const finishVariableAnomalyGain = (
+    a: Chronossus.VariableAnomalyCandidate,
+    b: Chronossus.VariableAnomalyCandidate,
+  ) => {
+    const next = Chronossus.resolveVariableAnomalyGain(state, a, b);
+    const vps = next.chronossus!.anomalyVps!;
+    commit(next, ui, `Era ${state.era} · Variable Anomaly gained`, [
+      `Anomaly VP: ${vps[vps.length - 1]}`,
+    ]);
+    setVariableAnomalyPending(false);
   };
   // Roll the Warp-phase Paradox die once and stash it in the ui slice so backing to
   // the Warp phase (Undo) re-shows the same roll instead of re-rolling (#10).
@@ -2478,7 +2504,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       body = (
         <ParadoxPhaseBody
           state={state}
-          bot={bot}
+          // Variable Anomalies: anomalyVps replaces the flat counter, which stays 0
+          // in those games — shim the "Anomalies X/3" display to read the real count.
+          bot={{ ...bot, anomalies: bot.anomalyVps?.length ?? bot.anomalies }}
           meta={meta!}
           onRoll={rollBotParadox}
           onAdvance={advanceParadox}
@@ -2509,6 +2537,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onCancel={() => setShowFirstPlayer(false)}
         />
       )}
+      {variableAnomalyPending && <VariableAnomalyGainPrompt onConfirm={finishVariableAnomalyGain} />}
     </>
   );
 }
@@ -2907,6 +2936,98 @@ function HypersyncDialog({
             {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Variable Anomalies: the Chronossus gained an Anomaly (Paradox hit 3) but which
+// tile it takes depends on 2 offered tiles the player reports by hand (no tile-code
+// catalog — VP penalty + whether it lets it retrieve a Warp tile right now).
+const VARIABLE_ANOMALY_VP_OPTIONS = [-2, -3, -4, -5, -6];
+function VariableAnomalyCandidateFields({
+  label,
+  vp,
+  onPickVp,
+  eligible,
+  onToggleEligible,
+}: {
+  label: string;
+  vp: number | null;
+  onPickVp: (v: number) => void;
+  eligible: boolean;
+  onToggleEligible: () => void;
+}) {
+  return (
+    <div className="va-candidate">
+      <span className="va-candidate-label">{label}</span>
+      <div className="difficulty-sub-values">
+        {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
+          <button
+            key={v}
+            type="button"
+            className={`difficulty-sub-value ${vp === v ? 'on' : ''}`}
+            onClick={() => onPickVp(v)}
+          >
+            {v}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className={`tile-flip-toggle ${eligible ? 'on' : ''}`}
+        aria-pressed={eligible}
+        onClick={onToggleEligible}
+      >
+        {eligible ? '✓ Retrieves a Warp tile' : 'No Warp-tile retrieval'}
+      </button>
+    </div>
+  );
+}
+function VariableAnomalyGainPrompt({
+  onConfirm,
+}: {
+  onConfirm: (a: Chronossus.VariableAnomalyCandidate, b: Chronossus.VariableAnomalyCandidate) => void;
+}) {
+  const [aVp, setAVp] = useState<number | null>(null);
+  const [aEligible, setAEligible] = useState(false);
+  const [bVp, setBVp] = useState<number | null>(null);
+  const [bEligible, setBEligible] = useState(false);
+  const canConfirm = aVp != null && bVp != null;
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <h3>Variable Anomaly — gaining an Anomaly</h3>
+        <p className="modal-note">
+          Reveal the 2 visible Variable Anomaly tiles. For each, enter its printed VP
+          penalty and whether it lets the Chronossus retrieve a Warp tile right now
+          (check its Before/After Impact icon against the current Impact status).
+        </p>
+        <VariableAnomalyCandidateFields
+          label="Tile A"
+          vp={aVp}
+          onPickVp={setAVp}
+          eligible={aEligible}
+          onToggleEligible={() => setAEligible((e) => !e)}
+        />
+        <VariableAnomalyCandidateFields
+          label="Tile B"
+          vp={bVp}
+          onPickVp={setBVp}
+          eligible={bEligible}
+          onToggleEligible={() => setBEligible((e) => !e)}
+        />
+        <div className="modal-actions">
+          <button
+            className="phase-primary"
+            disabled={!canConfirm}
+            onClick={() =>
+              onConfirm({ vp: aVp!, retrieveEligible: aEligible }, { vp: bVp!, retrieveEligible: bEligible })
+            }
+          >
+            ▶ Confirm
+          </button>
+        </div>
       </div>
     </div>
   );

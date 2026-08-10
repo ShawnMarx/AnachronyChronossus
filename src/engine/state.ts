@@ -148,6 +148,14 @@ export interface ChronossusState {
    * every other mode.
    */
   hypersyncTiles: number[];
+  /**
+   * Variable Anomalies extra module only: the VP penalty of each Anomaly currently
+   * held (negative numbers), replacing the flat `anomalies` counter/`ANOMALY_VP`
+   * for games with that module — `scoreChronossus` sums this instead when present.
+   * `undefined` for every other game (the flat `anomalies` counter is authoritative
+   * then); seeded to `[]` at setup when the module is selected.
+   */
+  anomalyVps?: number[];
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */

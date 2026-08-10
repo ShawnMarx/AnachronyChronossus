@@ -61,7 +61,7 @@ interface ExtraModuleConfig {
   available: boolean;
 }
 const EXTRA_MODULES: ExtraModuleConfig[] = [
-  { id: 'variable-anomalies', label: 'Variable Anomalies', available: true },
+  { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, label: 'Variable Anomalies', available: true },
   { id: 'quantum-loops', label: 'Quantum Loops', available: false },
   { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, label: 'Alternate Timelines', available: true },
 ];
