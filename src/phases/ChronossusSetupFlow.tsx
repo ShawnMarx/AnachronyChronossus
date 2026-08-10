@@ -205,14 +205,10 @@ export default function ChronossusSetupFlow({
 
   const blockWorldCouncil = difficulty.has(DIFFICULTY_WORLD_COUNCIL);
   const flipTiles = difficulty.has(DIFFICULTY_TILES_B_SIDE);
-  const swapTiles = difficulty.has(DIFFICULTY_SWAP_TILES);
   const fewerObjectives = difficulty.has(Chronossus.DIFFICULTY_FEWER_OBJECTIVES);
   const objectiveCount = fewerObjectives
     ? (difficultyValues[Chronossus.DIFFICULTY_FEWER_OBJECTIVES] ?? 0)
     : 3;
-  const extraEnergy = difficulty.has(Chronossus.DIFFICULTY_EXTRA_ENERGY)
-    ? (difficultyValues[Chronossus.DIFFICULTY_EXTRA_ENERGY] ?? 0)
-    : 0;
   const modeSlots = getMode(moduleId, [...difficulty]).slots;
 
   const toggleTileSide = (family: string) =>
@@ -539,29 +535,6 @@ export default function ChronossusSetupFlow({
                     <li>
                       <b>Cover the right World Council space</b> with a Hex Unavailable
                       tile (difficulty option selected).
-                    </li>
-                  )}
-                  {flipTiles && Object.keys(tileSides).length > 0 && (
-                    <li>
-                      <b>Flip to the B side</b> (difficulty):{' '}
-                      {modeSlots
-                        .filter((s) => tileSides[s.family])
-                        .map((s) => `${s.family}B (${CHRONOSSUS_TILES[`${s.family}B`]?.name})`)
-                        .join(', ')}
-                      . Leave the rest on their A side.
-                    </li>
-                  )}
-                  {swapTiles && (
-                    <li>
-                      <b>Swap Action tiles between spaces</b> (difficulty option selected):
-                      place Slot III's tile in Slot I, and Slot I's tile in Slot III.
-                    </li>
-                  )}
-                  {extraEnergy > 0 && (
-                    <li>
-                      <b>Extra starting Energy Cores</b> (difficulty): add {extraEnergy}{' '}
-                      extra Energy Core token{extraEnergy === 1 ? '' : 's'} to the Energy
-                      Pool container (on top of the usual 5 + 5).
                     </li>
                   )}
                 </ul>
