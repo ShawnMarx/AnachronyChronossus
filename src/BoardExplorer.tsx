@@ -177,7 +177,11 @@ export function summarizeTurn(
   const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
 
   if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('Exosuit placed');
-  if (hasId('fail')) out.push('Failed action (+1 VP)');
+  // The VP granted for a Failed Action is normally +1, but the Chronossus's
+  // "Failed Actions score VP" difficulty replaces that with +2 — read the actual
+  // delta rather than hardcoding +1, so this line never contradicts the turn's
+  // own VP total.
+  if (hasId('fail')) out.push(`Failed action (+${post.vp - pre.vp} VP)`);
 
   (['factory', 'lab', 'powerplant', 'support'] as const).forEach((t) => {
     if (post.buildings[t] > pre.buildings[t]) {
@@ -3328,6 +3332,7 @@ export function DetailPanel({
   flow = false,
   botName = 'Chronobot',
   startLabel = '▶ Start Your Turn',
+  researchNewShape = false,
 }: {
   hotspot: Hotspot;
   readOnly: boolean;
@@ -3359,6 +3364,10 @@ export function DetailPanel({
   /** Commit-button label — set to "Advance to Autoleap Action" when the marker's next
    *  step lands on an Autoleap tile (Chronossus). Defaults to "▶ Start Your Turn". */
   startLabel?: string;
+  /** Chronossus "Research takes a new Breakthrough shape" difficulty: the rolled shape
+   *  was forced to one the bot doesn't already have (or has the fewest of), not a free
+   *  roll. Changes the Research step's copy; no-op (default) for the Chronobot. */
+  researchNewShape?: boolean;
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
@@ -3573,8 +3582,17 @@ export function DetailPanel({
         {pending === 'research' && rolledShape && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              The shape die rolled <b>{rolledShape}</b> — the {botName} keeps a{' '}
-              <b>{rolledShape}</b> Breakthrough.
+              {researchNewShape ? (
+                <>
+                  Difficulty: the {botName} takes a Breakthrough shape it doesn't already
+                  have (or has the fewest of) — a <b>{rolledShape}</b> Breakthrough.
+                </>
+              ) : (
+                <>
+                  The shape die rolled <b>{rolledShape}</b> — the {botName} keeps a{' '}
+                  <b>{rolledShape}</b> Breakthrough.
+                </>
+              )}
             </p>
             <div className="shape-roll">
               <ShapeIcon shape={rolledShape} size={52} />

@@ -105,3 +105,17 @@ export function slotAtPos(mode: ChronossusMode, posKey: string): ModeSlot | unde
 export function slotCovering(mode: ChronossusMode, action: CoveredAction): ModeSlot | undefined {
   return mode.slots.find((s) => s.covers === action);
 }
+
+/**
+ * Whether `modeId`'s own setup rules already require covering the right World
+ * Council space with a Hex Unavailable tile (Hypersync's 2-player setup note;
+ * Guardians of the Council — not yet implemented — has the same requirement per
+ * its rulebook). True for any mode id built from Hypersync or Guardians, including
+ * combos (e.g. 'guardians+hypersync', 'fractures+hypersync'). When true, the
+ * "Cover the right World Council space" difficulty option (D9) isn't a real choice
+ * for that mode — it's mandatory setup, not an optional difficulty increase — so
+ * the Setup flow hides the checkbox and states it as a fixed requirement instead.
+ */
+export function worldCouncilMandatory(modeId: string | undefined): boolean {
+  return !!modeId && (modeId.includes('hypersync') || modeId.includes('guardians'));
+}

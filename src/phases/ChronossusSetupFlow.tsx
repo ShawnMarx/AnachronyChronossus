@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
-import { getMode, DIFFICULTY_SWAP_TILES } from '../board/chronossusModes';
+import { getMode, DIFFICULTY_SWAP_TILES, worldCouncilMandatory } from '../board/chronossusModes';
 import { Chronossus } from '../engine';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
@@ -203,6 +203,10 @@ export default function ChronossusSetupFlow({
   // Chosen sub-selector value per flag (D3 extra energy, D6 fewer objectives).
   const [difficultyValues, setDifficultyValues] = useState<Record<string, number>>({});
 
+  // Hypersync/Guardians (and any combo built from them) require covering the World
+  // Council space as part of their OWN setup rules — not an optional difficulty
+  // increase there, so D9 isn't offered as a choice for those modes.
+  const mandatoryWorldCouncil = worldCouncilMandatory(moduleId);
   const blockWorldCouncil = difficulty.has(DIFFICULTY_WORLD_COUNCIL);
   const flipTiles = difficulty.has(DIFFICULTY_TILES_B_SIDE);
   const fewerObjectives = difficulty.has(Chronossus.DIFFICULTY_FEWER_OBJECTIVES);
@@ -354,7 +358,9 @@ export default function ChronossusSetupFlow({
                 Chronossus, or play with none for the standard game.
               </p>
               <div className="difficulty-list">
-                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])].map((o) => {
+                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])]
+                  .filter((o) => !(mandatoryWorldCouncil && o.flag === DIFFICULTY_WORLD_COUNCIL))
+                  .map((o) => {
                     const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
                     const on = difficulty.has(o.flag);
                     return (
@@ -531,10 +537,10 @@ export default function ChronossusSetupFlow({
                     You may still choose to use either the “A” or the “B” side of your
                     Player board.
                   </li>
-                  {blockWorldCouncil && (
+                  {(blockWorldCouncil || mandatoryWorldCouncil) && (
                     <li>
                       <b>Cover the right World Council space</b> with a Hex Unavailable
-                      tile (difficulty option selected).
+                      tile{mandatoryWorldCouncil ? ' (required for this mode).' : ' (difficulty option selected).'}
                     </li>
                   )}
                 </ul>

@@ -624,6 +624,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const tileSides = state.config.tileSides;
   const hypersyncMode = mode.slots.some((s) => tileEffect(`${s.family}A`).hypersync === true);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
+  // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
+  // every pre-commit "Failed Action" button label agrees with what actually resolves.
+  const failedActionVP = state.config.difficulty?.includes(Chronossus.DIFFICULTY_FAILED_ACTION_VP)
+    ? 2
+    : 1;
   // The live Hypersync tile code (C12/C13 + side) triggered at a given board spot,
   // or null when this mode has no Hypersync tile there.
   const hypersyncCodeAtSlot = (posKey: string): string | null => {
@@ -1046,7 +1051,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         setShowHypersyncTilePrompt(true);
         return;
       }
-      resolve(active, { hypersyncNoTile: true }); // no tile available → Failed +1 VP
+      resolve(active, { hypersyncNoTile: true }); // no tile available → Failed Action
       return;
     }
     resolve(active, { cannotPlace: true });
@@ -1237,6 +1242,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         selectedResources={selectedResources}
         selectedWorker={selectedWorker}
         rolledShape={rolledShape}
+        researchNewShape={state.config.difficulty?.includes(Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE) ?? false}
         breakthroughs={bot.breakthroughs}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
@@ -2084,6 +2090,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   bot={bot}
                   era={state.era}
                   targeted={hypersyncTargeted}
+                  failVP={failedActionVP}
                   readOnly={pendingHypersync.readOnly}
                   panel={CHRONOSSUS_PANEL}
                   rolledHex={ui.hsRolledHex}
@@ -2587,6 +2594,7 @@ function HypersyncDialog({
   bot,
   era,
   targeted,
+  failVP,
   readOnly = false,
   panel,
   rolledHex,
@@ -2599,6 +2607,8 @@ function HypersyncDialog({
   bot: ChronossusState;
   era: number;
   targeted: boolean;
+  /** VP a Failed Action grants here (2 with the D7 difficulty active, else 1). */
+  failVP: number;
   readOnly?: boolean;
   panel: [number, number, number, number];
   /** "Take Turn" (default) or "Advance to Autoleap Action" when the next step autoleaps. */
@@ -2728,7 +2738,7 @@ function HypersyncDialog({
                     canTimeTravel ? setStep('timetravel') : onResolve({ code, outcome: 'failed' })
                   }
                 >
-                  {canTimeTravel ? '▶ Go to Time Travel' : '▶ Failed Action (+1 VP)'}
+                  {canTimeTravel ? '▶ Go to Time Travel' : `▶ Failed Action (+${failVP} VP)`}
                 </button>
               </>
             )}
@@ -2766,7 +2776,7 @@ function HypersyncDialog({
               {available.length === 0
                 ? canTimeTravel
                   ? '▶ Go to Time Travel'
-                  : '▶ Failed Action (+1 VP)'
+                  : `▶ Failed Action (+${failVP} VP)`
                 : '▶ Confirm Available Hypersync space'}
             </button>
             <HypersyncRules tile={tile} code={code} startOpen={false} />

@@ -291,6 +291,7 @@ export function resolveAction(
   const instr: Instruction[] = [];
   const n = bot.totalActions;
   const failVP = failedActionVP(state.config.difficulty);
+  const researchNewShape = state.config.difficulty.includes(DIFFICULTY_RESEARCH_NEW_SHAPE);
 
   instr.push({
     id: `turn-${n}`,
@@ -362,7 +363,7 @@ export function resolveAction(
       break;
 
     case 'research':
-      resolveResearch(bot, instr, input.shape, n);
+      resolveResearch(bot, instr, input.shape, n, researchNewShape);
       placeExosuit();
       break;
 
@@ -379,7 +380,7 @@ export function resolveAction(
         placeExosuit();
       } else {
         instr.push({ id: `rgr-res-${n}`, text: 'No Genius available — perform a Research action instead.' });
-        resolveResearch(bot, instr, input.shape, n);
+        resolveResearch(bot, instr, input.shape, n, researchNewShape);
         placeExosuit();
       }
       break;
@@ -527,10 +528,20 @@ export function researchShapeCandidates(bot: ChronossusState): BreakthroughShape
   return BREAKTHROUGH_SHAPES.filter((s) => bot.breakthroughs[s] === min);
 }
 
-function resolveResearch(bot: ChronossusState, instr: Instruction[], shape: BreakthroughShape | undefined, n: number): void {
+function resolveResearch(
+  bot: ChronossusState,
+  instr: Instruction[],
+  shape: BreakthroughShape | undefined,
+  n: number,
+  newShapeDifficulty = false,
+): void {
   if (shape) {
     bot.breakthroughs[shape] += 1;
-    instr.push({ id: `res-${n}`, text: `Research: the shape die shows ${shape} — give the Chronossus any Breakthrough of that shape.` });
+    const text = newShapeDifficulty
+      ? `Research (difficulty): the Chronossus takes a Breakthrough shape it doesn't already ` +
+        `have (or has the fewest of) — give it any Breakthrough of the ${shape} shape.`
+      : `Research: the shape die shows ${shape} — give the Chronossus any Breakthrough of that shape.`;
+    instr.push({ id: `res-${n}`, text });
   } else {
     instr.push({ id: `res-${n}`, text: 'Research: roll the shape die and give the Chronossus any Breakthrough of the rolled shape.', requiresInput: true });
   }

@@ -28,6 +28,7 @@ import {
   DIFFICULTY_EXTRA_POWERUP,
   DIFFICULTY_LEFTOVER_ENERGY_VP,
   DIFFICULTY_FAILED_ACTION_VP,
+  DIFFICULTY_RESEARCH_NEW_SHAPE,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -182,6 +183,21 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     const { state } = resolveAction(withExosuits(4), { actionId: 'research', shape: 'triangle' });
     expect(state.chronossus!.breakthroughs.triangle).toBe(1);
     expect(state.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('Research states it took a new shape when D8 is active (not "the shape die shows")', () => {
+    const s = withExosuits(4, { config: { ...CONFIG, difficulty: [DIFFICULTY_RESEARCH_NEW_SHAPE] } });
+    const { state, instructions } = resolveAction(s, { actionId: 'research', shape: 'triangle' });
+    expect(state.chronossus!.breakthroughs.triangle).toBe(1);
+    const text = instructions.find((i) => i.id.startsWith('res-'))!.text;
+    expect(text).toMatch(/doesn't already have/);
+    expect(text).not.toMatch(/the shape die shows/);
+  });
+
+  it('Research still reads "the shape die shows" when D8 is off (regression)', () => {
+    const { instructions } = resolveAction(withExosuits(4), { actionId: 'research', shape: 'triangle' });
+    const text = instructions.find((i) => i.id.startsWith('res-'))!.text;
+    expect(text).toMatch(/the shape die shows/);
   });
 
   it('Reboot does nothing (no Exosuit, no VP)', () => {

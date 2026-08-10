@@ -4,6 +4,7 @@ import {
   tileCodeFor,
   slotAtPos,
   slotCovering,
+  worldCouncilMandatory,
   DIFFICULTY_SWAP_TILES,
   CHRONOSSUS_MODES,
 } from './chronossusModes';
@@ -77,5 +78,26 @@ describe('tileCodeFor — D1 "Flip Action tiles to their B side" (config plumbin
     const swapped = getMode('base', [DIFFICULTY_SWAP_TILES]);
     const slotI = swapped.slots.find((s) => s.slot === 'I')!; // now family C03
     expect(tileCodeFor(slotI.family, { C03: 'B' })).toBe('C03B');
+  });
+});
+
+describe('worldCouncilMandatory — D9 is not a real choice for some modes', () => {
+  it('is false for base (D9 is a genuine optional difficulty there)', () => {
+    expect(worldCouncilMandatory('base')).toBe(false);
+    expect(worldCouncilMandatory(undefined)).toBe(false);
+  });
+
+  it('is true for Hypersync and Guardians, and any combo built from them', () => {
+    expect(worldCouncilMandatory('hypersync')).toBe(true);
+    expect(worldCouncilMandatory('guardians')).toBe(true);
+    expect(worldCouncilMandatory('guardians+hypersync')).toBe(true);
+    expect(worldCouncilMandatory('guardians+pioneers')).toBe(true);
+    expect(worldCouncilMandatory('fractures+hypersync')).toBe(true);
+  });
+
+  it('is false for other modes/combos that don\'t include either', () => {
+    expect(worldCouncilMandatory('fractures')).toBe(false);
+    expect(worldCouncilMandatory('pioneers')).toBe(false);
+    expect(worldCouncilMandatory('fractures+pioneers')).toBe(false);
   });
 });
