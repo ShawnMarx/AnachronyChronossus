@@ -2201,7 +2201,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               hint={chronossusTurnHint(bot)}
               canEnd={bothPassed}
               turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
-              difficulty={[]}
+              difficulty={state.config.difficulty.map((f) =>
+                chronossusDifficultyLabel(f, state.config.difficultyValues),
+              )}
               entries={thisEraEntries}
               passingRule={Chronossus.CHRONOSSUS_PASSING_RULE}
               onClose={() => setShowStatus(false)}
