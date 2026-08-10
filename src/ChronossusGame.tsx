@@ -3415,6 +3415,11 @@ function CxVpPill({
             <li title="−3 VP per Anomaly the Chronossus still holds at game end">
               <span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b>
             </li>
+            {score.leftoverEnergyVP > 0 && (
+              <li title="Difficulty: 1 VP per energized Energy Core currently in the pool">
+                <span>Leftover Energy Cores</span><b>{score.leftoverEnergyVP}</b>
+              </li>
+            )}
             <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
           </ul>
