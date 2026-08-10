@@ -57,6 +57,9 @@ export default function TurnBarOverview({
   onClose,
 }: TurnBarOverviewProps) {
   const [showRule, setShowRule] = useState(false);
+  // Past this many selected options, collapse the list behind a "(N selected)" toggle
+  // so a heavily-modded game doesn't push the recent-turns section far down.
+  const [showDifficulty, setShowDifficulty] = useState(false);
 
   return (
     <div className="eoa-popover">
@@ -98,15 +101,38 @@ export default function TurnBarOverview({
 
       {difficulty && (
         <div className="eoa-difficulty">
-          <span className="eoa-diff-title">Difficulty options</span>
           {difficulty.length === 0 ? (
-            <span className="eoa-diff-none">Standard game — none selected</span>
+            <>
+              <span className="eoa-diff-title">Difficulty options</span>
+              <span className="eoa-diff-none">Standard game — none selected</span>
+            </>
+          ) : difficulty.length > 3 ? (
+            <>
+              <button
+                type="button"
+                className="eoa-diff-toggle"
+                onClick={() => setShowDifficulty((s) => !s)}
+                aria-expanded={showDifficulty}
+              >
+                Difficulty options ({difficulty.length} selected) {showDifficulty ? '▾' : '▸'}
+              </button>
+              {showDifficulty && (
+                <ul className="eoa-diff-list">
+                  {difficulty.map((d) => (
+                    <li key={d}>{d}</li>
+                  ))}
+                </ul>
+              )}
+            </>
           ) : (
-            <ul className="eoa-diff-list">
-              {difficulty.map((d) => (
-                <li key={d}>{d}</li>
-              ))}
-            </ul>
+            <>
+              <span className="eoa-diff-title">Difficulty options</span>
+              <ul className="eoa-diff-list">
+                {difficulty.map((d) => (
+                  <li key={d}>{d}</li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}
