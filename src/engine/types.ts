@@ -78,6 +78,12 @@ export interface GameConfig {
    * "Flip Action tiles to their B side" difficulty option.
    */
   tileSides?: Record<string, 'A' | 'B'>;
+  /**
+   * Chosen numeric value for a difficulty option with a sub-selector, keyed by
+   * the option's flag (e.g. 'chronossus-extra-energy' → 2). Absent for
+   * difficulty options that don't have one.
+   */
+  difficultyValues?: Record<string, number>;
 }
 
 /** A resource bundle, e.g. gains or costs. */

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
-import { getMode } from '../board/chronossusModes';
+import { getMode, DIFFICULTY_SWAP_TILES } from '../board/chronossusModes';
+import { Chronossus } from '../engine';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 const TILE_ART = (code: string) => `/assets/solo/chronossus/tiles/${code}.png`;
@@ -68,10 +69,11 @@ interface DifficultyOption {
   flag: string;
   label: string;
   detail: string;
+  /** Sub-selector choices (e.g. [1,2,3]) for options with a numeric intensity. */
+  values?: number[];
 }
 // Step 3 — the base-game Chronossus difficulty options (Solo Opponents p. 10),
-// plus the Chronobot's World Council variant as the last item. Stubbed + disabled
-// for now (visible, not selectable) — behavior lands later.
+// plus the Chronobot's World Council variant as the last item.
 const DIFFICULTY_OPTIONS: DifficultyOption[] = [
   {
     flag: DIFFICULTY_TILES_B_SIDE,
@@ -79,19 +81,20 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
     detail: 'Flip some or all of the Action tiles to their B side (pick which below).',
   },
   {
-    flag: 'chronossus-swap-tiles',
+    flag: DIFFICULTY_SWAP_TILES,
     label: 'Swap Action tiles between spaces',
-    detail: 'Swap the Action tiles between the two marked spaces.',
+    detail: 'Swap the Action tiles between Slot I and Slot III (the two marked spaces).',
   },
   {
-    flag: 'chronossus-extra-energy',
+    flag: Chronossus.DIFFICULTY_EXTRA_ENERGY,
     label: 'Extra starting Energy Cores',
     detail:
       'Increase the number of Energy Cores by 1/2/3 in the Energy Pool at the ' +
       'beginning of the game.',
+    values: [1, 2, 3],
   },
   {
-    flag: 'chronossus-extra-powerup',
+    flag: Chronossus.DIFFICULTY_EXTRA_POWERUP,
     label: 'One extra powered Exosuit each Era',
     detail:
       'The Chronossus powers up one additional Exosuit each Era for free. If this ' +
@@ -99,24 +102,25 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
       'excess Energy Core drawn (those Energy Cores are still removed from the game).',
   },
   {
-    flag: 'chronossus-leftover-energy-vp',
+    flag: Chronossus.DIFFICULTY_LEFTOVER_ENERGY_VP,
     label: 'Leftover Energy Cores score VP',
     detail:
       'Each leftover (non-exhausted) Energy Core in the Energy Pool at the end of ' +
       'the game is worth 1 VP to the Chronossus.',
   },
   {
-    flag: 'chronossus-fewer-objectives',
+    flag: Chronossus.DIFFICULTY_FEWER_OBJECTIVES,
     label: 'Fewer (or no) Solo Objectives',
     detail: 'Play with fewer (or no) Solo Objectives.',
+    values: [0, 1, 2],
   },
   {
-    flag: 'chronossus-failed-action-vp',
+    flag: Chronossus.DIFFICULTY_FAILED_ACTION_VP,
     label: 'Failed Actions score VP',
     detail: 'The Chronossus gains 2 VPs for each Failed Action.',
   },
   {
-    flag: 'chronossus-research-new-shape',
+    flag: Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE,
     label: 'Research takes a new Breakthrough shape',
     detail:
       'When taking a Research Action, the Chronossus takes a Breakthrough shape it ' +
@@ -127,18 +131,27 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
     label: 'Cover the right World Council space',
     detail:
       'For a more challenging game, cover the right World Council space with a Hex ' +
-      'Unavailable tile.',
+      'Unavailable tile. (This constrains your own board — the app changes nothing.)',
   },
 ];
 
-/** Human-readable label for a stored difficulty flag (for the share/score summary). */
-export function chronossusDifficultyLabel(flag: string): string {
+/**
+ * Human-readable label for a stored difficulty flag (for the share/score summary and
+ * any other place selected difficulty options are listed). Appends the chosen
+ * sub-selector value, if any (e.g. "Extra starting Energy Cores (+2)").
+ */
+export function chronossusDifficultyLabel(
+  flag: string,
+  difficultyValues?: Record<string, number>,
+): string {
   const all = [...DIFFICULTY_OPTIONS, ...Object.values(MODE_DIFFICULTY).flat()];
   const found = all.find((o) => o.flag === flag);
-  if (found) return found.label;
+  const value = difficultyValues?.[flag];
+  const suffix = found?.values && value != null ? ` (${value})` : '';
+  if (found) return found.label + suffix;
   // Fallback: prettify an unknown flag ("chronossus-extra-energy" → "Extra energy").
   const s = flag.replace(/^chronossus-/, '').replace(/-/g, ' ');
-  return s.charAt(0).toUpperCase() + s.slice(1);
+  return s.charAt(0).toUpperCase() + s.slice(1) + suffix;
 }
 
 /**
@@ -155,6 +168,8 @@ export interface ChronossusSetupResult {
   mode: string;
   /** Per-tile A/B side selection (only families flipped to B appear). */
   tileSides: Record<string, 'A' | 'B'>;
+  /** Chosen sub-selector value per flag (e.g. 'chronossus-extra-energy' → 2). */
+  difficultyValues: Record<string, number>;
 }
 
 /** A collapsible "Coming soon" list of not-yet-available modules / options. */
@@ -185,10 +200,20 @@ export default function ChronossusSetupFlow({
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
   // Per-tile side selection; only families set to 'B' are stored.
   const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
+  // Chosen sub-selector value per flag (D3 extra energy, D6 fewer objectives).
+  const [difficultyValues, setDifficultyValues] = useState<Record<string, number>>({});
 
   const blockWorldCouncil = difficulty.has(DIFFICULTY_WORLD_COUNCIL);
   const flipTiles = difficulty.has(DIFFICULTY_TILES_B_SIDE);
-  const modeSlots = getMode(moduleId).slots;
+  const swapTiles = difficulty.has(DIFFICULTY_SWAP_TILES);
+  const fewerObjectives = difficulty.has(Chronossus.DIFFICULTY_FEWER_OBJECTIVES);
+  const objectiveCount = fewerObjectives
+    ? (difficultyValues[Chronossus.DIFFICULTY_FEWER_OBJECTIVES] ?? 0)
+    : 3;
+  const extraEnergy = difficulty.has(Chronossus.DIFFICULTY_EXTRA_ENERGY)
+    ? (difficultyValues[Chronossus.DIFFICULTY_EXTRA_ENERGY] ?? 0)
+    : 0;
+  const modeSlots = getMode(moduleId, [...difficulty]).slots;
 
   const toggleTileSide = (family: string) =>
     setTileSides((s) => {
@@ -201,7 +226,12 @@ export default function ChronossusSetupFlow({
   // Only honour B-side flips when the difficulty option is on.
   const effectiveTileSides = (): Record<string, 'A' | 'B'> => (flipTiles ? { ...tileSides } : {});
   const begin = () =>
-    onBegin({ difficulty: [...difficulty], mode: moduleId, tileSides: effectiveTileSides() });
+    onBegin({
+      difficulty: [...difficulty],
+      mode: moduleId,
+      tileSides: effectiveTileSides(),
+      difficultyValues,
+    });
 
   const eyebrow =
     step === 'intro'
@@ -328,13 +358,7 @@ export default function ChronossusSetupFlow({
                 Chronossus, or play with none for the standard game.
               </p>
               <div className="difficulty-list">
-                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])]
-                  .filter(
-                    (o) =>
-                      o.flag === DIFFICULTY_TILES_B_SIDE ||
-                      o.flag === DIFFICULTY_HYPERSYNC_TARGETED,
-                  )
-                  .map((o) => {
+                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])].map((o) => {
                     const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;
                     const on = difficulty.has(o.flag);
                     return (
@@ -357,6 +381,25 @@ export default function ChronossusSetupFlow({
                             <span>{o.detail}</span>
                           </span>
                         </label>
+
+                        {/* Sub-selector — revealed when a numeric-intensity option is on. */}
+                        {o.values && on && (
+                          <div className="difficulty-sub-values">
+                            {o.values.map((v) => (
+                              <button
+                                key={v}
+                                type="button"
+                                className={`difficulty-sub-value ${difficultyValues[o.flag] === v ? 'on' : ''}`}
+                                aria-pressed={difficultyValues[o.flag] === v}
+                                onClick={() =>
+                                  setDifficultyValues((s) => ({ ...s, [o.flag]: v }))
+                                }
+                              >
+                                {v}
+                              </button>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Per-tile A/B flip picker — revealed when the option is on. */}
                         {isFlip && on && (
@@ -400,12 +443,6 @@ export default function ChronossusSetupFlow({
                   );
                 })}
               </div>
-
-              <ComingSoon
-                items={DIFFICULTY_OPTIONS.filter(
-                  (o) => o.flag !== DIFFICULTY_TILES_B_SIDE,
-                ).map((o) => o.label)}
-              />
             </>
           )}
 
@@ -484,7 +521,9 @@ export default function ChronossusSetupFlow({
                   </li>
                   <li>
                     Leave all Endgame Condition cards in the box and shuffle all Solo
-                    Objective cards, revealing 3. Return the rest to the box.
+                    Objective cards, revealing {objectiveCount}
+                    {fewerObjectives ? ' (difficulty option selected)' : ''}. Return the
+                    rest to the box.
                   </li>
                   <li>The Chronossus does not use a Focus marker.</li>
                   <li>
@@ -510,6 +549,19 @@ export default function ChronossusSetupFlow({
                         .map((s) => `${s.family}B (${CHRONOSSUS_TILES[`${s.family}B`]?.name})`)
                         .join(', ')}
                       . Leave the rest on their A side.
+                    </li>
+                  )}
+                  {swapTiles && (
+                    <li>
+                      <b>Swap Action tiles between spaces</b> (difficulty option selected):
+                      place Slot III's tile in Slot I, and Slot I's tile in Slot III.
+                    </li>
+                  )}
+                  {extraEnergy > 0 && (
+                    <li>
+                      <b>Extra starting Energy Cores</b> (difficulty): add {extraEnergy}{' '}
+                      extra Energy Core token{extraEnergy === 1 ? '' : 's'} to the Energy
+                      Pool container (on top of the usual 5 + 5).
                     </li>
                   )}
                 </ul>

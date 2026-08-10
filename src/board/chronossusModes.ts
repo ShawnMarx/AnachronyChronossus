@@ -67,8 +67,28 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
   },
 };
 
-export function getMode(id: string | undefined): ChronossusMode {
-  return CHRONOSSUS_MODES[id ?? 'base'] ?? CHRONOSSUS_MODES.base;
+/** The "Swap Action tiles between spaces" difficulty flag (shared with the setup screen). */
+export const DIFFICULTY_SWAP_TILES = 'chronossus-swap-tiles';
+
+/**
+ * `id`'s mode, optionally with Slot I and Slot III's `family` swapped (the
+ * `DIFFICULTY_SWAP_TILES` option). Applies uniformly to every mode, since they
+ * all share the I/II/III slot scheme — no per-mode special-casing needed.
+ */
+export function getMode(id: string | undefined, difficulty?: string[]): ChronossusMode {
+  const mode = CHRONOSSUS_MODES[id ?? 'base'] ?? CHRONOSSUS_MODES.base;
+  if (!difficulty?.includes(DIFFICULTY_SWAP_TILES)) return mode;
+  const slotI = mode.slots.find((s) => s.slot === 'I');
+  const slotIII = mode.slots.find((s) => s.slot === 'III');
+  if (!slotI || !slotIII) return mode;
+  return {
+    ...mode,
+    slots: mode.slots.map((s) => {
+      if (s.slot === 'I') return { ...s, family: slotIII.family };
+      if (s.slot === 'III') return { ...s, family: slotI.family };
+      return s;
+    }),
+  };
 }
 
 /** The live tile code for a family given the player's per-tile A/B selection. */

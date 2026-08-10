@@ -365,6 +365,28 @@
   color: #fff;
 }
 
+/* Numeric sub-selector for difficulty options with an intensity (D3 extra energy,
+   D6 fewer objectives), revealed under the option when it's on. */
+.difficulty-sub-values {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0 0.2rem 1.8rem;
+}
+.difficulty-sub-value {
+  min-width: 2.4rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.9rem;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.6);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--sp-accent);
+  cursor: pointer;
+}
+.difficulty-sub-value.on {
+  background: var(--sp-accent-deep);
+  color: #fff;
+}
+
 .setup-actions {
   display: flex;
   gap: 0.7rem;

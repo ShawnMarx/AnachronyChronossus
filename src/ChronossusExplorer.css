@@ -861,6 +861,12 @@ button.eoa-flag.tap-flag {
 }
 
 /* ---- Final-score screen: top "You vs Chronossus" line + side-by-side tally ---- */
+.score-setup-note {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  color: #b3a9d0;
+  text-align: center;
+}
 .score-vs {
   display: flex;
   align-items: center;

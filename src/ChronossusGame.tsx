@@ -604,7 +604,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [paradoxWidth, setParadoxWidth] = useState<number>(CHRONOSSUS_PARADOX_SLOTS.width);
 
   const bot = state.chronossus!;
-  const score = Chronossus.scoreChronossus(bot);
+  const score = Chronossus.scoreChronossus(bot, state.config.difficulty);
 
   // Paradoxes are tracked on the engine state (chronossus.paradoxes, 0–2; the
   // Paradox phase drives it, resetting to 0 on gaining an Anomaly). The debug
@@ -620,7 +620,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
 
   // ---- Mode / Hypersync helpers -----------------------------------------
-  const mode = getMode(state.config.chronossusMode);
+  const mode = getMode(state.config.chronossusMode, state.config.difficulty);
   const tileSides = state.config.tileSides;
   const hypersyncMode = mode.slots.some((s) => tileEffect(`${s.family}A`).hypersync === true);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
@@ -995,6 +995,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
+  // D8 ("Research takes a new Breakthrough shape"): roll the shape die as usual, but
+  // reroll if the result isn't one of the shape(s) tied for the bot's lowest count.
+  // With a unique lowest shape this just takes a few extra rolls to converge on it.
+  const pickResearchShape = (): BreakthroughShape => {
+    if (!state.config.difficulty?.includes(Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE)) {
+      return rollShapeDie();
+    }
+    const candidates = Chronossus.researchShapeCandidates(bot);
+    let shape = rollShapeDie();
+    while (!candidates.includes(shape)) shape = rollShapeDie();
+    return shape;
+  };
+
   const onConfirmPlace = () => {
     if (!active) return;
     const a = active.action;
@@ -1017,7 +1030,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         setPending('recruitWorker');
       } else resolve(active, {});
     } else if (a === 'research' || a === 'recruit-genius-research') {
-      setRolledShape(rollShapeDie());
+      setRolledShape(pickResearchShape());
       setPending('research');
     } else {
       resolve(active, {});
@@ -1256,17 +1269,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // ---- Phase transitions -------------------------------------------------
   // Finish Setup: seed the chosen module / difficulty / tile sides, enter Era 1.
   const beginGame = (result: ChronossusSetupResult) => {
-    setState((s) =>
-      startFirstEra({
+    setState((s) => {
+      const config = {
+        ...s.config,
+        difficulty: result.difficulty,
+        difficultyValues: result.difficultyValues,
+        chronossusMode: result.mode,
+        tileSides: result.tileSides,
+      };
+      return startFirstEra({
         ...s,
-        config: {
-          ...s.config,
-          difficulty: result.difficulty,
-          chronossusMode: result.mode,
-          tileSides: result.tileSides,
-        },
-      }),
-    );
+        config,
+        // D3: extra starting Energy Cores — applied once here, since
+        // emptyChronossusState() (mount time) predates the player's setup choices.
+        chronossus: s.chronossus && Chronossus.applyDifficultySetup(s.chronossus, config),
+      });
+    });
   };
   const drawAndPowerUp = () => {
     if (ui.lastDraw) return; // already drawn this Era — never deplete the pool twice
@@ -3443,6 +3461,10 @@ const CX_SCORE_ROWS = (
       : 'Timeline penalties',
     playerKey: 'timelinePenalties',
   },
+  // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
+  ...(score.leftoverEnergyVP
+    ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]
+    : []),
 ];
 
 function CxScoreScreen({
@@ -3533,7 +3555,7 @@ function CxScoreScreen({
       .map(([k]) => k);
     if (bSides.length) setup.push(`B-side tiles: ${bSides.join(', ')}`);
     for (const flag of state.config.difficulty) {
-      setup.push(`Difficulty: ${chronossusDifficultyLabel(flag)}`);
+      setup.push(`Difficulty: ${chronossusDifficultyLabel(flag, state.config.difficultyValues)}`);
     }
     try {
       const how = await shareScoreImage({
@@ -3622,6 +3644,15 @@ function CxScoreScreen({
           </div>
         </div>
 
+        {state.config.difficulty.length > 0 && (
+          <p className="score-setup-note">
+            Difficulty:{' '}
+            {state.config.difficulty
+              .map((f) => chronossusDifficultyLabel(f, state.config.difficultyValues))
+              .join(', ')}
+          </p>
+        )}
+
         <div className="score-mode">
           <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
             Number
@@ -3649,6 +3680,9 @@ function CxScoreScreen({
               <li><span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b></li>
               <li><span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b></li>
               <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
+              {score.leftoverEnergyVP > 0 && (
+                <li><span>Leftover Energy Cores (difficulty)</span><b>{score.leftoverEnergyVP}</b></li>
+              )}
               <li className="score-sum"><span>Chronossus total</span><b>{score.total}</b></li>
             </ul>
           </>

@@ -12,7 +12,7 @@
 // (F4), scoring/Solo Objectives (F5), and the view (F6).
 
 import type { GameState, Instruction, EnergyPool, ChronossusState } from '../state';
-import type { BreakthroughShape, Resource, Worker } from '../types';
+import type { BreakthroughShape, GameConfig, Resource, Worker } from '../types';
 import { BREAKTHROUGH_SHAPES } from '../types';
 import {
   actionDef,
@@ -43,6 +43,28 @@ export const POST_IMPACT_ERA = 5;
 /** Whether a given Era is post-Impact (2+X / max-4 power-up, Collapsing Capital). */
 export function isPostImpact(era: number): boolean {
   return era >= POST_IMPACT_ERA;
+}
+
+/** D3 — "Extra starting Energy Cores": +1/2/3 energized cores in the starting pool
+ *  (chosen via a sub-selector; applied once at setup, not read per-Era). */
+export const DIFFICULTY_EXTRA_ENERGY = 'chronossus-extra-energy';
+
+/** D6 — "Fewer (or no) Solo Objectives": setup-text only (reveal-count sub-selector,
+ *  0/1/2 instead of the base 3) — no engine logic, the score screen already treats
+ *  Solo Objectives as one player-entered tally field regardless of count. */
+export const DIFFICULTY_FEWER_OBJECTIVES = 'chronossus-fewer-objectives';
+
+/**
+ * Apply setup-time difficulty adjustments to a fresh Chronossus slice — currently
+ * just D3's extra starting Energy Cores (added energized). Called once when a game
+ * begins, before Era 1.
+ */
+export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): ChronossusState {
+  const extra = config.difficulty.includes(DIFFICULTY_EXTRA_ENERGY)
+    ? (config.difficultyValues?.[DIFFICULTY_EXTRA_ENERGY] ?? 0)
+    : 0;
+  if (extra === 0) return bot;
+  return { ...bot, energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra } };
 }
 
 // --------------------------------------------------------------------------
@@ -90,18 +112,29 @@ export function poolAfterDraw(pool: EnergyPool, draw: EnergyDraw): EnergyPool {
   };
 }
 
+/** D4 — "One extra powered Exosuit each Era": free +1, or +2 VP per excess if that would
+ *  exceed `exosuitsTotal` (the fixed physical-figure count, not the per-Era `powerUpCap`). */
+export const DIFFICULTY_EXTRA_POWERUP = 'chronossus-extra-powerup';
+
 /**
  * Resolve the Chronossus's Power Up (Phase 3). The app draws `draw` tokens from
  * the Energy Pool (see `drawEnergyPool` at the engine boundary); this applies
  * the rules: power up `base + energized` Exosuits (capped), update the pool, and
- * advance to Warp.
+ * advance to Warp. With D4 active, one more Exosuit powers up for free; if that
+ * would exceed `exosuitsTotal`, the excess scores +2 VP instead (drawn cores are
+ * still removed from the pool either way).
  */
 export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   if (!state.chronossus) throw new Error('resolvePowerUp: no Chronossus state');
-  const powered = poweredExosuits(state.impact, draw.energized);
+  const capped = poweredExosuits(state.impact, draw.energized);
+  const extraPowerup = state.config.difficulty?.includes(DIFFICULTY_EXTRA_POWERUP) ?? false;
+  const attempted = extraPowerup ? capped + 1 : capped;
+  const exosuitsAvailable = Math.min(attempted, state.chronossus.exosuitsTotal);
+  const bonusVP = Math.max(0, attempted - state.chronossus.exosuitsTotal) * 2;
   const bot = {
     ...state.chronossus,
-    exosuitsAvailable: Math.min(powered, state.chronossus.exosuitsTotal),
+    exosuitsAvailable,
+    vp: state.chronossus.vp + bonusVP,
     passed: false,
     energyPool: poolAfterDraw(state.chronossus.energyPool, draw),
   };
@@ -110,15 +143,22 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   const instructions: Instruction[] = [
     {
       id: 'powerup',
-      text: `Power up ${bot.exosuitsAvailable} of the Chronossus's Exosuits.`,
+      text: `Power up ${exosuitsAvailable} of the Chronossus's Exosuits.`,
       detail:
         `Drew ${drawnTotal} token${drawnTotal === 1 ? '' : 's'} from the Energy Pool: ` +
         `${draw.energized} Energy + ${draw.exhausted} Exhausted. ${state.impact ? '2' : '3'}+${draw.energized} ` +
-        `= ${bot.exosuitsAvailable} Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} ` +
+        `= ${capped} Exosuit${capped === 1 ? '' : 's'} ` +
         `(max ${powerUpCap(state.impact)} ${state.impact ? 'after' : 'before'} the Impact). ` +
+        (extraPowerup
+          ? bonusVP
+            ? `Difficulty: +1 free Exosuit would exceed the max of ${state.chronossus.exosuitsTotal} — ` +
+              `+${bonusVP} VP instead. `
+            : `Difficulty: +1 free Exosuit (${exosuitsAvailable} total). `
+          : '') +
         (returned
           ? 'Return 1 drawn Exhausted core to the Pool and remove the rest from the game.'
           : 'Remove all drawn tokens from the game (no Exhausted core to return).'),
+      ...(bonusVP ? { effect: { vp: bonusVP } } : {}),
     },
   ];
   return {
@@ -128,7 +168,8 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
     currentInstructions: instructions,
     log: [
       ...state.log,
-      `Power Up: drew ${draw.energized}E/${draw.exhausted}X → ${bot.exosuitsAvailable} Exosuits.`,
+      `Power Up: drew ${draw.energized}E/${draw.exhausted}X → ${exosuitsAvailable} Exosuits` +
+        (bonusVP ? ` + ${bonusVP} VP (difficulty).` : '.'),
     ],
   };
 }
@@ -228,6 +269,15 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
   };
 }
 
+/** D7 — "Failed Actions score VP": replaces the base rule's +1 VP per Failed Action
+ *  with +2 VP total, live at the moment each Failed Action resolves. */
+export const DIFFICULTY_FAILED_ACTION_VP = 'chronossus-failed-action-vp';
+
+/** VP a Failed Action grants: 2 with D7 active, 1 otherwise (the base rule). */
+function failedActionVP(difficulty: string[] | undefined): number {
+  return difficulty?.includes(DIFFICULTY_FAILED_ACTION_VP) ? 2 : 1;
+}
+
 /**
  * Resolve a single Chronossus action against the Chronossus slice. Returns the
  * updated state + player instructions. Does not advance any Command token.
@@ -240,6 +290,7 @@ export function resolveAction(
   const bot = cloneChronossus(state.chronossus);
   const instr: Instruction[] = [];
   const n = bot.totalActions;
+  const failVP = failedActionVP(state.config.difficulty);
 
   instr.push({
     id: `turn-${n}`,
@@ -260,25 +311,25 @@ export function resolveAction(
     });
   } else if (input.hypersyncNoTile) {
     // Hypersync Capital Action, no space, and no Hypersync tile available: still a
-    // Failed Action from lack of free spaces, so the base rule applies — +1 VP AND
+    // Failed Action from lack of free spaces, so the base rule applies — VP AND
     // discard an active Exosuit.
-    bot.vp += 1;
+    bot.vp += failVP;
     if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     instr.push({
       id: `hs-fail-notile-${n}`,
-      text: 'No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +1 VP and additionally discards one active Exosuit.',
-      effect: { vp: 1 },
+      text: `No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +${failVP} VP and additionally discards one active Exosuit.`,
+      effect: { vp: failVP },
     });
     return finishAction(state, bot, instr);
   } else if (input.noSpaceAvailable) {
-    // Failed from no available space: +1 VP AND discard an active Exosuit (the
+    // Failed from no available space: VP AND discard an active Exosuit (the
     // Chronossus-only nuance vs. the Chronobot).
-    bot.vp += 1;
+    bot.vp += failVP;
     if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
     instr.push({
       id: `fail-nospace-${n}`,
-      text: 'No available Action space — the Chronossus takes +1 VP and additionally discards one active Exosuit (no Exosuit placed).',
-      effect: { vp: 1 },
+      text: `No available Action space — the Chronossus takes +${failVP} VP and additionally discards one active Exosuit (no Exosuit placed).`,
+      effect: { vp: failVP },
     });
     return finishAction(state, bot, instr);
   }
@@ -297,11 +348,11 @@ export function resolveAction(
   };
   const failCantPerform = (why: string) => {
     if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
-    bot.vp += 1;
+    bot.vp += failVP;
     instr.push({
       id: `fail-perform-${n}`,
-      text: `Failed Action: ${why} — the Chronossus ${def.placesExosuit ? 'places an Exosuit and ' : ''}takes +1 VP instead.`,
-      effect: { vp: 1 },
+      text: `Failed Action: ${why} — the Chronossus ${def.placesExosuit ? 'places an Exosuit and ' : ''}takes +${failVP} VP instead.`,
+      effect: { vp: failVP },
     });
   };
 
@@ -347,7 +398,7 @@ export function resolveAction(
     }
 
     case 'time-travel':
-      resolveTimeTravel(bot, instr, n);
+      resolveTimeTravel(bot, instr, n, failVP);
       break;
 
     case 'remove-anomaly': {
@@ -461,6 +512,21 @@ function resolveTileAction(
   return eff.autoleap === true;
 }
 
+/** D8 — "Research takes a new Breakthrough shape": on Research, give the Chronossus a
+ *  shape it doesn't already have (or the least of). */
+export const DIFFICULTY_RESEARCH_NEW_SHAPE = 'chronossus-research-new-shape';
+
+/**
+ * D8's candidate shape(s) for a Research Action: whichever shape(s) are tied for the
+ * LOWEST count in `bot.breakthroughs` (no fixed priority). Exactly one candidate means
+ * take it directly (no roll needed); 2+ candidates means randomize among just those —
+ * the caller (UI) rolls the shape die and rerolls if the result lands outside this set.
+ */
+export function researchShapeCandidates(bot: ChronossusState): BreakthroughShape[] {
+  const min = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
+  return BREAKTHROUGH_SHAPES.filter((s) => bot.breakthroughs[s] === min);
+}
+
 function resolveResearch(bot: ChronossusState, instr: Instruction[], shape: BreakthroughShape | undefined, n: number): void {
   if (shape) {
     bot.breakthroughs[shape] += 1;
@@ -491,10 +557,10 @@ function applyResourceSetBonus(bot: ChronossusState, instr: Instruction[], n: nu
   }
 }
 
-function resolveTimeTravel(bot: ChronossusState, instr: Instruction[], n: number): void {
+function resolveTimeTravel(bot: ChronossusState, instr: Instruction[], n: number, failVP = 1): void {
   if (bot.warpTilesOnTimeline <= 0) {
-    bot.vp += 1;
-    instr.push({ id: `tt-${n}`, text: 'No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronossus takes +1 VP (no Exosuit).', effect: { vp: 1 } });
+    bot.vp += failVP;
+    instr.push({ id: `tt-${n}`, text: `No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronossus takes +${failVP} VP (no Exosuit).`, effect: { vp: failVP } });
   } else {
     bot.warpTilesOnTimeline -= 1;
     bot.timeTravelTrack += 1;
@@ -679,14 +745,15 @@ export function resolveHypersyncAction(
     succeeded = true;
   } else if (input.outcome === 'time-travel') {
     const hadWarp = state.chronossus.warpTilesOnTimeline > 0;
-    resolveTimeTravel(bot, instr, n);
+    resolveTimeTravel(bot, instr, n, failedActionVP(state.config.difficulty));
     succeeded = hadWarp;
   } else {
-    bot.vp += 1;
+    const vp = failedActionVP(state.config.difficulty);
+    bot.vp += vp;
     instr.push({
       id: `hs-fail-${n}`,
-      text: 'Neither a Hypersync nor a Time Travel Action is possible — Failed Action: the Chronossus takes +1 VP.',
-      effect: { vp: 1 },
+      text: `Neither a Hypersync nor a Time Travel Action is possible — Failed Action: the Chronossus takes +${vp} VP.`,
+      effect: { vp },
     });
   }
 
@@ -758,19 +825,25 @@ export interface ChronossusScore {
   shapeSetBonus: number;
   /** Negative: −3 per remaining Anomaly (same penalty as the Chronobot). */
   anomalyVP: number;
+  /** D5 (`chronossus-leftover-energy-vp`): 1 VP per energized core left in the pool. */
+  leftoverEnergyVP: number;
   total: number;
 }
 
 /** VP lost per Anomaly the Chronossus still holds at game end (same as Chronobot). */
 export const ANOMALY_VP = -3;
 
+/** D5 — "Leftover Energy Cores score VP": 1 VP per energized core left in the pool. */
+export const DIFFICULTY_LEFTOVER_ENERGY_VP = 'chronossus-leftover-energy-vp';
+
 /**
  * The Chronossus's VP breakdown. It does NOT lose VP for Warp tiles left on the
  * Timeline. Scores 1 VP/Breakthrough + 2 per complete shape set. (Solo Objectives
- * are a PLAYER-only scoring line — the Chronossus never scores them.) Shared by
- * the live pill + score screen.
+ * are a PLAYER-only scoring line — the Chronossus never scores them.) `difficulty`
+ * only affects D5 (leftover Energy Core VP) — every other difficulty option scores
+ * live, during the game, straight into `bot.vp`. Shared by the live pill + score screen.
  */
-export function scoreChronossus(bot: ChronossusState): ChronossusScore {
+export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): ChronossusScore {
   const breakthroughVP = BREAKTHROUGH_SHAPES.reduce((n, s) => n + bot.breakthroughs[s], 0);
   const completeSets = Math.min(...BREAKTHROUGH_SHAPES.map((s) => bot.breakthroughs[s]));
   const shapeSetBonus = completeSets * 2;
@@ -780,6 +853,9 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
   const buildingVP = bot.buildingVp - superprojectVP;
   const tokenVP = bot.vp - bot.buildingVp;
   const anomalyVP = bot.anomalies * ANOMALY_VP;
+  const leftoverEnergyVP = difficulty?.includes(DIFFICULTY_LEFTOVER_ENERGY_VP)
+    ? bot.energyPool.energized
+    : 0;
   return {
     tokenVP,
     buildingVP,
@@ -789,7 +865,8 @@ export function scoreChronossus(bot: ChronossusState): ChronossusScore {
     breakthroughVP,
     shapeSetBonus,
     anomalyVP,
-    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP,
+    leftoverEnergyVP,
+    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP + leftoverEnergyVP,
   };
 }
 

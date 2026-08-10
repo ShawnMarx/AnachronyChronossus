@@ -22,6 +22,12 @@ import {
   resolveHypersyncAction,
   MAX_HYPERSYNC_TILES,
   scoreChronossus,
+  applyDifficultySetup,
+  researchShapeCandidates,
+  DIFFICULTY_EXTRA_ENERGY,
+  DIFFICULTY_EXTRA_POWERUP,
+  DIFFICULTY_LEFTOVER_ENERGY_VP,
+  DIFFICULTY_FAILED_ACTION_VP,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -483,5 +489,142 @@ describe('scoreChronossus breakout', () => {
     expect(score.tokenVP).toBe(3);
     // The three during-game lines still reconstruct bot.vp.
     expect(score.buildingVP + score.superprojectVP + score.tokenVP).toBe(bot.vp);
+  });
+
+  it('D5: leftover energized cores score VP only when the difficulty flag is set', () => {
+    const bot = emptyChronossusState();
+    bot.energyPool = { energized: 3, exhausted: 2 };
+    const off = scoreChronossus(bot);
+    expect(off.leftoverEnergyVP).toBe(0);
+    expect(off.total).toBe(0);
+
+    const on = scoreChronossus(bot, [DIFFICULTY_LEFTOVER_ENERGY_VP]);
+    expect(on.leftoverEnergyVP).toBe(3); // energized only — exhausted cores don't count
+    expect(on.total).toBe(3);
+  });
+});
+
+describe('applyDifficultySetup — D3 "Extra starting Energy Cores"', () => {
+  it('adds the chosen value to energized cores, leaving exhausted untouched', () => {
+    const bot = emptyChronossusState();
+    const config = { ...CONFIG, difficulty: [DIFFICULTY_EXTRA_ENERGY], difficultyValues: { [DIFFICULTY_EXTRA_ENERGY]: 2 } };
+    const next = applyDifficultySetup(bot, config);
+    expect(next.energyPool).toEqual({ energized: 7, exhausted: 5 });
+  });
+
+  it('is a no-op when the flag is absent', () => {
+    const bot = emptyChronossusState();
+    const next = applyDifficultySetup(bot, CONFIG);
+    expect(next.energyPool).toEqual({ energized: 5, exhausted: 5 });
+  });
+
+  it('is a no-op when the flag is set but no value was chosen', () => {
+    const bot = emptyChronossusState();
+    const config = { ...CONFIG, difficulty: [DIFFICULTY_EXTRA_ENERGY] };
+    const next = applyDifficultySetup(bot, config);
+    expect(next.energyPool).toEqual({ energized: 5, exhausted: 5 });
+  });
+});
+
+describe('resolvePowerUp — D4 "One extra powered Exosuit each Era"', () => {
+  function stateWith(impact: boolean, difficulty: string[] = []): GameState {
+    return chronossusState({ impact, config: { ...CONFIG, difficulty } });
+  }
+
+  it('adds a free Exosuit when there is room under exosuitsTotal', () => {
+    const next = resolvePowerUp(stateWith(false, [DIFFICULTY_EXTRA_POWERUP]), { energized: 1, exhausted: 0 });
+    // capped = 3 base + 1 energized = 4; +1 free = 5; exosuitsTotal 6 has room.
+    expect(next.chronossus!.exosuitsAvailable).toBe(5);
+    expect(next.chronossus!.vp).toBe(0); // no excess, no VP conversion
+  });
+
+  it('converts the excess to +2 VP when the free Exosuit would exceed exosuitsTotal', () => {
+    // Max draw (3 energized) pre-Impact already caps at exosuitsTotal (6); the +1
+    // free Exosuit has nowhere to go, so it converts to VP instead.
+    const next = resolvePowerUp(stateWith(false, [DIFFICULTY_EXTRA_POWERUP]), { energized: 3, exhausted: 0 });
+    expect(next.chronossus!.exosuitsAvailable).toBe(6); // clamped at exosuitsTotal
+    expect(next.chronossus!.vp).toBe(2); // 1 excess × 2 VP
+  });
+
+  it('rarely exceeds exosuitsTotal post-Impact (lower cap leaves headroom)', () => {
+    const next = resolvePowerUp(stateWith(true, [DIFFICULTY_EXTRA_POWERUP]), { energized: 3, exhausted: 0 });
+    // capped = 2 base + 3 energized→cap 4; +1 free = 5 ≤ exosuitsTotal 6.
+    expect(next.chronossus!.exosuitsAvailable).toBe(5);
+    expect(next.chronossus!.vp).toBe(0);
+  });
+
+  it('does nothing extra when the difficulty flag is off', () => {
+    const next = resolvePowerUp(stateWith(false, []), { energized: 3, exhausted: 0 });
+    expect(next.chronossus!.exosuitsAvailable).toBe(6);
+    expect(next.chronossus!.vp).toBe(0);
+  });
+});
+
+describe('D7 — "Failed Actions score VP" replaces +1 with +2', () => {
+  function withExosuits(n: number, difficulty: string[] = []): GameState {
+    const s = chronossusState({ phase: 'actions', config: { ...CONFIG, difficulty } });
+    s.chronossus!.exosuitsAvailable = n;
+    return s;
+  }
+
+  it('no-space Failed Action scores +2 instead of +1', () => {
+    const { state } = resolveAction(withExosuits(4, [DIFFICULTY_FAILED_ACTION_VP]), {
+      actionId: 'recruit',
+      noSpaceAvailable: true,
+    });
+    expect(state.chronossus!.vp).toBe(2);
+  });
+
+  it('failCantPerform Failed Action (Construct at max) scores +2 instead of +1', () => {
+    const s = withExosuits(4, [DIFFICULTY_FAILED_ACTION_VP]);
+    s.chronossus!.buildings.factory = 3;
+    const { state } = resolveAction(s, { actionId: 'construct-factory' });
+    expect(state.chronossus!.vp).toBe(2);
+  });
+
+  it('Time Travel with no Warp tiles Fails for +2 instead of +1', () => {
+    const { state } = resolveAction(withExosuits(4, [DIFFICULTY_FAILED_ACTION_VP]), {
+      actionId: 'time-travel',
+    });
+    expect(state.chronossus!.vp).toBe(2);
+  });
+
+  it('Hypersync "neither possible" Failed Action scores +2 instead of +1', () => {
+    const s = withExosuits(0, [DIFFICULTY_FAILED_ACTION_VP]); // no Exosuit → can't Hypersync
+    const { state } = resolveHypersyncAction(s, { code: 'C12A', outcome: 'failed' });
+    expect(state.chronossus!.vp).toBe(2);
+  });
+
+  it('stays at +1 when the difficulty flag is off (regression)', () => {
+    const { state } = resolveAction(withExosuits(4), { actionId: 'recruit', noSpaceAvailable: true });
+    expect(state.chronossus!.vp).toBe(1);
+  });
+});
+
+describe('researchShapeCandidates — D8 "Research takes a new Breakthrough shape"', () => {
+  it('all three shapes are candidates when the bot has none of any', () => {
+    const bot = emptyChronossusState();
+    expect(researchShapeCandidates(bot).sort()).toEqual(['circle', 'square', 'triangle']);
+  });
+
+  it('two shapes tied at 0 are candidates once the bot has one of the third', () => {
+    const bot = emptyChronossusState();
+    bot.breakthroughs.circle = 1;
+    expect(researchShapeCandidates(bot).sort()).toEqual(['square', 'triangle']);
+  });
+
+  it('a single shape at the strict minimum is the only candidate', () => {
+    const bot = emptyChronossusState();
+    bot.breakthroughs.circle = 1;
+    bot.breakthroughs.triangle = 1;
+    expect(researchShapeCandidates(bot)).toEqual(['square']);
+  });
+
+  it('the rule generalizes past the first complete set (ties at a higher count)', () => {
+    const bot = emptyChronossusState();
+    bot.breakthroughs.circle = 2;
+    bot.breakthroughs.triangle = 1;
+    bot.breakthroughs.square = 1;
+    expect(researchShapeCandidates(bot).sort()).toEqual(['square', 'triangle']);
   });
 });

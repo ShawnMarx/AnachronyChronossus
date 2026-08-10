@@ -47,21 +47,22 @@ Rulebook: `…/reference/Rules/Anachrony-Chronobot-and-Chronossus-Solo-Opponents
 Goal: a shared helper that plays a full Chronossus game deterministically (inject dice /
 energy draws / answers), asserting it completes, invariants hold, and the score is sane.
 
-### T1. Base-game playthrough test
-- [ ] `src/engine/chronossusPlaythrough.test.ts` — drive setup → (per Era) Preparation →
+### T1. Base-game playthrough test ✅ done
+- [x] `src/engine/chronossusPlaythrough.test.ts` — drive setup → (per Era) Preparation →
   Paradox → Power Up → Warp → Action Rounds (take turns until both pass) → Clean Up → next
   Era → End Game. Inject deterministic energy draws, AI-die values, and paradox/warp rolls.
-- [ ] Assert: no throws; Exosuit/energy/paradox invariants hold each phase; `scoreChronossus`
+- [x] Assert: no throws; Exosuit/energy/paradox invariants hold each phase; `scoreChronossus`
   returns a coherent breakdown; game ends at `MAX_ERA`.
-- [ ] Factor the driver into a reusable `playChronossus({ config, rolls… })` helper so mode
-  variations differ only by config + injected values.
+- [x] Factor the driver into a reusable `playChronossus({ config, rolls… })` helper
+  (`src/engine/chronossusPlaythrough.ts`) so mode variations differ only by config + injected
+  values.
 
-### T2. HFA (Hypersync) variation
-- [ ] Same driver with the `hypersync` mode config (C12A/C13A tiles, Hypersync Action flow,
+### T2. HFA (Hypersync) variation ✅ done
+- [x] Same driver with the `hypersync` mode config (C12A/C13A tiles, Hypersync Action flow,
   Solo Hypersync tiles). Assert the Hypersync Action + Autoleap paths execute.
 
-### T3. Extensibility
-- [ ] Document (in the test file header) how to add a per-mode variation, so **Fractures**
+### T3. Extensibility ✅ done
+- [x] Document (in the test file header) how to add a per-mode variation, so **Fractures**
   (Part 3) and future modes drop in a new `describe` with their config. Each new mode ships
   with its playthrough variation.
 
@@ -74,33 +75,77 @@ logic and get feedback, **(b)** implement, **(c)** unit-test, **(d)** enable it 
 flow (move out of "Coming soon"), **(e)** extend the relevant playthrough variation if it
 changes end-to-end behavior. Flags/labels are the existing stubs in `ChronossusSetupFlow.tsx`.
 
-**Prereq D0 — scoring seam:** thread `config` (or new `ChronossusState` counters) into
-`scoreChronossus` so scoring options (D5, D7) have what they need. One small refactor up front.
+**Cross-cutting requirement (any option with a sub-selector, e.g. D3's 1/2/3, D6's 0/1/2):**
+the specific chosen sub-value must be shown wherever the difficulty options selected are
+listed (turn overview, end-game screen) — not just the flag's generic label. **Confirmed
+2026-08-10.**
+
+**Prereq D0 — scoring seam:** thread `config.difficulty: string[]` into `scoreChronossus`
+(new optional 2nd param) so it can add the D5 leftover-energy VP line at game end. **D7 does
+NOT go through this seam** — Failed Actions score their +2 VP live, mid-game, the moment a
+Failed Action resolves (added straight to `bot.vp` like other during-game VP), not as an
+end-game scoreChronossus addition. **Confirmed 2026-08-10.**
 
 ### Base-game options (`DIFFICULTY_OPTIONS`)
-- [ ] **D1 — `chronossus-tiles-b-side`** (already live) — verify + cover with a test; no new work expected.
-- [ ] **D2 — `chronossus-swap-tiles`** — swap Action tiles between the two marked spaces.
-  Engine/config: which action sits on which board space must reflect the swap so command
-  markers resolve the right tile; plus setup instruction.
-- [ ] **D3 — `chronossus-extra-energy`** — +1/2/3 Energy Cores in the starting pool (needs a
-  1/2/3 sub-selector). Engine: initial `EnergyPool`.
-- [ ] **D4 — `chronossus-extra-powerup`** — one extra powered Exosuit each Era for free; if it
-  would exceed the Exosuit max, +2 VP per excess drawn core instead (cores still removed).
-  Engine: `resolvePowerUp` / `poweredExosuits`.
-- [ ] **D5 — `chronossus-leftover-energy-vp`** — each leftover non-exhausted core at game end
-  = 1 VP. Engine: `scoreChronossus` (needs D0) + a score-screen line.
-- [ ] **D6 — `chronossus-fewer-objectives`** — play with fewer (or no) Solo Objectives.
-  Player-side/setup only (reveal N instead of 3); no bot-engine logic. Setup-text + reveal count.
-- [ ] **D7 — `chronossus-failed-action-vp`** — +2 VP per Failed Action. Engine: count Failed
-  Actions (add a counter if not tracked) + score it (needs D0).
-- [ ] **D8 — `chronossus-research-new-shape`** — on Research, take a Breakthrough shape the
-  Chronossus doesn't already have. Engine: Research resolution + the shape die/choice.
-- [ ] **D9 — `chronossus-hex-unavailable`** (World Council) — cover the right World Council
-  space (partly live as a setup line). Verify + finalize; confirm any action-availability effect.
+- [x] **D1 — `chronossus-tiles-b-side`** (already live) — **verified + gap closed
+  2026-08-10**: checkbox → per-family `tileSides` picker → `config.tileSides` is fully wired
+  (ChronossusSetupFlow.tsx ~186-204, 331-402) and consistent with D2's family-keyed slot-swap
+  design. Added `src/board/chronossusModes.test.ts` covering `tileCodeFor`'s config-driven
+  side selection (the resolution-level B-side effects were already covered by the existing
+  `resolveAction` tests).
+- [x] **D2 — `chronossus-swap-tiles`** — swap Action tiles between **Slot I and Slot III**
+  (`m2p3` / `m5s4`). Implemented as a swap-aware `getMode(id, difficulty?)` in
+  `chronossusModes.ts` (exchanges `family` on the Slot I / Slot III `ModeSlot` entries, mode-
+  agnostic since every mode shares the I/II/III scheme). All 4 `getMode` call sites updated to
+  pass `state.config.difficulty` where slot lookups matter. Tested in `chronossusModes.test.ts`.
+- [x] **D3 — `chronossus-extra-energy`** — +1/2/3 Energy Cores, added **energized**. Refactored
+  into a pure `applyDifficultySetup(bot, config)` in `chronossus.ts` (keeps the engine pure/
+  testable per CLAUDE.md) called once from `ChronossusGame.beginGame` and from the playthrough
+  helper's `setupChronossus`. Sub-selector (1/2/3) added to `ChronossusSetupFlow.tsx`. Tested
+  directly + via the new playthrough difficulty variation.
+- [x] **D4 — `chronossus-extra-powerup`** — free +1 Exosuit; excess over `exosuitsTotal` (not
+  the per-Era `powerUpCap`) converts to +2 VP/excess, cores still removed. Implemented in
+  `resolvePowerUp`. Tested (room-to-spare, exceeds-max, post-Impact headroom, flag-off cases).
+- [x] **D5 — `chronossus-leftover-energy-vp`** — `bot.energyPool.energized × 1` VP at game end.
+  `scoreChronossus(bot, difficulty?)` gained the seam (D0) + a `leftoverEnergyVP` field; score
+  screen (both Number and Tally modes) and the share summary show the line when nonzero.
+- [x] **D6 — `chronossus-fewer-objectives`** — setup-text only, reveal-count sub-selector
+  **0/1/2**, drives the "Setup for this app" bullet's "revealing N" text. No engine logic.
+- [x] **D7 — `chronossus-failed-action-vp`** — **replaces** the base +1 VP per Failed Action
+  with **+2 VP total**, live at the moment each Failed Action resolves (not through D0). Added
+  a `failedActionVP(difficulty)` helper used at all 5 Failed-Action call sites in
+  `resolveAction`/`resolveTimeTravel`/`resolveHypersyncAction`. Tested at each site + a
+  flag-off regression.
+- [x] **D8 — `chronossus-research-new-shape`** — candidates = shape(s) tied for the lowest
+  `bot.breakthroughs` count (`researchShapeCandidates`, pure + tested). Unique min → take
+  directly; tied → the UI (`ChronossusGame.pickResearchShape`) rerolls the existing
+  app-simulated `rollShapeDie()` until it lands on a candidate — no new randomness primitive,
+  engine stays pure.
+- [x] **D9 — `chronossus-hex-unavailable`** (World Council) — **fixed 2026-08-10**: the
+  selectable-options filter in `ChronossusSetupFlow.tsx` was dropped entirely (all of
+  `DIFFICULTY_OPTIONS` + `MODE_DIFFICULTY[moduleId]` now render as checkboxes), which
+  un-blocked D9's already-coded `blockWorldCouncil` setup note along with D2–D8. Matches the
+  Chronobot's identical option (setup-text only, no engine logic).
+
+**All of Part 2 shipped 2026-08-10.** New tests: `src/board/chronossusModes.test.ts` (11),
+~24 new cases appended to `src/engine/bots/chronossus.test.ts`, a difficulty-options variation
+in `src/engine/chronossusPlaythrough.test.ts` (D3/D4/D5/D7 through a full game). `npm run
+build` / `npm test` (142 passing) / `npm run lint` (only the pre-existing `only-export-
+components` warnings) all clean. Manual Playwright smoke test of the Setup flow (toggle
+D2/D3/D6/D9, sub-selectors, Setup-for-this-app bullets, Begin Era 1) showed no console errors.
+Cross-cutting sub-selector display requirement done: `chronossusDifficultyLabel` appends the
+chosen value, used in the score-screen setup note + share summary.
 
 ### HFA module option (`MODE_DIFFICULTY.hypersync`)
-- [ ] **D10 — `chronossus-hypersync-targeted`** (already live) — verify + test the "take your
-  oldest pending tile's space (no random roll)" path.
+- [x] **D10 — `chronossus-hypersync-targeted`** (already live) — **verified 2026-08-10, no
+  further work.** Traced end-to-end: `HypersyncDialog` (ChronossusGame.tsx ~2759) skips the
+  roll-a-hex step and shows the "no random roll" copy when `targeted`, but this is **UI-only
+  — zero engine effect**. `resolveHypersyncAction` (chronossus.ts:664-665) always retrieves
+  the furthest-past pending tile regardless of which hex was rolled; `input.hex` only feeds
+  display text ("Hypersync hex 3" vs. "the Hypersync space for its furthest-past pending
+  tile"), nothing downstream reads it. Nothing for the playthrough engine test to exercise —
+  the pure engine doesn't branch on this flag at all, and this codebase has no `.test.tsx`
+  UI-component tests to add one to.
 
 ---
 
@@ -144,14 +189,16 @@ mode/tile machinery. Ends with a playthrough variation (Part 1 seam).
 ---
 
 ## Recommended implementation order
-1. **Part 1** (test harness: T1 → T2 → T3) — guardrail first.
-2. **Part 2 D0** (scoring seam), then **D1…D10** one at a time (feedback pause each).
-3. **Part 3** (F-R → F1 → F2 → F3 → F4 → F5 → F6).
+1. **Part 1** (test harness: T1 → T2 → T3) — guardrail first. ✅ done
+2. **Part 2 D0** (scoring seam), then **D1…D10** one at a time (feedback pause each). ✅ done
+3. **Part 3** (F-R → F1 → F2 → F3 → F4 → F5 → F6). ← next up
 
 ## Open questions
-- **D2 swap-tiles:** does the app need a full position→tile remap, or is a setup instruction
-  enough (does anything downstream read tile-by-position)? Resolve at D2.
-- **D7 failed-action-vp:** are Failed Actions already counted anywhere? If not, add a counter.
+- **New idea (not a strict difficulty increase, deferred):** a *randomized* tile-arrangement
+  option — shuffle **all** of the chosen mode's modular-tile slots (not just Slot I↔III like
+  D2; every slot the active mode defines, e.g. base's I/II/III, hypersync's I/II/III/V, and
+  whatever future modules add). Raised during the D2 discussion; needs its own definition
+  later — not in scope for this plan's D-numbered list yet.
 - **F5:** are Fractures expansion objectives player-scored (like Solo Objectives) or does the
   Chronossus score them? Confirm from the rulebook during F-R.
 - **Combos** (e.g. Fractures + Pioneers/Hypersync) are out of scope here unless trivial.
