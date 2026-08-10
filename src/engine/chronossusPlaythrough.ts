@@ -89,6 +89,9 @@ export interface PlaythroughOptions {
   warpRollForEra?: (era: number) => number;
   /** Cycled Paradox-die rolls fed to `rollParadox` until it stops. Default: always 1. */
   paradoxRollCycle?: number[];
+  /** Alternate Timelines: positive-effect Warp spaces reported for a given Era's
+   *  placed Warp tiles. Default: 0 (no-op unless the module variation overrides it). */
+  positiveSpacesForEra?: (era: number, placed: number) => number;
 }
 
 export interface PlaythroughResult {
@@ -154,6 +157,7 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     actionsForEra = defaultActionsForEra,
     warpRollForEra = (era) => era % 3,
     paradoxRollCycle = [1],
+    positiveSpacesForEra = () => 0,
   } = opts;
 
   let state = setupChronossus(config);
@@ -185,7 +189,8 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     state = Chronossus.resolvePowerUp(state, draw);
     assertInvariants(state);
 
-    state = Chronossus.resolveWarp(state, Math.max(0, warpRollForEra(state.era)));
+    const warpPlace = Math.max(0, warpRollForEra(state.era));
+    state = Chronossus.resolveWarp(state, warpPlace, positiveSpacesForEra(state.era, warpPlace));
     assertInvariants(state);
 
     state = runActionRounds(state, actionsForEra(state.era));

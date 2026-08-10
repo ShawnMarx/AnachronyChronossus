@@ -54,12 +54,29 @@ const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: false },
 ];
 
-/** Step 2 — the optional add-on modules (multi-select; none available yet). */
-const EXTRA_MODULES: { id: string; label: string }[] = [
-  { id: 'variable-anomalies', label: 'Variable Anomalies' },
-  { id: 'quantum-loops', label: 'Quantum Loops' },
-  { id: 'alternate-timelines', label: 'Alternate Timelines' },
+/** Step 2 — the optional add-on modules (multi-select; combine with any base mode). */
+interface ExtraModuleConfig {
+  id: string;
+  label: string;
+  available: boolean;
+}
+const EXTRA_MODULES: ExtraModuleConfig[] = [
+  { id: 'variable-anomalies', label: 'Variable Anomalies', available: true },
+  { id: 'quantum-loops', label: 'Quantum Loops', available: false },
+  { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, label: 'Alternate Timelines', available: true },
 ];
+
+/** Extra-module-specific difficulty options (Solo Opponents p.18's own
+ *  "Increasing the Difficulty" bullets — only Alternate Timelines has one). */
+const EXTRA_MODULE_DIFFICULTY: Record<string, DifficultyOption[]> = {
+  [Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES]: [
+    {
+      flag: Chronossus.DIFFICULTY_ALT_TIMELINES_3VP,
+      label: 'Alternate Timelines: 3 VP per positive effect',
+      detail: 'The Chronossus scores 3 VPs per positive effect instead of 2.',
+    },
+  ],
+};
 
 /** Difficulty flag for the "cover the right World Council space" option (shared
  *  with the Chronobot); drives the setup wording on the last step. */
@@ -144,7 +161,11 @@ export function chronossusDifficultyLabel(
   flag: string,
   difficultyValues?: Record<string, number>,
 ): string {
-  const all = [...DIFFICULTY_OPTIONS, ...Object.values(MODE_DIFFICULTY).flat()];
+  const all = [
+    ...DIFFICULTY_OPTIONS,
+    ...Object.values(MODE_DIFFICULTY).flat(),
+    ...Object.values(EXTRA_MODULE_DIFFICULTY).flat(),
+  ];
   const found = all.find((o) => o.flag === flag);
   const value = difficultyValues?.[flag];
   const suffix = found?.values && value != null ? ` (${value})` : '';
@@ -170,6 +191,8 @@ export interface ChronossusSetupResult {
   tileSides: Record<string, 'A' | 'B'>;
   /** Chosen sub-selector value per flag (e.g. 'chronossus-extra-energy' → 2). */
   difficultyValues: Record<string, number>;
+  /** Selected extra/add-on module ids (multi-select). */
+  extraModules: string[];
 }
 
 /** A collapsible "Coming soon" list of not-yet-available modules / options. */
@@ -197,6 +220,7 @@ export default function ChronossusSetupFlow({
   type Step = 'intro' | 'modules' | 'difficulty' | 'setup';
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
+  const [extraModules, setExtraModules] = useState<Set<string>>(new Set());
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
   // Per-tile side selection; only families set to 'B' are stored.
   const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
@@ -231,6 +255,7 @@ export default function ChronossusSetupFlow({
       mode: moduleId,
       tileSides: effectiveTileSides(),
       difficultyValues,
+      extraModules: [...extraModules],
     });
 
   const eyebrow =
@@ -328,10 +353,38 @@ export default function ChronossusSetupFlow({
                 ))}
               </div>
 
+              <p className="phase-note">
+                Optional add-on modules (combine with any base mode above):
+              </p>
+              <div className="difficulty-list">
+                {EXTRA_MODULES.filter((m) => m.available).map((m) => {
+                  const on = extraModules.has(m.id);
+                  return (
+                    <label key={m.id} className={`difficulty-opt ${on ? 'on' : ''}`}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={() =>
+                          setExtraModules((s) => {
+                            const next = new Set(s);
+                            if (next.has(m.id)) next.delete(m.id);
+                            else next.add(m.id);
+                            return next;
+                          })
+                        }
+                      />
+                      <span className="difficulty-opt-text">
+                        <b>{m.label}</b>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
               <ComingSoon
                 items={[
                   ...MODULE_CONFIGS.filter((m) => !m.available).map((m) => m.label),
-                  ...EXTRA_MODULES.map((m) => m.label),
+                  ...EXTRA_MODULES.filter((m) => !m.available).map((m) => m.label),
                 ]}
               />
 
@@ -358,7 +411,11 @@ export default function ChronossusSetupFlow({
                 Chronossus, or play with none for the standard game.
               </p>
               <div className="difficulty-list">
-                {[...DIFFICULTY_OPTIONS, ...(MODE_DIFFICULTY[moduleId] ?? [])]
+                {[
+                  ...DIFFICULTY_OPTIONS,
+                  ...(MODE_DIFFICULTY[moduleId] ?? []),
+                  ...[...extraModules].flatMap((id) => EXTRA_MODULE_DIFFICULTY[id] ?? []),
+                ]
                   .filter((o) => !(mandatoryWorldCouncil && o.flag === DIFFICULTY_WORLD_COUNCIL))
                   .map((o) => {
                     const isFlip = o.flag === DIFFICULTY_TILES_B_SIDE;

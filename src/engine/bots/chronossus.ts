@@ -958,17 +958,31 @@ export function endParadoxPhase(state: GameState): GameState {
 // Phase 4: Warp
 // --------------------------------------------------------------------------
 
+/** Alternate Timelines extra module — combines with any base mode. */
+export const EXTRA_MODULE_ALTERNATE_TIMELINES = 'alternate-timelines';
+/** Alternate Timelines' own difficulty option: 3 VP per positive effect instead of 2. */
+export const DIFFICULTY_ALT_TIMELINES_3VP = 'chronossus-alt-timelines-3vp';
+
 /**
  * Warp phase: place `paradoxes` Warp tiles for the Chronossus (the number rolled
  * on the Paradox die). Same mechanic as the Chronobot — it gains nothing from
  * them and any tiles will do — just on the Chronossus slice. Advances to Actions.
+ *
+ * Alternate Timelines (extra module): the Chronossus ignores negative/penalty
+ * Timeline spaces entirely, but scores 2 VP (3 with its own difficulty option) for
+ * each of its newly-placed Warp tiles that landed on a positive-effect space —
+ * `positiveSpaces`, reported by the player (the app doesn't track Timeline-tile
+ * slot colors). 0 when the module is off, which is a no-op VP-wise.
  */
-export function resolveWarp(state: GameState, paradoxes: number): GameState {
+export function resolveWarp(state: GameState, paradoxes: number, positiveSpaces = 0): GameState {
   if (!state.chronossus) throw new Error('resolveWarp: no Chronossus state');
   const place = Math.max(0, paradoxes);
+  const perSpace = state.config.difficulty.includes(DIFFICULTY_ALT_TIMELINES_3VP) ? 3 : 2;
+  const bonusVP = positiveSpaces * perSpace;
   const bot = {
     ...state.chronossus,
     warpTilesOnTimeline: state.chronossus.warpTilesOnTimeline + place,
+    vp: state.chronossus.vp + bonusVP,
   };
   const instructions: Instruction[] = [
     {
@@ -979,7 +993,12 @@ export function resolveWarp(state: GameState, paradoxes: number): GameState {
           : 'The Chronossus places no Warp tiles this Era.',
       detail:
         'Warping happens in player order. The Chronossus gains nothing for its Warp tiles ' +
-        'and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)',
+        'and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)' +
+        (bonusVP
+          ? ` Alternate Timelines: ${positiveSpaces} landed on a positive-effect space — ` +
+            `+${bonusVP} VP (${perSpace} each). It ignores negative-space penalties entirely.`
+          : ''),
+      ...(bonusVP ? { effect: { vp: bonusVP } } : {}),
     },
   ];
   return {
@@ -987,7 +1006,10 @@ export function resolveWarp(state: GameState, paradoxes: number): GameState {
     chronossus: bot,
     phase: 'actions',
     currentInstructions: instructions,
-    log: [...state.log, `Warp phase (placed ${place}).`],
+    log: [
+      ...state.log,
+      `Warp phase (placed ${place}${bonusVP ? `, +${bonusVP} VP Alternate Timelines` : ''}).`,
+    ],
   };
 }
 

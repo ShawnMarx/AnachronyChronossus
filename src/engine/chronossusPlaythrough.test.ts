@@ -21,6 +21,8 @@ import {
   DIFFICULTY_EXTRA_POWERUP,
   DIFFICULTY_LEFTOVER_ENERGY_VP,
   DIFFICULTY_FAILED_ACTION_VP,
+  DIFFICULTY_ALT_TIMELINES_3VP,
+  EXTRA_MODULE_ALTERNATE_TIMELINES,
 } from './bots/chronossus';
 import type { GameConfig } from './types';
 
@@ -139,5 +141,56 @@ describe('Chronossus full-game playthrough — base mode with difficulty options
     const plain = playChronossus({ config: BASE_CONFIG });
     const harder = playChronossus({ config: DIFFICULTY_CONFIG });
     expect(harder.score.duringGameVP).toBeGreaterThanOrEqual(plain.score.duringGameVP);
+  });
+});
+
+describe('Chronossus full-game playthrough — Alternate Timelines extra module', () => {
+  const ALT_TIMELINES_CONFIG: GameConfig = {
+    ...BASE_CONFIG,
+    extraModules: [EXTRA_MODULE_ALTERNATE_TIMELINES],
+  };
+
+  it('scores 2 VP per reported positive space across a full game', () => {
+    // Report 1 positive space whenever any Warp tiles were placed that Era.
+    const withBonus = playChronossus({
+      config: ALT_TIMELINES_CONFIG,
+      positiveSpacesForEra: (_era, placed) => (placed > 0 ? 1 : 0),
+    });
+    const withoutBonus = playChronossus({ config: ALT_TIMELINES_CONFIG });
+    expect(withBonus.state.finished).toBe(true);
+    const delta = withBonus.score.duringGameVP - withoutBonus.score.duringGameVP;
+    // One reported positive space per Warp-placing Era, 2 VP each — a clean positive
+    // multiple of 2 on top of whatever the identical action script otherwise scores.
+    expect(delta).toBeGreaterThan(0);
+    expect(delta % 2).toBe(0);
+  });
+
+  it('scores 3 VP per positive space with its own difficulty option active', () => {
+    const config: GameConfig = { ...ALT_TIMELINES_CONFIG, difficulty: [DIFFICULTY_ALT_TIMELINES_3VP] };
+    const base = playChronossus({
+      config: ALT_TIMELINES_CONFIG,
+      positiveSpacesForEra: (_era, placed) => (placed > 0 ? 1 : 0),
+    });
+    const harder = playChronossus({
+      config,
+      positiveSpacesForEra: (_era, placed) => (placed > 0 ? 1 : 0),
+    });
+    expect(harder.score.duringGameVP).toBeGreaterThan(base.score.duringGameVP);
+  });
+
+});
+
+describe('resolveWarp — Alternate Timelines VP is caller-driven, not module-gated', () => {
+  // resolveWarp trusts whatever positiveSpaces it's given — same pattern as every other
+  // engine resolver (state.config only decides the VP-per-space rate, never whether to
+  // apply it at all). Gating "should we even ask the player" belongs to the UI (only
+  // prompts when config.extraModules includes alternate-timelines); this just documents
+  // that the pure engine has no opinion on the module flag.
+  it('a nonzero positiveSpaces still grants VP even without the extra module selected', () => {
+    const { score } = playChronossus({
+      config: BASE_CONFIG, // no extraModules
+      positiveSpacesForEra: (_era, placed) => (placed > 0 ? 1 : 0),
+    });
+    expect(score.duringGameVP).toBeGreaterThan(0);
   });
 });

@@ -84,6 +84,11 @@ export interface GameConfig {
    * difficulty options that don't have one.
    */
   difficultyValues?: Record<string, number>;
+  /**
+   * Optional add-on modules selected at setup (multi-select, combine with any base
+   * mode), keyed by id (e.g. 'alternate-timelines', 'variable-anomalies').
+   */
+  extraModules?: string[];
 }
 
 /** A resource bundle, e.g. gains or costs. */

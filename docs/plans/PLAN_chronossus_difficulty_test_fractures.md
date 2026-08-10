@@ -1,8 +1,8 @@
-# PLAN — Chronossus difficulty options, playthrough tests, & Fractures of Time
+# PLAN — Chronossus difficulty options, playthrough tests, small modules, & Fractures of Time
 
 ## Overview & goal
 
-Three connected efforts on the now-shipped Chronossus base opponent, in dependency order:
+Four connected efforts on the now-shipped Chronossus base opponent, in dependency order:
 
 1. **Playthrough test harness (first)** — a reusable end-to-end engine test that drives a
    whole Chronossus game, with a per-mode variation (base, HFA, …). It's the regression
@@ -11,7 +11,10 @@ Three connected efforts on the now-shipped Chronossus base opponent, in dependen
    flow (visible, disabled). Implement the real **engine logic** for each, **one option at
    a time with a feedback pause**, for the base game and the HFA (Hypersync Future Actions)
    module. Un-stub each as it lands.
-3. **Fractures of Time** — the full expansion module (Flux Pool / Cores / Fracture Device,
+3. **Alternate Timelines & Variable Anomalies** — two small standalone modules, prioritized
+   **ahead of Fractures** (2026-08-10 decision). Both are documented on Solo Opponents p.18
+   with compact Chronossus-behavior deltas — far smaller in scope than Fractures/Hypersync.
+4. **Fractures of Time** — the full expansion module (Flux Pool / Cores / Fracture Device,
    X-series actions, expansion objectives), end-to-end, ending with its own playthrough
    test variation.
 
@@ -20,8 +23,10 @@ Chronossus base must never regress. Rule text shown to players stays **verbatim*
 possible.
 
 Rulebook: `…/reference/Rules/Anachrony-Chronobot-and-Chronossus-Solo-Opponents-…pdf`
-(Chronossus base pp. 8–10, difficulty **p. 10**, appendix pp. 19–22). Fractures rules in
-`…/reference/Rules/Anachrony-Fractures-of-Time-…pdf` and the Future-Imperfect/HFA rulebook.
+(Chronossus base pp. 8–10, difficulty **p. 10**, appendix pp. 19–22, small-module deltas
+**p. 18**). Fractures rules in `…/reference/Rules/Anachrony-Fractures-of-Time-…pdf` (Variable
+Anomalies module pp. 13-14, 18-19 — sold inside the Fractures box) and the Future-Imperfect/
+HFA rulebook.
 
 ### Decisions (confirmed)
 - **Sequence:** test harness → difficulty → Fractures.
@@ -149,7 +154,121 @@ chosen value, used in the score-screen setup note + share summary.
 
 ---
 
-## PART 3 — Fractures of Time (full module)
+## PART 3 — Alternate Timelines & Variable Anomalies (ahead of Fractures)
+
+Both are documented on **Solo Opponents rulebook p.18** with a compact Chronossus-behavior
+delta each (verbatim below). Neither needs the full Fractures of Time module/mechanics —
+confirmed 2026-08-10 this can go ahead of Part 4.
+
+### A1. Alternate Timelines — ✅ shipped 2026-08-10
+**Dependency:** none confirmed (its own full player-facing rules live in the Essential
+Edition core rulebook, out of scope for us — **only the Solo Opponents p.18 delta matters**
+for the Chronossus, per the user 2026-08-10).
+
+Verbatim (Solo Opponents p.18):
+> CHANGES AT SETUP: No changes at Setup.
+> ⏳4 WARP PHASE: In the Warp Phase, you must decide how many Resources and/or Workers to
+> warp first, then roll for the Chronossus. Place the tiles in turn order, as usual.
+> It ignores penalties (red spaces), and it receives 2 VPs instead of any positive rewards.
+> You resolve both positive and negative effects as normal.
+> INCREASING THE DIFFICULTY: The Chronossus scores 3 VPs per positive effect.
+
+**Confirmed design (2026-08-10, from the user):** in the Warp Phase, the player decides
+their own Warp tile placement first, then the app rolls/places the Chronossus's Warp
+tiles as usual (order note only — no state change). After that, the app asks the player
+how many of the Chronossus's newly-placed Warp tiles landed on a **positive**-effect
+Timeline space (the player reads this off the physical tiles; the app doesn't track
+Timeline-tile slot colors). The Chronossus scores **2 VP per positive space** (or **3 VP**
+if its own difficulty option is selected). **Negative/penalty spaces are ignored
+entirely — nothing to ask, nothing to track.**
+
+- [x] Engine: `resolveWarp(state, paradoxes, positiveSpaces = 0)` grants
+  `positiveSpaces * (DIFFICULTY_ALT_TIMELINES_3VP ? 3 : 2)` VP; backward compatible
+  (existing callers omitting the 3rd arg see zero behavior change).
+- [x] New Extra-Module flag `EXTRA_MODULE_ALTERNATE_TIMELINES` — `EXTRA_MODULES` in
+  `ChronossusSetupFlow.tsx` now renders available extras as multi-select checkboxes
+  (was previously unconditionally in "Coming soon"); new `GameConfig.extraModules`.
+- [x] Its own difficulty option `DIFFICULTY_ALT_TIMELINES_3VP` — plain checkbox, appears
+  in the Difficulty step only when the module is selected (`EXTRA_MODULE_DIFFICULTY` map,
+  mirrors the existing `MODE_DIFFICULTY` pattern).
+- [x] UI: `ChronossusGame.commitWarp` intercepts before resolving when the module is
+  active and Warp tiles were placed — shows a 0..N button prompt, then calls
+  `resolveWarp` with the chosen count. Verified live (Playwright): correct prompt
+  text/pluralization, correct button range, VP applied, phase advances to Actions —
+  zero console errors.
+- [x] Unit tests (`chronossus.test.ts`: 2/3 VP rates, backward-compat no-op) + a
+  playthrough variation (`chronossusPlaythrough.test.ts`) confirming the VP delta
+  across a full game and that the engine is caller-driven (doesn't itself gate on
+  `extraModules` — the UI decides when to prompt).
+
+### A2. Variable Anomalies — confirmed design, ready to implement
+**Dependency:** the physical Fractures of Time **expansion box** (for its 16 Variable
+Anomaly tiles + Anomaly Remover tiles) but **not** the Fractures **module**/mechanics —
+confirmed 2026-08-10 by the user ("can be played with or without the main Fractures of Time
+module," verbatim from the Fractures rulebook p.13). Standalone-implementable.
+
+Verbatim (Solo Opponents p.18):
+> CHANGES AT SETUP: The Chronossus ignores all unique effects of the Anomalies and does not
+> receive an Anomaly Remover tile.
+> RECEIVING ANOMALIES: When receiving Anomalies, the Chronossus will select one that will
+> allow it to retrieve a Warp tile. If both or neither do, it will select the one with the
+> smaller VP penalty.
+> REMOVING ANOMALIES: When removing an Anomaly, it always removes the one with the largest
+> VP penalty.
+
+**Tile data** (verbatim, Fractures rulebook pp.3, 18-19 — 16 tiles X01–X16, each with a VP
+penalty and a "retrieve a Warp tile" eligibility window keyed to the Era's Impact status;
+the Chronossus ignores each tile's unique passive ability per the Setup rule above, so only
+these two fields matter to it):
+
+| Tile | VP | Retrieve window |
+|---|---|---|
+| X01–X06 | −2 | Before Impact only |
+| X07–X08 | −3 | Before Impact only |
+| X09–X12 | −4 | Any Era |
+| X13–X15 | −5 | After Impact only |
+| X16 | −6 | Never (no retrieve icon at all) |
+
+Gaining an Anomaly (Fractures p.14): "you must choose to receive one of the two visible
+Anomalies" from a primary/secondary stack (same shift-on-Preparation-Phase pattern as
+Buildings/Technology). Matches how Construct VP already works in this app (`buildingVP`,
+player-reported) rather than the app simulating a shuffled deck.
+
+**Confirmed design (2026-08-10):**
+- **State:** replace the flat counter with a held-VP list for Variable-Anomalies games —
+  `anomalyVps: number[]` on `ChronossusState` (mirrors the existing `buildingVps`/
+  `superprojectVps` per-instance-VP pattern), alongside the untouched flat `anomalies:
+  number` used by every other mode/the Chronobot. `scoreChronossus` sums `anomalyVps` instead
+  of `anomalies * ANOMALY_VP` when the list is present/non-empty for that game.
+- **Gaining** (still triggers at 3 Paradoxes, same as today): the player reports the 2
+  visible offer tiles' data by hand — **VP value + a yes/no "does it let the Chronossus
+  retrieve a Warp tile right now" answer** for each (no tile-code catalog; the player reads
+  this straight off the physical tiles, same as `buildingVP` input for Construct today).
+  Engine picks: the one flagged retrieve-eligible (if only one is); if both or neither are,
+  the one with the smaller penalty (closer to 0). Push its VP onto `anomalyVps`; if the
+  chosen tile was retrieve-eligible, decrement `warpTilesOnTimeline` by 1 (if any) — same
+  simple flat-count removal the engine already does elsewhere, no per-Timeline-tile tracking.
+- **Removing** (the `remove-anomaly` Action / Anomaly Remover tile): no player input needed —
+  the engine already knows every held tile's VP, so it removes `Math.min(...anomalyVps)`
+  (most negative = largest penalty) itself.
+- **Tooltip:** the Anomalies board counter shows the held VP list on hover/tap, same pattern
+  as the buildings tooltip (`buildingVps`/`superprojectVps`) already listing per-tile VP.
+- Fractures' Anomaly Remover Water-cost delta (−1 W vs. base) doesn't affect the app — it
+  doesn't track Water.
+
+- [ ] Engine: `anomalyVps?: number[]` on `ChronossusState`; a `pickVariableAnomaly` helper
+  implementing the gain-selection rule; `scoreChronossus` sums it when present; `remove-
+  anomaly` resolution removes `Math.min(...anomalyVps)` when the list is present.
+- [ ] New Extra-Module flag — un-stub `variable-anomalies` in `EXTRA_MODULES`
+  (`ChronossusSetupFlow.tsx`); combines with any base mode per the rulebook.
+- [ ] UI: gain-Anomaly prompt asks for the 2 offer tiles' (VP, retrieve-eligible) each;
+  Anomalies board counter tooltip lists held VPs (buildings-tooltip pattern).
+- [ ] Unit tests (tile-selection rule: unique-eligible, both/neither-eligible tie-break,
+  removal-picks-largest-penalty) + playthrough variation.
+
+---
+
+## PART 4 — Fractures of Time (full module)
 
 The largest piece: a new mode with new subsystems. Build on the shared solo-bot core +
 mode/tile machinery. Ends with a playthrough variation (Part 1 seam).
@@ -191,7 +310,9 @@ mode/tile machinery. Ends with a playthrough variation (Part 1 seam).
 ## Recommended implementation order
 1. **Part 1** (test harness: T1 → T2 → T3) — guardrail first. ✅ done
 2. **Part 2 D0** (scoring seam), then **D1…D10** one at a time (feedback pause each). ✅ done
-3. **Part 3** (F-R → F1 → F2 → F3 → F4 → F5 → F6). ← next up
+3. **Part 3** — A1 (Alternate Timelines, ready to implement) → A2 (Variable Anomalies, needs
+   the open design questions answered first). ← next up
+4. **Part 4** (F-R → F1 → F2 → F3 → F4 → F5 → F6).
 
 ## Open questions
 - **New idea (not a strict difficulty increase, deferred):** a *randomized* tile-arrangement

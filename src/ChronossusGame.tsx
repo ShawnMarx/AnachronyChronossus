@@ -546,6 +546,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [selectedResources, setSelectedResources] = useState<Resource[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
+  // Alternate Timelines: Warp tiles placed this phase, awaiting the player's
+  // positive-effect-space count before the Warp phase actually commits.
+  const [altTimelinesPending, setAltTimelinesPending] = useState<number | null>(null);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
 
   // Tapped tracker-badge popover (like the Chronobot's board tooltips).
@@ -629,6 +632,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const failedActionVP = state.config.difficulty?.includes(Chronossus.DIFFICULTY_FAILED_ACTION_VP)
     ? 2
     : 1;
+  const altTimelines = state.config.extraModules?.includes(
+    Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES,
+  ) ?? false;
   // The live Hypersync tile code (C12/C13 + side) triggered at a given board spot,
   // or null when this mode has no Hypersync tile there.
   const hypersyncCodeAtSlot = (posKey: string): string | null => {
@@ -1282,6 +1288,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         difficultyValues: result.difficultyValues,
         chronossusMode: result.mode,
         tileSides: result.tileSides,
+        extraModules: result.extraModules,
       };
       return startFirstEra({
         ...s,
@@ -1339,18 +1346,35 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const rollWarp = () => setUi((u) => ({ ...u, warpRoll: rollParadoxDie() }));
   const advanceParadox = () => setState(Chronossus.endParadoxPhase(state));
   // Warp phase: place the Chronossus's rolled Warp tiles and commit (so the
-  // placement lands in History) — mirrors the Chronobot's commitWarp.
+  // placement lands in History) — mirrors the Chronobot's commitWarp. Alternate
+  // Timelines intercepts first: ask how many landed on a positive space before
+  // actually resolving/committing.
   const commitWarp = (paradoxes: number) => {
     const place = Math.max(0, paradoxes);
-    const next = Chronossus.resolveWarp(state, place);
+    if (altTimelines && place > 0) {
+      setAltTimelinesPending(place);
+      return;
+    }
+    finishWarp(place, 0);
+  };
+  const finishWarp = (place: number, positiveSpaces: number) => {
+    const next = Chronossus.resolveWarp(state, place, positiveSpaces);
+    const perSpace = state.config.difficulty.includes(Chronossus.DIFFICULTY_ALT_TIMELINES_3VP)
+      ? 3
+      : 2;
+    const bonusVP = positiveSpaces * perSpace;
     commit(
       next,
       { ...ui, warpRoll: null },
       `Era ${state.era} · Warp: placed ${place}`,
-      place > 0
-        ? [`Placed ${place} Warp tile${place === 1 ? '' : 's'} on the Timeline`]
-        : ['Placed no Warp tiles'],
+      [
+        place > 0
+          ? `Placed ${place} Warp tile${place === 1 ? '' : 's'} on the Timeline`
+          : 'Placed no Warp tiles',
+        ...(bonusVP ? [`Alternate Timelines: +${bonusVP} VP (${positiveSpaces} positive space${positiveSpaces === 1 ? '' : 's'})`] : []),
+      ],
     );
+    setAltTimelinesPending(null);
   };
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   // On the last Era there is no next Era, so skip the prompt and go to Clean Up.
@@ -2357,17 +2381,41 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       break;
     case 'warp':
-      body = (
-        <WarpPhaseBody
-          state={state}
-          meta={meta!}
-          onCommit={commitWarp}
-          botName="Chronossus"
-          warpTileSrc="/assets/solo/chronossus/warp-tile.png"
-          roll={ui.warpRoll}
-          onRoll={rollWarp}
-        />
-      );
+      body =
+        altTimelinesPending != null ? (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              Alternate Timelines: how many of the Chronossus’s {altTimelinesPending} newly
+              placed Warp tile{altTimelinesPending === 1 ? '' : 's'} landed on a{' '}
+              <b>positive</b>-effect Timeline space?
+            </p>
+            <p className="pp-sub">
+              It ignores negative/penalty spaces entirely — nothing to report for those.
+            </p>
+            <div className="difficulty-sub-values">
+              {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className="difficulty-sub-value"
+                  onClick={() => finishWarp(altTimelinesPending, n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <WarpPhaseBody
+            state={state}
+            meta={meta!}
+            onCommit={commitWarp}
+            botName="Chronossus"
+            warpTileSrc="/assets/solo/chronossus/warp-tile.png"
+            roll={ui.warpRoll}
+            onRoll={rollWarp}
+          />
+        );
       break;
     case 'cleanup': {
       // Impact + game-end flow, identical to the Chronobot: the Impact resolves at

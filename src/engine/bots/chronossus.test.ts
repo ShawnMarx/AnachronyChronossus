@@ -29,6 +29,7 @@ import {
   DIFFICULTY_LEFTOVER_ENERGY_VP,
   DIFFICULTY_FAILED_ACTION_VP,
   DIFFICULTY_RESEARCH_NEW_SHAPE,
+  DIFFICULTY_ALT_TIMELINES_3VP,
   type EnergyDraw,
 } from './chronossus';
 import { drawEnergyPool } from '../index';
@@ -465,6 +466,28 @@ describe('resolveWarp — places the rolled Warp tiles', () => {
   it('places nothing on a 0 roll', () => {
     const next = resolveWarp(chronossusState({ era: 3, phase: 'warp' }), 0);
     expect(next.chronossus!.warpTilesOnTimeline).toBe(0);
+  });
+
+  it('Alternate Timelines: positiveSpaces scores 2 VP each by default', () => {
+    const s = chronossusState({ era: 3, phase: 'warp' });
+    const next = resolveWarp(s, 2, 3);
+    expect(next.chronossus!.vp).toBe(6); // 3 positive spaces × 2 VP
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(2);
+  });
+
+  it('Alternate Timelines: scores 3 VP each with its own difficulty option', () => {
+    const s = chronossusState({
+      era: 3,
+      phase: 'warp',
+      config: { ...CONFIG, difficulty: [DIFFICULTY_ALT_TIMELINES_3VP] },
+    });
+    const next = resolveWarp(s, 2, 3);
+    expect(next.chronossus!.vp).toBe(9); // 3 positive spaces × 3 VP
+  });
+
+  it('ignores positiveSpaces when omitted (regression, no VP change)', () => {
+    const next = resolveWarp(chronossusState({ era: 3, phase: 'warp' }), 2);
+    expect(next.chronossus!.vp).toBe(0);
   });
 });
 
