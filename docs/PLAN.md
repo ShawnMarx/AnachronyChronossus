@@ -11,10 +11,12 @@
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
 > per-phase bodies, module selection, and scoring are all live
 > (`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`); `chronossus.implemented` is
-> `true`. **No active plan right now.** Next candidates (in `TODO.md`): an automated
-> Chronossus playthrough test, more modules (Fractures, Doomsday, Pioneers, Guardians),
-> per-module difficulty options, and Chronossus stats/history. The Chronossus knowledge,
-> references, and design decisions here remain the source material behind those efforts.
+> `true`. **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` —
+> a Chronossus playthrough-test harness (base + HFA variations), then the difficulty
+> options one at a time (base + HFA), then the full **Fractures of Time** module. Further
+> candidates (Doomsday, Pioneers, Guardians, Chronossus stats/history) stay in `TODO.md`.
+> The Chronossus knowledge, references, and design decisions here remain the source
+> material behind those efforts.
 
 ## 1. What the app is (and isn't)
 

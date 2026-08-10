@@ -2,6 +2,20 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-09 — Chronossus base shipped; next effort planned
+
+Chronossus base is officially done and live. Details in
+`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`.
+
+- `chronossus.implemented` → `true` (base game + Hypersync module live).
+- Removed the dead `default: setup` case in `ChronossusGame.tsx` (unreachable).
+- Closed out `PLAN_chronossus_base.md` (all of Part A + B1/B3/B4 done, B5 shipped, B2
+  dropped as player-managed); archived to `docs/complete/`.
+- Docs process: added a "Docs & notes maintenance" section to `CLAUDE.md` and a
+  user-level `/recap` skill for end-of-session note upkeep.
+- Started the next effort: `PLAN_chronossus_difficulty_test_fractures.md` — playthrough
+  test harness (base + HFA), then difficulty options one at a time, then Fractures of Time.
+
 ## 2026-08-08 — Chronossus playtest fixes (11 items)
 
 A batch of bug/flow/score-screen fixes from an iPad solo play. Details in

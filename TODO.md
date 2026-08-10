@@ -45,16 +45,14 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 
 ## Chronossus base — ✅ shipped (2026-08-09)
 Base game + Hypersync module are live in prod. See
-`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`. Follow-ups / next candidates:
+`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`.
 
-- [ ] **Automated Chronossus playthrough test** — `playthrough.test.ts` is Chronobot-only.
-      Write one **before starting the next mode**; it's the guardrail protecting the shared
-      engine as modes pile on.
-- [ ] **More modules** — Fractures of Time (Flux Pool / Cores / Fracture Device, X-series
-      actions, expansion objectives); Doomsday, Pioneers, Guardians (stubbed in the Module
-      menu). Each becomes its own `/plan`.
-- [ ] **Per-module difficulty options** — the seam exists (`MODE_DIFFICULTY`); flesh out the
-      base-game difficulty options (currently only tile-B-side + Hypersync-targeted are live).
+**In the active plan** (`docs/plans/PLAN_chronossus_difficulty_test_fractures.md`): the
+playthrough test harness, the per-mode difficulty options (base + HFA), and Fractures of Time.
+
+Still backlog (not yet in a plan):
+- [ ] **More modules** — Doomsday, Pioneers, Guardians (stubbed in the Module menu). Each
+      becomes its own `/plan`.
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 
