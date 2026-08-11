@@ -644,6 +644,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const altTimelines = state.config.extraModules?.includes(
     Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES,
   ) ?? false;
+  // VP the Chronossus scores per positive-effect space it Warps onto (3 with that
+  // module's difficulty option selected, otherwise the printed 2).
+  const altTimelinesPerSpace = state.config.difficulty.includes(
+    Chronossus.DIFFICULTY_ALT_TIMELINES_3VP,
+  )
+    ? 3
+    : 2;
   // The live Hypersync tile code (C12/C13 + side) triggered at a given board spot,
   // or null when this mode has no Hypersync tile there.
   const hypersyncCodeAtSlot = (posKey: string): string | null => {
@@ -1395,10 +1402,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const finishWarp = (place: number, positiveSpaces: number) => {
     const next = Chronossus.resolveWarp(state, place, positiveSpaces);
-    const perSpace = state.config.difficulty.includes(Chronossus.DIFFICULTY_ALT_TIMELINES_3VP)
-      ? 3
-      : 2;
-    const bonusVP = positiveSpaces * perSpace;
+    const bonusVP = positiveSpaces * altTimelinesPerSpace;
     commit(
       next,
       { ...ui, warpRoll: null },
@@ -2444,6 +2448,40 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
           roll={ui.warpRoll}
           onRoll={rollWarp}
+          // Alternate Timelines replaces the base turn-order instruction: the decision
+          // has to be made BEFORE the roll, whoever is First Player (p.18).
+          intro={
+            altTimelines ? (
+              <p className="phase-note">
+                <b>Alternate Timelines:</b> decide how many Resources and/or Workers{' '}
+                <b>you</b> are warping <b>before</b> rolling for the Chronossus. Once
+                you've decided, roll below and place the tiles in turn order as usual.
+              </p>
+            ) : undefined
+          }
+          extraRules={
+            altTimelines ? (
+              <RulesBox label="Alternate Timelines — rulebook text">
+                <p>
+                  <b>WARP PHASE:</b> In the Warp Phase, you must decide how many Resources
+                  and/or Workers to warp first, then roll for the Chronossus. Place the
+                  tiles in turn order, as usual.
+                </p>
+                <p>
+                  It ignores penalties (red spaces), and it receives 2 VPs instead of any
+                  positive rewards. You resolve both positive and negative effects as
+                  normal.
+                </p>
+                {altTimelinesPerSpace === 3 && (
+                  <p>
+                    <b>INCREASING THE DIFFICULTY:</b> The Chronossus scores 3 VPs per
+                    positive effect.
+                  </p>
+                )}
+                <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+              </RulesBox>
+            ) : undefined
+          }
           followUp={
             altTimelinesPending != null ? (
               <div className="place-prompt">
@@ -2453,7 +2491,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   <b>positive</b>-effect Timeline space?
                 </p>
                 <p className="pp-sub">
-                  It ignores negative/penalty spaces entirely — nothing to report for those.
+                  It ignores negative/penalty spaces entirely — nothing to report for
+                  those. Each positive one scores it {altTimelinesPerSpace} VP.
                 </p>
                 <div className="difficulty-sub-values">
                   {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (

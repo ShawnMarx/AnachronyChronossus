@@ -1988,6 +1988,8 @@ export function WarpPhaseBody({
   roll,
   onRoll,
   followUp,
+  intro,
+  extraRules,
 }: {
   state: GameState;
   meta: PhaseMeta;
@@ -2009,6 +2011,15 @@ export function WarpPhaseBody({
    */
   roll?: number | null;
   onRoll?: () => void;
+  /**
+   * Replaces the default "Warping occurs in player order" note. Alternate Timelines
+   * overrides that order (Solo Opponents p.18 — you decide your own Warp first, THEN
+   * roll), so the module supplies its own instruction rather than leaving a contradicting
+   * one on screen.
+   */
+  intro?: ReactNode;
+  /** An extra verbatim rules box, rendered under the phase's own. */
+  extraRules?: ReactNode;
 }) {
   const [localRolled, setLocalRolled] = useState<number | null>(null);
   const controlled = onRoll != null;
@@ -2017,18 +2028,21 @@ export function WarpPhaseBody({
   const botFirst = state.firstPlayer === 'bot';
   return (
     <>
-      <p className="phase-note">
-        Warping occurs in player order.{' '}
-        {botFirst
-          ? `The ${botName} is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.`
-          : `You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the ${botName}.`}
-      </p>
+      {intro ?? (
+        <p className="phase-note">
+          Warping occurs in player order.{' '}
+          {botFirst
+            ? `The ${botName} is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.`
+            : `You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the ${botName}.`}
+        </p>
+      )}
 
       {meta.rules && (
         <RulesBox label={`${meta.name} — rulebook text`}>
           <p>{meta.rules}</p>
         </RulesBox>
       )}
+      {extraRules}
 
       {rolled == null ? (
         <button className="phase-primary" onClick={doRoll}>

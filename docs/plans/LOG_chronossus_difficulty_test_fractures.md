@@ -81,6 +81,13 @@ neither needs the main Fractures module/mechanics.
   disabled on the first screen, Preparation↔Power Up round-trip, both follow-up prompts
   rendering under their roll, and an undone Anomaly gain restoring `anomalyVps`/Warp count
   and re-opening the prompt.
+- [x] **Alternate Timelines overrides the Warp turn-order note** (2026-08-11): the screen was
+  still showing the base "Warping occurs in player order… roll for it below, then place your
+  own tiles", which contradicts p.18 ("you must decide how many Resources and/or Workers to
+  warp first, then roll for the Chronossus"). `WarpPhaseBody` gained `intro` (replaces the
+  order note) + `extraRules` (an extra verbatim box); the module now states the
+  decide-before-rolling order and shows its own p.18 text, including the 3-VP difficulty
+  bullet when selected. The positive-space question also names the VP rate.
 - [x] **Hypersync Paradox rules verified** (unrelated question, same session): the
   majority + extra-roll rules the app prompts for are verbatim Future Imperfect p.5, and
   Solo Opponents p.17 carries the module's rules over without touching the Paradox Phase.
