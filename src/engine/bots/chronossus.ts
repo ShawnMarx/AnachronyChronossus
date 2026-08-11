@@ -634,11 +634,12 @@ export function resolveAction(
     // The Hypersync-tile fallback places a tile instead of an Exosuit, and some Actions
     // place none at all.
     if (usingHypersyncTile || !def.placesExosuit) return;
-    if (input.blink && bot.placedExosuits) {
+    const fractures = bot.fluxPool != null;
+    if (input.blink && fractures) {
       // Fractures: no new Exosuit — the selected one moves here and loses its Energy
       // Core (returned to supply), so it can't Blink again this Era.
       const sel = selectBlinkExosuit(bot, input.actionId, input.tokenActions ?? {});
-      bot.placedExosuits = bot.placedExosuits.map((e) =>
+      bot.placedExosuits = (bot.placedExosuits ?? []).map((e) =>
         e === sel?.exosuit ? { action: input.actionId, space: 'action', hasCore: false } : e,
       );
       return;
@@ -646,9 +647,9 @@ export function resolveAction(
     if (bot.exosuitsAvailable > 0) {
       bot.exosuitsAvailable -= 1;
       // Fractures: every placement takes an Energy Core from supply into that Exosuit.
-      if (bot.placedExosuits) {
+      if (fractures) {
         bot.placedExosuits = [
-          ...bot.placedExosuits,
+          ...(bot.placedExosuits ?? []),
           {
             action: input.actionId,
             space: input.placementSpace ?? 'action',

@@ -1016,6 +1016,15 @@ describe('Fractures — placement recording and Blinking through resolveAction',
     expect(next.chronossus!.exosuitsAvailable).toBe(4); // unchanged — no new Exosuit
   });
 
+  it('starts recording even if the save predates `placedExosuits` (pool present, list absent)', () => {
+    const st = fracturesState();
+    delete st.chronossus!.placedExosuits;
+    const { state: next } = resolveAction(st, { actionId: 'recruit', placementSpace: 'action' });
+    expect(next.chronossus!.placedExosuits).toEqual([
+      { action: 'recruit', space: 'action', hasCore: true },
+    ]);
+  });
+
   it('leaves non-Fractures games without any placement list', () => {
     const { state: next } = resolveAction(chronossusState(), {
       actionId: 'recruit',
