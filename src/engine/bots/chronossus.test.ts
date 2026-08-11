@@ -744,6 +744,11 @@ describe('Fractures — Blink readiness and selection', () => {
     expect(shouldCheckBlink({ ...bot, fluxPool: { cores: 0, casings: 0, setAside: 4 } }, 'research')).toBe(
       false,
     );
+    // No Flux Cores left: a draw could only produce Casings, which change nothing this
+    // Era and all come back in Clean Up — so the check is skipped entirely.
+    expect(shouldCheckBlink({ ...bot, fluxPool: { cores: 0, casings: 3, setAside: 0 } }, 'research')).toBe(
+      false,
+    );
     expect(shouldCheckBlink(emptyChronossusState(), 'research')).toBe(false); // not a Fractures game
   });
 

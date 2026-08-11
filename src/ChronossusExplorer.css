@@ -534,6 +534,22 @@
   display: inline-flex;
   align-items: center;
 }
+/* Fractures: the token the Blink check drew, shown like a die result. */
+.flux-draw {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
+  border-radius: 10px;
+  background: var(--sp-panel-2);
+  font-size: 0.85rem;
+  color: var(--sp-text-1);
+}
+.flux-draw img {
+  height: 2.6rem;
+  width: auto;
+}
 /* Fractures: set-aside Casings + the Tech/Ops counts in the turn overview. */
 .cx-flux-aside {
   opacity: 0.75;

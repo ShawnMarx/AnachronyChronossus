@@ -156,11 +156,19 @@ export function blinkReadyExosuits(bot: ChronossusState, attemptedAction: string
   });
 }
 
-/** Whether the Blink check even happens: a Blink-ready Exosuit AND >=1 token in the pool. */
+/**
+ * Whether the Blink check happens at all: a Blink-ready Exosuit AND at least one Flux
+ * Core in the pool.
+ *
+ * The rulebook's condition is "at least 1 token in the Flux Pool", but with no Flux Cores
+ * left the draw can only produce Empty Flux Casings — which change nothing this Era and
+ * all return to the pool in Clean Up. Skipping the check there is equivalent, and saves
+ * the player a pointless prompt on every placement.
+ */
 export function shouldCheckBlink(bot: ChronossusState, attemptedAction: string): boolean {
   const pool = bot.fluxPool;
-  if (!pool) return false;
-  return blinkReadyExosuits(bot, attemptedAction).length > 0 && pool.cores + pool.casings > 0;
+  if (!pool || pool.cores === 0) return false;
+  return blinkReadyExosuits(bot, attemptedAction).length > 0;
 }
 
 /**

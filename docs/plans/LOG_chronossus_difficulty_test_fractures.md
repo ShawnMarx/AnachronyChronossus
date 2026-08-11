@@ -171,6 +171,11 @@ neither needs the main Fractures module/mechanics.
   Triangle / Square (fewer of, Operator on a tie)
 - [x] Placement gate split in Fractures: "Is a <Action> space open (not World Council)?" →
   "Is the World Council space open?" → Failed. The answer lands on `placedExosuits`
+- [x] The check is skipped when the pool holds **no Flux Cores**: a draw could then only
+  produce Casings, which change nothing that Era and all return in Clean Up, so prompting
+  for it is pure noise (documented on `shouldCheckBlink` as a deliberate departure from the
+  rulebook's literal "at least 1 token")
+- [x] Both check panels show the drawn token's art (`flux-core.png` / `exhausted-flux-core.png`)
 - [x] Blink flow: check → `drawFlux` → Casing panel (set aside) or Blink panel naming the
   space, the rule that fired, and "take the bottom one" when several share it. Committing
   moves the Exosuit and drops its Energy Core; no new Exosuit is spent

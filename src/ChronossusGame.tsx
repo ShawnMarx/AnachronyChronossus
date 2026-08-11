@@ -607,6 +607,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [variableAnomalyPending, setVariableAnomalyPending] = useState(false);
   // Fractures: the Blink the app resolved for the current Action (shown in the panel),
   // and the space answer for the placement gate's two questions.
+  const [fluxDraw, setFluxDraw] = useState<'core' | 'casing' | null>(null);
   const [blink, setBlink] = useState<{
     spaceLabel: string;
     sameSpaceCount: number;
@@ -818,6 +819,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     placementSpaceRef.current = 'action';
     blinkRef.current = false;
     setBlink(null);
+    setFluxDraw(null);
   };
 
   const clearDialogState = () => {
@@ -1125,6 +1127,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       ...cur,
       chronossus: { ...cur.chronossus!, fluxPool: nextPool },
     }));
+    setFluxDraw(drawn);
     if (drawn === 'casing') {
       blinkRef.current = false;
       setBlink(null);
@@ -1468,6 +1471,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
         blink={blink}
+        fluxDrawSrc={fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null}
         onWorldCouncilYes={onWorldCouncilYes}
         onWorldCouncilNo={onWorldCouncilNo}
         onConfirmBlink={onConfirmBlink}

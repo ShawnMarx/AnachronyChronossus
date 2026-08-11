@@ -3428,6 +3428,7 @@ export function DetailPanel({
   onCannotPlace,
   fractures = false,
   blink,
+  fluxDrawSrc = null,
   onWorldCouncilYes = () => {},
   onWorldCouncilNo = () => {},
   onConfirmBlink = () => {},
@@ -3469,6 +3470,8 @@ export function DetailPanel({
     rule: 'command-token' | 'bottom-left';
     token?: number;
   } | null;
+  /** Art for the token the Blink check just drew (Flux Core or Empty Flux Casing). */
+  fluxDrawSrc?: string | null;
   onWorldCouncilYes?: () => void;
   onWorldCouncilNo?: () => void;
   onConfirmBlink?: () => void;
@@ -3602,6 +3605,12 @@ export function DetailPanel({
               <b>Blink</b> — the {botName} drew a Flux Core from the Flux Pool, so it moves
               an Exosuit it already has on the board instead of placing a new one.
             </p>
+            {fluxDrawSrc && (
+              <div className="flux-draw">
+                <img src={fluxDrawSrc} alt="Flux Core drawn" />
+                <span>Drawn from the Flux Pool — discard it.</span>
+              </div>
+            )}
             <p className="pp-instruct">
               Move its Exosuit on <b>{blink.spaceLabel}</b>
               {blink.sameSpaceCount > 1 ? ' (take the bottom one)' : ''} to{' '}
@@ -3629,6 +3638,12 @@ export function DetailPanel({
               aside (it returns to the Flux Pool in Clean Up); it places an Exosuit as
               usual.
             </p>
+            {fluxDrawSrc && (
+              <div className="flux-draw">
+                <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
+                <span>Drawn from the Flux Pool — set it aside.</span>
+              </div>
+            )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onFluxCasingContinue}>
                 ▶ Continue
