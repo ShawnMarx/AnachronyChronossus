@@ -1083,15 +1083,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (bot.passed) return; // the Chronossus has passed for this Era
-    // Fractures: the Blink check comes first (Solo Opponents p.12) — a Blink moves an
-    // Exosuit already on the board, so it can act on a turn it would otherwise pass.
-    if (fracturesMode && Chronossus.shouldCheckBlink(bot, h.action)) {
-      runBlinkCheck(h.action);
-      return;
-    }
-    // Passing rule: out of Exosuits + this action would place one → the
-    // Chronossus passes instead of taking the action (its token doesn't advance).
-    if (Chronossus.wouldPassOn(bot, h.action)) {
+    // Passing rule: out of Exosuits + this action would place one → the Chronossus
+    // passes instead of taking the action (its token doesn't advance). In Fractures it
+    // can still act if a Blink is possible, since that moves an Exosuit already on the
+    // board rather than taking one from the supply.
+    if (
+      Chronossus.wouldPassOn(bot, h.action) &&
+      !(fracturesMode && Chronossus.shouldCheckBlink(bot, h.action))
+    ) {
       const { state: next, instructions } = Chronossus.passChronossus(state);
       // The token does NOT advance on a pass → keep ui.markerSteps as-is.
       commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
@@ -1175,12 +1174,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return shape;
   };
 
+  // A space is free (either the printed one or World Council). In Fractures the Blink
+  // check happens HERE — the Chronossus only Blinks into a space it could have placed
+  // into, so there has to be a confirmed destination first. Then the Action's own inputs.
   const onConfirmPlace = () => {
     if (!active) return;
-    const a = active.action;
-    // Fractures: a plain "yes, placed" answers the first gate question — the printed
-    // Capital Action space. onWorldCouncilYes sets the ref before calling in.
     if (fracturesMode && pending === 'mech') placementSpaceRef.current = 'action';
+    if (fracturesMode && Chronossus.shouldCheckBlink(bot, active.action)) {
+      runBlinkCheck(active.action);
+      return;
+    }
+    beginPlacementSubflow();
+  };
+
+  /** The Action's own input steps, once placement (or a Blink) is settled. */
+  const beginPlacementSubflow = () => {
+    if (!active) return;
+    const a = active.action;
     if (a === 'construct-superproject') {
       const hasBreakthrough =
         bot.breakthroughs.circle + bot.breakthroughs.triangle + bot.breakthroughs.square > 0;
@@ -1210,27 +1220,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Fractures: "no Capital Action space open" asks about World Council before failing.
   const onWorldCouncilYes = () => {
     placementSpaceRef.current = 'world-council';
-    onConfirmPlace();
+    if (active && Chronossus.shouldCheckBlink(bot, active.action)) {
+      runBlinkCheck(active.action);
+      return;
+    }
+    beginPlacementSubflow();
   };
   const onWorldCouncilNo = () => {
     placementSpaceRef.current = 'action';
     cannotPlaceFallback();
   };
-  // The Blink is already decided; run the Action's normal input sub-flow from here (no
-  // placement gate — the moved Exosuit is the placement).
-  const onConfirmBlink = () => onConfirmPlace();
-  // The casing is set aside; from here it "places an Exosuit or passes, as usual".
-  const onFluxCasingContinue = () => {
-    if (!active) return;
-    if (Chronossus.wouldPassOn(bot, active.action)) {
-      const { state: next, instructions } = Chronossus.passChronossus(state);
-      commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
-      closePanel();
-      setLastResult(instructions);
-      return;
-    }
-    setPending('mech');
-  };
+  // The Exosuit has been moved into the confirmed space — carry on with the Action.
+  const onConfirmBlink = () => beginPlacementSubflow();
+  // The Casing is set aside: it places a new Exosuit in that space, as usual.
+  const onFluxCasingContinue = () => beginPlacementSubflow();
 
   const onCannotPlace = () => {
     if (!active) return;

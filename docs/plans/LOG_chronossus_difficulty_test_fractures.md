@@ -174,9 +174,12 @@ neither needs the main Fractures module/mechanics.
 - [x] Blink flow: check → `drawFlux` → Casing panel (set aside) or Blink panel naming the
   space, the rule that fired, and "take the bottom one" when several share it. Committing
   moves the Exosuit and drops its Energy Core; no new Exosuit is spent
-- [x] The Blink check runs **before** the pass decision (p.12's "places an Exosuit or
-  passes, as usual"), so a Blink lets it act on a turn it would otherwise pass; a Casing
-  falls back to place-or-pass
+- [x] **Corrected 2026-08-11:** the Blink check runs once a free space is *confirmed*, not
+  before the gate — the Chronossus only Blinks into a space it could have placed into, so
+  there has to be a destination first. Order is now: pass check → "is a space open?" (→
+  World Council) → Blink check on the confirmed space → the Action's own inputs. Either
+  gate answer leads into the check, so it can Blink into World Council too. It still skips
+  the pass when a Blink is possible, since Blinking spends no Exosuit from the supply
 - [x] 9 new tests (209 total). Verified live: both draw outcomes, the two-question gate
   (World Council recorded), a Blink moving the Research Exosuit to Construct with
   `hasCore:false` and `exosuitsAvailable` unchanged, and Assimilate taking an Operator
