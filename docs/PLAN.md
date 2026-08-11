@@ -5,18 +5,22 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-09): Chronobot and Chronossus base are both complete and live.**
+> **Status (2026-08-10): Chronobot and Chronossus base are both complete and live; the
+> Chronossus difficulty options and two small extra modules are also done, on staging.**
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
 > per-phase bodies, module selection, and scoring are all live
 > (`docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`); `chronossus.implemented` is
-> `true`. **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` —
-> a Chronossus playthrough-test harness (base + HFA variations), then the difficulty
-> options one at a time (base + HFA), then the full **Fractures of Time** module. Further
-> candidates (Doomsday, Pioneers, Guardians, Chronossus stats/history) stay in `TODO.md`.
-> The Chronossus knowledge, references, and design decisions here remain the source
-> material behind those efforts.
+> `true`. **2026-08-10:** the playthrough test harness, all 10 base+HFA difficulty
+> options (D1–D10), and two new extra modules — **Alternate Timelines** and **Variable
+> Anomalies** (prioritized ahead of Fractures; Variable Anomalies only needs the
+> physical Fractures expansion box, not its main module) — shipped to
+> `anachrony.staging.boardgameedge.com`, not yet merged to `main`/production.
+> **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — next up
+> is the full **Fractures of Time** module. Further candidates (Doomsday, Pioneers,
+> Guardians, Chronossus stats/history) stay in `TODO.md`. The Chronossus knowledge,
+> references, and design decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
 

@@ -2161,6 +2161,34 @@ export function ParadoxPhaseBody({
         </RulesBox>
       )}
 
+      {/* The two Hypersync Paradox rules live in the Future Imperfect rulebook, not the
+          Solo Opponents one (which carries them over wholesale, p.17: "All of the
+          Hypersync Future Actions module and Chronossus base rules apply, unless noted
+          below" — and its notes never touch the Paradox Phase). Verbatim so the player
+          can check the majority + extra-roll prompts against the source. */}
+      {hypersyncTiles != null && (
+        <RulesBox label="Hypersync in the Paradox Phase — rulebook text">
+          <p>
+            During the Paradox Phase, the presence of a Hypersync tile counts as a Warp
+            tile when checking for most Warp tiles per Timeline tile. Therefore, if a
+            player has two Warp tiles on a Timeline tile, while another has a single Warp
+            tile and a Hypersync tile, they both roll for Paradox.
+          </p>
+          <p>
+            <b>IMPORTANT:</b> Just like in the base game, players that have zero Warp
+            tiles on a Timeline tile do not roll for a Paradox, even if they have a
+            Hypersync tile present.
+          </p>
+          <p>
+            Additionally, the player (or players) with the most total Hypersync tiles
+            (across all Timeline tiles) in play make one more Paradox roll, unless they
+            have already received an Anomaly during the current Paradox Phase. (If no
+            player has any Hypersync tiles in play, this roll is skipped.)
+          </p>
+          <p className="rules-cite">Future Imperfect rulebook, p. 5</p>
+        </RulesBox>
+      )}
+
       {rolls.length > 0 && (
         <div className="paradox-log">
           {rolls.map((t, i) => (

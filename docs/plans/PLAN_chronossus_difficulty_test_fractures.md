@@ -240,14 +240,15 @@ player-reported) rather than the app simulating a shuffled deck.
   `superprojectVps` per-instance-VP pattern), alongside the untouched flat `anomalies:
   number` used by every other mode/the Chronobot. `scoreChronossus` sums `anomalyVps` instead
   of `anomalies * ANOMALY_VP` when the list is present/non-empty for that game.
-- **Gaining** (still triggers at 3 Paradoxes, same as today): the player reports the 2
-  visible offer tiles' data by hand — **VP value + a yes/no "does it let the Chronossus
-  retrieve a Warp tile right now" answer** for each (no tile-code catalog; the player reads
-  this straight off the physical tiles, same as `buildingVP` input for Construct today).
-  Engine picks: the one flagged retrieve-eligible (if only one is); if both or neither are,
-  the one with the smaller penalty (closer to 0). Push its VP onto `anomalyVps`; if the
-  chosen tile was retrieve-eligible, decrement `warpTilesOnTimeline` by 1 (if any) — same
-  simple flat-count removal the engine already does elsewhere, no per-Timeline-tile tracking.
+- **Gaining** (still triggers at 3 Paradoxes, same as today): **revised 2026-08-10 after
+  playtest feedback** — the prompt now follows the Construct/`buildingVP` pattern exactly:
+  it states the verbatim RECEIVING ANOMALIES criteria (take the one that lets it retrieve a
+  Warp tile; if both or neither do, the smaller penalty), the player applies that to the 2
+  visible tiles, then reports **the taken tile only** — its printed VP (−2…−6) plus a yes/no
+  "does it retrieve a Warp tile". (The earlier shipped version asked for both offer tiles
+  and had the engine choose; that was out of step with every other player-reported value.)
+  Push its VP onto `anomalyVps`; if it retrieves, decrement `warpTilesOnTimeline` by 1 (if
+  any) — same flat-count removal used elsewhere, no per-Timeline-tile tracking.
 - **Removing** (the `remove-anomaly` Action / Anomaly Remover tile): no player input needed —
   the engine already knows every held tile's VP, so it removes `Math.min(...anomalyVps)`
   (most negative = largest penalty) itself.

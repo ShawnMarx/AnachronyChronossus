@@ -752,45 +752,28 @@ describe('resolveVariableAnomalyGain — RECEIVING ANOMALIES rule', () => {
     return s;
   }
 
-  it('takes the eligible tile when only one of the two is retrieve-eligible', () => {
-    const a: VariableAnomalyCandidate = { vp: -5, retrieveEligible: true };
-    const b: VariableAnomalyCandidate = { vp: -2, retrieveEligible: false };
-    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
-    expect(next.chronossus!.anomalyVps).toEqual([-5]); // eligible one taken despite worse VP
+  it('records the taken tile and retrieves a Warp tile when it is eligible', () => {
+    const taken: VariableAnomalyCandidate = { vp: -5, retrieveEligible: true };
+    const next = resolveVariableAnomalyGain(stateWithWarp(2), taken);
+    expect(next.chronossus!.anomalyVps).toEqual([-5]);
     expect(next.chronossus!.warpTilesOnTimeline).toBe(1); // retrieved
   });
 
-  it('takes the smaller penalty when both are eligible', () => {
-    const a: VariableAnomalyCandidate = { vp: -5, retrieveEligible: true };
-    const b: VariableAnomalyCandidate = { vp: -2, retrieveEligible: true };
-    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
-    expect(next.chronossus!.anomalyVps).toEqual([-2]);
-    expect(next.chronossus!.warpTilesOnTimeline).toBe(1); // still retrieves (chosen tile is eligible)
-  });
-
-  it('takes the smaller penalty when neither is eligible', () => {
-    const a: VariableAnomalyCandidate = { vp: -6, retrieveEligible: false };
-    const b: VariableAnomalyCandidate = { vp: -3, retrieveEligible: false };
-    const next = resolveVariableAnomalyGain(stateWithWarp(2), a, b);
+  it('leaves the Warp tiles alone when the taken tile does not retrieve', () => {
+    const next = resolveVariableAnomalyGain(stateWithWarp(2), { vp: -3, retrieveEligible: false });
     expect(next.chronossus!.anomalyVps).toEqual([-3]);
-    expect(next.chronossus!.warpTilesOnTimeline).toBe(2); // no retrieval
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(2);
   });
 
   it('does not retrieve below zero Warp tiles even when eligible', () => {
-    const a: VariableAnomalyCandidate = { vp: -2, retrieveEligible: true };
-    const b: VariableAnomalyCandidate = { vp: -3, retrieveEligible: false };
-    const next = resolveVariableAnomalyGain(stateWithWarp(0), a, b);
+    const next = resolveVariableAnomalyGain(stateWithWarp(0), { vp: -2, retrieveEligible: true });
     expect(next.chronossus!.warpTilesOnTimeline).toBe(0);
   });
 
   it('appends to existing held anomalies rather than replacing them', () => {
     const s = stateWithWarp(0);
     s.chronossus!.anomalyVps = [-4];
-    const next = resolveVariableAnomalyGain(
-      s,
-      { vp: -2, retrieveEligible: false },
-      { vp: -3, retrieveEligible: false },
-    );
+    const next = resolveVariableAnomalyGain(s, { vp: -2, retrieveEligible: false });
     expect(next.chronossus!.anomalyVps).toEqual([-4, -2]);
   });
 });

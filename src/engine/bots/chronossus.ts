@@ -984,8 +984,9 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
   return { state: next, instructions, paradoxes: bot.paradoxes, gainedAnomaly, stop };
 }
 
-/** One of the 2 Variable Anomaly tiles offered when the Chronossus gains an Anomaly —
- *  the player reads these straight off the physical tiles (no tile-code catalog). */
+/** The Variable Anomaly tile the Chronossus took — the player applies the RECEIVING
+ *  ANOMALIES criteria to the 2 visible tiles and reports the chosen one's data straight
+ *  off the physical tile (no tile-code catalog), same as `buildingVP` for Construct. */
 export interface VariableAnomalyCandidate {
   /** The tile's printed VP penalty (negative). */
   vp: number;
@@ -995,20 +996,18 @@ export interface VariableAnomalyCandidate {
 }
 
 /**
- * Variable Anomalies (extra module) — RECEIVING ANOMALIES: the Chronossus takes
- * whichever of the 2 offered tiles lets it retrieve a Warp tile; if both or neither
- * do, it takes the one with the smaller VP penalty (closer to 0). Call this after
- * `rollParadox` signals `gainedAnomaly` with `bot.anomalyVps` present, once the
- * player has reported the 2 tiles.
+ * Variable Anomalies (extra module) — RECEIVING ANOMALIES: "the Chronossus will select
+ * one that will allow it to retrieve a Warp tile. If both or neither do, it will select
+ * the one with the smaller VP penalty" (Solo Opponents p.18). The player applies that
+ * criteria to the 2 visible tiles and reports the chosen tile; this records it (and its
+ * Warp-tile retrieval). Call after `rollParadox` signals `gainedAnomaly` with
+ * `bot.anomalyVps` present.
  */
 export function resolveVariableAnomalyGain(
   state: GameState,
-  a: VariableAnomalyCandidate,
-  b: VariableAnomalyCandidate,
+  chosen: VariableAnomalyCandidate,
 ): GameState {
   if (!state.chronossus) throw new Error('resolveVariableAnomalyGain: no Chronossus state');
-  const chosen =
-    a.retrieveEligible === b.retrieveEligible ? (a.vp >= b.vp ? a : b) : a.retrieveEligible ? a : b;
   const bot = {
     ...state.chronossus,
     anomalyVps: [...(state.chronossus.anomalyVps ?? []), chosen.vp],

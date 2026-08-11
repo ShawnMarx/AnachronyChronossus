@@ -202,15 +202,11 @@ describe('Chronossus full-game playthrough — Variable Anomalies extra module',
     extraModules: [EXTRA_MODULE_VARIABLE_ANOMALIES],
   };
 
-  it('gains/holds Variable Anomaly tiles across a full game, always picking the eligible one', () => {
+  it('gains/holds Variable Anomaly tiles across a full game', () => {
     const { state, score } = playChronossus({
       config: VARIABLE_ANOMALIES_CONFIG,
-      // Every offer: only the first tile can retrieve a Warp tile — the rule always
-      // takes it regardless of its worse VP penalty.
-      variableAnomalyCandidates: () => [
-        { vp: -2, retrieveEligible: true },
-        { vp: -5, retrieveEligible: false },
-      ],
+      // Every gain: the player reports the taken tile — a -2 that retrieves a Warp tile.
+      variableAnomalyTaken: () => ({ vp: -2, retrieveEligible: true }),
     });
     expect(state.finished).toBe(true);
     expect(state.chronossus!.anomalyVps).toBeDefined();
@@ -222,10 +218,7 @@ describe('Chronossus full-game playthrough — Variable Anomalies extra module',
   it('scores held tiles individually, not the base flat ANOMALY_VP', () => {
     const { state, score } = playChronossus({
       config: VARIABLE_ANOMALIES_CONFIG,
-      variableAnomalyCandidates: () => [
-        { vp: -6, retrieveEligible: false },
-        { vp: -6, retrieveEligible: false },
-      ],
+      variableAnomalyTaken: () => ({ vp: -6, retrieveEligible: false }),
     });
     const heldCount = state.chronossus!.anomalyVps!.length;
     expect(heldCount).toBeGreaterThan(0);

@@ -3,10 +3,9 @@
 Loose ends and deferred work. Bigger efforts become a `/plan` when picked up.
 
 ## Deployment / publishing (deferred from the 2026-07-27 DO deploy)
-See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`.
+See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done — live at
+`anachrony.staging.boardgameedge.com`, deploying from the `staging` branch (`docs/DEPLOYMENT.md`).
 
-- [ ] **Staging** — `anachrony.staging.boardgameedge.com` under the existing wildcard
-      cert, deploying from a `staging` branch (mirror the fleet's staging workflow).
 - [ ] **Access-gating / SSO** — protect the copyrighted board art by wiring nginx
       `auth_request` against `auth.boardgameedge.com` (shared `bge_session` cookie).
 - [ ] **Landing-page listing** — add Anachrony to the `boardgameedge.com` landing
@@ -48,7 +47,8 @@ Base game + Hypersync module are live in prod. See
 `docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`.
 
 **In the active plan** (`docs/plans/PLAN_chronossus_difficulty_test_fractures.md`): the
-playthrough test harness, the per-mode difficulty options (base + HFA), and Fractures of Time.
+playthrough test harness, the base+HFA difficulty options, and Alternate Timelines /
+Variable Anomalies are all done (2026-08-10). **Fractures of Time** (the full module) is next.
 
 Still backlog (not yet in a plan):
 - [ ] **More modules** — Doomsday, Pioneers, Guardians (stubbed in the Module menu). Each

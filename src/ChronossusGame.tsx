@@ -1354,13 +1354,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (needsVariableAnomalyInput) setVariableAnomalyPending(true);
     return res;
   };
-  // Variable Anomalies: the player reports the 2 offered tiles' VP + retrieve-
-  // eligibility; the engine picks per the rule and applies it.
-  const finishVariableAnomalyGain = (
-    a: Chronossus.VariableAnomalyCandidate,
-    b: Chronossus.VariableAnomalyCandidate,
-  ) => {
-    const next = Chronossus.resolveVariableAnomalyGain(state, a, b);
+  // Variable Anomalies: the player applies the RECEIVING ANOMALIES criteria to the 2
+  // visible tiles and reports the taken tile's VP + whether it retrieves a Warp tile.
+  const finishVariableAnomalyGain = (taken: Chronossus.VariableAnomalyCandidate) => {
+    const next = Chronossus.resolveVariableAnomalyGain(state, taken);
     const vps = next.chronossus!.anomalyVps!;
     commit(next, ui, `Era ${state.era} · Variable Anomaly gained`, [
       `Anomaly VP: ${vps[vps.length - 1]}`,
@@ -2941,89 +2938,80 @@ function HypersyncDialog({
   );
 }
 
-// Variable Anomalies: the Chronossus gained an Anomaly (Paradox hit 3) but which
-// tile it takes depends on 2 offered tiles the player reports by hand (no tile-code
-// catalog — VP penalty + whether it lets it retrieve a Warp tile right now).
+// Variable Anomalies: the Chronossus gained an Anomaly (Paradox hit 3). Same pattern as
+// Construct's building VP — state the rulebook's selection criteria, the player applies
+// it to the 2 visible tiles, then reports the taken tile's printed VP and whether it
+// retrieves a Warp tile. No tile-code catalog; nothing is simulated.
 const VARIABLE_ANOMALY_VP_OPTIONS = [-2, -3, -4, -5, -6];
-function VariableAnomalyCandidateFields({
-  label,
-  vp,
-  onPickVp,
-  eligible,
-  onToggleEligible,
-}: {
-  label: string;
-  vp: number | null;
-  onPickVp: (v: number) => void;
-  eligible: boolean;
-  onToggleEligible: () => void;
-}) {
-  return (
-    <div className="va-candidate">
-      <span className="va-candidate-label">{label}</span>
-      <div className="difficulty-sub-values">
-        {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
-          <button
-            key={v}
-            type="button"
-            className={`difficulty-sub-value ${vp === v ? 'on' : ''}`}
-            onClick={() => onPickVp(v)}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-      <button
-        type="button"
-        className={`tile-flip-toggle ${eligible ? 'on' : ''}`}
-        aria-pressed={eligible}
-        onClick={onToggleEligible}
-      >
-        {eligible ? '✓ Retrieves a Warp tile' : 'No Warp-tile retrieval'}
-      </button>
-    </div>
-  );
-}
 function VariableAnomalyGainPrompt({
   onConfirm,
 }: {
-  onConfirm: (a: Chronossus.VariableAnomalyCandidate, b: Chronossus.VariableAnomalyCandidate) => void;
+  onConfirm: (taken: Chronossus.VariableAnomalyCandidate) => void;
 }) {
-  const [aVp, setAVp] = useState<number | null>(null);
-  const [aEligible, setAEligible] = useState(false);
-  const [bVp, setBVp] = useState<number | null>(null);
-  const [bEligible, setBEligible] = useState(false);
-  const canConfirm = aVp != null && bVp != null;
+  const [vp, setVp] = useState<number | null>(null);
+  const [retrieves, setRetrieves] = useState<boolean | null>(null);
+  const canConfirm = vp != null && retrieves != null;
   return (
     <div className="modal-overlay">
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>Variable Anomaly — gaining an Anomaly</h3>
+        <h3>Anomaly — the Chronossus receives one</h3>
         <p className="modal-note">
-          Reveal the 2 visible Variable Anomaly tiles. For each, enter its printed VP
-          penalty and whether it lets the Chronossus retrieve a Warp tile right now
-          (check its Before/After Impact icon against the current Impact status).
+          Reveal the 2 visible Anomaly tiles. Give the Chronossus the one that{' '}
+          <b>lets it retrieve a Warp tile</b> right now (check each tile's Before/After
+          Impact icon against this Era's Impact status). If <b>both or neither</b> do,
+          give it the one with the <b>smaller VP penalty</b> (closer to 0). Tap its
+          printed VP.
         </p>
-        <VariableAnomalyCandidateFields
-          label="Tile A"
-          vp={aVp}
-          onPickVp={setAVp}
-          eligible={aEligible}
-          onToggleEligible={() => setAEligible((e) => !e)}
-        />
-        <VariableAnomalyCandidateFields
-          label="Tile B"
-          vp={bVp}
-          onPickVp={setBVp}
-          eligible={bEligible}
-          onToggleEligible={() => setBEligible((e) => !e)}
-        />
+        <div className="vp-digits">
+          {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
+            <button
+              key={v}
+              type="button"
+              className={`vp-digit ${vp === v ? 'selected' : ''}`}
+              onClick={() => setVp(v)}
+            >
+              {v}
+            </button>
+          ))}
+        </div>
+        {vp != null && (
+          <>
+            <p className="pp-instruct">
+              <b>Does the tile it took retrieve a Warp tile?</b>
+            </p>
+            <div className="pp-buttons">
+              <button
+                className={`pp-confirm ${retrieves === true ? 'selected' : ''}`}
+                onClick={() => setRetrieves(true)}
+              >
+                ✓ Yes — it retrieves one
+              </button>
+              <button
+                className={`pp-cannot ${retrieves === false ? 'selected' : ''}`}
+                onClick={() => setRetrieves(false)}
+              >
+                ✗ No
+              </button>
+            </div>
+          </>
+        )}
+        <RulesBox label="Variable Anomalies — rulebook text">
+          <p>
+            <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
+            Anomalies and does not receive an Anomaly Remover tile.
+          </p>
+          <p>
+            <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will
+            select one that will allow it to retrieve a Warp tile. If both or neither do,
+            it will select the one with the smaller VP penalty.
+          </p>
+          <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+        </RulesBox>
         <div className="modal-actions">
           <button
             className="phase-primary"
             disabled={!canConfirm}
-            onClick={() =>
-              onConfirm({ vp: aVp!, retrieveEligible: aEligible }, { vp: bVp!, retrieveEligible: bEligible })
-            }
+            onClick={() => onConfirm({ vp: vp!, retrieveEligible: retrieves! })}
           >
             ▶ Confirm
           </button>

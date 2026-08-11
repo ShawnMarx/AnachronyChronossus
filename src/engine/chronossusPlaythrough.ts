@@ -93,9 +93,9 @@ export interface PlaythroughOptions {
   /** Alternate Timelines: positive-effect Warp spaces reported for a given Era's
    *  placed Warp tiles. Default: 0 (no-op unless the module variation overrides it). */
   positiveSpacesForEra?: (era: number, placed: number) => number;
-  /** Variable Anomalies: the 2 offered tiles reported whenever `rollParadox` defers a
-   *  gain (module active). Default: two -2 VP, non-retrieve-eligible tiles. */
-  variableAnomalyCandidates?: () => [VariableAnomalyCandidate, VariableAnomalyCandidate];
+  /** Variable Anomalies: the tile the Chronossus took, reported whenever `rollParadox`
+   *  defers a gain (module active). Default: a -2 VP, non-retrieve-eligible tile. */
+  variableAnomalyTaken?: () => VariableAnomalyCandidate;
 }
 
 export interface PlaythroughResult {
@@ -166,10 +166,7 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     warpRollForEra = (era) => era % 3,
     paradoxRollCycle = [1],
     positiveSpacesForEra = () => 0,
-    variableAnomalyCandidates = () => [
-      { vp: -2, retrieveEligible: false },
-      { vp: -2, retrieveEligible: false },
-    ],
+    variableAnomalyTaken = () => ({ vp: -2, retrieveEligible: false }),
   } = opts;
 
   let state = setupChronossus(config);
@@ -193,10 +190,9 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
         state = res.state;
         stop = res.stop;
         // Variable Anomalies: rollParadox defers the actual gain — resolve it now
-        // with the injected 2-tile offer, same as the UI would after player input.
+        // with the injected taken tile, same as the UI would after player input.
         if (res.instructions.some((i) => i.id === 'paradox-anomaly-variable')) {
-          const [a, b] = variableAnomalyCandidates();
-          state = Chronossus.resolveVariableAnomalyGain(state, a, b);
+          state = Chronossus.resolveVariableAnomalyGain(state, variableAnomalyTaken());
         }
       }
       state = Chronossus.endParadoxPhase(state);

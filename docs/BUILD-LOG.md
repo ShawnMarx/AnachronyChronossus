@@ -2,6 +2,46 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-10 — Chronossus difficulty options shipped; Alternate Timelines & Variable Anomalies added ahead of Fractures
+
+Parts 2 and 3 of `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` are done, all
+on staging (`https://anachrony.staging.boardgameedge.com`).
+
+- **Difficulty options D1–D9** (base game) all implemented and un-stubbed, one at a time
+  with a design-confirmation pass each: tile-swap (Slot I↔III), extra starting Energy
+  Cores, extra powered Exosuit (+VP overflow), leftover-Energy-Core VP, fewer Solo
+  Objectives, Failed-Actions-score-VP, Research-takes-a-new-shape, and the World Council
+  checkbox (found to be dead code — the selectable-options filter had dropped it; fixed).
+  D0 scoring seam threads `config.difficulty` into `scoreChronossus` for the one option
+  that's an end-game addition (D5); D7 scores live mid-game instead, since it isn't one.
+  Sub-selector values (D3/D6) now show wherever difficulty is listed.
+- **Bug fixes found along the way:** the Setup flow listed physical actions the app
+  already handles as if the player had to do them by hand; the turn-overview popover had
+  `difficulty={[]}` hardcoded (never showed selections); `summarizeTurn`'s history line
+  hardcoded "+1 VP" for Failed Actions, contradicting D7's +2; Research's message always
+  claimed "the shape die shows X" even when D8 forced the pick; D5's leftover-Energy-Core
+  VP only showed at End Game, not mid-game.
+- **Alternate Timelines & Variable Anomalies** (new Part 3, prioritized ahead of Fractures
+  after research showed Variable Anomalies only needs the physical Fractures expansion
+  box, not its main module/mechanics — both are on Solo Opponents rulebook p.18).
+  Alternate Timelines: Warp Phase scores 2/3 VP per positive-effect space the Chronossus's
+  Warp tiles land on (player-reported). Variable Anomalies: replaces the flat −3 VP/Anomaly
+  with a held-tile VP list (`anomalyVps`, mirrors `buildingVps`); gaining defers to a new
+  player-input modal, removing always takes the largest penalty (engine already knows the
+  values). New `GameConfig.extraModules` multi-select seam.
+- **Anomaly gain prompt reworked** (same-day playtest note): it had asked for *both* offer
+  tiles and let the engine pick, unlike every other player-reported value. Now it mirrors
+  Construct — states the verbatim RECEIVING ANOMALIES criteria (Solo Opponents p.18, shown
+  in a `RulesBox`), the player applies it, and reports only the taken tile: a VP digit row
+  (−2…−6) plus a yes/no "does it retrieve a Warp tile". `resolveVariableAnomalyGain` takes
+  one candidate instead of two.
+- **Hypersync Paradox rules sourced.** Checked a doubt about whether Hypersync tiles really
+  count toward the Warp-tile majority: they do — Future Imperfect p.5, along with the
+  zero-Warp exception and the most-total-Hypersync extra roll, and Solo Opponents p.17
+  carries the module over without amending the Paradox Phase. Added all three verbatim as a
+  `RulesBox` in `ParadoxPhaseBody`'s Hypersync branch (the prompts were app-voice only).
+- 26 new tests (168 total); build/lint clean throughout.
+
 ## 2026-08-09 — Chronossus base shipped; next effort planned
 
 Chronossus base is officially done and live. Details in
