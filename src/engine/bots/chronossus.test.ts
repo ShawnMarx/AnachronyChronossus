@@ -721,7 +721,6 @@ describe('Fractures — Flux Pool draws', () => {
 });
 
 describe('Fractures — Blink readiness and selection', () => {
-  const ORDER = ['research', 'construct-lab', 'mine-resource', 'recruit', 'construct-factory'];
   const placed = (...entries: [string, 'action' | 'world-council', boolean][]) =>
     entries.map(([action, space, hasCore]) => ({ action, space, hasCore }));
   const withPlaced = (entries: ReturnType<typeof placed>): ChronossusState => ({
@@ -749,14 +748,14 @@ describe('Fractures — Blink readiness and selection', () => {
 
   it('rule A: takes an Exosuit matching a Command token, smaller number winning', () => {
     const bot = withPlaced(placed(['recruit', 'action', true], ['construct-lab', 'action', true]));
-    const sel = selectBlinkExosuit(bot, 'research', { 4: 'recruit', 2: 'construct-lab' }, ORDER);
+    const sel = selectBlinkExosuit(bot, 'research', { 4: 'recruit', 2: 'construct-lab' });
     expect(sel).toMatchObject({ rule: 'command-token', token: 2 });
     expect(sel!.exosuit.action).toBe('construct-lab');
   });
 
   it('rule B: bottom-left-most when nothing matches a token', () => {
     const bot = withPlaced(placed(['recruit', 'action', true], ['research', 'action', true]));
-    const sel = selectBlinkExosuit(bot, 'mine-resource', {}, ORDER);
+    const sel = selectBlinkExosuit(bot, 'mine-resource', {});
     expect(sel).toMatchObject({ rule: 'bottom-left' });
     expect(sel!.exosuit.action).toBe('research'); // first in the order
   });
@@ -764,25 +763,58 @@ describe('Fractures — Blink readiness and selection', () => {
   it('never picks a World Council Exosuit under rule A, and sorts it last under B', () => {
     const bot = withPlaced(placed(['recruit', 'world-council', true], ['construct-factory', 'action', true]));
     // Even though a token sits on Recruit, that Exosuit is on World Council: rule A skips it.
-    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' }, ORDER);
+    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' });
     expect(sel).toMatchObject({ rule: 'bottom-left' });
     expect(sel!.exosuit.action).toBe('construct-factory');
   });
 
   it('falls back to the World Council Exosuit when it is the only one ready', () => {
     const bot = withPlaced(placed(['recruit', 'world-council', true]));
-    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' }, ORDER);
+    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' });
     expect(sel!.exosuit.space).toBe('world-council');
   });
 
   it('reports how many Exosuits share the chosen Action (player takes the bottom one)', () => {
     const bot = withPlaced(placed(['research', 'action', true], ['research', 'action', true]));
-    const sel = selectBlinkExosuit(bot, 'recruit', {}, ORDER);
+    const sel = selectBlinkExosuit(bot, 'recruit', {});
     expect(sel!.sameActionCount).toBe(2);
   });
 
+
+  it('orders Research → Recruit → Construct → Mine → World Council (rule B)', () => {
+    const bot = withPlaced(
+      placed(
+        ['mine-resource', 'action', true],
+        ['construct-lab', 'action', true],
+        ['recruit', 'action', true],
+        ['research', 'action', true],
+      ),
+    );
+    const pickThenDrop = (state: ChronossusState, picked: string[]): string[] => {
+      const sel = selectBlinkExosuit(state, 'time-travel', {});
+      if (!sel) return picked;
+      return pickThenDrop(
+        { ...state, placedExosuits: state.placedExosuits!.filter((e) => e !== sel.exosuit) },
+        [...picked, sel.exosuit.action],
+      );
+    };
+    expect(pickThenDrop(bot, [])).toEqual(['research', 'recruit', 'construct-lab', 'mine-resource']);
+  });
+
+  it('ranks the Recruit Genius / Research space with Recruit', () => {
+    const bot = withPlaced(placed(['construct-lab', 'action', true], ['recruit-genius-research', 'action', true]));
+    expect(selectBlinkExosuit(bot, 'research', {})!.exosuit.action).toBe('recruit-genius-research');
+  });
+
+  it('ignores Exosuits on Actions that are not valid Blink-from positions', () => {
+    // Time Travel / Remove Anomaly / Reboot place no Exosuit on the Main board at all.
+    const bot = withPlaced(placed(['time-travel', 'action', true]));
+    expect(blinkReadyExosuits(bot, 'research')).toEqual([]);
+    expect(selectBlinkExosuit(bot, 'research', {})).toBeNull();
+  });
+
   it('returns null when nothing can Blink', () => {
-    expect(selectBlinkExosuit(emptyChronossusState(), 'research', {}, ORDER)).toBeNull();
+    expect(selectBlinkExosuit(emptyChronossusState(), 'research', {})).toBeNull();
   });
 });
 

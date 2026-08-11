@@ -152,8 +152,11 @@ neither needs the main Fractures module/mechanics.
 - [x] Clean Up returns the set-aside Casings to the pool and clears `placedExosuits`
 - [x] Scoring: `technologyVP` (3 each) + `leftoverFluxVP` (difficulty), both in the total
 - [x] 18 new tests (193 total)
-- [ ] **Blocked on input:** rule B's ordering is Main-board geometry the app doesn't render —
-  `selectBlinkExosuit` takes it as an injected `order` array; the real list needs confirming
+- [x] Rule B's ordering confirmed by the user and shipped as `BLINK_ORDER`: bottom-left to
+  right then up — Research, Recruit (the Recruit Genius/Research space ranks here, and only
+  when the Genius side is valid), Construct (all types), Mine, World Council last. Every
+  other Action either places no Exosuit (Time Travel, Remove Anomaly, Reboot) or isn't on
+  the Main board, so they aren't valid Blink-from positions and are filtered out
 - [ ] The Chronossus has no Fracture Device (p.11) — nothing to model
 
 ### F3 — Engine: X-series actions & tiles

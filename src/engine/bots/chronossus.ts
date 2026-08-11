@@ -146,7 +146,14 @@ export function drawFlux(
  * (Solo Opponents p.11).
  */
 export function blinkReadyExosuits(bot: ChronossusState, attemptedAction: string): PlacedExosuit[] {
-  return (bot.placedExosuits ?? []).filter((e) => e.hasCore && e.action !== attemptedAction);
+  return (bot.placedExosuits ?? []).filter(
+    (e) =>
+      e.hasCore &&
+      e.action !== attemptedAction &&
+      // World Council overflow counts wherever it came from; otherwise the Exosuit has to
+      // be on one of the Main-board Action spaces in BLINK_ORDER.
+      (e.space === 'world-council' || BLINK_ORDER.includes(e.action)),
+  );
 }
 
 /** Whether the Blink check even happens: a Blink-ready Exosuit AND >=1 token in the pool. */
@@ -155,6 +162,30 @@ export function shouldCheckBlink(bot: ChronossusState, attemptedAction: string):
   if (!pool) return false;
   return blinkReadyExosuits(bot, attemptedAction).length > 0 && pool.cores + pool.casings > 0;
 }
+
+/**
+ * Rule B's ordering: the Main-board Action spaces the Chronossus can Blink *from*, read
+ * bottom-left to right and then up — "closest to the bottom Research space" first
+ * (Solo Opponents p.12). The app never renders the Main board, so this is the board
+ * layout expressed as a list rather than derived from geometry.
+ *
+ * Research → Recruit → Construct (all types) → Mine → World Council (top of the board,
+ * so always last). The Recruit Genius / Research space ranks with Recruit, and only
+ * counts when the Genius side is the valid one. Every other Action either places no
+ * Exosuit (Time Travel, Remove Anomaly, Reboot) or is not on the Main board the
+ * Chronossus interacts with, so none of them is a valid Blink-from position at all.
+ */
+export const BLINK_ORDER: string[] = [
+  'research',
+  'recruit',
+  'recruit-genius-research',
+  'construct-factory',
+  'construct-lab',
+  'construct-powerplant',
+  'construct-support',
+  'construct-superproject',
+  'mine-resource',
+];
 
 /** Which rule picked the Blinking Exosuit — surfaced in the UI so a contested call is visible. */
 export type BlinkRule = 'command-token' | 'bottom-left';
@@ -178,9 +209,8 @@ export interface BlinkSelection {
  *      spaces winning ties.
  *
  * `tokenActions` maps each other Command token's number to the Action it currently sits
- * on (view state, so it's injected). `order` lists Action ids from bottom-left-most to
- * furthest away — Main board geometry the app doesn't render, so it is injected too;
- * anything missing from it sorts last.
+ * on (view state, so it's injected). `order` defaults to `BLINK_ORDER`; anything missing
+ * from it sorts last.
  *
  * An Exosuit on the **World Council** space matches no Command token (that space is not
  * any token's Action), so rule A never selects it, and it sorts last under rule B.
@@ -189,7 +219,7 @@ export function selectBlinkExosuit(
   bot: ChronossusState,
   attemptedAction: string,
   tokenActions: Record<number, string>,
-  order: string[],
+  order: string[] = BLINK_ORDER,
 ): BlinkSelection | null {
   const ready = blinkReadyExosuits(bot, attemptedAction);
   if (ready.length === 0) return null;
