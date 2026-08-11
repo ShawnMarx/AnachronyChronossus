@@ -5,7 +5,7 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-10): Chronobot and Chronossus base are both complete and live; the
+> **Status (2026-08-11): Chronobot and Chronossus base are both complete and live; the
 > Chronossus difficulty options and two small extra modules are also done, on staging.**
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
@@ -15,10 +15,14 @@
 > `true`. **2026-08-10:** the playthrough test harness, all 10 base+HFA difficulty
 > options (D1–D10), and two new extra modules — **Alternate Timelines** and **Variable
 > Anomalies** (prioritized ahead of Fractures; Variable Anomalies only needs the
-> physical Fractures expansion box, not its main module) — shipped to
-> `anachrony.staging.boardgameedge.com`, not yet merged to `main`/production.
+> physical Fractures expansion box, not its main module) — shipped.
+> **2026-08-11:** a guided-phase UX pass off playtest feedback — one prompt style across
+> every non-Action phase (themed per bot), prompts kept on their phase screen with the
+> roll that triggered them, ↶ Undo on the phase screens with every phase advance
+> undoable, and the Hypersync/Alternate-Timelines rules sourced verbatim. Parts 1–3 of the
+> active plan plus that pass are **merged to `main`/production**.
 > **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — next up
-> is the full **Fractures of Time** module. Further candidates (Doomsday, Pioneers,
+> is the full **Fractures of Time** module (Part 4, not started). Further candidates (Doomsday, Pioneers,
 > Guardians, Chronossus stats/history) stay in `TODO.md`. The Chronossus knowledge,
 > references, and design decisions here remain the source material behind those efforts.
 

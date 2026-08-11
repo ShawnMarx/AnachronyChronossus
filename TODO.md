@@ -41,6 +41,16 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       (`BoardExplorer`) uses its own separate snapshot system and still has the latent
       reroll-on-undo bug (#4/#10) and the generic save-error message (#1). Port the
       Chronossus fixes.
+- [ ] **Mirror the phase-screen ↶ Undo to the Chronobot** (2026-08-11) — the Chronossus
+      phase screens gained the header Undo plus `commitPhase` (every phase advance is
+      undoable); the Chronobot's phase screens have neither. Pairs with the item above.
+
+## Guided-phase UX (from the 2026-08-11 pass)
+- [ ] **Paradox roll log clears on Undo** — `ParadoxPhaseBody` keeps its roll log and
+      check count in local state that no snapshot rewinds, so Undo remounts it. Earlier
+      roll lines vanish from the screen (🕑 History keeps them) and the check count
+      restarts, which could allow one extra check that phase. Lift that state into the
+      snapshot if it ever matters.
 
 ## Chronossus base — ✅ shipped (2026-08-09)
 Base game + Hypersync module are live in prod. See
