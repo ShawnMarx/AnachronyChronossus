@@ -98,6 +98,9 @@ neither needs the main Fractures module/mechanics.
   buttons moved from the Setup flow's indented `.difficulty-sub-value` pills to the same
   `.vp-digit` row the Anomaly/Construct prompts use, and `.pp-sub` swapped its hard-coded
   purple-grey for `--sp-text-mute`.
+- [x] **Warp screen matches the Paradox order** (2026-08-11): its two verbatim rules boxes
+  moved below the roll/prompt, so both phase screens read intro → action → reference.
+- [x] Landing-page Chronossus progress bar 40% → 50%.
 - [x] **Alternate Timelines overrides the Warp turn-order note** (2026-08-11): the screen was
   still showing the base "Warping occurs in player order… roll for it below, then place your
   own tiles", which contradicts p.18 ("you must decide how many Resources and/or Workers to

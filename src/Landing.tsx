@@ -174,7 +174,7 @@ export default function Landing({
           status="ready"
           description="A deeper opponent supporting the base game and the Hypersync Future Actions module, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
-          progress={40}
+          progress={50}
         />
       </div>
 

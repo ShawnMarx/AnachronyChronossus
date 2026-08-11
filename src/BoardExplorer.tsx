@@ -2038,13 +2038,6 @@ export function WarpPhaseBody({
         </p>
       )}
 
-      {meta.rules && (
-        <RulesBox label={`${meta.name} — rulebook text`}>
-          <p>{meta.rules}</p>
-        </RulesBox>
-      )}
-      {extraRules}
-
       {rolled == null ? (
         <button className="phase-primary" onClick={doRoll}>
           Roll for the {botName}'s Warp
@@ -2069,6 +2062,15 @@ export function WarpPhaseBody({
           )}
         </>
       )}
+
+      {/* Verbatim rules last, same as the Paradox screen: reference material sits under
+          what the player has to act on. */}
+      {meta.rules && (
+        <RulesBox label={`${meta.name} — rulebook text`}>
+          <p>{meta.rules}</p>
+        </RulesBox>
+      )}
+      {extraRules}
     </>
   );
 }
