@@ -146,14 +146,14 @@ export function drawFlux(
  * (Solo Opponents p.11).
  */
 export function blinkReadyExosuits(bot: ChronossusState, attemptedAction: string): PlacedExosuit[] {
-  return (bot.placedExosuits ?? []).filter(
-    (e) =>
-      e.hasCore &&
-      e.action !== attemptedAction &&
-      // World Council overflow counts wherever it came from; otherwise the Exosuit has to
-      // be on one of the Main-board Action spaces in BLINK_ORDER.
-      (e.space === 'world-council' || BLINK_ORDER.includes(e.action)),
-  );
+  const attempted = blinkSpaceOf(attemptedAction, 'action');
+  return (bot.placedExosuits ?? []).filter((e) => {
+    if (!e.hasCore) return false;
+    const space = blinkSpaceOf(e.action, e.space);
+    // Not on a Main-board Capital Action space at all, or already on the space the
+    // Action being attempted would use.
+    return space != null && !(attempted != null && space === attempted);
+  });
 }
 
 /** Whether the Blink check even happens: a Blink-ready Exosuit AND >=1 token in the pool. */
@@ -164,40 +164,65 @@ export function shouldCheckBlink(bot: ChronossusState, attemptedAction: string):
 }
 
 /**
- * Rule B's ordering: the Main-board Action spaces the Chronossus can Blink *from*, read
- * bottom-left to right and then up — "closest to the bottom Research space" first
- * (Solo Opponents p.12). The app never renders the Main board, so this is the board
- * layout expressed as a list rather than derived from geometry.
- *
- * Research → Recruit → Construct (all types) → Mine → World Council (top of the board,
- * so always last). The Recruit Genius / Research space ranks with Recruit, and only
- * counts when the Genius side is the valid one. Every other Action either places no
- * Exosuit (Time Travel, Remove Anomaly, Reboot) or is not on the Main board the
- * Chronossus interacts with, so none of them is a valid Blink-from position at all.
+ * A Main-board Capital Action space the Chronossus can Blink *from*. The board has one
+ * Construct space and one Recruit space — the app's per-type Action ids (construct-lab,
+ * construct-superproject, recruit-genius-research…) are choices made *at* those spaces,
+ * not separate spaces — so they collapse here.
  */
-export const BLINK_ORDER: string[] = [
+export type BlinkSpace = 'research' | 'recruit' | 'construct' | 'mine' | 'world-council';
+
+/**
+ * Rule B's ordering: the Capital Action spaces read bottom-left to right and then up —
+ * "closest to the bottom Research space" first (Solo Opponents p.12). The app never
+ * renders the Main board, so this is the layout expressed as a list.
+ */
+export const BLINK_SPACE_ORDER: BlinkSpace[] = [
   'research',
   'recruit',
-  'recruit-genius-research',
-  'construct-factory',
-  'construct-lab',
-  'construct-powerplant',
-  'construct-support',
-  'construct-superproject',
-  'mine-resource',
+  'construct',
+  'mine',
+  'world-council',
 ];
+
+/** Human-facing name of a Blink-from space (used in the "move its Exosuit" instruction). */
+export const BLINK_SPACE_LABEL: Record<BlinkSpace, string> = {
+  research: 'Research',
+  recruit: 'Recruit',
+  construct: 'Construct',
+  mine: 'Mine',
+  'world-council': 'World Council',
+};
+
+/**
+ * Which Capital Action space a placement occupies, or `null` when it is not a valid
+ * Blink-from position: Time Travel, Remove Anomaly and Reboot place no Exosuit on the
+ * Main board, and nothing else the Chronossus takes is on it.
+ *
+ * The Recruit Genius / Research space counts as Recruit, and only when the Genius side
+ * is the valid one.
+ */
+export function blinkSpaceOf(action: string, space: 'action' | 'world-council'): BlinkSpace | null {
+  if (space === 'world-council') return 'world-council';
+  if (action.startsWith('construct-')) return 'construct';
+  if (action === 'recruit' || action === 'recruit-genius-research') return 'recruit';
+  if (action === 'research') return 'research';
+  if (action === 'mine-resource') return 'mine';
+  return null;
+}
 
 /** Which rule picked the Blinking Exosuit — surfaced in the UI so a contested call is visible. */
 export type BlinkRule = 'command-token' | 'bottom-left';
 
 export interface BlinkSelection {
   exosuit: PlacedExosuit;
+  /** The Capital Action space it is on — what the player is told to move it from. */
+  space: BlinkSpace;
   rule: BlinkRule;
-  /** Set on the 'command-token' rule: the token number the Exosuit's Action matches. */
+  /** Set on the 'command-token' rule: the token number the Exosuit's space matches. */
   token?: number;
-  /** How many of the bot's Exosuits sit on that same Action (the player takes the
-   *  bottom-most one when there is more than one — the app can't see which space is which). */
-  sameActionCount: number;
+  /** How many of the bot's Exosuits sit on that same space. With more than one the player
+   *  takes the bottom-most — the app can't see which of a space's slots each one is in. */
+  sameSpaceCount: number;
 }
 
 /**
@@ -209,8 +234,7 @@ export interface BlinkSelection {
  *      spaces winning ties.
  *
  * `tokenActions` maps each other Command token's number to the Action it currently sits
- * on (view state, so it's injected). `order` defaults to `BLINK_ORDER`; anything missing
- * from it sorts last.
+ * on (view state, so it's injected).
  *
  * An Exosuit on the **World Council** space matches no Command token (that space is not
  * any token's Action), so rule A never selects it, and it sorts last under rule B.
@@ -219,36 +243,43 @@ export function selectBlinkExosuit(
   bot: ChronossusState,
   attemptedAction: string,
   tokenActions: Record<number, string>,
-  order: string[] = BLINK_ORDER,
 ): BlinkSelection | null {
   const ready = blinkReadyExosuits(bot, attemptedAction);
   if (ready.length === 0) return null;
-  const countOn = (action: string) => ready.filter((e) => e.action === action).length;
+  const spaceOf = (e: PlacedExosuit) => blinkSpaceOf(e.action, e.space)!;
+  const countOn = (space: BlinkSpace) => ready.filter((e) => spaceOf(e) === space).length;
+
+  // Rule A — an Exosuit on a Capital Action space that another Command token sits on.
+  // Tokens name a specific Action (e.g. construct-lab); it is the *space* that matches,
+  // so any Construct Exosuit answers a Construct token.
+  const tokenSpaces = Object.keys(tokenActions)
+    .map(Number)
+    .map((t) => ({ token: t, space: blinkSpaceOf(tokenActions[t], 'action') }))
+    .filter((t): t is { token: number; space: BlinkSpace } => t.space != null);
 
   const matches = ready
-    .filter((e) => e.space === 'action')
     .map((e) => {
-      const token = Object.keys(tokenActions)
-        .map(Number)
-        .filter((t) => tokenActions[t] === e.action)
+      const space = spaceOf(e);
+      const token = tokenSpaces
+        .filter((t) => t.space === space)
+        .map((t) => t.token)
         .sort((a, b) => a - b)[0];
-      return token == null ? null : { exosuit: e, token };
+      return token == null ? null : { exosuit: e, space, token };
     })
-    .filter((m): m is { exosuit: PlacedExosuit; token: number } => m != null)
+    .filter((m): m is { exosuit: PlacedExosuit; space: BlinkSpace; token: number } => m != null)
     .sort((a, b) => a.token - b.token);
 
   if (matches.length > 0) {
-    const { exosuit, token } = matches[0];
-    return { exosuit, rule: 'command-token', token, sameActionCount: countOn(exosuit.action) };
+    const { exosuit, space, token } = matches[0];
+    return { exosuit, space, rule: 'command-token', token, sameSpaceCount: countOn(space) };
   }
 
-  const rank = (e: PlacedExosuit) => {
-    if (e.space === 'world-council') return Number.MAX_SAFE_INTEGER;
-    const i = order.indexOf(e.action);
-    return i === -1 ? Number.MAX_SAFE_INTEGER - 1 : i;
-  };
-  const exosuit = [...ready].sort((a, b) => rank(a) - rank(b))[0];
-  return { exosuit, rule: 'bottom-left', sameActionCount: countOn(exosuit.action) };
+  // Rule B — bottom-left-most. World Council is last in the order, being at the top.
+  const exosuit = [...ready].sort(
+    (a, b) => BLINK_SPACE_ORDER.indexOf(spaceOf(a)) - BLINK_SPACE_ORDER.indexOf(spaceOf(b)),
+  )[0];
+  const space = spaceOf(exosuit);
+  return { exosuit, space, rule: 'bottom-left', sameSpaceCount: countOn(space) };
 }
 
 // --------------------------------------------------------------------------

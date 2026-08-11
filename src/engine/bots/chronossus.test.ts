@@ -749,8 +749,37 @@ describe('Fractures — Blink readiness and selection', () => {
   it('rule A: takes an Exosuit matching a Command token, smaller number winning', () => {
     const bot = withPlaced(placed(['recruit', 'action', true], ['construct-lab', 'action', true]));
     const sel = selectBlinkExosuit(bot, 'research', { 4: 'recruit', 2: 'construct-lab' });
-    expect(sel).toMatchObject({ rule: 'command-token', token: 2 });
+    expect(sel).toMatchObject({ rule: 'command-token', token: 2, space: 'construct' });
     expect(sel!.exosuit.action).toBe('construct-lab');
+  });
+
+  it('rule A matches on the Capital Action space, not the Construct type', () => {
+    // The token sits on Construct — Superproject; the Exosuit is on Construct — Factory.
+    // Both are the board's single Construct space, so they match.
+    const bot = withPlaced(placed(['construct-factory', 'action', true]));
+    const sel = selectBlinkExosuit(bot, 'research', { 3: 'construct-superproject' });
+    expect(sel).toMatchObject({ rule: 'command-token', token: 3, space: 'construct' });
+  });
+
+  it('treats every Construct type as one space for the "take the bottom one" count', () => {
+    const bot = withPlaced(
+      placed(['construct-lab', 'action', true], ['construct-powerplant', 'action', true]),
+    );
+    const sel = selectBlinkExosuit(bot, 'research', {});
+    expect(sel).toMatchObject({ space: 'construct', sameSpaceCount: 2 });
+  });
+
+  it('treats Recruit and Recruit Genius / Research as one space', () => {
+    const bot = withPlaced(
+      placed(['recruit', 'action', true], ['recruit-genius-research', 'action', true]),
+    );
+    const sel = selectBlinkExosuit(bot, 'research', {});
+    expect(sel).toMatchObject({ space: 'recruit', sameSpaceCount: 2 });
+  });
+
+  it('skips Exosuits already on the attempted Action\u2019s space (any Construct type)', () => {
+    const bot = withPlaced(placed(['construct-lab', 'action', true]));
+    expect(blinkReadyExosuits(bot, 'construct-superproject')).toEqual([]);
   });
 
   it('rule B: bottom-left-most when nothing matches a token', () => {
@@ -774,14 +803,14 @@ describe('Fractures — Blink readiness and selection', () => {
     expect(sel!.exosuit.space).toBe('world-council');
   });
 
-  it('reports how many Exosuits share the chosen Action (player takes the bottom one)', () => {
+  it('reports how many Exosuits share the chosen space (player takes the bottom one)', () => {
     const bot = withPlaced(placed(['research', 'action', true], ['research', 'action', true]));
     const sel = selectBlinkExosuit(bot, 'recruit', {});
-    expect(sel!.sameActionCount).toBe(2);
+    expect(sel!.sameSpaceCount).toBe(2);
   });
 
 
-  it('orders Research → Recruit → Construct → Mine → World Council (rule B)', () => {
+  it('orders Research \u2192 Recruit \u2192 Construct \u2192 Mine \u2192 World Council (rule B)', () => {
     const bot = withPlaced(
       placed(
         ['mine-resource', 'action', true],
@@ -799,6 +828,11 @@ describe('Fractures — Blink readiness and selection', () => {
       );
     };
     expect(pickThenDrop(bot, [])).toEqual(['research', 'recruit', 'construct-lab', 'mine-resource']);
+    // …and World Council really is last, above Mine.
+    const withCouncil = withPlaced(
+      placed(['recruit', 'world-council', true], ['mine-resource', 'action', true]),
+    );
+    expect(selectBlinkExosuit(withCouncil, 'research', {})!.space).toBe('mine');
   });
 
   it('ranks the Recruit Genius / Research space with Recruit', () => {
