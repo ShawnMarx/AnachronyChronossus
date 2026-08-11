@@ -122,7 +122,11 @@ export type PendingStep =
   | 'research'
   | 'removeAnomaly'
   | 'reboot'
-  | 'timeTravel';
+  | 'timeTravel'
+  // Fractures of Time (Chronossus only): the split placement gate + the Blink check.
+  | 'worldCouncil'
+  | 'blink'
+  | 'fluxCasing';
 
 /**
  * A serializable snapshot of everything needed to restore a moment: the engine
@@ -3422,6 +3426,12 @@ export function DetailPanel({
   workerOrder,
   onConfirmPlace,
   onCannotPlace,
+  fractures = false,
+  blink,
+  onWorldCouncilYes = () => {},
+  onWorldCouncilNo = () => {},
+  onConfirmBlink = () => {},
+  onFluxCasingContinue = () => {},
   onMineHasSpace,
   onMineNoSpace,
   onGeniusYes,
@@ -3450,6 +3460,19 @@ export function DetailPanel({
   workerOrder: Worker[];
   onConfirmPlace: () => void;
   onCannotPlace: () => void;
+  /** Fractures of Time: splits the placement gate and enables the Blink steps. */
+  fractures?: boolean;
+  /** Fractures: the Blink the app just resolved, when `pending` is 'blink'. */
+  blink?: {
+    spaceLabel: string;
+    sameSpaceCount: number;
+    rule: 'command-token' | 'bottom-left';
+    token?: number;
+  } | null;
+  onWorldCouncilYes?: () => void;
+  onWorldCouncilNo?: () => void;
+  onConfirmBlink?: () => void;
+  onFluxCasingContinue?: () => void;
   onMineHasSpace: () => void;
   onMineNoSpace: () => void;
   onGeniusYes: () => void;
@@ -3514,20 +3537,101 @@ export function DetailPanel({
         {hotspot.note && <p className="dp-note">{sub(hotspot.note)}</p>}
 
 
-        {/* Step 1 — placement gate for any mech-placing action. */}
+        {/* Step 1 — placement gate for any mech-placing action. Fractures asks it as two
+            questions, because Blink selection has to know whether the Exosuit ended up on
+            the printed Action space or overflowed to World Council. */}
         {pending === 'mech' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the {botName}’s Exosuit on the topmost available{' '}
-              <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
-              space if none are free).
+              {fractures ? (
+                <>
+                  Is a <b>{spaceLabel(hotspot.action)}</b> Action space open (not World
+                  Council)? Place the {botName}’s Exosuit on the topmost one.
+                </>
+              ) : (
+                <>
+                  Place the {botName}’s Exosuit on the topmost available{' '}
+                  <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
+                  space if none are free).
+                </>
+              )}
             </p>
+            {fractures && (
+              <p className="pp-sub">
+                Put an Energy Core from the supply into that Exosuit.
+              </p>
+            )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onConfirmPlace}>
-                ✓ Confirm placed
+                {fractures ? '✓ Yes — placed there' : '✓ Confirm placed'}
               </button>
               <button className="pp-cannot" onClick={onCannotPlace}>
-                ✗ Cannot place
+                {fractures ? '✗ No — none open' : '✗ Cannot place'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 1b (Fractures) — the World Council overflow question. */}
+        {pending === 'worldCouncil' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              No <b>{spaceLabel(hotspot.action)}</b> space was open. Is the{' '}
+              <b>World Council</b> space open? Place the {botName}’s Exosuit there instead.
+            </p>
+            <p className="pp-sub">
+              Put an Energy Core from the supply into that Exosuit. It still performs the
+              Action.
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onWorldCouncilYes}>
+                ✓ Yes — placed on World Council
+              </button>
+              <button className="pp-cannot" onClick={onWorldCouncilNo}>
+                ✗ No — nothing open
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fractures — the Blink check drew a Flux Core: an Exosuit already on the board
+            moves to this Action instead of a new one being placed. */}
+        {pending === 'blink' && blink && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              <b>Blink</b> — the {botName} drew a Flux Core from the Flux Pool, so it moves
+              an Exosuit it already has on the board instead of placing a new one.
+            </p>
+            <p className="pp-instruct">
+              Move its Exosuit on <b>{blink.spaceLabel}</b>
+              {blink.sameSpaceCount > 1 ? ' (take the bottom one)' : ''} to{' '}
+              <b>{spaceLabel(hotspot.action)}</b>, and return that Exosuit’s Energy Core to
+              the supply.
+            </p>
+            <p className="pp-sub">
+              {blink.rule === 'command-token'
+                ? `Rule A: that space matches Command token ${blink.token}.`
+                : 'Rule B: no Exosuit is on a space matching another Command token, so it takes the bottom-left-most one.'}
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onConfirmBlink}>
+                ✓ Confirm moved
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fractures — the Blink check drew an Empty Flux Casing: no Blink this turn. */}
+        {pending === 'fluxCasing' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it
+              aside (it returns to the Flux Pool in Clean Up); it places an Exosuit as
+              usual.
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onFluxCasingContinue}>
+                ▶ Continue
               </button>
             </div>
           </div>

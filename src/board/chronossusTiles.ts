@@ -186,6 +186,11 @@ export const TILE_ACTION_CODE = {
   'tile-reboot': 'C01A',
   'tile-score': 'C02A',
   'tile-energy-pack': 'C03A',
+  // Fractures of Time (C14 is the harder Assimilate that replaces C04 with that
+  // module's difficulty option, so it shares the Assimilate action id).
+  'tile-assimilate': 'C04A',
+  'tile-extract': 'C05A',
+  'tile-power-pack': 'C06A',
 } as const;
 
 /** The side-agnostic tile family for each in-play modular tile action. */
@@ -193,6 +198,9 @@ export const TILE_ACTION_FAMILY = {
   'tile-reboot': 'C01',
   'tile-score': 'C02',
   'tile-energy-pack': 'C03',
+  'tile-assimilate': 'C04',
+  'tile-extract': 'C05',
+  'tile-power-pack': 'C06',
 } as const;
 
 /** The live tile code (family + selected side) for an in-play tile action. */
@@ -222,6 +230,10 @@ export interface TileEffect {
   energyCores?: number;
   autoleap?: boolean;
   hypersync?: boolean;
+  /** Fractures: Flux Cores added to the Flux Pool. */
+  fluxCores?: number;
+  /** Fractures: the Assimilate Action (needs a Research shape-die roll first). */
+  assimilate?: boolean;
 }
 
 export const TILE_EFFECTS: Record<string, TileEffect> = {
@@ -234,6 +246,16 @@ export const TILE_EFFECTS: Record<string, TileEffect> = {
   // Hypersync mode (C12 covers slot I / C13 covers the Time Travel space). The
   // `vp`/`energyCores` here are the bonus the Hypersync flow grants after it
   // resolves (C12: +1 Energy Core; C13A: nothing; C13B: +1 VP).
+  // Fractures of Time (C04-C06 fill the three tile slots; C14 replaces C04 with the
+  // module's difficulty option). Assimilate resolves through its own shape-die branch.
+  C04A: { assimilate: true },
+  C04B: { assimilate: true, vp: 1 },
+  C05A: { fluxCores: 2, energyCores: 2 },
+  C05B: { fluxCores: 4, energyCores: 2 },
+  C06A: { energyCores: 1, fluxCores: 1 },
+  C06B: { energyCores: 1, fluxCores: 1, autoleap: true },
+  C14A: { assimilate: true, fluxCores: 1 },
+  C14B: { assimilate: true, vp: 1, fluxCores: 1 },
   C12A: { hypersync: true, energyCores: 1 },
   C12B: { hypersync: true, energyCores: 1, autoleap: true },
   C13A: { hypersync: true },

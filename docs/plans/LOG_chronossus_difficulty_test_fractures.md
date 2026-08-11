@@ -161,8 +161,27 @@ neither needs the main Fractures module/mechanics.
   they are not Blink-from positions at all (`blinkSpaceOf` returns null and they're filtered)
 - [ ] The Chronossus has no Fracture Device (p.11) — nothing to model
 
-### F3 — Engine: X-series actions & tiles
-- [ ] X-series catalog in tile/resolver machinery (+ Autoleap); unit tests
+### F3 — Actions, tiles & the Blink flow ✅ done (2026-08-11)
+- [x] Fractures tile actions wired end to end: `tile-assimilate` / `tile-extract` /
+  `tile-power-pack` ids, C04/C05/C06 (+C14 sharing the Assimilate id via a `tileFamily`
+  override), `TileEffect.fluxCores` + `.assimilate`, per-tile instruction copy
+- [x] `tileActionAt(posKey)` — the path data names the base-game tile for each slot, so the
+  view now resolves a slot to *this mode's* tile action (Fractures was opening Reboot)
+- [x] Assimilate rolls the Research shape die in the view; the engine branches Circle /
+  Triangle / Square (fewer of, Operator on a tie)
+- [x] Placement gate split in Fractures: "Is a <Action> space open (not World Council)?" →
+  "Is the World Council space open?" → Failed. The answer lands on `placedExosuits`
+- [x] Blink flow: check → `drawFlux` → Casing panel (set aside) or Blink panel naming the
+  space, the rule that fired, and "take the bottom one" when several share it. Committing
+  moves the Exosuit and drops its Energy Core; no new Exosuit is spent
+- [x] The Blink check runs **before** the pass decision (p.12's "places an Exosuit or
+  passes, as usual"), so a Blink lets it act on a turn it would otherwise pass; a Casing
+  falls back to place-or-pass
+- [x] 9 new tests (209 total). Verified live: both draw outcomes, the two-question gate
+  (World Council recorded), a Blink moving the Research Exosuit to Construct with
+  `hasCore:false` and `exosuitsAvailable` unchanged, and Assimilate taking an Operator
+- [ ] **Not yet:** Autoleap on Fractures B-sides is inherited from the shared tile path but
+  untested; no Fractures playthrough variation yet (F6)
 
 ### F4 — Board / view / overlays
 - [ ] Art + overlays (Flux Pool, Cores, Fracture Device, X-tiles); calibrate positions; routes

@@ -274,6 +274,12 @@ const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
   C01: 'tile-reboot',
   C02: 'tile-score',
   C03: 'tile-energy-pack',
+  // Fractures of Time. C14 is the harder Assimilate that can replace C04, so it maps to
+  // the same action; `tileFamily` on the resolve input keeps its own effect.
+  C04: 'tile-assimilate',
+  C14: 'tile-assimilate',
+  C05: 'tile-extract',
+  C06: 'tile-power-pack',
 };
 
 /** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since
@@ -359,6 +365,9 @@ const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
   'tile-reboot': 'Reboot: the Chronossus does nothing',
   'tile-score': 'Score: +2 VP',
   'tile-energy-pack': 'Energy Pack: +1 Energy Core',
+  'tile-assimilate': 'Assimilate: roll the shape die — Operator + Flux Core, or a Technology',
+  'tile-extract': 'Extract: +2 Flux Cores and +2 Energy Cores',
+  'tile-power-pack': 'Power Pack: +1 Energy Core and +1 Flux Core',
 };
 
 const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
@@ -557,6 +566,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [altTimelinesPending, setAltTimelinesPending] = useState<number | null>(null);
   // Variable Anomalies: awaiting the player's report of the 2 offered tiles.
   const [variableAnomalyPending, setVariableAnomalyPending] = useState(false);
+  // Fractures: the Blink the app resolved for the current Action (shown in the panel),
+  // and the space answer for the placement gate's two questions.
+  const [blink, setBlink] = useState<{
+    spaceLabel: string;
+    sameSpaceCount: number;
+    rule: 'command-token' | 'bottom-left';
+    token?: number;
+  } | null>(null);
+  const placementSpaceRef = useRef<'action' | 'world-council'>('action');
+  const blinkRef = useRef(false);
   // Bumped by Undo to remount the Paradox body (its roll log lives in local state).
   const [paradoxNonce, setParadoxNonce] = useState(0);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
@@ -636,6 +655,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const mode = getMode(state.config.chronossusMode, state.config.difficulty);
   const tileSides = state.config.tileSides;
   const hypersyncMode = mode.slots.some((s) => tileEffect(`${s.family}A`).hypersync === true);
+  /** Fractures of Time: splits the placement gate, runs the Blink check, tracks the Flux Pool. */
+  const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
   // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
   // every pre-commit "Failed Action" button label agrees with what actually resolves.
@@ -753,6 +774,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // ---- Action resolution -------------------------------------------------
   // Close the dialog UI + the shared selection state (not the pending roll).
+  /** Clear the per-turn Fractures answers (placement space + Blink). */
+  const resetFracturesTurn = () => {
+    placementSpaceRef.current = 'action';
+    blinkRef.current = false;
+    setBlink(null);
+  };
+
   const clearDialogState = () => {
     setActive(null);
     setPending(null);
@@ -764,6 +792,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRuleView(false);
     setPendingTile(null);
     setTileRuleView(false);
+    resetFracturesTurn();
   };
   // Full close: dialog + the rolled die + marker highlight. Used after a committed
   // turn and on resets — the next Take Bot Action rolls fresh.
@@ -804,6 +833,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // the token is advanced one space further." So Autoleap fires when a token
   // ADVANCES ONTO an Autoleap tile (never when it is rolled/rests on one — it
   // always leaps past), resolving that tile as a second Action and advancing again.
+
+  /**
+   * The tile action a track position triggers *in this mode*. `chronossusPaths.ts` names
+   * the base-game tile (m2p3 → 'tile-reboot' for C01), so a mode that fills that slot with
+   * a different tile — Fractures' C04/C05/C06 — has to map through its own slot instead.
+   */
+  const tileActionAt = (posKey: string): ChronossusTileActionId | null => {
+    const slot = slotAtPos(mode, posKey);
+    if (slot) return FAMILY_TO_TILE_ACTION[slot.family] ?? null;
+    const tp = trackPos(posKey);
+    return (tp?.action as ChronossusTileActionId | undefined) ?? null;
+  };
 
   /** The live tile code sitting at a track position, or null if it isn't a tile slot. */
   const tileCodeAt = (posKey: string): string | null => {
@@ -952,6 +993,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (opts.recruitedWorker) input.recruitedWorker = opts.recruitedWorker;
     if (opts.shape) input.shape = opts.shape;
     if (opts.geniusAvailable) input.geniusAvailable = true;
+    // Fractures: which space this placement took, and whether it was a Blink (the moved
+    // Exosuit IS the placement, so no new one comes off the supply).
+    if (fracturesMode) {
+      input.placementSpace = placementSpaceRef.current;
+      input.tokenActions = otherTokenActions();
+      if (blinkRef.current) input.blink = true;
+    }
     // Hypersync no-space fallback: perform the Capital Action via a Solo Hypersync
     // tile (no Exosuit, not a Failed Action).
     if (hypersyncTileRef.current) input.placeHypersyncTile = true;
@@ -996,6 +1044,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (bot.passed) return; // the Chronossus has passed for this Era
+    // Fractures: the Blink check comes first (Solo Opponents p.12) — a Blink moves an
+    // Exosuit already on the board, so it can act on a turn it would otherwise pass.
+    if (fracturesMode && Chronossus.shouldCheckBlink(bot, h.action)) {
+      runBlinkCheck(h.action);
+      return;
+    }
     // Passing rule: out of Exosuits + this action would place one → the
     // Chronossus passes instead of taking the action (its token doesn't advance).
     if (Chronossus.wouldPassOn(bot, h.action)) {
@@ -1023,6 +1077,52 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
+  // Fractures Blink check: draw 1 token from the Flux Pool. A Flux Core is discarded and
+  // the Chronossus Blinks (the app picks which Exosuit); an Empty Flux Casing is set
+  // aside and it places as usual. The draw is committed to state either way.
+  const runBlinkCheck = (action: string) => {
+    const pool = bot.fluxPool!;
+    const { drawn, pool: nextPool } = Chronossus.drawFlux(pool, Math.random());
+    setState((cur) => ({
+      ...cur,
+      chronossus: { ...cur.chronossus!, fluxPool: nextPool },
+    }));
+    if (drawn === 'casing') {
+      blinkRef.current = false;
+      setBlink(null);
+      setPending('fluxCasing');
+      return;
+    }
+    const sel = Chronossus.selectBlinkExosuit(bot, action, otherTokenActions());
+    if (!sel) {
+      // Shouldn't happen (shouldCheckBlink gates on a ready Exosuit), but fall back to a
+      // normal placement rather than stalling the turn.
+      blinkRef.current = false;
+      setPending('mech');
+      return;
+    }
+    blinkRef.current = true;
+    setBlink({
+      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      sameSpaceCount: sel.sameSpaceCount,
+      rule: sel.rule,
+      token: sel.token,
+    });
+    setPending('blink');
+  };
+
+  /** Which Action each OTHER Command token currently sits on (Blink rule A). */
+  const otherTokenActions = (): Record<number, string> => {
+    const out: Record<number, string> = {};
+    for (const n of [2, 3, 4, 5] as const) {
+      if (n === activeMarkerRef.current) continue;
+      const key = markerPosKey(n, ui.markerSteps[n]);
+      const action = trackPos(key)?.action;
+      if (action) out[n] = action;
+    }
+    return out;
+  };
+
   // D8 ("Research takes a new Breakthrough shape"): roll the shape die as usual, but
   // reroll if the result isn't one of the shape(s) tied for the bot's lowest count.
   // With a unique lowest shape this just takes a few extra rolls to converge on it.
@@ -1039,6 +1139,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const onConfirmPlace = () => {
     if (!active) return;
     const a = active.action;
+    // Fractures: a plain "yes, placed" answers the first gate question — the printed
+    // Capital Action space. onWorldCouncilYes sets the ref before calling in.
+    if (fracturesMode && pending === 'mech') placementSpaceRef.current = 'action';
     if (a === 'construct-superproject') {
       const hasBreakthrough =
         bot.breakthroughs.circle + bot.breakthroughs.triangle + bot.breakthroughs.square > 0;
@@ -1065,7 +1168,42 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
+  // Fractures: "no Capital Action space open" asks about World Council before failing.
+  const onWorldCouncilYes = () => {
+    placementSpaceRef.current = 'world-council';
+    onConfirmPlace();
+  };
+  const onWorldCouncilNo = () => {
+    placementSpaceRef.current = 'action';
+    cannotPlaceFallback();
+  };
+  // The Blink is already decided; run the Action's normal input sub-flow from here (no
+  // placement gate — the moved Exosuit is the placement).
+  const onConfirmBlink = () => onConfirmPlace();
+  // The casing is set aside; from here it "places an Exosuit or passes, as usual".
+  const onFluxCasingContinue = () => {
+    if (!active) return;
+    if (Chronossus.wouldPassOn(bot, active.action)) {
+      const { state: next, instructions } = Chronossus.passChronossus(state);
+      commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
+      closePanel();
+      setLastResult(instructions);
+      return;
+    }
+    setPending('mech');
+  };
+
   const onCannotPlace = () => {
+    if (!active) return;
+    if (fracturesMode) {
+      // Two-question gate: the printed space is full, so ask about World Council.
+      setPending('worldCouncil');
+      return;
+    }
+    cannotPlaceFallback();
+  };
+
+  const cannotPlaceFallback = () => {
     if (!active) return;
     // Hypersync mode: a Capital Action with no space places a Solo Hypersync tile
     // instead (if allowed) rather than Failing.
@@ -1224,10 +1362,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (tp?.action) {
       const code = slotTileCode(tp);
       const modeSlot = slotAtPos(mode, key);
+      // The live tile action for this mode (Fractures fills these slots with C04-C06).
+      const live = tileActionAt(key) ?? tp.action;
       const label = modeSlot
-        ? (CHRONOSSUS_TILES[code]?.name ?? Chronossus.chronossusActionLabel(tp.action))
-        : Chronossus.chronossusActionLabel(tp.action);
-      return { num, action: tp.action, label, tile: code };
+        ? (CHRONOSSUS_TILES[code]?.name ?? Chronossus.chronossusActionLabel(live))
+        : Chronossus.chronossusActionLabel(live);
+      return { num, action: live, label, tile: code };
     }
     const [x, y] = positions[key] ?? [0, 0];
     const h = nearestHotspot(x, y);
@@ -1284,6 +1424,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         botName="Chronossus"
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
+        fractures={fracturesMode}
+        blink={blink}
+        onWorldCouncilYes={onWorldCouncilYes}
+        onWorldCouncilNo={onWorldCouncilNo}
+        onConfirmBlink={onConfirmBlink}
+        onFluxCasingContinue={onFluxCasingContinue}
         onMineHasSpace={onMineHasSpace}
         onMineNoSpace={onMineNoSpace}
         onGeniusYes={onGeniusYes}
@@ -1530,9 +1676,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         setPendingHypersync({ code: hs, readOnly: false });
         return;
       }
-      // TrackPos.action on a tile slot is always a modular tile action.
+      // TrackPos.action on a tile slot is always a modular tile action — but which one
+      // depends on the mode's slot, not the base tile printed in the path data.
       setResult([]);
-      setPendingTile(tp.action as ChronossusTileActionId);
+      setPendingTile(tileActionAt(key) ?? (tp.action as ChronossusTileActionId));
       return;
     }
     const [x, y] = positions[key] ?? [0, 0];
@@ -1552,9 +1699,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
   // so ▶ Start resolves it and advances the marker (the caller then closes).
   const resolveTileSlot = (actionId: ChronossusActionId) => {
-    const family = TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
+    // The live family comes from the mode (so Fractures' C14-for-C04 swap resolves C14's
+    // effect through the shared Assimilate action), falling back to the id's own family.
+    const liveFamily =
+      mode.slots.map((sl) => sl.family).find((f) => FAMILY_TO_TILE_ACTION[f] === actionId) ??
+      TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
+    const family = liveFamily;
     const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
-    const { state: next, instructions } = Chronossus.resolveAction(state, { actionId, tileSide });
+    // Fractures' Assimilate rolls the Research shape die first (Solo Opponents p.13);
+    // the app rolls it, as it does for Research.
+    const assimilates = family ? tileEffect(`${family}${tileSide}`).assimilate === true : false;
+    const { state: next, instructions } = Chronossus.resolveAction(state, {
+      actionId,
+      tileSide,
+      tileFamily: family,
+      ...(assimilates ? { shape: rollShapeDie() } : {}),
+    });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
     // opens its dialog (so the chain continues one tile at a time).
     const label = Chronossus.chronossusActionLabel(actionId);
@@ -2640,10 +2800,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 function tileInstruction(code: string): string {
   const eff = tileEffect(code);
   const parts: string[] = [];
+  if (eff.assimilate)
+    parts.push(
+      'Assimilates — roll the Research shape die: Circle, it recruits an Operator and ' +
+        'gains 1 Flux Core; Triangle, it takes a Technology card (secondary stack); ' +
+        'Square, whichever it has fewer of (Operator if tied)',
+    );
   if (eff.vp) parts.push(`scores +${eff.vp} VP`);
   if (eff.energyCores)
     parts.push(
       `adds ${eff.energyCores} non-exhausted Energy Core${eff.energyCores === 1 ? '' : 's'} to its Energy Pool`,
+    );
+  if (eff.fluxCores)
+    parts.push(
+      `adds ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} to its Flux Pool`,
     );
   let s = parts.length
     ? `The Chronossus ${parts.join(' and ')}.`

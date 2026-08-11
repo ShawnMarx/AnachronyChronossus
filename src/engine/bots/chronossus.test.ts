@@ -39,6 +39,7 @@ import {
   shouldCheckBlink,
   selectBlinkExosuit,
   resolveCleanUp,
+  assimilate,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -849,6 +850,121 @@ describe('Fractures — Blink readiness and selection', () => {
 
   it('returns null when nothing can Blink', () => {
     expect(selectBlinkExosuit(emptyChronossusState(), 'research', {})).toBeNull();
+  });
+});
+
+describe('Fractures — Assimilate (C04/C14)', () => {
+  const fracturesBot = (over: Partial<ChronossusState> = {}): ChronossusState => ({
+    ...emptyChronossusState(),
+    fluxPool: { cores: 0, casings: 3, setAside: 0 },
+    technologies: 0,
+    operators: 0,
+    ...over,
+  });
+
+  it('Circle: recruits an Operator and gains a Flux Core', () => {
+    const bot = fracturesBot();
+    assimilate(bot, 'circle');
+    expect(bot.operators).toBe(1);
+    expect(bot.technologies).toBe(0);
+    expect(bot.fluxPool!.cores).toBe(1);
+  });
+
+  it('Triangle: takes a Technology and no Flux Core', () => {
+    const bot = fracturesBot();
+    assimilate(bot, 'triangle');
+    expect(bot.technologies).toBe(1);
+    expect(bot.operators).toBe(0);
+    expect(bot.fluxPool!.cores).toBe(0);
+  });
+
+  it('Square: takes whichever it has fewer of', () => {
+    const fewerTech = fracturesBot({ operators: 2, technologies: 1 });
+    assimilate(fewerTech, 'square');
+    expect(fewerTech.technologies).toBe(2);
+
+    const fewerOps = fracturesBot({ operators: 1, technologies: 3 });
+    assimilate(fewerOps, 'square');
+    expect(fewerOps.operators).toBe(2);
+  });
+
+  it('Square: Operator on a tie', () => {
+    const bot = fracturesBot({ operators: 2, technologies: 2 });
+    assimilate(bot, 'square');
+    expect(bot.operators).toBe(3);
+    expect(bot.technologies).toBe(2);
+  });
+
+  it('resolves through the tile action, with the B side also scoring 1 VP', () => {
+    const state = chronossusState({
+      config: { ...CONFIG, chronossusMode: 'fractures', tileSides: { C04: 'B' } },
+    });
+    state.chronossus = { ...state.chronossus!, ...fracturesBot() };
+    const { state: next } = resolveAction(state, {
+      actionId: 'tile-assimilate',
+      tileSide: 'B',
+      shape: 'triangle',
+    });
+    expect(next.chronossus!.technologies).toBe(1);
+    expect(next.chronossus!.vp).toBe(state.chronossus!.vp + 1);
+  });
+});
+
+describe('Fractures — placement recording and Blinking through resolveAction', () => {
+  const fracturesState = () => {
+    const st = chronossusState({ config: { ...CONFIG, chronossusMode: 'fractures' } });
+    st.chronossus = {
+      ...st.chronossus!,
+      exosuitsAvailable: 4,
+      fluxPool: { cores: 1, casings: 3, setAside: 0 },
+      technologies: 0,
+      operators: 0,
+      placedExosuits: [],
+    };
+    return st;
+  };
+
+  it('records where a placement went, with its Energy Core', () => {
+    const { state: next } = resolveAction(fracturesState(), {
+      actionId: 'construct-lab',
+      buildingVP: 2,
+      placementSpace: 'action',
+    });
+    expect(next.chronossus!.placedExosuits).toEqual([
+      { action: 'construct-lab', space: 'action', hasCore: true },
+    ]);
+    expect(next.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('records a World Council overflow as such', () => {
+    const { state: next } = resolveAction(fracturesState(), {
+      actionId: 'recruit',
+      placementSpace: 'world-council',
+    });
+    expect(next.chronossus!.placedExosuits![0].space).toBe('world-council');
+  });
+
+  it('Blinking moves the chosen Exosuit and spends no new one', () => {
+    const st = fracturesState();
+    st.chronossus!.placedExosuits = [{ action: 'research', space: 'action', hasCore: true }];
+    const { state: next } = resolveAction(st, {
+      actionId: 'construct-lab',
+      buildingVP: 3,
+      blink: true,
+      tokenActions: {},
+    });
+    expect(next.chronossus!.placedExosuits).toEqual([
+      { action: 'construct-lab', space: 'action', hasCore: false },
+    ]);
+    expect(next.chronossus!.exosuitsAvailable).toBe(4); // unchanged — no new Exosuit
+  });
+
+  it('leaves non-Fractures games without any placement list', () => {
+    const { state: next } = resolveAction(chronossusState(), {
+      actionId: 'recruit',
+      placementSpace: 'action',
+    });
+    expect(next.chronossus!.placedExosuits).toBeUndefined();
   });
 });
 

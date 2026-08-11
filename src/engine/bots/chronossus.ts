@@ -210,6 +210,34 @@ export function blinkSpaceOf(action: string, space: 'action' | 'world-council'):
   return null;
 }
 
+/**
+ * Fractures' ASSIMILATE Action (Solo Opponents p.13). Roll the Research shape die first:
+ *
+ *   Circle   → recruit an Operator and gain 1 Flux Core.
+ *   Triangle → take a Technology card (preferring the secondary stack).
+ *   Square   → whichever it has fewer of, Operator (+1 Flux Core) or Technology;
+ *              Operator if tied.
+ *
+ * Mutates `bot` and returns the phrases describing what it took.
+ */
+export function assimilate(bot: ChronossusState, shape?: BreakthroughShape): string[] {
+  const takeOperator = () => {
+    // Operators are a Fractures-only Worker type, outside the base `workers` record —
+    // they're tracked on their own counter (the Square tie-break reads it).
+    bot.operators = (bot.operators ?? 0) + 1;
+    if (bot.fluxPool) bot.fluxPool = { ...bot.fluxPool, cores: bot.fluxPool.cores + 1 };
+    return 'recruits an Operator and gains 1 Flux Core into the Flux Pool';
+  };
+  const takeTechnology = () => {
+    bot.technologies = (bot.technologies ?? 0) + 1;
+    return 'takes a Technology card (preferring the secondary stack) — worth 3 VP at the end';
+  };
+  if (shape === 'circle') return [takeOperator()];
+  if (shape === 'triangle') return [takeTechnology()];
+  // Square (and any missing roll, which the UI shouldn't produce): fewer of the two.
+  return [(bot.operators ?? 0) <= (bot.technologies ?? 0) ? takeOperator() : takeTechnology()];
+}
+
 /** Which rule picked the Blinking Exosuit — surfaced in the UI so a contested call is visible. */
 export type BlinkRule = 'command-token' | 'bottom-left';
 
@@ -402,7 +430,14 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
 // direct tap, not by die + path).
 
 /** Modular Action-tile actions (default A-side setup: C01A/C02A/C03A). */
-export type ChronossusTileActionId = 'tile-reboot' | 'tile-score' | 'tile-energy-pack';
+export type ChronossusTileActionId =
+  | 'tile-reboot'
+  | 'tile-score'
+  | 'tile-energy-pack'
+  // Fractures of Time
+  | 'tile-assimilate'
+  | 'tile-extract'
+  | 'tile-power-pack';
 
 /** Every action a Chronossus space can trigger (base actions + tile actions). */
 export type ChronossusActionId = ChronobotActionId | ChronossusTileActionId;
@@ -437,6 +472,26 @@ export interface ChronossusActionInput {
   recruitedWorker?: Worker;
   /** For a modular tile action: which side is in play (default 'A'). */
   tileSide?: 'A' | 'B';
+  /** Overrides the tile family for that action — Fractures' C14-for-C04 swap. */
+  tileFamily?: string;
+  /**
+   * Fractures: where this placement went — the printed Capital Action space, or the
+   * World Council space it overflowed to. The gate asks the player both questions, and
+   * the answer is recorded on `placedExosuits` so Blink selection can use it. Defaults
+   * to 'action' (and is ignored outside Fractures games).
+   */
+  placementSpace?: 'action' | 'world-council';
+  /**
+   * Fractures: which Action each *other* Command token currently sits on, keyed by token
+   * number — view state, needed for Blink selection rule A.
+   */
+  tokenActions?: Record<number, string>;
+  /**
+   * Fractures: this Action is being taken by Blinking an already-placed Exosuit instead
+   * of placing a new one — the engine moves it, drops its Energy Core, and leaves
+   * `exosuitsAvailable` alone.
+   */
+  blink?: boolean;
 }
 
 export interface ChronossusActionResult {
@@ -454,6 +509,9 @@ const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-reboot': { label: 'Reboot' },
   'tile-score': { label: 'Score' },
   'tile-energy-pack': { label: 'Energy Pack' },
+  'tile-assimilate': { label: 'Assimilate' },
+  'tile-extract': { label: 'Extract' },
+  'tile-power-pack': { label: 'Power Pack' },
 };
 
 /** Human-facing label for any Chronossus action id. */
@@ -462,7 +520,7 @@ export function chronossusActionLabel(id: ChronossusActionId): string {
 }
 
 function isTileAction(id: ChronossusActionId): id is ChronossusTileActionId {
-  return id === 'tile-reboot' || id === 'tile-score' || id === 'tile-energy-pack';
+  return id in TILE_ACTIONS;
 }
 
 function cloneChronossus(bot: ChronossusState): ChronossusState {
@@ -551,15 +609,45 @@ export function resolveAction(
   }
 
   if (isTileAction(input.actionId)) {
-    const autoleap = resolveTileAction(bot, instr, input.actionId, input.tileSide ?? 'A', n);
+    const autoleap = resolveTileAction(
+      bot,
+      instr,
+      input.actionId,
+      input.tileSide ?? 'A',
+      n,
+      input.shape,
+      input.tileFamily,
+    );
     return { ...finishAction(state, bot, instr), autoleap };
   }
 
   const def = actionDef(input.actionId);
   const placeExosuit = () => {
-    // The Hypersync-tile fallback places a tile instead of an Exosuit.
-    if (!usingHypersyncTile && def.placesExosuit && bot.exosuitsAvailable > 0) {
+    // The Hypersync-tile fallback places a tile instead of an Exosuit, and some Actions
+    // place none at all.
+    if (usingHypersyncTile || !def.placesExosuit) return;
+    if (input.blink && bot.placedExosuits) {
+      // Fractures: no new Exosuit — the selected one moves here and loses its Energy
+      // Core (returned to supply), so it can't Blink again this Era.
+      const sel = selectBlinkExosuit(bot, input.actionId, input.tokenActions ?? {});
+      bot.placedExosuits = bot.placedExosuits.map((e) =>
+        e === sel?.exosuit ? { action: input.actionId, space: 'action', hasCore: false } : e,
+      );
+      return;
+    }
+    if (bot.exosuitsAvailable > 0) {
       bot.exosuitsAvailable -= 1;
+      // Fractures: every placement takes an Energy Core from supply into that Exosuit.
+      if (bot.placedExosuits) {
+        bot.placedExosuits = [
+          ...bot.placedExosuits,
+          {
+            action: input.actionId,
+            space: input.placementSpace ?? 'action',
+            hasCore: true,
+          },
+        ];
+      }
     }
   };
   const failCantPerform = (why: string) => {
@@ -713,9 +801,13 @@ function resolveTileAction(
   id: ChronossusTileActionId,
   side: 'A' | 'B',
   n: number,
+  shape?: BreakthroughShape,
+  tileFamily?: string,
 ): boolean {
   const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
-  const code = `${family}${side}`;
+  // C14 replaces C04 (a Fractures difficulty option) and is resolved through the same
+  // Assimilate action, so the caller can override the family via `tileFamily`.
+  const code = `${tileFamily ?? family}${side}`;
   const tile = CHRONOSSUS_TILES[code];
   const eff = tileEffect(code);
   const gains: string[] = [];
@@ -726,6 +818,15 @@ function resolveTileAction(
   if (eff.energyCores) {
     bot.energyPool.energized += eff.energyCores;
     gains.push(`gains ${eff.energyCores} Energy Core${eff.energyCores === 1 ? '' : 's'}`);
+  }
+  if (eff.fluxCores && bot.fluxPool) {
+    bot.fluxPool = { ...bot.fluxPool, cores: bot.fluxPool.cores + eff.fluxCores };
+    gains.push(
+      `gains ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} into the Flux Pool`,
+    );
+  }
+  if (eff.assimilate) {
+    gains.push(...assimilate(bot, shape));
   }
   const name = tile?.name ?? id;
   let text =
