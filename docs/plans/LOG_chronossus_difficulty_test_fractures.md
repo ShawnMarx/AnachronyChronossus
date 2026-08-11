@@ -162,6 +162,13 @@ neither needs the main Fractures module/mechanics.
 - [ ] The Chronossus has no Fracture Device (p.11) — nothing to model
 
 ### F3 — Actions, tiles & the Blink flow ✅ done (2026-08-11)
+- [x] **Corrected 2026-08-11:** Assimilate (C04/C14) and Extract (C05) are Action spaces on
+  the **Valley board**, not pure tile effects — they take an Exosuit. `VALLEY_TILE_ACTIONS`
+  + `placesExosuitFor` drive it: the tile dialog gates on "is a Valley Action space open?"
+  (else the Valley Capital space, p.11), the placement spends an Exosuit, and the passing
+  rule now applies to them. They are deliberately **not** recorded in `placedExosuits`,
+  since the Valley board isn't the Main board and nothing there can Blink. Power Pack
+  (C06) stays a Chronossus-board effect with no Exosuit
 - [x] Fractures tile actions wired end to end: `tile-assimilate` / `tile-extract` /
   `tile-power-pack` ids, C04/C05/C06 (+C14 sharing the Assimilate id via a `tileFamily`
   override), `TileEffect.fluxCores` + `.assimilate`, per-tile instruction copy

@@ -1724,8 +1724,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       }
       // TrackPos.action on a tile slot is always a modular tile action — but which one
       // depends on the mode's slot, not the base tile printed in the path data.
+      const tileAction = tileActionAt(key) ?? (tp.action as ChronossusTileActionId);
+      // Fractures' Valley Actions take an Exosuit, so the passing rule applies to them.
+      if (Chronossus.wouldPassOn(bot, tileAction)) {
+        const { state: next, instructions } = Chronossus.passChronossus(state);
+        commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
+        closePanel();
+        setLastResult(instructions);
+        return;
+      }
       setResult([]);
-      setPendingTile(tileActionAt(key) ?? (tp.action as ChronossusTileActionId));
+      setPendingTile(tileAction);
       return;
     }
     const [x, y] = positions[key] ?? [0, 0];
@@ -1744,7 +1753,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
   // so ▶ Start resolves it and advances the marker (the caller then closes).
-  const resolveTileSlot = (actionId: ChronossusActionId) => {
+  const resolveTileSlot = (actionId: ChronossusActionId, valleySpace?: 'action' | 'capital') => {
     // The live family comes from the mode (so Fractures' C14-for-C04 swap resolves C14's
     // effect through the shared Assimilate action), falling back to the id's own family.
     const liveFamily =
@@ -1759,6 +1768,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       actionId,
       tileSide,
       tileFamily: family,
+      // A Valley Action with no free space goes to the Valley Capital space; reuse the
+      // 'world-council' marker for it (the same "overflowed to the shared space" idea).
+      ...(valleySpace ? { placementSpace: valleySpace === 'capital' ? 'world-council' : 'action' } : {}),
       ...(assimilates ? { shape: rollShapeDie() } : {}),
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
@@ -1768,10 +1780,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
   // Autoleap tile) close. The result lands in History / the turn-status aside.
-  const startTileTurn = () => {
+  const startTileTurn = (valleySpace?: 'action' | 'capital') => {
     if (!pendingTile) return;
     chainOpenRef.current = false; // finishTurn re-sets it if the chain continues
-    resolveTileSlot(pendingTile);
+    resolveTileSlot(pendingTile, valleySpace);
     if (!chainOpenRef.current) closeTile();
   };
   // Close the tile dialog. If it hasn't resolved yet (no result), the marker does
@@ -2358,6 +2370,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   startLabel={startLabel}
                   onStart={startTileTurn}
                   onClose={cancelPanel}
+                  valleyGate={
+                    fracturesMode &&
+                    Chronossus.VALLEY_TILE_ACTIONS.includes(pendingTile) &&
+                    !tileRuleView
+                      ? { onPlace: (space) => startTileTurn(space) }
+                      : null
+                  }
                 />
               )}
               {pendingHypersync && (
@@ -2895,6 +2914,7 @@ function CxTileDialog({
   startLabel = '▶ Start Your Turn',
   onStart,
   onClose,
+  valleyGate = null,
 }: {
   action: ChronossusTileActionId;
   tileSides?: Record<string, 'A' | 'B'>;
@@ -2906,6 +2926,8 @@ function CxTileDialog({
   startLabel?: string;
   onStart: () => void;
   onClose: () => void;
+  /** Fractures: the Valley placement question, for the tile Actions that take an Exosuit. */
+  valleyGate?: { onPlace: (space: 'action' | 'capital') => void } | null;
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
@@ -2941,8 +2963,32 @@ function CxTileDialog({
               now — then the Command marker advances one extra space.
             </p>
           )}
-          <p className="pp-instruct">{tileInstruction(code)}</p>
-          {!readOnly && (
+          {/* Valley board Actions (Assimilate / Extract) take an Exosuit, so they gate on
+              a free space first — Valley Action space, else the Valley Capital space. */}
+          {valleyGate && !readOnly ? (
+            <>
+              <p className="pp-instruct">
+                Is a <b>{tile.name}</b> Action space open on the <b>Valley board</b>? Place
+                the Chronossus’s Exosuit on it.
+              </p>
+              <p className="pp-sub">
+                Put an Energy Core from the supply into that Exosuit. It sits on the Valley
+                board, so it can never Blink.
+              </p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
+                  ✓ Yes — placed there
+                </button>
+                <button className="pp-cannot" onClick={() => valleyGate.onPlace('capital')}>
+                  ✗ No — use the Valley Capital space
+                </button>
+              </div>
+              <p className="pp-sub">{tileInstruction(code)}</p>
+            </>
+          ) : (
+            <p className="pp-instruct">{tileInstruction(code)}</p>
+          )}
+          {!readOnly && !valleyGate && (
             <button className="start-turn" onClick={onStart}>
               {startLabel}
             </button>

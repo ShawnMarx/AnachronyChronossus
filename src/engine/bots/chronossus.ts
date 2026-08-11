@@ -513,6 +513,23 @@ export interface ChronossusActionResult {
   autoleap?: boolean;
 }
 
+/**
+ * Fractures: Assimilate and Extract are Action spaces on the **Valley board**, so they
+ * take an Exosuit like any Capital Action — unlike the Chronossus-board tiles (Reboot,
+ * Score, Energy/Power Pack), which are pure effects.
+ *
+ * Two consequences: the Chronossus passes rather than take one when it is out of
+ * Exosuits, and an Exosuit placed there can never Blink (the Valley board is not the Main
+ * board — `blinkSpaceOf` returns null for these ids, so they are not recorded).
+ */
+export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate', 'tile-extract'];
+
+/** Whether an Action places an Exosuit — including the Valley board's tile Actions. */
+export function placesExosuitFor(actionId: ChronossusActionId): boolean {
+  if (isTileAction(actionId)) return VALLEY_TILE_ACTIONS.includes(actionId);
+  return actionDef(actionId).placesExosuit === true;
+}
+
 const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-reboot': { label: 'Reboot' },
   'tile-score': { label: 'Score' },
@@ -617,6 +634,20 @@ export function resolveAction(
   }
 
   if (isTileAction(input.actionId)) {
+    // Valley board Actions take an Exosuit. No free Valley space sends it to the Valley
+    // Capital space (p.11, as with World Capital); neither available is a Failed Action,
+    // handled by the shared no-space branch above.
+    if (VALLEY_TILE_ACTIONS.includes(input.actionId) && bot.exosuitsAvailable > 0) {
+      bot.exosuitsAvailable -= 1;
+      instr.push({
+        id: `valley-place-${n}`,
+        text:
+          input.placementSpace === 'world-council'
+            ? "Place the Chronossus's Exosuit on the Valley Capital Action space (no Valley Action space was free)."
+            : "Place the Chronossus's Exosuit on that Valley Action space.",
+        detail: 'Put an Energy Core from the supply into it. It cannot Blink from the Valley board.',
+      });
+    }
     const autoleap = resolveTileAction(
       bot,
       instr,
@@ -951,8 +982,7 @@ function finishAction(state: GameState, bot: ChronossusState, instr: Instruction
  * longer has — i.e. attempting it makes the Chronossus pass instead.
  */
 export function wouldPassOn(bot: ChronossusState, actionId: ChronossusActionId): boolean {
-  if (isTileAction(actionId)) return false;
-  return actionDef(actionId).placesExosuit === true && bot.exosuitsAvailable <= 0;
+  return placesExosuitFor(actionId) && bot.exosuitsAvailable <= 0;
 }
 
 /**

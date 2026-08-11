@@ -40,6 +40,7 @@ import {
   selectBlinkExosuit,
   resolveCleanUp,
   assimilate,
+  wouldPassOn,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -912,6 +913,61 @@ describe('Fractures — Assimilate (C04/C14)', () => {
     });
     expect(next.chronossus!.technologies).toBe(1);
     expect(next.chronossus!.vp).toBe(state.chronossus!.vp + 1);
+  });
+});
+
+describe('Fractures — Valley board Actions take an Exosuit', () => {
+  const fracturesState = (exosuits = 3) => {
+    const st = chronossusState({ config: { ...CONFIG, chronossusMode: 'fractures' } });
+    st.chronossus = {
+      ...st.chronossus!,
+      exosuitsAvailable: exosuits,
+      fluxPool: { cores: 1, casings: 3, setAside: 0 },
+      technologies: 0,
+      operators: 0,
+      placedExosuits: [],
+    };
+    return st;
+  };
+
+  it('Assimilate and Extract spend an Exosuit; the Chronossus-board tiles do not', () => {
+    for (const id of ['tile-assimilate', 'tile-extract'] as const) {
+      const { state: next } = resolveAction(fracturesState(), { actionId: id, shape: 'circle' });
+      expect(next.chronossus!.exosuitsAvailable).toBe(2);
+    }
+    const pack = resolveAction(fracturesState(), { actionId: 'tile-power-pack' }).state;
+    expect(pack.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('does not record them as Blink-from positions (they are not on the Main board)', () => {
+    const { state: next } = resolveAction(fracturesState(), {
+      actionId: 'tile-extract',
+      placementSpace: 'action',
+    });
+    expect(next.chronossus!.placedExosuits).toEqual([]);
+    expect(blinkReadyExosuits(next.chronossus!, 'recruit')).toEqual([]);
+  });
+
+  it('passes rather than take one when out of Exosuits', () => {
+    const bot = fracturesState(0).chronossus!;
+    expect(wouldPassOn(bot, 'tile-assimilate')).toBe(true);
+    expect(wouldPassOn(bot, 'tile-extract')).toBe(true);
+    // The Chronossus-board tiles still resolve with no Exosuits left.
+    expect(wouldPassOn(bot, 'tile-power-pack')).toBe(false);
+    expect(wouldPassOn(bot, 'tile-reboot')).toBe(false);
+  });
+
+  it('names the Valley Capital space when no Valley Action space was free', () => {
+    const { instructions } = resolveAction(fracturesState(), {
+      actionId: 'tile-extract',
+      placementSpace: 'world-council',
+    });
+    expect(instructions.some((i) => /Valley Capital Action space/.test(i.text))).toBe(true);
+  });
+
+  it('still resolves the tile effect alongside the placement', () => {
+    const { state: next } = resolveAction(fracturesState(), { actionId: 'tile-extract' });
+    expect(next.chronossus!.fluxPool!.cores).toBe(3); // 1 + 2
   });
 });
 
