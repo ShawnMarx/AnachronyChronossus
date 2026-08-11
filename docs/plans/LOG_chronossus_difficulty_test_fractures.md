@@ -81,6 +81,17 @@ neither needs the main Fractures module/mechanics.
   disabled on the first screen, Preparation↔Power Up round-trip, both follow-up prompts
   rendering under their roll, and an undone Anomaly gain restoring `anomalyVps`/Warp count
   and re-opening the prompt.
+- [x] **Phase-screen prompt pass** (2026-08-11): one visual language for "the app needs
+  something from you" across every non-Action phase — the amber `.place-prompt` box the
+  Anomaly/Alternate-Timelines prompts already used now also carries the Paradox tie/lead
+  question, the Hypersync extra-roll question, and both bots' Clean Up game-end choice
+  (`.capital-check` / `.phase-end-pink` retired). Paradox screen re-ordered to
+  intro → roll log → prompt → trackers → verbatim rules, so reference material sits under
+  what you act on. Trackers became four icon chips (Paradoxes / Anomalies / Warp tiles /
+  Hypersync, the last only in that mode) via a `PARADOX_ICONS` prop the Chronossus
+  overrides for its own Warp-tile face. Paradox rolls now render like Warp rolls (numbered
+  die + Paradox symbol, symbol hidden on a blank), for both bots. The Anomaly prompt leads
+  with "Variable Anomalies —" so it reads as a mode-specific check, not the base −3 VP gain.
 - [x] **Alternate Timelines overrides the Warp turn-order note** (2026-08-11): the screen was
   still showing the base "Warping occurs in player order… roll for it below, then place your
   own tiles", which contradicts p.18 ("you must decide how many Resources and/or Workers to

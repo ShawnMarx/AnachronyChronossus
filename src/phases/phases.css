@@ -145,7 +145,10 @@
   gap: 1rem;
   flex-wrap: wrap;
 }
-.paradox-status span {
+.paradox-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   padding: 0.4rem 0.8rem;
   border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
   border-radius: 999px;
@@ -153,17 +156,19 @@
   font-size: 0.9rem;
   color: var(--sp-text-1);
 }
+.paradox-status > span > img {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+}
 .paradox-status b {
   color: #fff;
 }
+/* Stack of per-roll result boxes (each one styled like the Warp phase's roll). */
 .paradox-log {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.7rem 0.9rem;
-  border-left: 3px solid var(--sp-accent-deep);
-  border-radius: 0 8px 8px 0;
-  background: var(--sp-panel-2);
+  gap: 0.5rem;
 }
 .paradox-log .phase-note {
   color: var(--sp-text-1);
@@ -448,33 +453,6 @@
   color: var(--act-text);
   font-weight: 800;
   cursor: pointer;
-}
-
-/* Eras 5–6 Clean Up: orange "did you flip the tiles?" check above the buttons. */
-.capital-check {
-  border: 1px solid rgba(245, 158, 11, 0.55);
-  background: rgba(245, 158, 11, 0.12);
-  border-radius: 10px;
-  padding: 0.7rem 0.85rem;
-  margin-bottom: 0.9rem;
-  font-weight: 600;
-  color: #fcd9a0;
-  line-height: 1.4;
-}
-
-/* The pink "Game Ended — Finish & Score" button (matches the You Pass palette). */
-.phase-end-pink {
-  padding: 0.6rem 1rem;
-  border-radius: 9px;
-  font-weight: 800;
-  font-size: 0.98rem;
-  cursor: pointer;
-  color: var(--pass-text);
-  background: linear-gradient(180deg, var(--pass), var(--pass-2));
-  border: 1px solid var(--pass-border);
-}
-.phase-end-pink:hover {
-  background: linear-gradient(180deg, var(--pass-hover), var(--pass));
 }
 
 .fp-dialog {

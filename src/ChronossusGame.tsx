@@ -29,6 +29,7 @@ import {
   SettingsMenu,
   WarpPhaseBody,
   ParadoxPhaseBody,
+  PARADOX_ICONS,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -2543,23 +2544,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               Finish &amp; Score ▶
             </button>
           ) : postImpact ? (
-            <>
-              <div className="capital-check">
-                Are all Collapsing Capital tiles flipped? If so, proceed to Game Ended
-                below.
-              </div>
-              <div className="setup-actions">
+            <div className="place-prompt">
+              <p className="pp-instruct">
+                Are all Collapsing Capital tiles flipped? If so, the game has ended —
+                choose below.
+              </p>
+              <div className="pp-buttons">
                 <button
-                  className="phase-primary"
+                  className="pp-confirm"
                   onClick={() => setShowFirstPlayer(true)}
                 >
                   Game continues — start Era {era + 1} ▶
                 </button>
-                <button className="phase-end-pink" onClick={endGameNow}>
+                <button className="pp-cannot" onClick={endGameNow}>
                   Game Ended — Finish &amp; Score
                 </button>
               </div>
-            </>
+            </div>
           ) : (
             <button className="phase-primary" onClick={afterCleanUp}>
               End the Era — start Era {era + 1} ▶
@@ -2583,6 +2584,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
           pendingRoll={ui.paradoxRoll}
+          icons={{ ...PARADOX_ICONS, warp: '/assets/solo/chronossus/warp-tile.png' }}
           followUp={
             variableAnomalyPending ? (
               <VariableAnomalyGainPrompt onConfirm={finishVariableAnomalyGain} />
@@ -3038,9 +3040,9 @@ function VariableAnomalyGainPrompt({
   return (
     <div className="place-prompt">
       <p className="pp-instruct">
-        <b>Anomaly — the Chronossus receives one.</b> From the visible Anomaly tiles give
-        it the one that <b>lets it retrieve a Warp tile</b> right now (check each tile's
-        Before/After Impact icon against this Era's Impact status). If{' '}
+        <b>Variable Anomalies — the Chronossus receives an Anomaly.</b> From the visible
+        Anomaly tiles give it the one that <b>lets it retrieve a Warp tile</b> right now
+        (check each tile's Before/After Impact icon against this Era's Impact status). If{' '}
         <b>both or neither</b> do, give it the one with the <b>smaller VP penalty</b>{' '}
         (closer to 0). Tap its printed VP.
       </p>
