@@ -2404,41 +2404,46 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       break;
     case 'warp':
-      body =
-        altTimelinesPending != null ? (
-          <div className="place-prompt">
-            <p className="pp-instruct">
-              Alternate Timelines: how many of the Chronossus’s {altTimelinesPending} newly
-              placed Warp tile{altTimelinesPending === 1 ? '' : 's'} landed on a{' '}
-              <b>positive</b>-effect Timeline space?
-            </p>
-            <p className="pp-sub">
-              It ignores negative/penalty spaces entirely — nothing to report for those.
-            </p>
-            <div className="difficulty-sub-values">
-              {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className="difficulty-sub-value"
-                  onClick={() => finishWarp(altTimelinesPending, n)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <WarpPhaseBody
-            state={state}
-            meta={meta!}
-            onCommit={commitWarp}
-            botName="Chronossus"
-            warpTileSrc="/assets/solo/chronossus/warp-tile.png"
-            roll={ui.warpRoll}
-            onRoll={rollWarp}
-          />
-        );
+      // Alternate Timelines' positive-space question renders under the roll result
+      // rather than on its own screen, so the player still sees what was rolled and
+      // placed while answering it.
+      body = (
+        <WarpPhaseBody
+          state={state}
+          meta={meta!}
+          onCommit={commitWarp}
+          botName="Chronossus"
+          warpTileSrc="/assets/solo/chronossus/warp-tile.png"
+          roll={ui.warpRoll}
+          onRoll={rollWarp}
+          followUp={
+            altTimelinesPending != null ? (
+              <div className="place-prompt">
+                <p className="pp-instruct">
+                  Alternate Timelines: how many of the Chronossus’s {altTimelinesPending}{' '}
+                  newly placed Warp tile{altTimelinesPending === 1 ? '' : 's'} landed on a{' '}
+                  <b>positive</b>-effect Timeline space?
+                </p>
+                <p className="pp-sub">
+                  It ignores negative/penalty spaces entirely — nothing to report for those.
+                </p>
+                <div className="difficulty-sub-values">
+                  {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="difficulty-sub-value"
+                      onClick={() => finishWarp(altTimelinesPending, n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : undefined
+          }
+        />
+      );
       break;
     case 'cleanup': {
       // Impact + game-end flow, identical to the Chronobot: the Impact resolves at

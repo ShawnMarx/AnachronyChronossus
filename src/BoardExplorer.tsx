@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
 import { recordGame } from './data/gameData';
@@ -1987,6 +1987,7 @@ export function WarpPhaseBody({
   warpTileSrc = '/assets/solo/warp-tile.png',
   roll,
   onRoll,
+  followUp,
 }: {
   state: GameState;
   meta: PhaseMeta;
@@ -1995,6 +1996,12 @@ export function WarpPhaseBody({
   botName?: string;
   /** The bot's Warp-tile art (placed on the Main board), shown next to the roll. */
   warpTileSrc?: string;
+  /**
+   * An extra step rendered in place of the "Continue" button once the roll is shown —
+   * Alternate Timelines' positive-space question. Keeping it here rather than on its own
+   * screen leaves the roll result and rules text above it for context.
+   */
+  followUp?: ReactNode;
   /**
    * Optional controlled roll: when `onRoll` is provided the rolled value lives in the
    * parent (persisted across Undo, so backing to this phase re-shows the same roll —
@@ -2040,9 +2047,11 @@ export function WarpPhaseBody({
                 : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on the current Timeline tile. Any tiles will do; the ${botName} gains nothing from them.`}
             </p>
           </div>
-          <button className="phase-primary" onClick={() => onCommit(rolled)}>
-            Continue ▶
-          </button>
+          {followUp ?? (
+            <button className="phase-primary" onClick={() => onCommit(rolled)}>
+              Continue ▶
+            </button>
+          )}
         </>
       )}
     </>
