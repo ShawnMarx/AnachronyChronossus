@@ -156,6 +156,17 @@ export interface ChronossusState {
    * then); seeded to `[]` at setup when the module is selected.
    */
   anomalyVps?: number[];
+  /**
+   * Fractures of Time only: the Flux Pool — a second container holding Flux Cores and
+   * Empty Flux Casings, drawn from before each Exosuit Action to decide whether the
+   * Chronossus Blinks. `setAside` counts Casings drawn this Era (they return to the
+   * pool in Clean Up). `undefined` in every other mode.
+   */
+  fluxPool?: { cores: number; casings: number; setAside: number };
+  /** Fractures of Time only: Technology cards held (3 VP each at game end). */
+  technologies?: number;
+  /** Fractures of Time only: Operators recruited (the Assimilate Square tie-break). */
+  operators?: number;
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */

@@ -119,13 +119,26 @@ neither needs the main Fractures module/mechanics.
   Added that text as a `RulesBox` in `ParadoxPhaseBody`'s Hypersync branch so the prompts
   are no longer app-voice-only.
 
-## PART 4 — Fractures of Time (full module) ← next up
-### F-R — Research & design
-- [ ] Read Fractures rules (Chronossus deltas) + pull TTS art; capture design note here
+## PART 4 — Fractures of Time (full module) ← in progress
+### F-R — Research & design ✅ done (2026-08-11)
+- [x] Read the Fractures Chronossus deltas (Solo Opponents pp.11-13); design note in the PLAN
+- [x] Design confirmed: the app tracks Exosuit placements and applies the Blink-selection
+  rule itself; in Fractures the placement gate splits into "Capital Action space open?" then
+  "World Council open?"; World Council matches no Command token and sorts last for the
+  bottom-left-most tiebreak; the Valley board stays player-managed (named in text, no art)
+- [ ] Pull TTS art for the Valley board / Fractures pieces — deferred to F4 (may not be needed)
 
-### F1 — Mode entry & setup
-- [ ] Un-stub Fractures in `MODULE_CONFIGS`; wire `getMode` slots/tiles
-- [ ] Fractures Setup screens (verbatim + app-modified)
+### F1 — Mode entry & setup ✅ done (2026-08-11)
+- [x] `fractures` mode registered (C04/C05/C06 in slots I/II/III) and un-stubbed in
+  `MODULE_CONFIGS`; the "replace C04 with C14" difficulty swaps the family in `getMode`,
+  applied before the I/III swap so the two options compose
+- [x] The module's other 3 difficulty options (extra starting Flux Cores 1/2/3, leftover
+  Flux Core VP, roll a starting Glitch for yourself) in `MODE_DIFFICULTY`
+- [x] Setup screens: verbatim Fractures setup box + app-modified bullets (Valley board,
+  app-held Flux Pool, no Fracture Device, Energy Core into each placed Exosuit)
+- [x] Slice fields seeded at setup: `fluxPool` (1 Core + 3 Casings + extras), `technologies`,
+  `operators`; 7 new tests. Verified live: module selectable, all 4 options listed, setup
+  text renders, state seeds `{cores:1,casings:3,setAside:0}`
 
 ### F2 — Engine: Flux Pool / Cores / Fracture Device
 - [ ] State + types; draw/spend/exhaust + Fracture Device; unit tests

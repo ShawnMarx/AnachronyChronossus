@@ -6,6 +6,7 @@ import {
   slotCovering,
   worldCouncilMandatory,
   DIFFICULTY_SWAP_TILES,
+  DIFFICULTY_FRACTURES_C14,
   CHRONOSSUS_MODES,
 } from './chronossusModes';
 
@@ -99,5 +100,37 @@ describe('worldCouncilMandatory — D9 is not a real choice for some modes', () 
     expect(worldCouncilMandatory('fractures')).toBe(false);
     expect(worldCouncilMandatory('pioneers')).toBe(false);
     expect(worldCouncilMandatory('fractures+pioneers')).toBe(false);
+  });
+});
+
+describe('Fractures of Time mode', () => {
+  it('lays C04/C05/C06 into the three native tile slots', () => {
+    const mode = getMode('fractures');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.map((s) => [s.slot, s.family])).toEqual([
+      ['I', 'C04'],
+      ['II', 'C05'],
+      ['III', 'C06'],
+    ]);
+  });
+
+  it('replaces C04 with C14 under that difficulty option', () => {
+    const mode = getMode('fractures', [DIFFICULTY_FRACTURES_C14]);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C14');
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C05');
+  });
+
+  it('applies the C14 swap before the I/III tile swap, so slot III gets C14', () => {
+    const mode = getMode('fractures', [DIFFICULTY_FRACTURES_C14, DIFFICULTY_SWAP_TILES]);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C06');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C14');
+  });
+
+  it('leaves other modes untouched by the C14 option', () => {
+    expect(getMode('base', [DIFFICULTY_FRACTURES_C14]).slots.map((s) => s.family)).toEqual([
+      'C01',
+      'C02',
+      'C03',
+    ]);
   });
 });

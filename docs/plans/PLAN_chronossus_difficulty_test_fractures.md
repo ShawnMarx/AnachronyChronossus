@@ -323,7 +323,20 @@ Time module and the Chronossus base rules apply, unless noted below"):
   Cores in the pool at game start; each leftover Flux Core = 1 VP at the end; roll the Glitch
   die at setup and place that Glitch **for yourself** (player-side only, app just says so).
 
-**Design decisions to confirm before F1** (see the session summary):
+**Confirmed 2026-08-11:**
+- The app tracks the bot's Exosuit placements and applies the Blink-selection rule itself.
+  It already knows *which Action* each placement went to; the only thing it can't see is
+  whether the Exosuit took the printed Capital Action space or the World Council space —
+  so in Fractures the placement gate asks that as two questions: "is a Capital Action space
+  (not World Council) open?", then "is the World Council space open?".
+- **World Council is not a specific Action space.** An Exosuit there matches no Command
+  token, so selection rule A never picks it; and since it sits physically at the top of the
+  board, rule B's bottom-left-most ordering puts it effectively last (Mine is the other
+  late one, depending on whether Mine is an upcoming Command Action).
+- The Valley board stays player-managed: the app names the Valley Action and the Valley
+  Capital fallback in text, no art or overlays (revisit in F4 if wanted).
+
+**Still open:**
 1. Track the bot's Exosuit placements (new state) so the app can apply the Blink-selection
    rule itself, vs. asking the player to pick.
 2. Whether the Valley board gets its own art/overlays or stays player-managed with the app

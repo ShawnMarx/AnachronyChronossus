@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
-import { getMode, DIFFICULTY_SWAP_TILES, worldCouncilMandatory } from '../board/chronossusModes';
+import {
+  getMode,
+  DIFFICULTY_SWAP_TILES,
+  DIFFICULTY_FRACTURES_C14,
+  worldCouncilMandatory,
+} from '../board/chronossusModes';
 import { Chronossus } from '../engine';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
@@ -14,6 +19,35 @@ export const DIFFICULTY_HYPERSYNC_TARGETED = 'chronossus-hypersync-targeted';
 
 /** Extra difficulty options that only apply to specific modules. */
 const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
+  fractures: [
+    {
+      flag: DIFFICULTY_FRACTURES_C14,
+      label: 'Fractures: replace C04 with C14',
+      detail: 'C14 is a more difficult tile — Assimilate, but it also gains 1 additional Flux Core.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX,
+      label: 'Fractures: extra starting Flux Cores',
+      detail:
+        'Increase the number of Flux Cores in the Flux Pool by 1/2/3 at the beginning of ' +
+        'the game — a fuller pool means it Blinks more often.',
+      values: [1, 2, 3],
+    },
+    {
+      flag: Chronossus.DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP,
+      label: 'Fractures: leftover Flux Cores score',
+      detail:
+        'Each leftover Flux Core in the Flux Pool at the end of the game is worth 1 VP to ' +
+        'the Chronossus.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_FRACTURES_PLAYER_GLITCH,
+      label: 'Fractures: roll a starting Glitch for yourself',
+      detail:
+        'Roll the Glitch die after setup and place the rolled Glitch for yourself, in ' +
+        'addition to the two starting Glitches from the Fractures of Time rules.',
+    },
+  ],
   hypersync: [
     {
       flag: DIFFICULTY_HYPERSYNC_TARGETED,
@@ -43,7 +77,7 @@ interface ModuleConfig {
 }
 const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'base', label: 'Base', available: true },
-  { id: 'fractures', label: 'Fractures of Time', available: false },
+  { id: 'fractures', label: 'Fractures of Time', available: true },
   { id: 'doomsday', label: 'Doomsday', available: false },
   { id: 'pioneers', label: 'Pioneers of New Earth', available: false },
   { id: 'guardians', label: 'Guardians of the Council', available: false },
@@ -234,6 +268,10 @@ export default function ChronossusSetupFlow({
   const blockWorldCouncil = difficulty.has(DIFFICULTY_WORLD_COUNCIL);
   const flipTiles = difficulty.has(DIFFICULTY_TILES_B_SIDE);
   const fewerObjectives = difficulty.has(Chronossus.DIFFICULTY_FEWER_OBJECTIVES);
+  const extraFlux = difficulty.has(Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX)
+    ? (difficultyValues[Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX] ?? 0)
+    : 0;
+  const playerGlitch = difficulty.has(Chronossus.DIFFICULTY_FRACTURES_PLAYER_GLITCH);
   const objectiveCount = fewerObjectives
     ? (difficultyValues[Chronossus.DIFFICULTY_FEWER_OBJECTIVES] ?? 0)
     : 3;
@@ -547,6 +585,25 @@ export default function ChronossusSetupFlow({
 
               {/* Per-mode setup additions (verbatim). Each module drops its own
                   section here on top of the base setup above. */}
+              {moduleId === 'fractures' && (
+                <RulesBox label="Fractures of Time — setup" showPreamble>
+                  <p>Setup the Valley board as if it was a 2-Player game.</p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C04A, C05A and C06A.
+                  </p>
+                  <p>
+                    You will need a second container, referred to as the “Flux Pool.” At
+                    setup, add 1 Flux Core and all 3 Empty Flux Casing tokens to it.
+                  </p>
+                  <p>The Chronossus does not use a Fracture Device.</p>
+                  <p>
+                    Add the “Technology Cards” and “Flux on Track” Solo Objective cards to
+                    the deck before drawing.
+                  </p>
+                </RulesBox>
+              )}
+
               {moduleId === 'hypersync' && (
                 <RulesBox label="Hypersync Future Actions — setup" showPreamble>
                   <p>
@@ -585,6 +642,34 @@ export default function ChronossusSetupFlow({
                     rest to the box.
                   </li>
                   <li>The Chronossus does not use a Focus marker.</li>
+                  {moduleId === 'fractures' && (
+                    <>
+                      <li>
+                        Set up the <b>Valley board</b> as for a 2-player game. The app names
+                        the Valley Action the Chronossus takes; you place its Exosuit there
+                        (or on the Valley Capital space if no Valley Action space is free).
+                      </li>
+                      <li>
+                        No need for the physical <b>Flux Pool</b> container — the app holds
+                        its 1 Flux Core + 3 Empty Flux Casings and draws from it for you
+                        {extraFlux > 0 ? ` (+${extraFlux} extra Flux Core${extraFlux === 1 ? '' : 's'}, difficulty option selected)` : ''}.
+                      </li>
+                      <li>
+                        The Chronossus does not use a Fracture Device, never rolls the Flux
+                        or Glitch dice, and never receives Glitches.
+                      </li>
+                      <li>
+                        Whenever it places an Exosuit on the Main board, put an Energy Core
+                        from the supply into that Exosuit.
+                      </li>
+                      {playerGlitch && (
+                        <li>
+                          <b>Roll the Glitch die and place that Glitch for yourself</b>, on
+                          top of your two starting Glitches (difficulty option selected).
+                        </li>
+                      )}
+                    </>
+                  )}
                   <li>
                     Place the Chronossus’s Banner on the First Player spot; it is the
                     First Player in the 1st Era. You receive 1 additional Water (for being

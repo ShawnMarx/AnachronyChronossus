@@ -32,6 +32,7 @@ import {
   DIFFICULTY_ALT_TIMELINES_3VP,
   EXTRA_MODULE_VARIABLE_ANOMALIES,
   resolveVariableAnomalyGain,
+  DIFFICULTY_FRACTURES_EXTRA_FLUX,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -683,6 +684,36 @@ describe('applyDifficultySetup — Variable Anomalies seeding', () => {
     const bot = emptyChronossusState();
     const next = applyDifficultySetup(bot, CONFIG);
     expect(next.anomalyVps).toBeUndefined();
+  });
+});
+
+describe('applyDifficultySetup — Fractures seeding', () => {
+  const fracturesConfig = (difficulty: string[] = [], values?: Record<string, number>) => ({
+    ...CONFIG,
+    chronossusMode: 'fractures',
+    difficulty,
+    difficultyValues: values,
+  });
+
+  it('seeds the Flux Pool and the Technology/Operator counters', () => {
+    const bot = applyDifficultySetup(emptyChronossusState(), fracturesConfig());
+    expect(bot.fluxPool).toEqual({ cores: 1, casings: 3, setAside: 0 });
+    expect(bot.technologies).toBe(0);
+    expect(bot.operators).toBe(0);
+  });
+
+  it('adds the extra starting Flux Cores from that difficulty option', () => {
+    const bot = applyDifficultySetup(
+      emptyChronossusState(),
+      fracturesConfig([DIFFICULTY_FRACTURES_EXTRA_FLUX], { [DIFFICULTY_FRACTURES_EXTRA_FLUX]: 3 }),
+    );
+    expect(bot.fluxPool).toEqual({ cores: 4, casings: 3, setAside: 0 });
+  });
+
+  it('leaves non-Fractures games without the Fractures fields', () => {
+    const bot = applyDifficultySetup(emptyChronossusState(), { ...CONFIG, chronossusMode: 'base' });
+    expect(bot.fluxPool).toBeUndefined();
+    expect(bot.technologies).toBeUndefined();
   });
 });
 

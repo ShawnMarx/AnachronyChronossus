@@ -58,6 +58,25 @@ export const DIFFICULTY_FEWER_OBJECTIVES = 'chronossus-fewer-objectives';
  *  the main Fractures of Time module (needs only the physical expansion box). */
 export const EXTRA_MODULE_VARIABLE_ANOMALIES = 'variable-anomalies';
 
+// --- Fractures of Time (Solo Opponents pp. 11-13) --------------------------
+/** Its 5 "Increasing the Difficulty" bullets. The B-side flip is the shared
+ *  `chronossus-tiles-b-side`; C14-for-C04 is a tile swap handled in `getMode`; the
+ *  extra Glitch is player-side setup text only (the Chronossus never gets Glitches). */
+export const DIFFICULTY_FRACTURES_C14 = 'chronossus-fractures-c14';
+export const DIFFICULTY_FRACTURES_EXTRA_FLUX = 'chronossus-fractures-extra-flux';
+export const DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP = 'chronossus-fractures-leftover-flux-vp';
+export const DIFFICULTY_FRACTURES_PLAYER_GLITCH = 'chronossus-fractures-player-glitch';
+
+/** The Flux Pool at setup: 1 Flux Core + all 3 Empty Flux Casing tokens. */
+export const FLUX_POOL_START = { cores: 1, casings: 3, setAside: 0 } as const;
+/** VP per Technology the Chronossus holds at the end of the game. */
+export const TECHNOLOGY_VP = 3;
+
+/** Whether a mode id runs the Fractures of Time module (including its combos). */
+export function isFracturesMode(modeId: string | undefined): boolean {
+  return !!modeId && modeId.includes('fractures');
+}
+
 /**
  * Apply setup-time adjustments to a fresh Chronossus slice — D3's extra starting
  * Energy Cores (added energized), and Variable Anomalies seeding its held-Anomaly
@@ -69,11 +88,26 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
     ? (config.difficultyValues?.[DIFFICULTY_EXTRA_ENERGY] ?? 0)
     : 0;
   const variableAnomalies = config.extraModules?.includes(EXTRA_MODULE_VARIABLE_ANOMALIES) ?? false;
-  if (extra === 0 && !variableAnomalies) return bot;
+  // Fractures seeds its own subsystems: the Flux Pool (plus any extra starting Flux
+  // Cores from that module's difficulty option) and the Technology/Operator counters
+  // the Assimilate Action compares. Their presence is what marks a Fractures game,
+  // the same way `anomalyVps` marks a Variable Anomalies one.
+  const fractures = isFracturesMode(config.chronossusMode);
+  const extraFlux = config.difficulty.includes(DIFFICULTY_FRACTURES_EXTRA_FLUX)
+    ? (config.difficultyValues?.[DIFFICULTY_FRACTURES_EXTRA_FLUX] ?? 0)
+    : 0;
+  if (extra === 0 && !variableAnomalies && !fractures) return bot;
   return {
     ...bot,
     energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra },
     ...(variableAnomalies ? { anomalyVps: [] } : {}),
+    ...(fractures
+      ? {
+          fluxPool: { ...FLUX_POOL_START, cores: FLUX_POOL_START.cores + extraFlux },
+          technologies: 0,
+          operators: 0,
+        }
+      : {}),
   };
 }
 

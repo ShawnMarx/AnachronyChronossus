@@ -53,6 +53,18 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
       { slot: 'III', family: 'C03', posKey: SLOT_III_POS },
     ],
   },
+  fractures: {
+    id: 'fractures',
+    label: 'Fractures of Time',
+    available: true,
+    slots: [
+      // C04/C05/C06 fill the three native tile spaces (Solo Opponents p.11); the
+      // C14-for-C04 difficulty swaps slot I's family (see `getMode`).
+      { slot: 'I', family: 'C04', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C05', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C06', posKey: SLOT_III_POS },
+    ],
+  },
   hypersync: {
     id: 'hypersync',
     label: 'Hypersync Future Actions',
@@ -69,6 +81,8 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
 
 /** The "Swap Action tiles between spaces" difficulty flag (shared with the setup screen). */
 export const DIFFICULTY_SWAP_TILES = 'chronossus-swap-tiles';
+/** Fractures: "Replace C04 with C14, a more difficult tile" (Solo Opponents p.13). */
+export const DIFFICULTY_FRACTURES_C14 = 'chronossus-fractures-c14';
 
 /**
  * `id`'s mode, optionally with Slot I and Slot III's `family` swapped (the
@@ -76,7 +90,15 @@ export const DIFFICULTY_SWAP_TILES = 'chronossus-swap-tiles';
  * all share the I/II/III slot scheme — no per-mode special-casing needed.
  */
 export function getMode(id: string | undefined, difficulty?: string[]): ChronossusMode {
-  const mode = CHRONOSSUS_MODES[id ?? 'base'] ?? CHRONOSSUS_MODES.base;
+  let mode = CHRONOSSUS_MODES[id ?? 'base'] ?? CHRONOSSUS_MODES.base;
+  // Fractures' C14-for-C04 swap first, so a later I/III swap moves whichever tile
+  // actually ends up in slot I.
+  if (difficulty?.includes(DIFFICULTY_FRACTURES_C14) && mode.slots.some((s) => s.family === 'C04')) {
+    mode = {
+      ...mode,
+      slots: mode.slots.map((s) => (s.family === 'C04' ? { ...s, family: 'C14' } : s)),
+    };
+  }
   if (!difficulty?.includes(DIFFICULTY_SWAP_TILES)) return mode;
   const slotI = mode.slots.find((s) => s.slot === 'I');
   const slotIII = mode.slots.find((s) => s.slot === 'III');
