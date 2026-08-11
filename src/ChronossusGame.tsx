@@ -3038,9 +3038,9 @@ function VariableAnomalyGainPrompt({
   return (
     <div className="place-prompt">
       <p className="pp-instruct">
-        <b>Anomaly — the Chronossus receives one.</b> Reveal the 2 visible Anomaly tiles
-        and give it the one that <b>lets it retrieve a Warp tile</b> right now (check each
-        tile's Before/After Impact icon against this Era's Impact status). If{' '}
+        <b>Anomaly — the Chronossus receives one.</b> From the visible Anomaly tiles give
+        it the one that <b>lets it retrieve a Warp tile</b> right now (check each tile's
+        Before/After Impact icon against this Era's Impact status). If{' '}
         <b>both or neither</b> do, give it the one with the <b>smaller VP penalty</b>{' '}
         (closer to 0). Tap its printed VP.
       </p>
