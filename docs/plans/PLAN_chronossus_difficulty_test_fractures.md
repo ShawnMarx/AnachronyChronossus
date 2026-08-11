@@ -289,8 +289,47 @@ The largest piece: a new mode with new subsystems. Build on the shared solo-bot 
 mode/tile machinery. Ends with a playthrough variation (Part 1 seam).
 
 ### F-R. Research & design
-- [ ] Read the Fractures rules (Chronossus deltas) + pull TTS art (see CLAUDE.md pipeline).
-  Capture the module's deltas in a short design note in this plan before coding.
+- [x] Read the Fractures rules (Chronossus deltas). Design note below (2026-08-11).
+- [ ] Pull TTS art for the Valley board + Fractures pieces (see CLAUDE.md pipeline) — F4.
+
+**The module's deltas** (verbatim source: Solo Opponents pp. 11-13; "All of the Fractures of
+Time module and the Chronossus base rules apply, unless noted below"):
+
+- **Setup:** Valley board on its 2-player side; C04A/C05A/C06A onto the three empty
+  Chronossus-board spaces; a second container, the **Flux Pool**, holding 1 Flux Core + 3
+  Empty Flux Casing tokens; the Chronossus does **not** use a Fracture Device; add the
+  "Technology Cards" and "Flux on Track" Solo Objectives to the deck before drawing.
+- **Every placement:** when the Chronossus places an Exosuit on the Main board, take an
+  Energy Core from supply and put it in that Exosuit.
+- **Blink-ready Exosuit** = one that is on the Main board, has an Energy Core in it, and is
+  not on the Action being attempted.
+- **Blink check** (before every Exosuit Action): if it has a Blink-ready Exosuit AND >= 1
+  token in the Flux Pool, draw 1 token. Flux Core -> discard it and Blink. Empty Flux Casing
+  -> set it aside; place/pass as usual.
+- **Blink selection:** (A) an Exosuit on an Action matching any *other* Command token on the
+  Chronossus board — lowest token number wins; else (B) the bottom-left-most Exosuit
+  (closest to the bottom Research space; lower spaces win ties). Move it to the Action as if
+  newly placed, return its Energy Core to supply, resolve the Action normally (advancing the
+  token). It never rolls the Flux or Glitch dice and never receives Glitches.
+- **Valley Actions:** as with World Capital, if no Valley Action space is free it places on
+  the **Valley Capital** Action space.
+- **New Action - Assimilate** (roll the Research shape die first): Circle -> recruit an
+  Operator + gain 1 Flux Core. Triangle -> take a Technology card (preferring the secondary
+  stack). Square -> whichever it has fewer of, Operator (+1 Flux Core) or Technology;
+  Operator if tied.
+- **Clean Up:** set-aside Empty Flux Casings return to the Flux Pool.
+- **End of game:** 3 VP per Technology it holds.
+- **Difficulty options (5):** B-side new Action tiles; replace C04 with C14; +1/2/3 Flux
+  Cores in the pool at game start; each leftover Flux Core = 1 VP at the end; roll the Glitch
+  die at setup and place that Glitch **for yourself** (player-side only, app just says so).
+
+**Design decisions to confirm before F1** (see the session summary):
+1. Track the bot's Exosuit placements (new state) so the app can apply the Blink-selection
+   rule itself, vs. asking the player to pick.
+2. Whether the Valley board gets its own art/overlays or stays player-managed with the app
+   only naming the Action.
+3. Counters the slice needs: Flux Pool (Cores + set-aside Casings, reusing the Energy-Pool
+   draw pattern), Technologies (3 VP each), Operators (Assimilate tie-break).
 
 ### F1. Mode entry & setup
 - [ ] Un-stub **Fractures of Time** (and any combos) in `MODULE_CONFIGS`; wire `getMode`
