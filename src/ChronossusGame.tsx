@@ -2966,11 +2966,14 @@ function HypersyncDialog({
                   {available.join(', ')}).
                 </p>
                 <div className="hs-hex-row">
-                  {available.map((n) => (
-                    <div key={n} className="hs-hex" aria-hidden>
-                      {n}
-                    </div>
-                  ))}
+                  {Chronossus.HYPERSYNC_HEXES.map((n) => {
+                    const off = occupied.has(n);
+                    return (
+                      <div key={n} className={`hs-hex ${off ? 'occupied' : ''}`} aria-hidden>
+                        {off ? '⊘' : n}
+                      </div>
+                    );
+                  })}
                 </div>
                 <button className="start-turn" onClick={rollSpace}>
                   🎲 Roll available space
@@ -2984,15 +2987,18 @@ function HypersyncDialog({
                   {plan.oldestTileEra}).
                 </p>
                 <div className="hs-hex-row">
-                  {available.map((n) => (
-                    <div
-                      key={n}
-                      className={`hs-hex ${n === rolledHex ? 'rolled' : 'dimmed'}`}
-                      aria-hidden
-                    >
-                      {n}
-                    </div>
-                  ))}
+                  {Chronossus.HYPERSYNC_HEXES.map((n) => {
+                    const off = occupied.has(n);
+                    return (
+                      <div
+                        key={n}
+                        className={`hs-hex ${off ? 'occupied' : n === rolledHex ? 'rolled' : 'dimmed'}`}
+                        aria-hidden
+                      >
+                        {off ? '⊘' : n}
+                      </div>
+                    );
+                  })}
                 </div>
                 <p className="pp-sub">
                   It scores 2 VP. Do not advance the Time Travel marker.

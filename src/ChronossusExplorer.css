@@ -594,9 +594,10 @@ button.eoa-flag.tap-flag {
   background: #2fae66;
   box-shadow: 0 0 0 3px rgba(47, 174, 102, 0.4);
 }
+/* Free-but-not-rolled space: the theme accent, faded (was a hard-coded purple). */
 .hs-hex.dimmed {
-  background: #3a3352;
-  opacity: 0.55;
+  background: var(--sp-accent-deep);
+  opacity: 0.4;
 }
 .hs-roll-actions {
   display: flex;

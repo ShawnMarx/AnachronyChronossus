@@ -101,6 +101,11 @@ neither needs the main Fractures module/mechanics.
 - [x] **Warp screen matches the Paradox order** (2026-08-11): its two verbatim rules boxes
   moved below the roll/prompt, so both phase screens read intro → action → reference.
 - [x] Landing-page Chronossus progress bar 40% → 50%.
+- [x] **Hypersync placement keeps the marked-off spaces visible** (2026-08-11): the roll
+  step rendered only `available` hexes, so a space marked occupied a moment earlier simply
+  vanished. It now renders all 3 with the occupied ones still crossed off (⊘), matching the
+  board the player just described. `.hs-hex.dimmed` also dropped its hard-coded purple for
+  the theme accent. Verified live: marking space 1 gives `occupied ⊘ / dimmed 2 / rolled 3`.
 - [x] **Alternate Timelines overrides the Warp turn-order note** (2026-08-11): the screen was
   still showing the base "Warping occurs in player order… roll for it below, then place your
   own tiles", which contradicts p.18 ("you must decide how many Resources and/or Workers to
