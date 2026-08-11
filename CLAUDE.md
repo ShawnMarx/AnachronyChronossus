@@ -215,6 +215,21 @@ update any active `LOG_`/`PLAN_` in `docs/plans/` → refresh PLAN.md's status h
 the roadmap moved → update DEPLOYMENT.md / CLAUDE.md only if their subject changed. Note
 what you changed (or that nothing needed it) at the end.
 
+## Adding a module that brings its own board
+
+Fractures (Valley board) and Hypersync (Hypersync board) both add Exosuit **placement
+locations that are not on the Main board**; Pioneers and Guardians will do the same. The
+Blink rules (Fractures) hinge on that distinction, so it lives in one place:
+
+- `placesExosuitFor(actionId)` — does this Action place an Exosuit at all (a tile Action
+  can: Assimilate/Extract are Valley Action spaces; Reboot/Score/Power Pack are not).
+- `OFF_MAIN_BOARD_ACTIONS` / `isMainBoardPlacement(actionId)` — where it lands. Off-board
+  placements are Blink **destinations but never sources**, so they are not recorded in
+  `ChronossusState.placedExosuits`. Add a new module's off-board Actions to that list and
+  the Blink selection, the "take the bottom one" counting, and the pass rule all follow.
+
+`resolveHypersyncAction` already records nothing for the same reason.
+
 ## Conventions
 
 - Keep the engine pure and tested; add unit tests for new decision logic.

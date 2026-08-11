@@ -531,6 +531,23 @@ export function placesExosuitFor(actionId: ChronossusActionId): boolean {
   return actionDef(actionId).placesExosuit === true;
 }
 
+/**
+ * Exosuit placements that land somewhere OTHER than the Main board. Every expansion that
+ * brings its own board works this way — Fractures' Valley Actions, Hypersync's hex spaces
+ * (resolved through `resolveHypersyncAction`, which likewise records nothing), and the
+ * same will hold for Pioneers/Guardians when they land.
+ *
+ * They are Blink **destinations** (an Exosuit can move there from the Main board) but
+ * never Blink **sources**, so they are not recorded in `placedExosuits`. Add a new
+ * module's off-board Actions here and the Blink rules follow automatically.
+ */
+export const OFF_MAIN_BOARD_ACTIONS: ChronossusActionId[] = [...VALLEY_TILE_ACTIONS];
+
+/** Whether this Action's Exosuit lands on the Main board (so it could later Blink). */
+export function isMainBoardPlacement(actionId: ChronossusActionId): boolean {
+  return placesExosuitFor(actionId) && !OFF_MAIN_BOARD_ACTIONS.includes(actionId);
+}
+
 const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-reboot': { label: 'Reboot' },
   'tile-score': { label: 'Score' },
@@ -693,7 +710,9 @@ export function resolveAction(
     if (bot.exosuitsAvailable > 0) {
       bot.exosuitsAvailable -= 1;
       // Fractures: every placement takes an Energy Core from supply into that Exosuit.
-      if (fractures) {
+      // Only Main-board placements are recorded — an Exosuit on another expansion's board
+      // can never Blink from there (see OFF_MAIN_BOARD_ACTIONS).
+      if (fractures && isMainBoardPlacement(input.actionId)) {
         bot.placedExosuits = [
           ...(bot.placedExosuits ?? []),
           {

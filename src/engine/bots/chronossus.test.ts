@@ -40,6 +40,8 @@ import {
   selectBlinkExosuit,
   resolveCleanUp,
   assimilate,
+  isMainBoardPlacement,
+  placesExosuitFor,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -989,6 +991,34 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
     const bot = fracturesState().chronossus!;
     bot.placedExosuits = [{ action: 'research', space: 'action', hasCore: true }];
     expect(blinkReadyExosuits(bot, 'tile-assimilate').map((e) => e.action)).toEqual(['research']);
+  });
+
+  it('classifies Main-board vs other-board placements for every module', () => {
+    // Main board: these can Blink later.
+    for (const id of ['recruit', 'research', 'mine-resource', 'construct-lab'] as const) {
+      expect(isMainBoardPlacement(id)).toBe(true);
+    }
+    // Fractures' Valley board: placements, but never Blink sources.
+    for (const id of ['tile-assimilate', 'tile-extract'] as const) {
+      expect(placesExosuitFor(id)).toBe(true);
+      expect(isMainBoardPlacement(id)).toBe(false);
+    }
+    // Chronossus-board tiles place nothing at all.
+    for (const id of ['tile-power-pack', 'tile-reboot', 'tile-score'] as const) {
+      expect(placesExosuitFor(id)).toBe(false);
+      expect(isMainBoardPlacement(id)).toBe(false);
+    }
+  });
+
+  it('Hypersync hex placements are likewise never recorded (their own board)', () => {
+    const st = fracturesState();
+    st.chronossus!.hypersyncTiles = [1];
+    st.chronossus!.placedExosuits = [{ action: 'research', space: 'action', hasCore: true }];
+    const { state: next } = resolveHypersyncAction(st, { code: 'C12A', outcome: 'hypersync', hex: 2 });
+    expect(next.chronossus!.placedExosuits).toEqual([
+      { action: 'research', space: 'action', hasCore: true },
+    ]);
+    expect(next.chronossus!.exosuitsAvailable).toBe(2); // one sent to the Hypersync board
   });
 
   it('still resolves the tile effect alongside the placement', () => {
