@@ -363,7 +363,10 @@
    so it reads the same across both bots; You Pass uses the Chronossus rust --pass
    (the cannot-place / failed-action color), which is preferred here. */
 .chronossus-harness .undo-btn,
-.chronossus-harness .rules-open-btn {
+.chronossus-harness .rules-open-btn,
+/* The phase-screen Undo lives outside .chronossus-harness (PhaseScreen owns its own
+   shell), so it opts into the same teal treatment by class. */
+.cx-undo-btn {
   background: rgba(46, 140, 140, 0.18);
   border: 1px solid rgba(46, 140, 140, 0.5);
   color: #b6e6e6;

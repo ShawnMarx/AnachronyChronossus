@@ -556,6 +556,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [altTimelinesPending, setAltTimelinesPending] = useState<number | null>(null);
   // Variable Anomalies: awaiting the player's report of the 2 offered tiles.
   const [variableAnomalyPending, setVariableAnomalyPending] = useState(false);
+  // Bumped by Undo to remount the Paradox body (its roll log lives in local state).
+  const [paradoxNonce, setParadoxNonce] = useState(0);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
 
   // Tapped tracker-badge popover (like the Chronobot's board tooltips).
@@ -1477,6 +1479,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       if (snap.state.phase === 'paradox' && snap.die != null) {
         setUi((u) => ({ ...u, paradoxRoll: snap.die as number }));
       }
+      // Variable Anomalies: whether the gain prompt is owed is a property of the restored
+      // state — undoing the gain re-opens it (the roll that deferred it is back), undoing
+      // the roll itself closes it.
+      setVariableAnomalyPending(
+        snap.state.currentInstructions.some((i) => i.id === 'paradox-anomaly-variable'),
+      );
+      // The Paradox body keeps its roll log / "how many checks so far" in local state,
+      // which no snapshot rewinds — remount it so it can't contradict the restored state.
+      // Cost: the on-screen log for that phase clears (🕑 History keeps the full record).
+      setParadoxNonce((n) => n + 1);
     }
     activeMarkerRef.current = null;
     setLastResult([]);
@@ -2339,6 +2351,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     headerRight: (
       <>
         <CxVpPill score={score} totalActions={bot.totalActions} />
+        {/* Same Undo as the Action Rounds top bar: restores the last committed step of
+            this phase — rolls come back as they were rather than being re-rolled. */}
+        <button
+          className="undo-btn cx-undo-btn"
+          onClick={undoTurn}
+          disabled={!canUndo}
+          title="Undo the last committed step"
+        >
+          ↶ Undo
+        </button>
         <RulesButton onClick={() => setModeRules(true)} />
       </>
     ),
@@ -2505,6 +2527,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     case 'paradox':
       body = (
         <ParadoxPhaseBody
+          key={`paradox-${paradoxNonce}`}
           state={state}
           // Variable Anomalies: anomalyVps replaces the flat counter, which stays 0
           // in those games — shim the "Anomalies X/3" display to read the real count.
@@ -2958,9 +2981,9 @@ function VariableAnomalyGainPrompt({
 }: {
   onConfirm: (taken: Chronossus.VariableAnomalyCandidate) => void;
 }) {
+  // The Warp-retrieval answer commits the gain outright — no separate Confirm step.
+  // A mis-tap is fixed with ↶ Undo (which restores the roll without re-rolling it).
   const [vp, setVp] = useState<number | null>(null);
-  const [retrieves, setRetrieves] = useState<boolean | null>(null);
-  const canConfirm = vp != null && retrieves != null;
   return (
     <div className="place-prompt">
       <p className="pp-instruct">
@@ -2989,14 +3012,14 @@ function VariableAnomalyGainPrompt({
           </p>
           <div className="pp-buttons">
             <button
-              className={`pp-confirm ${retrieves === true ? 'selected' : ''}`}
-              onClick={() => setRetrieves(true)}
+              className="pp-confirm"
+              onClick={() => onConfirm({ vp, retrieveEligible: true })}
             >
               ✓ Yes — it retrieves one
             </button>
             <button
-              className={`pp-cannot ${retrieves === false ? 'selected' : ''}`}
-              onClick={() => setRetrieves(false)}
+              className="pp-cannot"
+              onClick={() => onConfirm({ vp, retrieveEligible: false })}
             >
               ✗ No
             </button>
@@ -3015,14 +3038,6 @@ function VariableAnomalyGainPrompt({
         </p>
         <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
       </RulesBox>
-      {canConfirm && (
-        <button
-          className="phase-primary"
-          onClick={() => onConfirm({ vp: vp!, retrieveEligible: retrieves! })}
-        >
-          ▶ Confirm
-        </button>
-      )}
     </div>
   );
 }

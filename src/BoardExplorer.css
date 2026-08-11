@@ -2213,12 +2213,6 @@
   color: var(--sp-text-1);
   font-size: 0.85rem;
 }
-/* Variable Anomaly gain prompt — Construct-style VP picker + a yes/no follow-up */
-.pp-confirm.selected,
-.pp-cannot.selected {
-  border-color: var(--sp-text-1);
-  box-shadow: 0 0 0 2px rgba(var(--sp-text-1-rgb), 0.55);
-}
 /* Page citation inside a verbatim rules box */
 .rules-cite {
   margin: 0.5rem 0 0;

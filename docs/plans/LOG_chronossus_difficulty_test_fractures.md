@@ -70,7 +70,12 @@ neither needs the main Fractures module/mechanics.
   prompt was a modal covering the Paradox roll log — in both cases the player answered with
   the triggering roll off-screen. `WarpPhaseBody` and `ParadoxPhaseBody` each gained an
   optional `followUp` node rendered in place of their roll/continue controls, so the
-  question now sits under the roll result with its context intact.
+  question now sits under the roll result with its context intact. The Anomaly prompt's
+  Confirm step then went away — the yes/no retrieval answer commits the gain — and the
+  phase screens gained the Action-Rounds **↶ Undo** in their header instead (restores the
+  last committed step; persisted rolls mean nothing is re-rolled). Undo also re-derives
+  whether the Anomaly prompt is owed from the restored state, and remounts
+  `ParadoxPhaseBody` so its local roll log can't contradict the rewound state.
 - [x] **Hypersync Paradox rules verified** (unrelated question, same session): the
   majority + extra-roll rules the app prompts for are verbatim Future Imperfect p.5, and
   Solo Opponents p.17 carries the module's rules over without touching the Paradox Phase.
