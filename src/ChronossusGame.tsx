@@ -2495,12 +2495,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   It ignores negative/penalty spaces entirely — nothing to report for
                   those. Each positive one scores it {altTimelinesPerSpace} VP.
                 </p>
-                <div className="difficulty-sub-values">
+                <div className="vp-digits">
                   {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (
                     <button
                       key={n}
                       type="button"
-                      className="difficulty-sub-value"
+                      className="vp-digit"
                       onClick={() => finishWarp(altTimelinesPending, n)}
                     >
                       {n}

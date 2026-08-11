@@ -92,6 +92,12 @@ neither needs the main Fractures module/mechanics.
   overrides for its own Warp-tile face. Paradox rolls now render like Warp rolls (numbered
   die + Paradox symbol, symbol hidden on a blank), for both bots. The Anomaly prompt leads
   with "Variable Anomalies —" so it reads as a mode-specific check, not the base −3 VP gain.
+- [x] **Prompt box is per-bot themed** (2026-08-11): `.place-prompt` hard-coded amber, which
+  clashed with the Chronobot's purple. New `--sp-prompt-rgb` token — violet by default,
+  amber under `:root[data-bot='chronossus']`. Inside the box, the Alternate Timelines count
+  buttons moved from the Setup flow's indented `.difficulty-sub-value` pills to the same
+  `.vp-digit` row the Anomaly/Construct prompts use, and `.pp-sub` swapped its hard-coded
+  purple-grey for `--sp-text-mute`.
 - [x] **Alternate Timelines overrides the Warp turn-order note** (2026-08-11): the screen was
   still showing the base "Warping occurs in player order… roll for it below, then place your
   own tiles", which contradicts p.18 ("you must decide how many Resources and/or Workers to

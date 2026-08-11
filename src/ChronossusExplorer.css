@@ -28,6 +28,7 @@
   --sp-debug-on: #7a3f14; /* burnt orange — active */
   --sp-debug-btn-on: #45280f;
   --sp-accent-deep: #1f6d6d; /* deep teal — solid accent buttons */
+  --sp-prompt-rgb: 245, 158, 11; /* amber — player-input callouts */
   --sp-accent-deep2: #185656;
   /* "Cannot place / failed action" — warm rust instead of the Chronobot pink. */
   --pass: #c9603a;
@@ -613,7 +614,7 @@ button.eoa-flag.tap-flag {
   cursor: pointer;
 }
 .pp-sub {
-  color: #b3a9d0;
+  color: var(--sp-text-mute);
   font-size: 0.86rem;
   line-height: 1.4;
   margin: 0.4rem 0;
