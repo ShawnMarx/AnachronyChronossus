@@ -75,7 +75,12 @@ neither needs the main Fractures module/mechanics.
   phase screens gained the Action-Rounds **↶ Undo** in their header instead (restores the
   last committed step; persisted rolls mean nothing is re-rolled). Undo also re-derives
   whether the Anomaly prompt is owed from the restored state, and remounts
-  `ParadoxPhaseBody` so its local roll log can't contradict the rewound state.
+  `ParadoxPhaseBody` so its local roll log can't contradict the rewound state. Every phase
+  advance now commits too (`commitPhase`), so Undo steps back to the previous phase screen
+  even when the move changed nothing else. Verified live (Playwright, Era 1 → 3): Undo
+  disabled on the first screen, Preparation↔Power Up round-trip, both follow-up prompts
+  rendering under their roll, and an undone Anomaly gain restoring `anomalyVps`/Warp count
+  and re-opening the prompt.
 - [x] **Hypersync Paradox rules verified** (unrelated question, same session): the
   majority + extra-roll rules the app prompts for are verbatim Future Imperfect p.5, and
   Solo Opponents p.17 carries the module's rules over without touching the Paradox Phase.

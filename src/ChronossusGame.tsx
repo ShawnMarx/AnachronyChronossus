@@ -1289,6 +1289,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     ) : null;
 
   // ---- Phase transitions -------------------------------------------------
+  // Every phase advance goes on the undo stack, even the ones that change nothing but
+  // the phase, so ↶ Undo always steps back to the screen you came from. Leaving Power
+  // Up also consumes this Era's draw (`lastDraw: null`) — restored by the snapshot.
+  const commitPhase = (next: GameState, label: string, effects: string[] = []) =>
+    commit(next, { ...ui, lastDraw: null }, label, effects);
+  /** "Era 3 · → Power Up" — the label a phase move gets in History. */
+  const enteredLabel = (next: GameState) =>
+    `Era ${next.era} · → ${CHRONOSSUS_PHASE_META[next.phase]?.name ?? next.phase}`;
   // Finish Setup: seed the chosen module / difficulty / tile sides, enter Era 1.
   const beginGame = (result: ChronossusSetupResult) => {
     setState((s) => {
@@ -1369,7 +1377,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Roll the Warp-phase Paradox die once and stash it in the ui slice so backing to
   // the Warp phase (Undo) re-shows the same roll instead of re-rolling (#10).
   const rollWarp = () => setUi((u) => ({ ...u, warpRoll: rollParadoxDie() }));
-  const advanceParadox = () => setState(Chronossus.endParadoxPhase(state));
+  const advanceParadox = () => {
+    const next = Chronossus.endParadoxPhase(state);
+    commitPhase(next, enteredLabel(next));
+  };
   // Warp phase: place the Chronossus's rolled Warp tiles and commit (so the
   // placement lands in History) — mirrors the Chronobot's commitWarp. Alternate
   // Timelines intercepts first: ask how many landed on a positive space before
@@ -1416,7 +1427,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (era === 5 || era === 6) {
-      setState(Chronossus.resolveCleanUp(state));
+      const next = Chronossus.resolveCleanUp(state);
+      commitPhase(next, enteredLabel(next));
       return;
     }
     setShowFirstPlayer(true);
@@ -1426,30 +1438,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // starts the next Era.
   const answerFirstPlayer = (playerFirst: boolean) => {
     setShowFirstPlayer(false);
-    setUi((u) => ({ ...u, lastDraw: null }));
-    setState((s) => {
-      const withFp: GameState = { ...s, firstPlayer: playerFirst ? 'player' : 'bot' };
-      return s.phase === 'cleanup'
-        ? finishEra(withFp)
-        : Chronossus.resolveCleanUp(withFp);
-    });
+    const withFp: GameState = { ...state, firstPlayer: playerFirst ? 'player' : 'bot' };
+    const next = state.phase === 'cleanup' ? finishEra(withFp) : Chronossus.resolveCleanUp(withFp);
+    commitPhase(next, enteredLabel(next), [
+      `First Player next: ${playerFirst ? 'you' : 'the Chronossus'}`,
+    ]);
   };
   const afterCleanUp = () => {
     const next = finishEra(state);
-    setUi((u) => ({ ...u, lastDraw: null }));
-    setState(next);
+    commitPhase(next, enteredLabel(next));
   };
   // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
   // 5–6 when flipping Collapsing Capital tiles). Mirrors the Chronobot exactly.
-  const endGameNow = () => {
-    setUi((u) => ({ ...u, lastDraw: null }));
-    setState((s) => ({ ...s, phase: 'endgame', finished: true }));
-  };
+  const endGameNow = () =>
+    commitPhase({ ...state, phase: 'endgame', finished: true }, `Era ${state.era} · → End Game`);
   const goPhase = (p: Phase) => {
     closePanel();
-    // Leaving Power Up consumes this Era's draw (so it can't re-show / re-draw).
-    setUi((u) => ({ ...u, lastDraw: null }));
-    setState((s) => ({ ...s, phase: p }));
+    const next = { ...state, phase: p };
+    commitPhase(next, enteredLabel(next));
   };
   const reset = () => {
     clearPersisted(CX_PERSIST_KEY);
@@ -2548,7 +2554,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       break;
     case 'preparation':
       body = (
-        <button className="phase-primary" onClick={() => setState(advanceFromPreparation(state))}>
+        <button
+          className="phase-primary"
+          onClick={() => {
+            const next = advanceFromPreparation(state);
+            commitPhase(next, enteredLabel(next));
+          }}
+        >
           Continue ▶
         </button>
       );

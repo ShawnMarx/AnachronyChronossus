@@ -948,7 +948,8 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       instructions.push({
         id: 'paradox-anomaly-variable',
         text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains an Anomaly and stops rolling.`,
-        detail: 'Reveal the 2 visible Variable Anomaly tiles and resolve which one the Chronossus takes.',
+        // No detail: the gain prompt that follows this roll states what to do, and it
+        // renders directly under this line — repeating it here just says it twice.
         requiresInput: true,
       });
     } else {
