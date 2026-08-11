@@ -65,6 +65,19 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
       { slot: 'III', family: 'C06', posKey: SLOT_III_POS },
     ],
   },
+  'fractures+hypersync': {
+    id: 'fractures+hypersync',
+    label: 'Fractures of Time + Hypersync Future Actions',
+    available: true,
+    // Per the setup matrix: C12 takes slot I, Fractures' Assimilate/Extract fill II/III
+    // (Power Pack drops out), and C13 covers Time Travel.
+    slots: [
+      { slot: 'I', family: 'C12', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C04', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C05', posKey: SLOT_III_POS },
+      { slot: 'V', family: 'C13', covers: 'time-travel' },
+    ],
+  },
   hypersync: {
     id: 'hypersync',
     label: 'Hypersync Future Actions',

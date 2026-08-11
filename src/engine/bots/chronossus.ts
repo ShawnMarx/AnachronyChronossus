@@ -1117,6 +1117,10 @@ export interface HypersyncActionInput {
   outcome: HypersyncOutcome;
   /** The chosen Hypersync hex (1–3), when `outcome` is 'hypersync'. */
   hex?: number;
+  /** Fractures combo: this Action is taken by Blinking an Exosuit onto the hex. */
+  blink?: boolean;
+  /** Fractures combo: the other Command tokens' Actions, for Blink selection rule A. */
+  tokenActions?: Record<number, string>;
 }
 
 /**
@@ -1145,7 +1149,15 @@ export function resolveHypersyncAction(
     const arr = [...bot.hypersyncTiles];
     arr.splice(arr.indexOf(era), 1);
     bot.hypersyncTiles = arr;
-    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    // Fractures combo: the Hypersync board is another off-Main-board destination, so it
+    // can be Blinked into — the Exosuit moves there and leaves the Blink-from list — but
+    // never Blinked out of (nothing on that board is recorded).
+    if (input.blink && bot.fluxPool) {
+      const sel = selectBlinkExosuit(bot, 'time-travel', input.tokenActions ?? {});
+      bot.placedExosuits = (bot.placedExosuits ?? []).filter((e) => e !== sel?.exosuit);
+    } else if (bot.exosuitsAvailable > 0) {
+      bot.exosuitsAvailable -= 1;
+    }
     bot.vp += 2;
     const where = input.hex != null ? `Hypersync hex ${input.hex}` : 'the Hypersync space for its furthest-past pending tile';
     instr.push({

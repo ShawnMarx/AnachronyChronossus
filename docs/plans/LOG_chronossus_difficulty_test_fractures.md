@@ -216,23 +216,25 @@ neither needs the main Fractures module/mechanics.
   added to the deck in setup text; scoring them stays the player-entered tally, as for
   every other mode
 
+### F-combo — Fractures + Hypersync ✅ done (2026-08-11)
+- [x] `fractures+hypersync` registered and un-stubbed: C12 (I), C04 (II), C05 (III), C13
+  covering Time Travel — Power Pack drops out, per the setup matrix. The C14 difficulty
+  still swaps C04 wherever it sits
+- [x] Setup flow made combo-aware: both modules' setup boxes render (`includes()` rather
+  than `===`) and `modeDifficultyFor` unions both modules' difficulty options
+- [x] The Hypersync hex is a Blink destination too — `resolveHypersyncAction` takes
+  `blink`/`tokenActions`, moving an Exosuit onto the hex instead of spending one and
+  dropping it from `placedExosuits`; the dialog reuses the shared check panels
+- [x] 6 new tests. Verified live: the combo is selectable, both difficulty sets and both
+  setup boxes appear, and the game seeds a Flux Pool
+
 ### F6 — Ship
+- [x] 230 tests, build + lint clean
 - [x] Fractures playthrough variation (3 tests): a full game with the Flux Pool, Blinking
   and all three module tiles; leftover-Flux scoring; and 6 consecutive Blinks spending no
   Exosuit. Plus 4 unit tests for the tiles (C05/C05B, C06/C06B Autoleap, C14 via
   `tileFamily`, and the no-pool no-op outside Fractures)
-- [x] 216 tests, build + lint clean
 - [ ] Manual playthrough on device; assets/theme pass
-
-### F4 — Board / view / overlays
-- [ ] Art + overlays (Flux Pool, Cores, Fracture Device, X-tiles); calibrate positions; routes
-
-### F5 — Scoring & objectives
-- [ ] Expansion scoring deltas + objectives (player vs Chronossus — confirm); score screen
-
-### F6 — Ship
-- [ ] Fractures playthrough variation
-- [ ] build + test + lint clean; manual playthrough; assets/theme pass
 
 ---
 ### Deviations / decisions

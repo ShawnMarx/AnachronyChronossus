@@ -1021,6 +1021,21 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
     expect(next.chronossus!.exosuitsAvailable).toBe(2); // one sent to the Hypersync board
   });
 
+  it('a Hypersync hex can be Blinked onto in the combo (moved Exosuit leaves the list)', () => {
+    const st = fracturesState();
+    st.chronossus!.hypersyncTiles = [1];
+    st.chronossus!.placedExosuits = [{ action: 'research', space: 'action', hasCore: true }];
+    const { state: next } = resolveHypersyncAction(st, {
+      code: 'C12A',
+      outcome: 'hypersync',
+      hex: 2,
+      blink: true,
+      tokenActions: {},
+    });
+    expect(next.chronossus!.exosuitsAvailable).toBe(3); // no new Exosuit spent
+    expect(next.chronossus!.placedExosuits).toEqual([]); // it is on the Hypersync board now
+  });
+
   it('still resolves the tile effect alongside the placement', () => {
     const { state: next } = resolveAction(fracturesState(), { actionId: 'tile-extract' });
     expect(next.chronossus!.fluxPool!.cores).toBe(3); // 1 + 2

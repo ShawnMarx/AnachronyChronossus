@@ -134,3 +134,26 @@ describe('Fractures of Time mode', () => {
     ]);
   });
 });
+
+describe('Fractures + Hypersync combo mode', () => {
+  it('lays C12 / C04 / C05 and covers Time Travel with C13', () => {
+    const mode = getMode('fractures+hypersync');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.map((s) => [s.slot, s.family])).toEqual([
+      ['I', 'C12'],
+      ['II', 'C04'],
+      ['III', 'C05'],
+      ['V', 'C13'],
+    ]);
+    expect(slotCovering(mode, 'time-travel')?.family).toBe('C13');
+  });
+
+  it('mandates the World Council cover (it contains Hypersync)', () => {
+    expect(worldCouncilMandatory('fractures+hypersync')).toBe(true);
+  });
+
+  it('still honours the C14-for-C04 difficulty in the combo', () => {
+    const mode = getMode('fractures+hypersync', [DIFFICULTY_FRACTURES_C14]);
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C14');
+  });
+});

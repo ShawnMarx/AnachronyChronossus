@@ -613,6 +613,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Fractures: the Blink-check step inside the Valley tile dialog, and the space answered.
   const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | null>(null);
   const valleySpaceRef = useRef<'action' | 'capital'>('action');
+  // Same, for the Hypersync dialog (its hex is another off-board Blink destination).
+  const [hsBlinkStep, setHsBlinkStep] = useState<'blink' | 'casing' | null>(null);
+  const hsInputRef = useRef<Chronossus.HypersyncActionInput | null>(null);
   const [blink, setBlink] = useState<{
     spaceLabel: string;
     sameSpaceCount: number;
@@ -827,6 +830,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setFluxDraw(null);
     setTileBlinkStep(null);
     valleySpaceRef.current = 'action';
+    setHsBlinkStep(null);
+    hsInputRef.current = null;
   };
 
   const clearDialogState = () => {
@@ -1847,6 +1852,37 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Commit a C12/C13 Hypersync Action once the HypersyncDialog has walked the
   // player through its branch (hex placement / Time Travel fallback / Failed).
   const resolveHypersyncTurn = (input: Chronossus.HypersyncActionInput) => {
+    // Fractures combo: sending an Exosuit to a Hypersync hex is a placement, so the Blink
+    // check applies — the hex is already chosen, i.e. the destination is confirmed.
+    if (
+      fracturesMode &&
+      input.outcome === 'hypersync' &&
+      !input.blink &&
+      hsBlinkStep == null &&
+      Chronossus.shouldCheckBlink(bot, 'time-travel')
+    ) {
+      const { drawn, pool: nextPool } = Chronossus.drawFlux(bot.fluxPool!, Math.random());
+      setState((cur) => ({ ...cur, chronossus: { ...cur.chronossus!, fluxPool: nextPool } }));
+      setFluxDraw(drawn);
+      hsInputRef.current = input;
+      if (drawn === 'casing') {
+        setBlink(null);
+        setHsBlinkStep('casing');
+        return;
+      }
+      const sel = Chronossus.selectBlinkExosuit(bot, 'time-travel', otherTokenActions());
+      if (sel) {
+        setBlink({
+          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          sameSpaceCount: sel.sameSpaceCount,
+          rule: sel.rule,
+          token: sel.token,
+        });
+        setHsBlinkStep('blink');
+        return;
+      }
+    }
+    setHsBlinkStep(null);
     const { state: next, instructions, autoleap } = Chronossus.resolveHypersyncAction(state, input);
     // Autoleap tiles (C12B/C13B): advance the marker one EXTRA space after resolving,
     // on every outcome (including a Failed Action). Skip when the chain opened the
@@ -2440,6 +2476,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   startLabel={nextMarkerIsAutoleap ? startLabel : undefined}
                   onResolve={resolveHypersyncTurn}
                   onClose={closeHypersync}
+                  blinkStep={hsBlinkStep}
+                  blink={blink}
+                  fluxDrawSrc={
+                    fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null
+                  }
+                  onConfirmBlink={() =>
+                    resolveHypersyncTurn({
+                      ...hsInputRef.current!,
+                      blink: true,
+                      tokenActions: otherTokenActions(),
+                    })
+                  }
+                  onCasingContinue={() => {
+                    setHsBlinkStep(null);
+                    resolveHypersyncTurn(hsInputRef.current!);
+                  }}
                 />
               )}
               {showHypersyncTilePrompt && active && (
@@ -3117,6 +3169,11 @@ function HypersyncDialog({
   startLabel,
   onResolve,
   onClose,
+  blinkStep = null,
+  blink = null,
+  fluxDrawSrc = null,
+  onConfirmBlink = () => {},
+  onCasingContinue = () => {},
 }: {
   code: string;
   bot: ChronossusState;
@@ -3134,6 +3191,20 @@ function HypersyncDialog({
   onRollHex: (hex: number) => void;
   onResolve: (input: Chronossus.HypersyncActionInput) => void;
   onClose: () => void;
+  /**
+   * Fractures combo: the Blink check that runs once the hex is settled — the Hypersync
+   * board is another off-Main-board destination an Exosuit can Blink onto.
+   */
+  blinkStep?: 'blink' | 'casing' | null;
+  blink?: {
+    spaceLabel: string;
+    sameSpaceCount: number;
+    rule: 'command-token' | 'bottom-left';
+    token?: number;
+  } | null;
+  fluxDrawSrc?: string | null;
+  onConfirmBlink?: () => void;
+  onCasingContinue?: () => void;
 }) {
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
@@ -3297,6 +3368,20 @@ function HypersyncDialog({
             <HypersyncRules tile={tile} code={code} startOpen={false} />
             {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
+        ) : blinkStep === 'blink' && blink ? (
+          <BlinkPanel
+            botName="Chronossus"
+            blink={blink}
+            fluxDrawSrc={fluxDrawSrc}
+            destination={`Hypersync hex ${rolledHex ?? ''}`.trim()}
+            onConfirm={onConfirmBlink}
+          />
+        ) : blinkStep === 'casing' ? (
+          <FluxCasingPanel
+            botName="Chronossus"
+            fluxDrawSrc={fluxDrawSrc}
+            onContinue={onCasingContinue}
+          />
         ) : step === 'roll' ? (
           // Roll step: randomize among the available spaces → show where to place
           // the blocking bot Exosuit.

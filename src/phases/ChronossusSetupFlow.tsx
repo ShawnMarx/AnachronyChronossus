@@ -18,6 +18,14 @@ export const DIFFICULTY_TILES_B_SIDE = 'chronossus-tiles-b-side';
 export const DIFFICULTY_HYPERSYNC_TARGETED = 'chronossus-hypersync-targeted';
 
 /** Extra difficulty options that only apply to specific modules. */
+/** A mode's own difficulty options — combos ('fractures+hypersync') take both lists. */
+function modeDifficultyFor(modeId: string | undefined): DifficultyOption[] {
+  if (!modeId) return [];
+  return Object.entries(MODE_DIFFICULTY)
+    .filter(([id]) => modeId.includes(id))
+    .flatMap(([, opts]) => opts);
+}
+
 const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
   fractures: [
     {
@@ -83,7 +91,7 @@ const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'guardians', label: 'Guardians of the Council', available: false },
   { id: 'hypersync', label: 'Hypersync Future Actions', available: true },
   { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: false },
-  { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: false },
+  { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: true },
   { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: false },
   { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: false },
 ];
@@ -451,7 +459,7 @@ export default function ChronossusSetupFlow({
               <div className="difficulty-list">
                 {[
                   ...DIFFICULTY_OPTIONS,
-                  ...(MODE_DIFFICULTY[moduleId] ?? []),
+                  ...modeDifficultyFor(moduleId),
                   ...[...extraModules].flatMap((id) => EXTRA_MODULE_DIFFICULTY[id] ?? []),
                 ]
                   .filter((o) => !(mandatoryWorldCouncil && o.flag === DIFFICULTY_WORLD_COUNCIL))
@@ -585,7 +593,7 @@ export default function ChronossusSetupFlow({
 
               {/* Per-mode setup additions (verbatim). Each module drops its own
                   section here on top of the base setup above. */}
-              {moduleId === 'fractures' && (
+              {moduleId?.includes('fractures') && (
                 <RulesBox label="Fractures of Time — setup" showPreamble>
                   <p>Setup the Valley board as if it was a 2-Player game.</p>
                   <p>
@@ -604,7 +612,7 @@ export default function ChronossusSetupFlow({
                 </RulesBox>
               )}
 
-              {moduleId === 'hypersync' && (
+              {moduleId?.includes('hypersync') && (
                 <RulesBox label="Hypersync Future Actions — setup" showPreamble>
                   <p>
                     Use the 2-player side of the Hypersync board, and cover the right World
@@ -642,7 +650,7 @@ export default function ChronossusSetupFlow({
                     rest to the box.
                   </li>
                   <li>The Chronossus does not use a Focus marker.</li>
-                  {moduleId === 'fractures' && (
+                  {moduleId?.includes('fractures') && (
                     <>
                       <li>
                         Set up the <b>Valley board</b> as for a 2-player game. The app names
@@ -702,7 +710,7 @@ export default function ChronossusSetupFlow({
 
               {/* Visible per-mode setup steps (below the app rules) — the verbatim
                   Hypersync setup MINUS the tile-layout line the app handles for you. */}
-              {moduleId === 'hypersync' && (
+              {moduleId?.includes('hypersync') && (
                 <div className="setup-modified">
                   <h3>Hypersync Future Actions setup</h3>
                   <ul>
