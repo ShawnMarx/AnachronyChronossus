@@ -33,6 +33,12 @@ import {
   EXTRA_MODULE_VARIABLE_ANOMALIES,
   resolveVariableAnomalyGain,
   DIFFICULTY_FRACTURES_EXTRA_FLUX,
+  DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP,
+  drawFlux,
+  blinkReadyExosuits,
+  shouldCheckBlink,
+  selectBlinkExosuit,
+  resolveCleanUp,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -45,6 +51,7 @@ import {
   type EnergyPool,
 } from '../state';
 import type { GameConfig } from '../types';
+import type { ChronossusState } from '../state';
 
 const CONFIG: GameConfig = {
   bot: 'chronossus',
@@ -684,6 +691,141 @@ describe('applyDifficultySetup — Variable Anomalies seeding', () => {
     const bot = emptyChronossusState();
     const next = applyDifficultySetup(bot, CONFIG);
     expect(next.anomalyVps).toBeUndefined();
+  });
+});
+
+describe('Fractures — Flux Pool draws', () => {
+  const pool = { cores: 2, casings: 3, setAside: 0 };
+
+  it('draws a Flux Core from the front of the pool and discards it', () => {
+    const { drawn, pool: next } = drawFlux(pool, 0);
+    expect(drawn).toBe('core');
+    expect(next).toEqual({ cores: 1, casings: 3, setAside: 0 });
+  });
+
+  it('draws an Empty Flux Casing and sets it aside', () => {
+    const { drawn, pool: next } = drawFlux(pool, 0.9);
+    expect(drawn).toBe('casing');
+    expect(next).toEqual({ cores: 2, casings: 2, setAside: 1 });
+  });
+
+  it('splits the odds by the pool contents', () => {
+    // 2 cores of 5 tokens: rolls below 0.4 are cores, at/above are casings.
+    expect(drawFlux(pool, 0.39).drawn).toBe('core');
+    expect(drawFlux(pool, 0.4).drawn).toBe('casing');
+  });
+
+  it('throws on an empty pool (the caller checks first)', () => {
+    expect(() => drawFlux({ cores: 0, casings: 0, setAside: 3 }, 0)).toThrow();
+  });
+});
+
+describe('Fractures — Blink readiness and selection', () => {
+  const ORDER = ['research', 'construct-lab', 'mine-resource', 'recruit', 'construct-factory'];
+  const placed = (...entries: [string, 'action' | 'world-council', boolean][]) =>
+    entries.map(([action, space, hasCore]) => ({ action, space, hasCore }));
+  const withPlaced = (entries: ReturnType<typeof placed>): ChronossusState => ({
+    ...emptyChronossusState(),
+    fluxPool: { cores: 1, casings: 3, setAside: 0 },
+    placedExosuits: entries,
+  });
+
+  it('excludes Exosuits without a core and any on the attempted Action', () => {
+    const bot = withPlaced(
+      placed(['recruit', 'action', true], ['research', 'action', false], ['mine-resource', 'action', true]),
+    );
+    expect(blinkReadyExosuits(bot, 'mine-resource').map((e) => e.action)).toEqual(['recruit']);
+  });
+
+  it('only checks for a Blink with both a ready Exosuit and a token in the pool', () => {
+    const bot = withPlaced(placed(['recruit', 'action', true]));
+    expect(shouldCheckBlink(bot, 'research')).toBe(true);
+    expect(shouldCheckBlink(bot, 'recruit')).toBe(false); // same Action
+    expect(shouldCheckBlink({ ...bot, fluxPool: { cores: 0, casings: 0, setAside: 4 } }, 'research')).toBe(
+      false,
+    );
+    expect(shouldCheckBlink(emptyChronossusState(), 'research')).toBe(false); // not a Fractures game
+  });
+
+  it('rule A: takes an Exosuit matching a Command token, smaller number winning', () => {
+    const bot = withPlaced(placed(['recruit', 'action', true], ['construct-lab', 'action', true]));
+    const sel = selectBlinkExosuit(bot, 'research', { 4: 'recruit', 2: 'construct-lab' }, ORDER);
+    expect(sel).toMatchObject({ rule: 'command-token', token: 2 });
+    expect(sel!.exosuit.action).toBe('construct-lab');
+  });
+
+  it('rule B: bottom-left-most when nothing matches a token', () => {
+    const bot = withPlaced(placed(['recruit', 'action', true], ['research', 'action', true]));
+    const sel = selectBlinkExosuit(bot, 'mine-resource', {}, ORDER);
+    expect(sel).toMatchObject({ rule: 'bottom-left' });
+    expect(sel!.exosuit.action).toBe('research'); // first in the order
+  });
+
+  it('never picks a World Council Exosuit under rule A, and sorts it last under B', () => {
+    const bot = withPlaced(placed(['recruit', 'world-council', true], ['construct-factory', 'action', true]));
+    // Even though a token sits on Recruit, that Exosuit is on World Council: rule A skips it.
+    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' }, ORDER);
+    expect(sel).toMatchObject({ rule: 'bottom-left' });
+    expect(sel!.exosuit.action).toBe('construct-factory');
+  });
+
+  it('falls back to the World Council Exosuit when it is the only one ready', () => {
+    const bot = withPlaced(placed(['recruit', 'world-council', true]));
+    const sel = selectBlinkExosuit(bot, 'research', { 2: 'recruit' }, ORDER);
+    expect(sel!.exosuit.space).toBe('world-council');
+  });
+
+  it('reports how many Exosuits share the chosen Action (player takes the bottom one)', () => {
+    const bot = withPlaced(placed(['research', 'action', true], ['research', 'action', true]));
+    const sel = selectBlinkExosuit(bot, 'recruit', {}, ORDER);
+    expect(sel!.sameActionCount).toBe(2);
+  });
+
+  it('returns null when nothing can Blink', () => {
+    expect(selectBlinkExosuit(emptyChronossusState(), 'research', {}, ORDER)).toBeNull();
+  });
+});
+
+describe('Fractures — Clean Up returns the set-aside Casings', () => {
+  it('puts them back in the pool and clears the placed Exosuits', () => {
+    const state = chronossusState();
+    state.chronossus!.fluxPool = { cores: 1, casings: 1, setAside: 2 };
+    state.chronossus!.placedExosuits = [{ action: 'recruit', space: 'action', hasCore: true }];
+    const next = resolveCleanUp(state);
+    expect(next.chronossus!.fluxPool).toEqual({ cores: 1, casings: 3, setAside: 0 });
+    expect(next.chronossus!.placedExosuits).toEqual([]);
+    expect(next.currentInstructions.some((i) => i.id === 'cleanup-flux-casings')).toBe(true);
+  });
+
+  it('leaves non-Fractures games untouched', () => {
+    const next = resolveCleanUp(chronossusState());
+    expect(next.chronossus!.fluxPool).toBeUndefined();
+    expect(next.currentInstructions.some((i) => i.id === 'cleanup-flux-casings')).toBe(false);
+  });
+});
+
+describe('scoreChronossus — Fractures VP', () => {
+  it('scores 3 VP per Technology', () => {
+    const bot = { ...emptyChronossusState(), technologies: 4 };
+    expect(scoreChronossus(bot).technologyVP).toBe(12);
+  });
+
+  it('scores leftover Flux Cores only with that difficulty option', () => {
+    const bot = { ...emptyChronossusState(), fluxPool: { cores: 3, casings: 1, setAside: 0 } };
+    expect(scoreChronossus(bot).leftoverFluxVP).toBe(0);
+    expect(scoreChronossus(bot, [DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP]).leftoverFluxVP).toBe(3);
+  });
+
+  it('adds both into the total', () => {
+    const bot = { ...emptyChronossusState(), technologies: 2, fluxPool: { cores: 1, casings: 0, setAside: 0 } };
+    const base = scoreChronossus(emptyChronossusState()).total;
+    expect(scoreChronossus(bot, [DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP]).total).toBe(base + 6 + 1);
+  });
+
+  it('is 0 for non-Fractures games', () => {
+    const score = scoreChronossus(emptyChronossusState());
+    expect(score.technologyVP).toBe(0);
+    expect(score.leftoverFluxVP).toBe(0);
   });
 });
 

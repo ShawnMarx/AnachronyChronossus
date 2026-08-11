@@ -112,6 +112,116 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
 }
 
 // --------------------------------------------------------------------------
+// Fractures of Time: the Flux Pool + Blinking (Solo Opponents pp. 11-13)
+// --------------------------------------------------------------------------
+
+/** One of the bot's Exosuits on the Main board (a `placedExosuits` entry). */
+export type PlacedExosuit = NonNullable<ChronossusState['placedExosuits']>[number];
+
+/** What a Flux Pool draw produced. */
+export type FluxDraw = 'core' | 'casing';
+
+/**
+ * Draw one token from the Flux Pool. Caller supplies the roll in [0,1) so the engine
+ * stays pure (same contract as the Energy Pool draw).
+ *
+ * A Flux Core is discarded and triggers the Blink; an Empty Flux Casing is set aside
+ * until Clean Up. Returns the drawn token and the pool after removing it.
+ */
+export function drawFlux(
+  pool: NonNullable<ChronossusState['fluxPool']>,
+  roll: number,
+): { drawn: FluxDraw; pool: NonNullable<ChronossusState['fluxPool']> } {
+  const total = pool.cores + pool.casings;
+  if (total <= 0) throw new Error('drawFlux: the Flux Pool is empty');
+  const drawn: FluxDraw = Math.floor(roll * total) < pool.cores ? 'core' : 'casing';
+  return drawn === 'core'
+    ? { drawn, pool: { ...pool, cores: pool.cores - 1 } }
+    : { drawn, pool: { ...pool, casings: pool.casings - 1, setAside: pool.setAside + 1 } };
+}
+
+/**
+ * The Exosuits that could Blink for an attempted Action: on the Main board, still
+ * holding an Energy Core, and not already on the Action being attempted
+ * (Solo Opponents p.11).
+ */
+export function blinkReadyExosuits(bot: ChronossusState, attemptedAction: string): PlacedExosuit[] {
+  return (bot.placedExosuits ?? []).filter((e) => e.hasCore && e.action !== attemptedAction);
+}
+
+/** Whether the Blink check even happens: a Blink-ready Exosuit AND >=1 token in the pool. */
+export function shouldCheckBlink(bot: ChronossusState, attemptedAction: string): boolean {
+  const pool = bot.fluxPool;
+  if (!pool) return false;
+  return blinkReadyExosuits(bot, attemptedAction).length > 0 && pool.cores + pool.casings > 0;
+}
+
+/** Which rule picked the Blinking Exosuit — surfaced in the UI so a contested call is visible. */
+export type BlinkRule = 'command-token' | 'bottom-left';
+
+export interface BlinkSelection {
+  exosuit: PlacedExosuit;
+  rule: BlinkRule;
+  /** Set on the 'command-token' rule: the token number the Exosuit's Action matches. */
+  token?: number;
+  /** How many of the bot's Exosuits sit on that same Action (the player takes the
+   *  bottom-most one when there is more than one — the app can't see which space is which). */
+  sameActionCount: number;
+}
+
+/**
+ * Pick the Exosuit to Blink with (Solo Opponents p.12):
+ *
+ *   A. An Exosuit on an Action matching any *other* Command token; ties go to the
+ *      smaller token number.
+ *   B. Otherwise the bottom-left-most one (closest to the bottom Research space), lower
+ *      spaces winning ties.
+ *
+ * `tokenActions` maps each other Command token's number to the Action it currently sits
+ * on (view state, so it's injected). `order` lists Action ids from bottom-left-most to
+ * furthest away — Main board geometry the app doesn't render, so it is injected too;
+ * anything missing from it sorts last.
+ *
+ * An Exosuit on the **World Council** space matches no Command token (that space is not
+ * any token's Action), so rule A never selects it, and it sorts last under rule B.
+ */
+export function selectBlinkExosuit(
+  bot: ChronossusState,
+  attemptedAction: string,
+  tokenActions: Record<number, string>,
+  order: string[],
+): BlinkSelection | null {
+  const ready = blinkReadyExosuits(bot, attemptedAction);
+  if (ready.length === 0) return null;
+  const countOn = (action: string) => ready.filter((e) => e.action === action).length;
+
+  const matches = ready
+    .filter((e) => e.space === 'action')
+    .map((e) => {
+      const token = Object.keys(tokenActions)
+        .map(Number)
+        .filter((t) => tokenActions[t] === e.action)
+        .sort((a, b) => a - b)[0];
+      return token == null ? null : { exosuit: e, token };
+    })
+    .filter((m): m is { exosuit: PlacedExosuit; token: number } => m != null)
+    .sort((a, b) => a.token - b.token);
+
+  if (matches.length > 0) {
+    const { exosuit, token } = matches[0];
+    return { exosuit, rule: 'command-token', token, sameActionCount: countOn(exosuit.action) };
+  }
+
+  const rank = (e: PlacedExosuit) => {
+    if (e.space === 'world-council') return Number.MAX_SAFE_INTEGER;
+    const i = order.indexOf(e.action);
+    return i === -1 ? Number.MAX_SAFE_INTEGER - 1 : i;
+  };
+  const exosuit = [...ready].sort((a, b) => rank(a) - rank(b))[0];
+  return { exosuit, rule: 'bottom-left', sameActionCount: countOn(exosuit.action) };
+}
+
+// --------------------------------------------------------------------------
 // Phase 3: Power Up (the Energy Pool)
 // --------------------------------------------------------------------------
 
@@ -863,6 +973,23 @@ export function resolveCleanUp(state: GameState): GameState {
       text: 'After the Impact, follow the usual procedure for flipping Collapsing Capital tiles.',
     },
   ];
+  // Fractures: the Exosuits come off the board, and the Empty Flux Casings set aside by
+  // this Era's Blink checks return to the Flux Pool (Solo Opponents p.13).
+  if (bot.fluxPool) {
+    const setAside = bot.fluxPool.setAside;
+    bot.fluxPool = {
+      cores: bot.fluxPool.cores,
+      casings: bot.fluxPool.casings + setAside,
+      setAside: 0,
+    };
+    bot.placedExosuits = [];
+    if (setAside > 0) {
+      instructions.push({
+        id: 'cleanup-flux-casings',
+        text: `Return the ${setAside} Empty Flux Casing${setAside === 1 ? '' : 's'} set aside this Era to the Flux Pool.`,
+      });
+    }
+  }
   return {
     ...state,
     chronossus: bot,
@@ -895,6 +1022,10 @@ export interface ChronossusScore {
   anomalyVP: number;
   /** D5 (`chronossus-leftover-energy-vp`): 1 VP per energized core left in the pool. */
   leftoverEnergyVP: number;
+  /** Fractures: 3 VP per Technology card the Chronossus holds. 0 in other modes. */
+  technologyVP: number;
+  /** Fractures difficulty: 1 VP per Flux Core left in the Flux Pool. 0 otherwise. */
+  leftoverFluxVP: number;
   total: number;
 }
 
@@ -920,6 +1051,13 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
   const superprojectVP = bot.superprojectVps.reduce((n, v) => n + v, 0);
   const buildingVP = bot.buildingVp - superprojectVP;
   const tokenVP = bot.vp - bot.buildingVp;
+  // Fractures: 3 VP per Technology held, plus (difficulty) 1 VP per leftover Flux Core.
+  const technologyVP = (bot.technologies ?? 0) * TECHNOLOGY_VP;
+  const leftoverFluxVP =
+    difficulty?.includes(DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP) && bot.fluxPool
+      ? bot.fluxPool.cores
+      : 0;
+
   // Variable Anomalies (extra module): sum the held tiles' individual VP penalties
   // instead of the flat per-Anomaly ANOMALY_VP.
   const anomalyVP = bot.anomalyVps
@@ -938,7 +1076,17 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
     shapeSetBonus,
     anomalyVP,
     leftoverEnergyVP,
-    total: bot.vp + timeTravelVP + breakthroughVP + shapeSetBonus + anomalyVP + leftoverEnergyVP,
+    technologyVP,
+    leftoverFluxVP,
+    total:
+      bot.vp +
+      timeTravelVP +
+      breakthroughVP +
+      shapeSetBonus +
+      anomalyVP +
+      leftoverEnergyVP +
+      technologyVP +
+      leftoverFluxVP,
   };
 }
 

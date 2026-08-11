@@ -140,8 +140,21 @@ neither needs the main Fractures module/mechanics.
   `operators`; 7 new tests. Verified live: module selectable, all 4 options listed, setup
   text renders, state seeds `{cores:1,casings:3,setAside:0}`
 
-### F2 — Engine: Flux Pool / Cores / Fracture Device
-- [ ] State + types; draw/spend/exhaust + Fracture Device; unit tests
+### F2 — Engine: Flux Pool / Blinking ✅ engine done (2026-08-11)
+- [x] `fluxPool` draw (`drawFlux`, caller-supplied roll like the Energy Pool): a Flux Core
+  is discarded and triggers the Blink, an Empty Flux Casing is set aside
+- [x] `placedExosuits` on the slice — `{ action, space: 'action' | 'world-council', hasCore }`
+  per placement; `blinkReadyExosuits` / `shouldCheckBlink` implement the p.11 conditions
+- [x] `selectBlinkExosuit` implements rule A (matching Command token, smaller number wins)
+  then rule B (bottom-left-most). World Council matches no token and sorts last, per the
+  confirmed reading. Returns which rule fired + how many Exosuits share that Action, so the
+  UI can say "take the bottom one" when the app can't see which space is which
+- [x] Clean Up returns the set-aside Casings to the pool and clears `placedExosuits`
+- [x] Scoring: `technologyVP` (3 each) + `leftoverFluxVP` (difficulty), both in the total
+- [x] 18 new tests (193 total)
+- [ ] **Blocked on input:** rule B's ordering is Main-board geometry the app doesn't render —
+  `selectBlinkExosuit` takes it as an injected `order` array; the real list needs confirming
+- [ ] The Chronossus has no Fracture Device (p.11) — nothing to model
 
 ### F3 — Engine: X-series actions & tiles
 - [ ] X-series catalog in tile/resolver machinery (+ Autoleap); unit tests

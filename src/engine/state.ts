@@ -167,6 +167,15 @@ export interface ChronossusState {
   technologies?: number;
   /** Fractures of Time only: Operators recruited (the Assimilate Square tie-break). */
   operators?: number;
+  /**
+   * Fractures of Time only: where each of the bot's Exosuits currently sits on the Main
+   * board, in placement order. Needed to pick which one Blinks. `space` records what the
+   * player answered at the placement gate — the printed Capital Action space, or the
+   * World Council space it overflowed to. `hasCore` goes false once an Exosuit Blinks
+   * (its Energy Core returns to supply), which also makes it no longer Blink-ready.
+   * Cleared in Clean Up when the Exosuits come back.
+   */
+  placedExosuits?: { action: string; space: 'action' | 'world-council'; hasCore: boolean }[];
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */
