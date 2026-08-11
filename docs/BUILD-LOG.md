@@ -2,6 +2,36 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-11 — Guided-phase UX pass (prompts, Undo, rule sourcing)
+
+Playtest feedback on the non-Action phase screens, worked through in order. All on staging.
+
+- **Player prompts read as one thing.** Every "the app needs an answer from you" moment now
+  uses the same box: the Paradox tie/lead and Hypersync extra-roll questions, the Clean Up
+  game-end choice (both bots), the Alternate Timelines positive-space question, and the
+  Variable Anomaly gain. The box tint became a `--sp-prompt-rgb` token (violet for the
+  Chronobot, amber for the Chronossus) after the hard-coded amber clashed with the purple
+  scheme; `.pp-sub` and the in-prompt number pickers were re-themed the same way.
+  `.capital-check` / `.phase-end-pink` / `.va-candidate` retired.
+- **Prompts stay on their phase screen.** The Alternate Timelines question had been
+  replacing the whole Warp body and the Anomaly prompt was a modal over the Paradox log —
+  both left the player answering with the triggering roll off-screen. `WarpPhaseBody` and
+  `ParadoxPhaseBody` gained a `followUp` slot; both screens now read intro → what happened →
+  what you must answer → trackers → verbatim rules.
+- **Anomaly gain reworked** to the Construct pattern: state the verbatim criteria, the
+  player applies it and reports only the taken tile (VP row, then a yes/no on Warp-tile
+  retrieval, which commits). `resolveVariableAnomalyGain` takes one candidate, not two.
+- **Undo on the phase screens**, the same control as the Action Rounds bar, plus
+  `commitPhase` so phase advances that change nothing else are still undoable. Rolls are
+  restored, never re-rolled.
+- **Rule sourcing.** Confirmed the Hypersync Paradox rules (majority, zero-Warp exception,
+  most-Hypersync extra roll) are verbatim Future Imperfect p.5 and unamended by Solo
+  Opponents p.17 — now shown as a `RulesBox`. Alternate Timelines' p.18 Warp order
+  ("decide first, then roll") replaced the contradicting base turn-order note.
+- **Smaller fixes:** Paradox rolls render like Warp rolls (numbered die + Paradox symbol);
+  four icon trackers on the Paradox screen; the Hypersync placement step keeps marked-off
+  spaces visible instead of dropping them; landing-page Chronossus progress 40% → 50%.
+
 ## 2026-08-10 — Chronossus difficulty options shipped; Alternate Timelines & Variable Anomalies added ahead of Fractures
 
 Parts 2 and 3 of `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` are done, all
