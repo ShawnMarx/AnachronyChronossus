@@ -910,6 +910,58 @@ describe('Fractures — Assimilate (C04/C14)', () => {
   });
 });
 
+describe('Fractures — the module tiles and their B sides', () => {
+  const fracturesState = () => {
+    const st = chronossusState({ config: { ...CONFIG, chronossusMode: 'fractures' } });
+    st.chronossus = {
+      ...st.chronossus!,
+      exosuitsAvailable: 4,
+      fluxPool: { cores: 0, casings: 3, setAside: 0 },
+      technologies: 0,
+      operators: 0,
+      placedExosuits: [],
+    };
+    return st;
+  };
+
+  it('C05 Extract: 2 Flux Cores + 2 Energy Cores (B side: 4 Flux)', () => {
+    const a = resolveAction(fracturesState(), { actionId: 'tile-extract' }).state.chronossus!;
+    expect(a.fluxPool!.cores).toBe(2);
+    expect(a.energyPool.energized).toBe(fracturesState().chronossus!.energyPool.energized + 2);
+
+    const bSide = resolveAction(fracturesState(), { actionId: 'tile-extract', tileSide: 'B' })
+      .state.chronossus!;
+    expect(bSide.fluxPool!.cores).toBe(4);
+  });
+
+  it('C06 Power Pack: 1 Energy + 1 Flux, and the B side Autoleaps', () => {
+    const a = resolveAction(fracturesState(), { actionId: 'tile-power-pack' });
+    expect(a.state.chronossus!.fluxPool!.cores).toBe(1);
+    expect(a.autoleap).toBeFalsy();
+
+    const b = resolveAction(fracturesState(), { actionId: 'tile-power-pack', tileSide: 'B' });
+    expect(b.state.chronossus!.fluxPool!.cores).toBe(1);
+    expect(b.autoleap).toBe(true);
+  });
+
+  it('C14 resolves its own effect through the shared Assimilate action', () => {
+    const st = fracturesState();
+    const { state: next } = resolveAction(st, {
+      actionId: 'tile-assimilate',
+      tileFamily: 'C14',
+      shape: 'triangle',
+    });
+    // C14A = Assimilate plus 1 extra Flux Core.
+    expect(next.chronossus!.technologies).toBe(1);
+    expect(next.chronossus!.fluxPool!.cores).toBe(1);
+  });
+
+  it('gains no Flux Cores outside a Fractures game (no pool to add to)', () => {
+    const { state: next } = resolveAction(chronossusState(), { actionId: 'tile-extract' });
+    expect(next.chronossus!.fluxPool).toBeUndefined();
+  });
+});
+
 describe('Fractures — placement recording and Blinking through resolveAction', () => {
   const fracturesState = () => {
     const st = chronossusState({ config: { ...CONFIG, chronossusMode: 'fractures' } });

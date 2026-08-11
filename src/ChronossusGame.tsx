@@ -3884,6 +3884,16 @@ function CxVpPill({
                 <span>Leftover Energy Cores</span><b>{score.leftoverEnergyVP}</b>
               </li>
             )}
+            {score.technologyVP > 0 && (
+              <li title="Fractures: 3 VP per Technology card the Chronossus holds">
+                <span>Technologies (3 each)</span><b>{score.technologyVP}</b>
+              </li>
+            )}
+            {score.leftoverFluxVP > 0 && (
+              <li title="Fractures difficulty: 1 VP per Flux Core left in the Flux Pool">
+                <span>Leftover Flux Cores</span><b>{score.leftoverFluxVP}</b>
+              </li>
+            )}
             <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
             <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
           </ul>
@@ -3945,6 +3955,14 @@ const CX_SCORE_ROWS = (
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
     ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]
+    : []),
+  // Fractures (bot-only): Technologies always score, leftover Flux Cores only with that
+  // module's difficulty option.
+  ...(score.technologyVP
+    ? [{ label: 'Technologies (3 each)', botValue: score.technologyVP }]
+    : []),
+  ...(score.leftoverFluxVP
+    ? [{ label: 'Leftover Flux Cores (difficulty, 1 each)', botValue: score.leftoverFluxVP }]
     : []),
 ];
 
@@ -4163,6 +4181,12 @@ function CxScoreScreen({
               <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
               {score.leftoverEnergyVP > 0 && (
                 <li><span>Leftover Energy Cores (difficulty)</span><b>{score.leftoverEnergyVP}</b></li>
+              )}
+              {score.technologyVP > 0 && (
+                <li><span>Technologies (3 each)</span><b>{score.technologyVP}</b></li>
+              )}
+              {score.leftoverFluxVP > 0 && (
+                <li><span>Leftover Flux Cores (difficulty)</span><b>{score.leftoverFluxVP}</b></li>
               )}
               <li className="score-sum"><span>Chronossus total</span><b>{score.total}</b></li>
             </ul>

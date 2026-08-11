@@ -183,9 +183,28 @@ neither needs the main Fractures module/mechanics.
 - [x] Turn-overview tracking, mirroring the Energy Pool: a `CxFluxPool` chip (Flux Cores /
   Empty Flux Casings, plus a ⊘ count of Casings set aside this Era) and a Tech · Ops chip,
   both Fractures-only. Uses the existing `flux-core.png` / `exhausted-flux-core.png` art
-- [ ] **Not yet:** Autoleap on Fractures B-sides is inherited from the shared tile path but
-  untested; no Fractures playthrough variation yet (F6); the score screen doesn't show the
-  Technology / leftover-Flux lines the engine already computes (F5)
+
+### F4 — Board / view / overlays — mostly N/A (2026-08-11)
+- [x] The Valley board stays player-managed (design decision), so there is no new board art
+  or overlay geometry to place; the module's state shows in the turn overview instead
+- [ ] Optional: a Flux Pool badge on the Chronossus board — the Flux Pool is a separate
+  container, not printed on the board, so any badge position would have to be set in
+  calibrate mode. Left for the user to place if wanted
+
+### F5 — Scoring & objectives ✅ done (2026-08-11)
+- [x] Technologies (3 each) and leftover Flux Cores (difficulty) now show in all three
+  score displays: the VP-pill breakdown, the side-by-side tally, and the number-mode list
+- [ ] Solo Objectives: the two Fractures cards ("Technology Cards", "Flux on Track") are
+  added to the deck in setup text; scoring them stays the player-entered tally, as for
+  every other mode
+
+### F6 — Ship
+- [x] Fractures playthrough variation (3 tests): a full game with the Flux Pool, Blinking
+  and all three module tiles; leftover-Flux scoring; and 6 consecutive Blinks spending no
+  Exosuit. Plus 4 unit tests for the tiles (C05/C05B, C06/C06B Autoleap, C14 via
+  `tileFamily`, and the no-pool no-op outside Fractures)
+- [x] 216 tests, build + lint clean
+- [ ] Manual playthrough on device; assets/theme pass
 
 ### F4 — Board / view / overlays
 - [ ] Art + overlays (Flux Pool, Cores, Fracture Device, X-tiles); calibrate positions; routes

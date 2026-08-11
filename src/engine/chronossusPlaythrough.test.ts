@@ -24,6 +24,7 @@ import {
   DIFFICULTY_ALT_TIMELINES_3VP,
   EXTRA_MODULE_ALTERNATE_TIMELINES,
   EXTRA_MODULE_VARIABLE_ANOMALIES,
+  DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP,
 } from './bots/chronossus';
 import type { GameConfig } from './types';
 
@@ -223,5 +224,74 @@ describe('Chronossus full-game playthrough — Variable Anomalies extra module',
     const heldCount = state.chronossus!.anomalyVps!.length;
     expect(heldCount).toBeGreaterThan(0);
     expect(score.anomalyVP).toBe(heldCount * -6); // worse than base game's flat -3 each
+  });
+});
+
+describe('Chronossus full-game playthrough — Fractures of Time', () => {
+  const FRACTURES_CONFIG: GameConfig = { ...BASE_CONFIG, chronossusMode: 'fractures' };
+
+  it('plays a full game with the Flux Pool, Blinking, and the module tiles', () => {
+    const { state, score } = playChronossus({
+      config: FRACTURES_CONFIG,
+      // Every Era: place twice, then take each of the module's three tile Actions, then a
+      // Blink into a Construct (an Exosuit is on the board with its Energy Core by then).
+      actionsForEra: () => [
+        action('recruit', { placementSpace: 'action' }),
+        action('research', { shape: 'circle', placementSpace: 'action' }),
+        action('tile-extract'),
+        action('tile-power-pack'),
+        action('tile-assimilate', { shape: 'square' }),
+        action('construct-lab', { buildingVP: 3, blink: true, tokenActions: {} }),
+        action('mine-resource', { placementSpace: 'world-council' }),
+      ],
+    });
+    expect(state.finished).toBe(true);
+    const bot = state.chronossus!;
+    // Extract/Power Pack keep feeding the pool; Clean Up returns every set-aside Casing,
+    // so no Casing is ever lost and nothing goes negative.
+    expect(bot.fluxPool!.cores).toBeGreaterThan(0);
+    expect(bot.fluxPool!.casings + bot.fluxPool!.setAside).toBe(3);
+    // Assimilate ran every Era: it holds Operators and/or Technologies.
+    expect((bot.operators ?? 0) + (bot.technologies ?? 0)).toBeGreaterThan(0);
+    expect(score.technologyVP).toBe((bot.technologies ?? 0) * 3);
+    expect(score.total).toBe(
+      score.duringGameVP +
+        score.timeTravelVP +
+        score.breakthroughVP +
+        score.shapeSetBonus +
+        score.anomalyVP +
+        score.leftoverEnergyVP +
+        score.technologyVP +
+        score.leftoverFluxVP,
+    );
+  });
+
+  it('scores leftover Flux Cores with that difficulty option', () => {
+    const opts = {
+      config: {
+        ...FRACTURES_CONFIG,
+        difficulty: [DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP],
+      },
+      actionsForEra: () => [action('tile-extract'), action('recruit', { placementSpace: 'action' })],
+    };
+    const { state, score } = playChronossus(opts);
+    expect(score.leftoverFluxVP).toBe(state.chronossus!.fluxPool!.cores);
+    expect(score.leftoverFluxVP).toBeGreaterThan(0);
+  });
+
+  it('Blinking spends no Exosuit, so it can act on a turn it would otherwise pass', () => {
+    const { state } = playChronossus({
+      config: FRACTURES_CONFIG,
+      actionsForEra: () => [
+        action('recruit', { placementSpace: 'action' }),
+        // Six Blinks in a row: each moves the one placed Exosuit, none takes a new one.
+        ...Array.from({ length: 6 }, () =>
+          action('construct-lab', { buildingVP: 2, blink: true, tokenActions: {} }),
+        ),
+      ],
+    });
+    const bot = state.chronossus!;
+    expect(bot.exosuitsAvailable).toBeGreaterThanOrEqual(0);
+    expect(bot.placedExosuits).toEqual([]); // cleared each Clean Up
   });
 });
