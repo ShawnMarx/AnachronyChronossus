@@ -65,6 +65,12 @@ neither needs the main Fractures module/mechanics.
   retrieve a Warp tile"), plus a verbatim Solo Opponents p.18 `RulesBox`.
   `resolveVariableAnomalyGain(state, chosen)` collapsed to one candidate; tests + the
   playthrough harness option (`variableAnomalyTaken`) updated. Dead `.va-candidate` CSS removed.
+- [x] **Player-input prompts kept on their phase screen** (2026-08-10): Alternate Timelines'
+  positive-space question was replacing the whole Warp body, and the Variable Anomaly gain
+  prompt was a modal covering the Paradox roll log — in both cases the player answered with
+  the triggering roll off-screen. `WarpPhaseBody` and `ParadoxPhaseBody` each gained an
+  optional `followUp` node rendered in place of their roll/continue controls, so the
+  question now sits under the roll result with its context intact.
 - [x] **Hypersync Paradox rules verified** (unrelated question, same session): the
   majority + extra-roll rules the app prompts for are verbatim Future Imperfect p.5, and
   Solo Opponents p.17 carries the module's rules over without touching the Paradox Phase.

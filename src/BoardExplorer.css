@@ -2214,15 +2214,6 @@
   font-size: 0.85rem;
 }
 /* Variable Anomaly gain prompt — Construct-style VP picker + a yes/no follow-up */
-.modal-card .vp-digits {
-  margin: 0 0 0.9rem;
-}
-.modal-card .pp-instruct {
-  margin: 0 0 0.5rem;
-}
-.modal-card .pp-buttons {
-  margin: 0 0 0.9rem;
-}
 .pp-confirm.selected,
 .pp-cannot.selected {
   border-color: var(--sp-text-1);

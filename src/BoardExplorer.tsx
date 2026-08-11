@@ -2073,6 +2073,7 @@ export function ParadoxPhaseBody({
   botName = 'Chronobot',
   hypersyncTiles,
   pendingRoll,
+  followUp,
 }: {
   state: GameState;
   /** The active bot's slice fields the Paradox phase reads (shared shape). */
@@ -2096,6 +2097,12 @@ export function ParadoxPhaseBody({
    * fish for a different result (#10). Consumed once per commit by the parent.
    */
   pendingRoll?: number | null;
+  /**
+   * A step that must be resolved before rolling continues — Variable Anomalies' "which
+   * tile did it take?" question. Rendered under the roll log in place of the roll/continue
+   * controls, so the roll that triggered it stays on screen for context.
+   */
+  followUp?: ReactNode;
 }) {
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
@@ -2208,7 +2215,9 @@ export function ParadoxPhaseBody({
         </div>
       )}
 
-      {!done ? (
+      {followUp ? (
+        followUp
+      ) : !done ? (
         <div className="paradox-question">
           <p className="phase-note">
             Does the {botName} still have the most (or tied-most) Warp tiles on a past

@@ -2515,6 +2515,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
           pendingRoll={ui.paradoxRoll}
+          followUp={
+            variableAnomalyPending ? (
+              <VariableAnomalyGainPrompt onConfirm={finishVariableAnomalyGain} />
+            ) : undefined
+          }
         />
       );
       break;
@@ -2539,7 +2544,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onCancel={() => setShowFirstPlayer(false)}
         />
       )}
-      {variableAnomalyPending && <VariableAnomalyGainPrompt onConfirm={finishVariableAnomalyGain} />}
     </>
   );
 }
@@ -2946,7 +2950,8 @@ function HypersyncDialog({
 // Variable Anomalies: the Chronossus gained an Anomaly (Paradox hit 3). Same pattern as
 // Construct's building VP — state the rulebook's selection criteria, the player applies
 // it to the 2 visible tiles, then reports the taken tile's printed VP and whether it
-// retrieves a Warp tile. No tile-code catalog; nothing is simulated.
+// retrieves a Warp tile. No tile-code catalog; nothing is simulated. Rendered inline as
+// the Paradox phase's `followUp`, under the roll log that triggered the gain.
 const VARIABLE_ANOMALY_VP_OPTIONS = [-2, -3, -4, -5, -6];
 function VariableAnomalyGainPrompt({
   onConfirm,
@@ -2957,71 +2962,67 @@ function VariableAnomalyGainPrompt({
   const [retrieves, setRetrieves] = useState<boolean | null>(null);
   const canConfirm = vp != null && retrieves != null;
   return (
-    <div className="modal-overlay">
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <h3>Anomaly — the Chronossus receives one</h3>
-        <p className="modal-note">
-          Reveal the 2 visible Anomaly tiles. Give the Chronossus the one that{' '}
-          <b>lets it retrieve a Warp tile</b> right now (check each tile's Before/After
-          Impact icon against this Era's Impact status). If <b>both or neither</b> do,
-          give it the one with the <b>smaller VP penalty</b> (closer to 0). Tap its
-          printed VP.
-        </p>
-        <div className="vp-digits">
-          {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
-            <button
-              key={v}
-              type="button"
-              className={`vp-digit ${vp === v ? 'selected' : ''}`}
-              onClick={() => setVp(v)}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
-        {vp != null && (
-          <>
-            <p className="pp-instruct">
-              <b>Does the tile it took retrieve a Warp tile?</b>
-            </p>
-            <div className="pp-buttons">
-              <button
-                className={`pp-confirm ${retrieves === true ? 'selected' : ''}`}
-                onClick={() => setRetrieves(true)}
-              >
-                ✓ Yes — it retrieves one
-              </button>
-              <button
-                className={`pp-cannot ${retrieves === false ? 'selected' : ''}`}
-                onClick={() => setRetrieves(false)}
-              >
-                ✗ No
-              </button>
-            </div>
-          </>
-        )}
-        <RulesBox label="Variable Anomalies — rulebook text">
-          <p>
-            <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
-            Anomalies and does not receive an Anomaly Remover tile.
-          </p>
-          <p>
-            <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will
-            select one that will allow it to retrieve a Warp tile. If both or neither do,
-            it will select the one with the smaller VP penalty.
-          </p>
-          <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
-        </RulesBox>
-        <div className="modal-actions">
+    <div className="place-prompt">
+      <p className="pp-instruct">
+        <b>Anomaly — the Chronossus receives one.</b> Reveal the 2 visible Anomaly tiles
+        and give it the one that <b>lets it retrieve a Warp tile</b> right now (check each
+        tile's Before/After Impact icon against this Era's Impact status). If{' '}
+        <b>both or neither</b> do, give it the one with the <b>smaller VP penalty</b>{' '}
+        (closer to 0). Tap its printed VP.
+      </p>
+      <div className="vp-digits">
+        {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
           <button
-            className="phase-primary"
-            disabled={!canConfirm}
-            onClick={() => onConfirm({ vp: vp!, retrieveEligible: retrieves! })}
+            key={v}
+            type="button"
+            className={`vp-digit ${vp === v ? 'selected' : ''}`}
+            onClick={() => setVp(v)}
           >
-            ▶ Confirm
+            {v}
           </button>
-        </div>
+        ))}
       </div>
+      {vp != null && (
+        <>
+          <p className="pp-instruct">
+            <b>Does the tile it took retrieve a Warp tile?</b>
+          </p>
+          <div className="pp-buttons">
+            <button
+              className={`pp-confirm ${retrieves === true ? 'selected' : ''}`}
+              onClick={() => setRetrieves(true)}
+            >
+              ✓ Yes — it retrieves one
+            </button>
+            <button
+              className={`pp-cannot ${retrieves === false ? 'selected' : ''}`}
+              onClick={() => setRetrieves(false)}
+            >
+              ✗ No
+            </button>
+          </div>
+        </>
+      )}
+      <RulesBox label="Variable Anomalies — rulebook text">
+        <p>
+          <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
+          Anomalies and does not receive an Anomaly Remover tile.
+        </p>
+        <p>
+          <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will select
+          one that will allow it to retrieve a Warp tile. If both or neither do, it will
+          select the one with the smaller VP penalty.
+        </p>
+        <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+      </RulesBox>
+      {canConfirm && (
+        <button
+          className="phase-primary"
+          onClick={() => onConfirm({ vp: vp!, retrieveEligible: retrieves! })}
+        >
+          ▶ Confirm
+        </button>
+      )}
     </div>
   );
 }
