@@ -518,9 +518,10 @@ export interface ChronossusActionResult {
  * take an Exosuit like any Capital Action — unlike the Chronossus-board tiles (Reboot,
  * Score, Energy/Power Pack), which are pure effects.
  *
- * Two consequences: the Chronossus passes rather than take one when it is out of
- * Exosuits, and an Exosuit placed there can never Blink (the Valley board is not the Main
- * board — `blinkSpaceOf` returns null for these ids, so they are not recorded).
+ * The Chronossus passes rather than take one when it is out of Exosuits. It CAN Blink
+ * into a Valley space (an Exosuit moves there from the Main board), but never out of one:
+ * these placements are not recorded in `placedExosuits`, and a Blinked-in Exosuit is
+ * removed from it, so the Valley board is a Blink destination only.
  */
 export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate', 'tile-extract'];
 
@@ -637,16 +638,30 @@ export function resolveAction(
     // Valley board Actions take an Exosuit. No free Valley space sends it to the Valley
     // Capital space (p.11, as with World Capital); neither available is a Failed Action,
     // handled by the shared no-space branch above.
-    if (VALLEY_TILE_ACTIONS.includes(input.actionId) && bot.exosuitsAvailable > 0) {
-      bot.exosuitsAvailable -= 1;
-      instr.push({
-        id: `valley-place-${n}`,
-        text:
-          input.placementSpace === 'world-council'
-            ? "Place the Chronossus's Exosuit on the Valley Capital Action space (no Valley Action space was free)."
-            : "Place the Chronossus's Exosuit on that Valley Action space.",
-        detail: 'Put an Energy Core from the supply into it. It cannot Blink from the Valley board.',
-      });
+    if (VALLEY_TILE_ACTIONS.includes(input.actionId)) {
+      const where =
+        input.placementSpace === 'world-council'
+          ? 'the Valley Capital Action space (no Valley Action space was free)'
+          : 'that Valley Action space';
+      if (input.blink && bot.fluxPool) {
+        // Blinked in from the Main board: the Exosuit moves onto the Valley board and
+        // leaves the Blink-from list — nothing on the Valley board can Blink again.
+        const sel = selectBlinkExosuit(bot, input.actionId, input.tokenActions ?? {});
+        bot.placedExosuits = (bot.placedExosuits ?? []).filter((e) => e !== sel?.exosuit);
+        instr.push({
+          id: `valley-blink-${n}`,
+          text: `Blink: move that Exosuit to ${where} instead of placing a new one.`,
+          detail: "Return the moved Exosuit's Energy Core to the supply.",
+        });
+      } else if (bot.exosuitsAvailable > 0) {
+        bot.exosuitsAvailable -= 1;
+        instr.push({
+          id: `valley-place-${n}`,
+          text: `Place the Chronossus's Exosuit on ${where}.`,
+          detail:
+            'Put an Energy Core from the supply into it. It cannot Blink again from the Valley board.',
+        });
+      }
     }
     const autoleap = resolveTileAction(
       bot,

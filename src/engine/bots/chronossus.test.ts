@@ -40,7 +40,6 @@ import {
   selectBlinkExosuit,
   resolveCleanUp,
   assimilate,
-  wouldPassOn,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -963,6 +962,33 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
       placementSpace: 'world-council',
     });
     expect(instructions.some((i) => /Valley Capital Action space/.test(i.text))).toBe(true);
+  });
+
+  it('can be Blinked INTO: the moved Exosuit leaves the Main board, none is spent', () => {
+    const st = fracturesState();
+    st.chronossus!.placedExosuits = [
+      { action: 'research', space: 'action', hasCore: true },
+      { action: 'recruit', space: 'action', hasCore: true },
+    ];
+    const { state: next, instructions } = resolveAction(st, {
+      actionId: 'tile-extract',
+      placementSpace: 'action',
+      blink: true,
+      tokenActions: {},
+    });
+    // Research is bottom-left-most, so that one moves onto the Valley board and is no
+    // longer a Blink-from candidate; Recruit stays.
+    expect(next.chronossus!.placedExosuits).toEqual([
+      { action: 'recruit', space: 'action', hasCore: true },
+    ]);
+    expect(next.chronossus!.exosuitsAvailable).toBe(3); // unchanged — no new Exosuit
+    expect(instructions.some((i) => /Blink: move that Exosuit/.test(i.text))).toBe(true);
+  });
+
+  it('every Main-board Exosuit is Blink-ready for a Valley Action (none is on it)', () => {
+    const bot = fracturesState().chronossus!;
+    bot.placedExosuits = [{ action: 'research', space: 'action', hasCore: true }];
+    expect(blinkReadyExosuits(bot, 'tile-assimilate').map((e) => e.action)).toEqual(['research']);
   });
 
   it('still resolves the tile effect alongside the placement', () => {

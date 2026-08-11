@@ -30,6 +30,8 @@ import {
   WarpPhaseBody,
   ParadoxPhaseBody,
   PARADOX_ICONS,
+  BlinkPanel,
+  FluxCasingPanel,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -608,6 +610,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Fractures: the Blink the app resolved for the current Action (shown in the panel),
   // and the space answer for the placement gate's two questions.
   const [fluxDraw, setFluxDraw] = useState<'core' | 'casing' | null>(null);
+  // Fractures: the Blink-check step inside the Valley tile dialog, and the space answered.
+  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | null>(null);
+  const valleySpaceRef = useRef<'action' | 'capital'>('action');
   const [blink, setBlink] = useState<{
     spaceLabel: string;
     sameSpaceCount: number;
@@ -820,6 +825,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     blinkRef.current = false;
     setBlink(null);
     setFluxDraw(null);
+    setTileBlinkStep(null);
+    valleySpaceRef.current = 'action';
   };
 
   const clearDialogState = () => {
@@ -1753,7 +1760,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
   // so ▶ Start resolves it and advances the marker (the caller then closes).
-  const resolveTileSlot = (actionId: ChronossusActionId, valleySpace?: 'action' | 'capital') => {
+  const resolveTileSlot = (
+    actionId: ChronossusActionId,
+    valleySpace?: 'action' | 'capital',
+    blinked = false,
+  ) => {
     // The live family comes from the mode (so Fractures' C14-for-C04 swap resolves C14's
     // effect through the shared Assimilate action), falling back to the id's own family.
     const liveFamily =
@@ -1771,6 +1782,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // A Valley Action with no free space goes to the Valley Capital space; reuse the
       // 'world-council' marker for it (the same "overflowed to the shared space" idea).
       ...(valleySpace ? { placementSpace: valleySpace === 'capital' ? 'world-council' : 'action' } : {}),
+      ...(blinked ? { blink: true, tokenActions: otherTokenActions() } : {}),
       ...(assimilates ? { shape: rollShapeDie() } : {}),
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
@@ -1780,11 +1792,43 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
   // Autoleap tile) close. The result lands in History / the turn-status aside.
-  const startTileTurn = (valleySpace?: 'action' | 'capital') => {
+  const startTileTurn = (valleySpace?: 'action' | 'capital', blinked = false) => {
     if (!pendingTile) return;
     chainOpenRef.current = false; // finishTurn re-sets it if the chain continues
-    resolveTileSlot(pendingTile, valleySpace);
+    resolveTileSlot(pendingTile, valleySpace, blinked);
+    setTileBlinkStep(null);
     if (!chainOpenRef.current) closeTile();
+  };
+
+  /**
+   * Fractures: a Valley Action space is confirmed. The Valley board is a legal Blink
+   * *destination* (never a source), so the same check runs here before the tile resolves.
+   */
+  const onValleyPlace = (space: 'action' | 'capital') => {
+    if (!pendingTile) return;
+    valleySpaceRef.current = space;
+    if (Chronossus.shouldCheckBlink(bot, pendingTile)) {
+      const { drawn, pool: nextPool } = Chronossus.drawFlux(bot.fluxPool!, Math.random());
+      setState((cur) => ({ ...cur, chronossus: { ...cur.chronossus!, fluxPool: nextPool } }));
+      setFluxDraw(drawn);
+      if (drawn === 'casing') {
+        setBlink(null);
+        setTileBlinkStep('casing');
+        return;
+      }
+      const sel = Chronossus.selectBlinkExosuit(bot, pendingTile, otherTokenActions());
+      if (sel) {
+        setBlink({
+          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          sameSpaceCount: sel.sameSpaceCount,
+          rule: sel.rule,
+          token: sel.token,
+        });
+        setTileBlinkStep('blink');
+        return;
+      }
+    }
+    startTileTurn(space, false);
   };
   // Close the tile dialog. If it hasn't resolved yet (no result), the marker does
   // not advance (a cancelled turn).
@@ -2374,7 +2418,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     fracturesMode &&
                     Chronossus.VALLEY_TILE_ACTIONS.includes(pendingTile) &&
                     !tileRuleView
-                      ? { onPlace: (space) => startTileTurn(space) }
+                      ? { onPlace: onValleyPlace, step: tileBlinkStep, blink, fluxDrawSrc:
+                          fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
+                          onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
+                          onCasingContinue: () => startTileTurn(valleySpaceRef.current, false) }
                       : null
                   }
                 />
@@ -2926,8 +2973,23 @@ function CxTileDialog({
   startLabel?: string;
   onStart: () => void;
   onClose: () => void;
-  /** Fractures: the Valley placement question, for the tile Actions that take an Exosuit. */
-  valleyGate?: { onPlace: (space: 'action' | 'capital') => void } | null;
+  /**
+   * Fractures: the Valley placement question for the tile Actions that take an Exosuit,
+   * plus the Blink check that follows it (the Valley board is a legal Blink destination).
+   */
+  valleyGate?: {
+    onPlace: (space: 'action' | 'capital') => void;
+    step: 'blink' | 'casing' | null;
+    blink: {
+      spaceLabel: string;
+      sameSpaceCount: number;
+      rule: 'command-token' | 'bottom-left';
+      token?: number;
+    } | null;
+    fluxDrawSrc: string | null;
+    onConfirmBlink: () => void;
+    onCasingContinue: () => void;
+  } | null;
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
@@ -2965,7 +3027,21 @@ function CxTileDialog({
           )}
           {/* Valley board Actions (Assimilate / Extract) take an Exosuit, so they gate on
               a free space first — Valley Action space, else the Valley Capital space. */}
-          {valleyGate && !readOnly ? (
+          {valleyGate && !readOnly && valleyGate.step === 'blink' && valleyGate.blink ? (
+            <BlinkPanel
+              botName="Chronossus"
+              blink={valleyGate.blink}
+              fluxDrawSrc={valleyGate.fluxDrawSrc}
+              destination={`${tile.name} (Valley board)`}
+              onConfirm={valleyGate.onConfirmBlink}
+            />
+          ) : valleyGate && !readOnly && valleyGate.step === 'casing' ? (
+            <FluxCasingPanel
+              botName="Chronossus"
+              fluxDrawSrc={valleyGate.fluxDrawSrc}
+              onContinue={valleyGate.onCasingContinue}
+            />
+          ) : valleyGate && !readOnly ? (
             <>
               <p className="pp-instruct">
                 Is a <b>{tile.name}</b> Action space open on the <b>Valley board</b>? Place

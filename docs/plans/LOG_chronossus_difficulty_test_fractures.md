@@ -166,9 +166,12 @@ neither needs the main Fractures module/mechanics.
   the **Valley board**, not pure tile effects — they take an Exosuit. `VALLEY_TILE_ACTIONS`
   + `placesExosuitFor` drive it: the tile dialog gates on "is a Valley Action space open?"
   (else the Valley Capital space, p.11), the placement spends an Exosuit, and the passing
-  rule now applies to them. They are deliberately **not** recorded in `placedExosuits`,
-  since the Valley board isn't the Main board and nothing there can Blink. Power Pack
-  (C06) stays a Chronossus-board effect with no Exosuit
+  rule now applies to them. The Valley board is a Blink **destination but never a source**:
+  the check runs after the Valley space is confirmed, a Blinked-in Exosuit is removed from
+  `placedExosuits` (it's on the Valley board now), and normal placements there are never
+  recorded. Power Pack (C06) stays a Chronossus-board effect with no Exosuit.
+  `BlinkPanel`/`FluxCasingPanel` were extracted from `DetailPanel` so the tile dialog runs
+  the identical check UI
 - [x] Fractures tile actions wired end to end: `tile-assimilate` / `tile-extract` /
   `tile-power-pack` ids, C04/C05/C06 (+C14 sharing the Assimilate id via a `tileFamily`
   override), `TileEffect.fluxCores` + `.assimilate`, per-tile instruction copy

@@ -110,6 +110,83 @@ const DEBUG_PHASES: Phase[] = [
   'endgame',
 ];
 
+/** Fractures: the Blink check drew a Flux Core — an Exosuit already on the board moves to
+ *  this Action instead of a new one being placed. Shared by the Action and tile dialogs. */
+export function BlinkPanel({
+  botName,
+  blink,
+  fluxDrawSrc,
+  destination,
+  onConfirm,
+}: {
+  botName: string;
+  blink: { spaceLabel: string; sameSpaceCount: number; rule: 'command-token' | 'bottom-left'; token?: number };
+  fluxDrawSrc?: string | null;
+  destination: string;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="place-prompt">
+      <p className="pp-instruct">
+        <b>Blink</b> — the {botName} drew a Flux Core from the Flux Pool, so it moves an
+        Exosuit it already has on the board instead of placing a new one.
+      </p>
+      {fluxDrawSrc && (
+        <div className="flux-draw">
+          <img src={fluxDrawSrc} alt="Flux Core drawn" />
+          <span>Drawn from the Flux Pool — discard it.</span>
+        </div>
+      )}
+      <p className="pp-instruct">
+        Move its Exosuit on <b>{blink.spaceLabel}</b>
+        {blink.sameSpaceCount > 1 ? ' (take the bottom one)' : ''} to <b>{destination}</b>,
+        and return that Exosuit’s Energy Core to the supply.
+      </p>
+      <p className="pp-sub">
+        {blink.rule === 'command-token'
+          ? `Rule A: that space matches Command token ${blink.token}.`
+          : 'Rule B: no Exosuit is on a space matching another Command token, so it takes the bottom-left-most one.'}
+      </p>
+      <div className="pp-buttons">
+        <button className="pp-confirm" onClick={onConfirm}>
+          ✓ Confirm moved
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Fractures: the Blink check drew an Empty Flux Casing — no Blink; place as usual. */
+export function FluxCasingPanel({
+  botName,
+  fluxDrawSrc,
+  onContinue,
+}: {
+  botName: string;
+  fluxDrawSrc?: string | null;
+  onContinue: () => void;
+}) {
+  return (
+    <div className="place-prompt">
+      <p className="pp-instruct">
+        <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it aside
+        (it returns to the Flux Pool in Clean Up); it places an Exosuit as usual.
+      </p>
+      {fluxDrawSrc && (
+        <div className="flux-draw">
+          <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
+          <span>Drawn from the Flux Pool — set it aside.</span>
+        </div>
+      )}
+      <div className="pp-buttons">
+        <button className="pp-confirm" onClick={onContinue}>
+          ▶ Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export type PendingStep =
   | null
   | 'mech'
@@ -3597,59 +3674,22 @@ export function DetailPanel({
           </div>
         )}
 
-        {/* Fractures — the Blink check drew a Flux Core: an Exosuit already on the board
-            moves to this Action instead of a new one being placed. */}
+        {/* Fractures — the Blink check's two outcomes (shared with the tile dialog). */}
         {pending === 'blink' && blink && (
-          <div className="place-prompt">
-            <p className="pp-instruct">
-              <b>Blink</b> — the {botName} drew a Flux Core from the Flux Pool, so it moves
-              an Exosuit it already has on the board instead of placing a new one.
-            </p>
-            {fluxDrawSrc && (
-              <div className="flux-draw">
-                <img src={fluxDrawSrc} alt="Flux Core drawn" />
-                <span>Drawn from the Flux Pool — discard it.</span>
-              </div>
-            )}
-            <p className="pp-instruct">
-              Move its Exosuit on <b>{blink.spaceLabel}</b>
-              {blink.sameSpaceCount > 1 ? ' (take the bottom one)' : ''} to{' '}
-              <b>{spaceLabel(hotspot.action)}</b>, and return that Exosuit’s Energy Core to
-              the supply.
-            </p>
-            <p className="pp-sub">
-              {blink.rule === 'command-token'
-                ? `Rule A: that space matches Command token ${blink.token}.`
-                : 'Rule B: no Exosuit is on a space matching another Command token, so it takes the bottom-left-most one.'}
-            </p>
-            <div className="pp-buttons">
-              <button className="pp-confirm" onClick={onConfirmBlink}>
-                ✓ Confirm moved
-              </button>
-            </div>
-          </div>
+          <BlinkPanel
+            botName={botName}
+            blink={blink}
+            fluxDrawSrc={fluxDrawSrc}
+            destination={spaceLabel(hotspot.action)}
+            onConfirm={onConfirmBlink}
+          />
         )}
-
-        {/* Fractures — the Blink check drew an Empty Flux Casing: no Blink this turn. */}
         {pending === 'fluxCasing' && (
-          <div className="place-prompt">
-            <p className="pp-instruct">
-              <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it
-              aside (it returns to the Flux Pool in Clean Up); it places an Exosuit as
-              usual.
-            </p>
-            {fluxDrawSrc && (
-              <div className="flux-draw">
-                <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
-                <span>Drawn from the Flux Pool — set it aside.</span>
-              </div>
-            )}
-            <div className="pp-buttons">
-              <button className="pp-confirm" onClick={onFluxCasingContinue}>
-                ▶ Continue
-              </button>
-            </div>
-          </div>
+          <FluxCasingPanel
+            botName={botName}
+            fluxDrawSrc={fluxDrawSrc}
+            onContinue={onFluxCasingContinue}
+          />
         )}
 
         {/* Step 2 — Construct: take the higher-VP building, enter its printed VP. */}
