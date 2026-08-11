@@ -534,6 +534,14 @@
   display: inline-flex;
   align-items: center;
 }
+/* Fractures: set-aside Casings + the Tech/Ops counts in the turn overview. */
+.cx-flux-aside {
+  opacity: 0.75;
+}
+.cx-tech-ops {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
 .eoa-flag.cx-hypersync-flag {
   display: inline-flex;
   align-items: center;

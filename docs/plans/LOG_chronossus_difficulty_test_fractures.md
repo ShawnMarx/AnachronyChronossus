@@ -180,8 +180,12 @@ neither needs the main Fractures module/mechanics.
 - [x] 9 new tests (209 total). Verified live: both draw outcomes, the two-question gate
   (World Council recorded), a Blink moving the Research Exosuit to Construct with
   `hasCore:false` and `exosuitsAvailable` unchanged, and Assimilate taking an Operator
+- [x] Turn-overview tracking, mirroring the Energy Pool: a `CxFluxPool` chip (Flux Cores /
+  Empty Flux Casings, plus a ⊘ count of Casings set aside this Era) and a Tech · Ops chip,
+  both Fractures-only. Uses the existing `flux-core.png` / `exhausted-flux-core.png` art
 - [ ] **Not yet:** Autoleap on Fractures B-sides is inherited from the shared tile path but
-  untested; no Fractures playthrough variation yet (F6)
+  untested; no Fractures playthrough variation yet (F6); the score screen doesn't show the
+  Technology / leftover-Flux lines the engine already computes (F5)
 
 ### F4 — Board / view / overlays
 - [ ] Art + overlays (Flux Pool, Cores, Fracture Device, X-tiles); calibrate positions; routes

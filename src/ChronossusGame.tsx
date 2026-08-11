@@ -435,6 +435,10 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
 
 const EC_ICON = '/assets/solo/chronossus/energy-core.png';
 const EEC_ICON = '/assets/solo/chronossus/exhausted-energy-core.png';
+// Fractures: the Flux Pool's two token kinds — Flux Cores and the Empty Flux
+// Casings drawn out of it (the exhausted-core art is the empty casing).
+const FC_ICON = '/assets/solo/chronossus/flux-core.png';
+const EFC_ICON = '/assets/solo/chronossus/exhausted-flux-core.png';
 const EXOSUIT_ICON = '/assets/solo/chronossus/exosuit.png';
 const PATH_ICON = '/assets/solo/chronossus/path-marker.png';
 
@@ -461,6 +465,41 @@ function CxEnergyPool({ pool, size = 20 }: { pool: EnergyPool; size?: number }) 
         <img src={EEC_ICON} alt="Exhausted Energy Cores" style={{ height: size }} />
         <b>{pool.exhausted}</b>
       </span>
+    </span>
+  );
+}
+
+/**
+ * Fractures' Flux Pool, shown the same way as the Energy Pool: Flux Cores and Empty Flux
+ * Casings still in the pool, plus the Casings set aside this Era (they return in Clean Up)
+ * — the pool's contents are what decide how often it Blinks.
+ */
+function CxFluxPool({
+  pool,
+  size = 20,
+}: {
+  pool: NonNullable<ChronossusState['fluxPool']>;
+  size?: number;
+}) {
+  return (
+    <span className="cx-energy-pool">
+      <span className="cx-energy" title="Flux Cores in the Flux Pool — each one is a Blink">
+        <img src={FC_ICON} alt="Flux Cores" style={{ height: size }} />
+        <b>{pool.cores}</b>
+      </span>
+      <span className="cx-energy" title="Empty Flux Casings still in the Flux Pool">
+        <img src={EFC_ICON} alt="Empty Flux Casings" style={{ height: size }} />
+        <b>{pool.casings}</b>
+      </span>
+      {pool.setAside > 0 && (
+        <span
+          className="cx-energy cx-flux-aside"
+          title="Empty Flux Casings set aside this Era — they return to the pool in Clean Up"
+        >
+          <span aria-hidden>⊘</span>
+          <b>{pool.setAside}</b>
+        </span>
+      )}
     </span>
   );
 }
@@ -2419,6 +2458,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   >
                     <CxEnergyPool pool={bot.energyPool} size={18} />
                   </TapFlag>
+                  {fracturesMode && bot.fluxPool && (
+                    <TapFlag
+                      className="cx-energy-flag"
+                      hint="Flux Pool — Flux Cores / Empty Flux Casings, and any Casings set aside this Era (they return in Clean Up). A drawn Flux Core makes the Chronossus Blink."
+                    >
+                      <CxFluxPool pool={bot.fluxPool} size={18} />
+                    </TapFlag>
+                  )}
+                  {fracturesMode && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint="Technology cards it holds (3 VP each at the end) / Operators it has recruited"
+                    >
+                      <span className="cx-tech-ops">
+                        <b>{bot.technologies ?? 0}</b> Tech · <b>{bot.operators ?? 0}</b> Ops
+                      </span>
+                    </TapFlag>
+                  )}
                   {hypersyncMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
