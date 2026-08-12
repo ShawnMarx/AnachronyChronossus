@@ -13,7 +13,12 @@ export interface ModularTile {
   code: string;
   /** The tile's printed name (e.g. 'Reboot'). */
   name: string;
-  /** Verbatim rulebook effect text (the Appendix summary, pp. 20–21). */
+  /**
+   * Verbatim rulebook effect text (the Appendix summary, pp. 20–21), with one deliberate
+   * deviation: where the Appendix writes a B side as "Same as C0nA, but …", we restate the
+   * A-side text in full and then append the B-side delta. The player is reading the tile
+   * in front of them and shouldn't have to go find its other side to learn what it does.
+   */
   rule: string;
   /**
    * The longer, verbatim write-up from the tile's own module section (the rulebook
@@ -94,7 +99,7 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C04B: {
     code: 'C04B',
     name: 'Assimilate and Score',
-    rule: 'Same as C04A but the Chronossus also gains 1 VP.',
+    rule: 'Roll a Research Shape die.\n» On Circle: The Chronossus recruits an Operator and gains 1 Flux Core.\n» On Triangle: It takes a Technology card (preferring the secondary stack).\n» On Square: It either recruits an Operator (and gains 1 Flux Core) or takes a Technology card, whichever it has fewer of (Operator if tied).\nThe Chronossus also gains 1 VP.',
     detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
@@ -108,7 +113,7 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C05B: {
     code: 'C05B',
     name: 'Efficient Extract',
-    rule: 'Same as C05A, but the Chronossus gains 2 extra Flux Cores.',
+    rule: 'The Chronossus gets both options: it gains 2 Flux Cores into the Flux Pool and 2 Energy Cores into the Energy Pool. It gains 2 extra Flux Cores (4 in total).',
     detail: EXTRACT_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
@@ -157,19 +162,19 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C09B: {
     code: 'C09B',
     name: 'Adventure and Score',
-    rule: 'Same as C09A, but the Chronossus also gains 1 VP.',
+    rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 VP.',
     future: true,
   },
   C10A: {
     code: 'C10A',
     name: 'Adventure',
-    rule: 'Same as C09A.',
+    rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade.',
     future: true,
   },
   C10B: {
     code: 'C10B',
     name: 'Adventure and Energy Pack',
-    rule: 'Same as C09A and C10A, but the Chronossus also gains 1 Energy Core.',
+    rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 Energy Core.',
     future: true,
   },
   C11A: {
@@ -181,7 +186,7 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C11B: {
     code: 'C11B',
     name: 'Acquire Guardian and Score (Autoleap)',
-    rule: 'Same as C11A, but the Chronossus also gains 2 VPs. Then (same as C11A) move the Command token to the next position.',
+    rule: 'The Chronossus places an Exosuit on the World Council space, taking the First Player (if able), but it does not perform an Action. Instead, it recruits the leftmost available Guardian at no additional cost. If the World Council space is already taken, it spends a Worker (Most > Scientist > Engineer > Administrator > Genius), and acquires a Guardian the same way. (See page 16 for details). It also gains 2 VPs. Then, move the Command token to the next position.',
     future: true,
   },
   C12A: {
@@ -211,14 +216,14 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   C14A: {
     code: 'C14A',
     name: 'Assimilate and Flux Pack',
-    rule: 'Same as C04A, but it gains 1 additional Flux Core.',
+    rule: 'Roll a Research Shape die.\n» On Circle: The Chronossus recruits an Operator and gains 1 Flux Core.\n» On Triangle: It takes a Technology card (preferring the secondary stack).\n» On Square: It either recruits an Operator (and gains 1 Flux Core) or takes a Technology card, whichever it has fewer of (Operator if tied).\nIt gains 1 additional Flux Core.',
     detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C14B: {
     code: 'C14B',
     name: 'Assimilate, Score and Flux Pack',
-    rule: 'Same as C04B, but it gains 1 additional Flux Core.',
+    rule: 'Roll a Research Shape die.\n» On Circle: The Chronossus recruits an Operator and gains 1 Flux Core.\n» On Triangle: It takes a Technology card (preferring the secondary stack).\n» On Square: It either recruits an Operator (and gains 1 Flux Core) or takes a Technology card, whichever it has fewer of (Operator if tied).\nThe Chronossus also gains 1 VP and 1 additional Flux Core.',
     detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },

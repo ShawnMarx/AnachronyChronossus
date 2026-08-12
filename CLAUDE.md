@@ -251,6 +251,12 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
   prop and is rendered through `renderModDialogs(flow)` alongside `renderDetailPanel(flow)`.
   A new module's dialogs must join that helper — otherwise they go full-screen on a tablet
   while base-game Actions don't.
+- **A B-side tile's rule text restates its A side.** The rulebook Appendix writes most B
+  sides as "Same as C0nA, but …" — copying that verbatim leaves the player reading a tile
+  that doesn't say what it does. `ModularTile.rule` in `chronossusTiles.ts` therefore
+  restates the A-side text in full and appends the B-side delta (the base and HFA tiles
+  already did; Fractures' C04B/C05B/C14A/C14B were brought in line 2026-08-12). This is the
+  one place we knowingly depart from verbatim — note it when adding a module's tiles.
 - **Never tell the player to place before the app knows what happens.** With Fractures the
   order is: ask whether the space is free → Blink check → the app picks which Exosuit →
   *then* the instruction (move this one, or place a new one). The placement gate therefore
