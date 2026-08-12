@@ -928,7 +928,7 @@ describe('Fractures — Assimilate (C04/C14)', () => {
     expect(bot.operatorSlots).toEqual({ genius: 0 });
   });
 
-  it('keeps an Operator when its column also holds a plain Worker', () => {
+  it('discards the Operator when its column also holds a plain Worker', () => {
     // The Genius column holds a plain Genius *and* an Operator.
     const bot = fracturesBot({
       workers: { genius: 2, administrator: 1, engineer: 1, scientist: 0 },
@@ -936,9 +936,11 @@ describe('Fractures — Assimilate (C04/C14)', () => {
       operatorSlots: { genius: 1 },
     });
     assimilate(bot, 'circle'); // fills scientist (the topmost empty), completing the set
-    expect(bot.workers.genius).toBe(1); // the plain Genius was the discard, not the Operator
-    expect(bot.operators).toBe(1); // the new scientist Operator went with the set
-    expect(bot.operatorSlots).toEqual({ genius: 1, scientist: 0 });
+    // Operators are always the discard: the Genius one goes back to the Valley supply and
+    // the plain Genius stays, as does the new scientist Operator that completed the set.
+    expect(bot.workers.genius).toBe(1);
+    expect(bot.operators).toBe(0);
+    expect(bot.operatorSlots).toEqual({ genius: 0, scientist: 0 });
   });
 
   it('no Operators left: Failed Action for 1 VP, no Operator and no Flux Core', () => {

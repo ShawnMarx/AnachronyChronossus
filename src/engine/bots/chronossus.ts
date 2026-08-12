@@ -272,8 +272,13 @@ export function assimilate(
     }
     // An Operator is a wildcard Worker: it goes into the topmost empty space of the
     // Chronossus's Worker collection and counts as that type for all purposes, the
-    // +5 VP set included (Solo Opponents p.13). `operatorSlots` remembers which
-    // column each one is in so the set discard knows what it returns to the supply.
+    // +5 VP set included (Solo Opponents p.13).
+    //
+    // `operators` is kept as its own count for ONE reason: Assimilate's Square result
+    // takes whichever of Operators / Technologies it has fewer of. `operatorSlots`
+    // remembers which column each one sits in, so the +5 VP set discard knows how many
+    // Operators go back to the Valley supply. Neither needs a tracker of its own in the
+    // UI — the Worker columns already show them.
     const slot = operatorWorkerSlot(bot);
     bot.workers[slot] += 1;
     bot.operatorSlots = { ...bot.operatorSlots, [slot]: (bot.operatorSlots?.[slot] ?? 0) + 1 };
@@ -1052,9 +1057,10 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * The +5 VP Worker set: once the Chronossus holds all 4 Worker types it discards one of
  * each. Fractures' Operators sit in the Worker collection as wildcards and count towards
  * their column "for all purposes, including discarding for 5 VPs" (Solo Opponents p.13),
- * so they can be what gets discarded. A column holding both a plain Worker and an
- * Operator discards the plain Worker first — the rulebook doesn't specify, and keeping
- * the wildcard is the reading that leaves the collection unchanged in kind.
+ * so they can be what gets discarded. When a column holds both a plain Worker and an
+ * Operator we always discard the **Operator** — the rulebook doesn't specify, and this is
+ * the choice the player makes at the table: it puts the Operator back in the Valley
+ * supply (where it can matter to the player) and leaves the plain Worker in the column.
  *
  * Mutates `bot` and returns the phrase describing the discard, or null when the set
  * isn't complete.
@@ -1064,7 +1070,7 @@ export function applyWorkerSetBonus(bot: ChronossusState): string | null {
   let operatorsDiscarded = 0;
   for (const w of RECRUIT_PRIORITY) {
     const ops = bot.operatorSlots?.[w] ?? 0;
-    if (ops > 0 && ops >= bot.workers[w]) {
+    if (ops > 0) {
       bot.operatorSlots = { ...bot.operatorSlots, [w]: ops - 1 };
       operatorsDiscarded += 1;
     }

@@ -405,6 +405,17 @@ function counterInfo(bot: ChronossusState, c: BoardCounter): string {
     case 'gold':
     case 'titanium':
       return `${c.label}: ${count} cube${count === 1 ? '' : 's'}`;
+    case 'genius':
+    case 'administrator':
+    case 'engineer':
+    case 'scientist': {
+      // Fractures: Operators sit in these columns as wildcards, so they need no tracker of
+      // their own — but the column should say when one of its Workers is an Operator.
+      const ops = bot.operatorSlots?.[c.key] ?? 0;
+      return ops > 0
+        ? `${c.label}: ${count} (${ops} ${ops === 1 ? 'is an Operator' : 'are Operators'})`
+        : `${c.label}: ${count}`;
+    }
     default:
       return `${c.label}: ${count}`;
   }

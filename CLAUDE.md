@@ -251,6 +251,14 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
   prop and is rendered through `renderModDialogs(flow)` alongside `renderDetailPanel(flow)`.
   A new module's dialogs must join that helper — otherwise they go full-screen on a tablet
   while base-game Actions don't.
+- **Operators (Fractures) are Workers, not a separate resource.** An Operator is a wildcard
+  Worker living in a Worker column, so the Worker trackers already show it — no Operator
+  tracker in the UI. The engine still keeps `operators` (a count) and `operatorSlots` (which
+  column each sits in) for exactly two reasons: Assimilate's **Square** result takes
+  whichever of Operators / Technologies it has fewer of, and the +5 VP Worker-set discard
+  has to know how many Operators go back to the Valley supply. When a column holds both a
+  plain Worker and an Operator, the set **always discards the Operator** (our call; the
+  rulebook doesn't say). Tapping a Worker badge shows how many of that column are Operators.
 - **A B-side tile's rule text restates its A side.** The rulebook Appendix writes most B
   sides as "Same as C0nA, but …" — copying that verbatim leaves the player reading a tile
   that doesn't say what it does. `ModularTile.rule` in `chronossusTiles.ts` therefore

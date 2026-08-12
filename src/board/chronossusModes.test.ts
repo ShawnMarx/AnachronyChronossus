@@ -9,6 +9,10 @@ import {
   DIFFICULTY_FRACTURES_C14,
   CHRONOSSUS_MODES,
 } from './chronossusModes';
+import { CHRONOSSUS_COUNTERS } from './chronossusHotspots';
+import { emptyChronossusState, Chronossus } from '../engine';
+
+const { operatorWorkerSlot } = Chronossus;
 
 describe('getMode — base lookup', () => {
   it('returns the base mode by default (undefined or unknown id)', () => {
@@ -155,5 +159,20 @@ describe('Fractures + Hypersync combo mode', () => {
   it('still honours the C14-for-C04 difficulty in the combo', () => {
     const mode = getMode('fractures+hypersync', [DIFFICULTY_FRACTURES_C14]);
     expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C14');
+  });
+});
+
+describe('Worker badges line up with the Operator slots', () => {
+  it('every Worker column an Operator can fill has a board counter of the same key', () => {
+    // `counterInfo` (ChronossusGame) reads `operatorSlots[counter.key]` to say how many of
+    // a column are Operators — that only works while the two key sets agree.
+    const counterKeys = CHRONOSSUS_COUNTERS.map((c) => c.key);
+    const bot = emptyChronossusState();
+    for (const w of ['genius', 'administrator', 'engineer', 'scientist'] as const) {
+      expect(counterKeys).toContain(w);
+      // …and it is the key operatorWorkerSlot actually returns.
+      const slot = operatorWorkerSlot({ ...bot, workers: { ...bot.workers, [w]: 0 } });
+      expect(counterKeys).toContain(slot);
+    }
   });
 });
