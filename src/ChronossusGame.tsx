@@ -612,9 +612,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // and the space answer for the placement gate's two questions.
   const [fluxDraw, setFluxDraw] = useState<'core' | 'casing' | null>(null);
   // Fractures: the Blink-check step inside the Valley tile dialog, and the space answered.
-  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | 'operators' | null>(
-    null,
-  );
+  const [tileBlinkStep, setTileBlinkStep] = useState<
+    'blink' | 'casing' | 'operators' | 'assimilate' | null
+  >(null);
   const valleySpaceRef = useRef<'action' | 'capital'>('action');
   // Fractures' Assimilate: the shape rolled for this turn, and the placement answers held
   // while the "are there Operators left?" gate is up (Solo Opponents p.13).
@@ -1531,7 +1531,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         })()}
         mineOrder={Chronobot.mineResourceOrder(bot)}
         workerOrder={Chronobot.recruitWorkerOrder(bot)}
-        botName="Chronossus"
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
@@ -1589,6 +1588,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
                   onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
                   onOperatorsAnswer: onOperatorsAnswer,
+                  onAssimilateContinue,
+                  assimilateShape: assimShapeRef.current,
                   operatorSlot: Chronossus.operatorWorkerSlot(bot),
                   blinkCheck: Chronossus.shouldCheckBlink(bot, pendingTile) }
               : null
@@ -1951,23 +1952,32 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Autoleap tile) close. The result lands in History / the turn-status aside.
   const startTileTurn = (valleySpace?: 'action' | 'capital', blinked = false) => {
     if (!pendingTile) return;
-    // Assimilate rolls the shape die before the Action; if that branch recruits an
-    // Operator, the player has to say whether any are left in the Valley — with none
-    // left it is a Failed Action instead (Solo Opponents p.13).
+    // Assimilate rolls the shape die once the Exosuit is settled, then SHOWS the result
+    // before resolving: the Operator branch needs an answer ("any left in the Valley?" —
+    // with none left it is a Failed Action, Solo Opponents p.13) and the Technology branch
+    // still has to tell the player which card to take.
     if (tileAssimilates(pendingTile)) {
       const shape = assimShapeRef.current ?? rollShapeDie();
       assimShapeRef.current = shape;
-      if (Chronossus.assimilateTakesOperator(bot, shape)) {
-        assimGateRef.current = { space: valleySpace, blinked };
-        setTileBlinkStep('operators');
-        return;
-      }
+      assimGateRef.current = { space: valleySpace, blinked };
+      setTileBlinkStep(Chronossus.assimilateTakesOperator(bot, shape) ? 'operators' : 'assimilate');
+      return;
     }
     chainOpenRef.current = false; // finishTurn re-sets it if the chain continues
     resolveTileSlot(pendingTile, valleySpace, blinked);
     setTileBlinkStep(null);
     if (!chainOpenRef.current) closeTile();
   };
+  /** The Technology branch of Assimilate: the result was shown, now resolve it. */
+  const onAssimilateContinue = () => {
+    if (!pendingTile) return;
+    const { space, blinked } = assimGateRef.current;
+    chainOpenRef.current = false;
+    resolveTileSlot(pendingTile, space, blinked);
+    setTileBlinkStep(null);
+    if (!chainOpenRef.current) closeTile();
+  };
+
   /** The Operator gate's answer: resolve the Assimilate with (or without) an Operator. */
   const onOperatorsAnswer = (available: boolean) => {
     if (!pendingTile) return;
@@ -2772,7 +2782,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             <ReadyToBegin
               firstPlayer={state.firstPlayer}
               era={state.era}
-              botName="Chronossus"
               onDismiss={() => setActionsIntroEra(state.era)}
               onTakeBotAction={() => {
                 setActionsIntroEra(state.era);
@@ -2784,7 +2793,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         {/* End of Action Rounds → who's First Player next Era → Clean Up. */}
         {showFirstPlayer && (
           <FirstPlayerPrompt
-            botName="Chronossus"
             onAnswer={answerFirstPlayer}
             onCancel={() => setShowFirstPlayer(false)}
           />
@@ -2919,7 +2927,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           state={state}
           meta={meta!}
           onCommit={commitWarp}
-          botName="Chronossus"
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
           roll={ui.warpRoll}
           onRoll={rollWarp}
@@ -3055,7 +3062,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           meta={meta!}
           onRoll={rollBotParadox}
           onAdvance={advanceParadox}
-          botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
           pendingRoll={ui.paradoxRoll}
           icons={{ ...PARADOX_ICONS, warp: '/assets/solo/chronossus/warp-tile.png' }}
@@ -3089,7 +3095,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
       {showFirstPlayer && (
         <FirstPlayerPrompt
-          botName="Chronossus"
           onAnswer={answerFirstPlayer}
           onCancel={() => setShowFirstPlayer(false)}
         />
@@ -3166,7 +3171,7 @@ function CxTileDialog({
    */
   valleyGate?: {
     onPlace: (space: 'action' | 'capital') => void;
-    step: 'blink' | 'casing' | 'operators' | null;
+    step: 'blink' | 'casing' | 'operators' | 'assimilate' | null;
     blink: {
       spaceLabel: string;
       sameSpaceCount: number;
@@ -3178,6 +3183,10 @@ function CxTileDialog({
     onCasingContinue: () => void;
     /** Assimilate only: the player's answer to "are there Operators left in the Valley?" */
     onOperatorsAnswer: (available: boolean) => void;
+    /** Assimilate's Technology branch: the result was shown, resolve the Action. */
+    onAssimilateContinue: () => void;
+    /** The shape the app rolled for this Assimilate, shown with the result. */
+    assimilateShape: BreakthroughShape | null;
     /** Which Worker column an Operator would fill (the topmost empty space). */
     operatorSlot: string;
     /** A Blink check will run once the space is confirmed — see DetailPanel's blinkCheck. */
@@ -3228,18 +3237,40 @@ function CxTileDialog({
               a free space first — Valley Action space, else the Valley Capital space. */}
           {valleyGate && !readOnly && valleyGate.step === 'blink' && valleyGate.blink ? (
             <BlinkPanel
-              botName="Chronossus"
               blink={valleyGate.blink}
               fluxDrawSrc={valleyGate.fluxDrawSrc}
               destination={`${tile.name} (Valley board)`}
               onConfirm={valleyGate.onConfirmBlink}
             />
+          ) : valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
+            <>
+              <p className="pp-instruct">
+                The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
+                takes a <b>Technology card</b>, preferring the secondary stack.
+              </p>
+              {valleyGate.assimilateShape && (
+                <div className="shape-roll">
+                  <ShapeIcon shape={valleyGate.assimilateShape} size={52} />
+                </div>
+              )}
+              <p className="pp-sub">It is worth 3 VP at the end of the game.</p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={valleyGate.onAssimilateContinue}>
+                  ✓ Confirm taken
+                </button>
+              </div>
+            </>
           ) : valleyGate && !readOnly && valleyGate.step === 'operators' ? (
             <>
               <p className="pp-instruct">
-                The Chronossus recruits an <b>Operator</b>. Are there any left in the{' '}
-                <b>Valley</b>?
+                The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
+                recruits an <b>Operator</b>. Are there any left in the <b>Valley</b>?
               </p>
+              {valleyGate.assimilateShape && (
+                <div className="shape-roll">
+                  <ShapeIcon shape={valleyGate.assimilateShape} size={52} />
+                </div>
+              )}
               <p className="pp-sub">
                 If so, place it in the <b>{valleyGate.operatorSlot}</b> space — the topmost
                 empty space of its Worker collection. It is a wildcard and counts as that
@@ -3262,7 +3293,6 @@ function CxTileDialog({
             </>
           ) : valleyGate && !readOnly && valleyGate.step === 'casing' ? (
             <PlaceExosuitPanel
-              botName="Chronossus"
               destination={`the ${tile.name} space on the Valley board`}
               fluxDrawSrc={valleyGate.fluxDrawSrc}
               drewCasing
@@ -3282,13 +3312,14 @@ function CxTileDialog({
               </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
-                  ✓ Yes — placed there
+                  {valleyGate.blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed there'}
                 </button>
                 <button className="pp-cannot" onClick={() => valleyGate.onPlace('capital')}>
                   ✗ No — use the Valley Capital space
                 </button>
               </div>
-              <p className="pp-sub">{tileInstruction(code)}</p>
+              {/* No effect blurb here: the gate is only asking about the space. What the
+                  Action does comes with the steps that resolve it (and the 📖 box below). */}
             </>
           ) : (
             <p className="pp-instruct">{tileInstruction(code)}</p>
@@ -3568,7 +3599,6 @@ function HypersyncDialog({
           </div>
         ) : blinkStep === 'blink' && blink ? (
           <BlinkPanel
-            botName="Chronossus"
             blink={blink}
             fluxDrawSrc={fluxDrawSrc}
             destination={`Hypersync hex ${rolledHex ?? ''}`.trim()}
@@ -3576,7 +3606,6 @@ function HypersyncDialog({
           />
         ) : blinkStep === 'casing' ? (
           <PlaceExosuitPanel
-            botName="Chronossus"
             destination={
               rolledHex != null
                 ? `Hypersync space ${rolledHex}`

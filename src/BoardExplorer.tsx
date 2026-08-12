@@ -113,13 +113,11 @@ const DEBUG_PHASES: Phase[] = [
 /** Fractures: the Blink check drew a Flux Core — an Exosuit already on the board moves to
  *  this Action instead of a new one being placed. Shared by the Action and tile dialogs. */
 export function BlinkPanel({
-  botName,
   blink,
   fluxDrawSrc,
   destination,
   onConfirm,
 }: {
-  botName: string;
   blink: { spaceLabel: string; sameSpaceCount: number; rule: 'command-token' | 'bottom-left'; token?: number };
   fluxDrawSrc?: string | null;
   destination: string;
@@ -128,13 +126,12 @@ export function BlinkPanel({
   return (
     <div className="place-prompt">
       <p className="pp-instruct">
-        <b>Blink</b> — the {botName} drew a Flux Core from the Flux Pool, so it moves an
-        Exosuit it already has on the board instead of placing a new one.
+        <b>Blink check</b>
       </p>
       {fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Flux Core drawn" />
-          <span>Drawn from its Flux Pool (the app tracks the pool for you).</span>
+          <span>Drawn from the Flux Pool — Blink activated.</span>
         </div>
       )}
       <p className="pp-instruct">
@@ -167,13 +164,11 @@ export function BlinkPanel({
  * discard or set aside.
  */
 export function PlaceExosuitPanel({
-  botName,
   destination,
   fluxDrawSrc,
   drewCasing = false,
   onContinue,
 }: {
-  botName: string;
   /** Where it places — the confirmed space ("Construct", "World Council", …). */
   destination: string;
   fluxDrawSrc?: string | null;
@@ -184,14 +179,13 @@ export function PlaceExosuitPanel({
     <div className="place-prompt">
       {drewCasing && (
         <p className="pp-instruct">
-          <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>, so there is
-          no Blink.
+          <b>Blink check</b>
         </p>
       )}
       {drewCasing && fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
-          <span>Drawn from its Flux Pool (the app tracks the pool for you).</span>
+          <span>Drawn from the Flux Pool — no Blink.</span>
         </div>
       )}
       <p className="pp-instruct">
@@ -3679,7 +3673,11 @@ export function DetailPanel({
             )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onConfirmPlace}>
-                {!fractures ? '✓ Confirm placed' : blinkCheck ? '✓ Yes — one is open' : '✓ Yes — placed there'}
+                {!fractures
+                  ? '✓ Confirm placed'
+                  : blinkCheck
+                    ? '✓ Yes — check for Blink'
+                    : '✓ Yes — placed there'}
               </button>
               <button className="pp-cannot" onClick={onCannotPlace}>
                 {fractures ? '✗ No — none open' : '✗ Cannot place'}
@@ -3704,7 +3702,7 @@ export function DetailPanel({
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onWorldCouncilYes}>
-                {blinkCheck ? '✓ Yes — it’s open' : '✓ Yes — placed on World Council'}
+                {blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed on World Council'}
               </button>
               <button className="pp-cannot" onClick={onWorldCouncilNo}>
                 ✗ No — nothing open
@@ -3716,7 +3714,6 @@ export function DetailPanel({
         {/* Fractures — the Blink check's two outcomes (shared with the tile dialog). */}
         {pending === 'blink' && blink && (
           <BlinkPanel
-            botName={botName}
             blink={blink}
             fluxDrawSrc={fluxDrawSrc}
             destination={placeDestination ?? spaceLabel(hotspot.action)}
@@ -3725,7 +3722,6 @@ export function DetailPanel({
         )}
         {pending === 'fluxCasing' && (
           <PlaceExosuitPanel
-            botName={botName}
             destination={placeDestination ?? spaceLabel(hotspot.action)}
             fluxDrawSrc={fluxDrawSrc}
             drewCasing
