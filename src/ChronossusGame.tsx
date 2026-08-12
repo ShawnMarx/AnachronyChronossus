@@ -1531,6 +1531,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         })()}
         mineOrder={Chronobot.mineResourceOrder(bot)}
         workerOrder={Chronobot.recruitWorkerOrder(bot)}
+        botName="Chronossus"
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
@@ -1591,7 +1592,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onNoSpace: onValleyNoSpace,
                   onAssimilateContinue,
                   assimilateShape: assimShapeRef.current,
-                  operatorSlot: Chronossus.operatorWorkerSlot(bot),
                   blinkCheck: Chronossus.shouldCheckBlink(bot, pendingTile) }
               : null
           }
@@ -2799,6 +2799,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             <ReadyToBegin
               firstPlayer={state.firstPlayer}
               era={state.era}
+              botName="Chronossus"
               onDismiss={() => setActionsIntroEra(state.era)}
               onTakeBotAction={() => {
                 setActionsIntroEra(state.era);
@@ -2810,6 +2811,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         {/* End of Action Rounds → who's First Player next Era → Clean Up. */}
         {showFirstPlayer && (
           <FirstPlayerPrompt
+            botName="Chronossus"
             onAnswer={answerFirstPlayer}
             onCancel={() => setShowFirstPlayer(false)}
           />
@@ -2944,6 +2946,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           state={state}
           meta={meta!}
           onCommit={commitWarp}
+          botName="Chronossus"
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
           roll={ui.warpRoll}
           onRoll={rollWarp}
@@ -3079,6 +3082,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           meta={meta!}
           onRoll={rollBotParadox}
           onAdvance={advanceParadox}
+          botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
           pendingRoll={ui.paradoxRoll}
           icons={{ ...PARADOX_ICONS, warp: '/assets/solo/chronossus/warp-tile.png' }}
@@ -3112,6 +3116,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
       {showFirstPlayer && (
         <FirstPlayerPrompt
+          botName="Chronossus"
           onAnswer={answerFirstPlayer}
           onCancel={() => setShowFirstPlayer(false)}
         />
@@ -3206,8 +3211,6 @@ function CxTileDialog({
     onAssimilateContinue: () => void;
     /** The shape the app rolled for this Assimilate, shown with the result. */
     assimilateShape: BreakthroughShape | null;
-    /** Which Worker column an Operator would fill (the topmost empty space). */
-    operatorSlot: string;
     /** A Blink check will run once the space is confirmed — see DetailPanel's blinkCheck. */
     blinkCheck: boolean;
   } | null;
@@ -3313,10 +3316,10 @@ function CxTileDialog({
                   <ShapeIcon shape={valleyGate.assimilateShape} size={52} />
                 </div>
               )}
+              {/* The Chronossus's Worker collection is app-tracked, so the only physical
+                  action is taking the Operator out of the Valley. */}
               <p className="pp-sub">
-                If so, place it in the <b>{valleyGate.operatorSlot}</b> space — the topmost
-                empty space of its Worker collection. It is a wildcard and counts as that
-                Worker type for everything, the 5 VP set included.
+                If so, discard one <b>Operator</b> from the Valley.
               </p>
               <div className="pp-buttons">
                 <button
