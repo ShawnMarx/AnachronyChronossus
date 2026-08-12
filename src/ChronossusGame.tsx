@@ -1426,7 +1426,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setSelected(tileKey(p.key));
       return;
     }
-    if (!p.action) return;
     // Hypersync slot (C12): show / take the Hypersync Action instead of the tile.
     const hs = hypersyncCodeAtSlot(p.key);
     if (hs) {
@@ -1437,7 +1436,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setPendingHypersync({ code: hs, readOnly: !debug });
       return;
     }
-    const tileAction = p.action as ChronossusTileActionId;
+    // The live tile for THIS mode — `p.action` is the base-game tile the path data names
+    // for the slot, so reading it directly opened Reboot/Score/Energy Pack on top of a
+    // Fractures game's C04/C05/C06 art.
+    const tileAction = tileActionAt(p.key);
+    if (!tileAction) return;
     if (!debug) {
       showTileRules(tileAction);
       return;
@@ -2298,6 +2301,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 const sel = calibrate && selected === k;
                 // Render the live tile for this mode (family + selected A/B side).
                 const code = slotTileCode(p);
+                // Describe the tile actually sitting here in this mode, not the base-game
+                // tile the path data names for the slot.
+                const liveAction = tileActionAt(p.key);
+                const desc = liveAction ? TILE_DESC[liveAction] : undefined;
                 return (
                   <img
                     key={k}
@@ -2305,7 +2312,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     src={`/assets/solo/chronossus/tiles/${code}.png`}
                     alt={`Modular tile ${code}`}
                     style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
-                    title={`Slot ${p.label} · ${code}${p.action ? ` — ${TILE_DESC[p.action] ?? ''}` : ''}`}
+                    title={`Slot ${p.label} · ${code}${desc ? ` — ${desc}` : ''}`}
                     onClick={(e) => {
                       e.stopPropagation();
                       onTileArtClick(p);
