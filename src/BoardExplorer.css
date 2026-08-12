@@ -402,6 +402,14 @@
   color: var(--sp-text-1);
   line-height: 1.3;
 }
+/* Component art inline in a History line (e.g. the Flux Core on a Blink). Sized to the
+   text so it reads as part of the sentence. */
+.history-icon {
+  height: 1.05em;
+  width: auto;
+  vertical-align: -0.15em;
+  margin-right: 0.15em;
+}
 .stats-row {
   display: flex;
   gap: 0.5rem;
@@ -2021,7 +2029,7 @@
 .eoa-turn-row {
   display: flex;
   gap: 0.5rem;
-  align-items: baseline;
+  align-items: flex-start;
   padding: 0.15rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -2042,6 +2050,26 @@
 }
 .eoa-turn-label {
   color: var(--sp-text-soft2);
+}
+/* Turn rows carry the same per-turn effect list as the History pane. */
+.eoa-turn-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+.eoa-turn-effects {
+  list-style: none;
+  margin: 0.05rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+.eoa-turn-effects li {
+  font-size: 0.74rem;
+  line-height: 1.3;
+  color: var(--sp-text-mute);
 }
 .eoa-difficulty {
   margin-top: 0.5rem;

@@ -7,6 +7,7 @@
 
 import { useState } from 'react';
 import RulesBox from './RulesBox';
+import HistoryText from '../history/HistoryText';
 import type { HistoryEntry } from '../game/undo';
 
 export interface TurnBarOverviewProps {
@@ -128,8 +129,10 @@ export default function TurnBarOverview({
         <div className="eoa-turns">
           <span className="eoa-turns-title">Recent bot turns</span>
           <ol className="eoa-turn-list">
+            {/* The 3 most recent turns, with the same per-turn detail the History pane
+                shows — the overview is a shortcut to History, not a briefer version. */}
             {[...entries]
-              .slice(-5)
+              .slice(-3)
               .reverse()
               .map((e, i) => (
                 <li key={entries.length - i} className="eoa-turn-row">
@@ -137,7 +140,20 @@ export default function TurnBarOverview({
                     {e.die != null && <span className="bot-die eoa-turn-die">{e.die}</span>}
                     Turn {entries.length - i}
                   </span>
-                  <span className="eoa-turn-label">{e.label}</span>
+                  <span className="eoa-turn-main">
+                    <span className="eoa-turn-label">
+                      <HistoryText text={e.label} />
+                    </span>
+                    {e.effects.length > 0 && (
+                      <ul className="eoa-turn-effects">
+                        {e.effects.map((eff, j) => (
+                          <li key={j}>
+                            <HistoryText text={eff} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </span>
                 </li>
               ))}
           </ol>

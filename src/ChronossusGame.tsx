@@ -42,6 +42,7 @@ import TurnBarOverview from './phases/TurnBarOverview';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
+import { summarizeChronossusExtras } from './game/chronossusHistory';
 import { clearPersisted, peekSaved, type HistoryEntry } from './game/undo';
 import { clearSavedChronobot } from './BoardExplorer';
 import { ActionIcon } from './board/ActionIcon';
@@ -937,6 +938,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return { code, actionId, isHypersync: false };
   };
 
+
   /**
    * Commit a resolved bot turn: advance the active marker one step for the Action,
    * resolve any Autoleap tiles it lands on, and — if it lands on a Hypersync Autoleap
@@ -956,13 +958,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // call it out with where it came from. Consumed here so it can't leak into a later turn.
     const blinkFrom = blinkFromRef.current;
     blinkFromRef.current = null;
+    // `{flux}` renders as the Flux Core art (HistoryText) — the Blink's own component.
+    // The Energy Core going back to the supply is in the rules and implied here.
     const blinkEffect = blinkFrom
-      ? `⚡ Blink — Exosuit moved from ${blinkFrom.spaceLabel}${
+      ? `{flux} Blink — Exosuit moved from ${blinkFrom.spaceLabel}${
           blinkFrom.sameSpaceCount > 1 ? ' (the bottom one)' : ''
-        } to ${actionLabel}; its Energy Core returns to the supply`
+        } to ${actionLabel}`
       : null;
     if (marker == null) {
       const soloEffects = summarizeTurn(preC, stateA.chronossus!, instrA);
+      summarizeChronossusExtras(preC, stateA.chronossus!, soloEffects);
       if (blinkEffect) soloEffects.unshift(blinkEffect);
       commit(stateA, ui, turnLabel(instrA, actionLabel, blinkFrom != null), soloEffects, botDieRef.current);
       setResult(instrA);
@@ -991,6 +996,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // (summarizeTurn doesn't read the Energy Pool, so an energy-only tile like C03B would
     // otherwise leave no trace).
     const effects = summarizeTurn(preC, stateA.chronossus!, instrA);
+    summarizeChronossusExtras(preC, stateA.chronossus!, effects);
     const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
     if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
     if (blinkEffect) effects.unshift(blinkEffect);
@@ -1040,7 +1046,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     blinked = false,
   ): string => {
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    return `Era ${state.era} · ${blinked ? '⚡ Blink → ' : ''}${actionLabel}${
+    return `Era ${state.era} · ${blinked ? '{flux} Blink → ' : ''}${actionLabel}${
       vp ? ` · +${vp} VP` : ''
     }`;
   };
@@ -1541,6 +1547,85 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         onClose={cancelPanel}
       />
     ) : null;
+
+  /**
+   * The module dialogs (modular tile / Hypersync Action / Hypersync-tile fallback).
+   * They render exactly where a board Action's DetailPanel does — absolutely on the board
+   * normally, in normal flow under the top bar on small screens — so a module Action never
+   * takes over the whole screen when a base-game one wouldn't.
+   */
+  const renderModDialogs = (flow: boolean) => (
+    <>
+      {pendingTile && (
+        <CxTileDialog
+          action={pendingTile}
+          tileSides={state.config.tileSides}
+          panel={CHRONOSSUS_PANEL}
+          flow={flow}
+          readOnly={tileRuleView}
+          autoleap={tileAutoleap}
+          startLabel={startLabel}
+          onStart={startTileTurn}
+          onClose={cancelPanel}
+          valleyGate={
+            fracturesMode &&
+            Chronossus.VALLEY_TILE_ACTIONS.includes(pendingTile) &&
+            !tileRuleView
+              ? { onPlace: onValleyPlace, step: tileBlinkStep, blink, fluxDrawSrc:
+                  fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
+                  onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
+                  onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
+                  onOperatorsAnswer: onOperatorsAnswer,
+                  operatorSlot: Chronossus.operatorWorkerSlot(bot) }
+              : null
+          }
+        />
+      )}
+      {pendingHypersync && (
+        <HypersyncDialog
+          code={pendingHypersync.code}
+          bot={bot}
+          era={state.era}
+          targeted={hypersyncTargeted}
+          failVP={failedActionVP}
+          readOnly={pendingHypersync.readOnly}
+          panel={CHRONOSSUS_PANEL}
+          flow={flow}
+          rolledHex={ui.hsRolledHex}
+          onRollHex={(hex) => setUi((u) => ({ ...u, hsRolledHex: hex }))}
+          startLabel={nextMarkerIsAutoleap ? startLabel : undefined}
+          onResolve={resolveHypersyncTurn}
+          onClose={closeHypersync}
+          blinkStep={hsBlinkStep}
+          blink={blink}
+          fluxDrawSrc={
+            fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null
+          }
+          onConfirmBlink={() =>
+            resolveHypersyncTurn({
+              ...hsInputRef.current!,
+              blink: true,
+              tokenActions: otherTokenActions(),
+            })
+          }
+          onCasingContinue={() => {
+            setHsBlinkStep(null);
+            resolveHypersyncTurn(hsInputRef.current!);
+          }}
+        />
+      )}
+      {showHypersyncTilePrompt && active && (
+        <HypersyncTilePrompt
+          era={state.era}
+          actionLabel={CHRONOBOT_ACTIONS[active.action].label}
+          panel={CHRONOSSUS_PANEL}
+          flow={flow}
+          onConfirm={confirmHypersyncTile}
+          onCancel={cancelHypersyncTile}
+        />
+      )}
+    </>
+  );
 
   // ---- Phase transitions -------------------------------------------------
   // Every phase advance goes on the undo stack, even the ones that change nothing but
@@ -2193,6 +2278,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           {/* Mobile: the action box renders in flow at the top, pushing the board
               down; disappears on close. Desktop: absolute on the board (below). */}
           {scvMode === 'below' && renderDetailPanel(true)}
+          {scvMode === 'below' && renderModDialogs(true)}
           {simpleView && !calibrate && scvMode === 'side' && (
             <CxSimpleCommandView
               rows={scvRows}
@@ -2531,71 +2617,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 />
               )}
               {scvMode !== 'below' && renderDetailPanel(false)}
-              {pendingTile && (
-                <CxTileDialog
-                  action={pendingTile}
-                  tileSides={state.config.tileSides}
-                  panel={CHRONOSSUS_PANEL}
-                  readOnly={tileRuleView}
-                  autoleap={tileAutoleap}
-                  startLabel={startLabel}
-                  onStart={startTileTurn}
-                  onClose={cancelPanel}
-                  valleyGate={
-                    fracturesMode &&
-                    Chronossus.VALLEY_TILE_ACTIONS.includes(pendingTile) &&
-                    !tileRuleView
-                      ? { onPlace: onValleyPlace, step: tileBlinkStep, blink, fluxDrawSrc:
-                          fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
-                          onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
-                          onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
-                          onOperatorsAnswer: onOperatorsAnswer,
-                          operatorSlot: Chronossus.operatorWorkerSlot(bot) }
-                      : null
-                  }
-                />
-              )}
-              {pendingHypersync && (
-                <HypersyncDialog
-                  code={pendingHypersync.code}
-                  bot={bot}
-                  era={state.era}
-                  targeted={hypersyncTargeted}
-                  failVP={failedActionVP}
-                  readOnly={pendingHypersync.readOnly}
-                  panel={CHRONOSSUS_PANEL}
-                  rolledHex={ui.hsRolledHex}
-                  onRollHex={(hex) => setUi((u) => ({ ...u, hsRolledHex: hex }))}
-                  startLabel={nextMarkerIsAutoleap ? startLabel : undefined}
-                  onResolve={resolveHypersyncTurn}
-                  onClose={closeHypersync}
-                  blinkStep={hsBlinkStep}
-                  blink={blink}
-                  fluxDrawSrc={
-                    fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null
-                  }
-                  onConfirmBlink={() =>
-                    resolveHypersyncTurn({
-                      ...hsInputRef.current!,
-                      blink: true,
-                      tokenActions: otherTokenActions(),
-                    })
-                  }
-                  onCasingContinue={() => {
-                    setHsBlinkStep(null);
-                    resolveHypersyncTurn(hsInputRef.current!);
-                  }}
-                />
-              )}
-              {showHypersyncTilePrompt && active && (
-                <HypersyncTilePrompt
-                  era={state.era}
-                  actionLabel={CHRONOBOT_ACTIONS[active.action].label}
-                  panel={CHRONOSSUS_PANEL}
-                  onConfirm={confirmHypersyncTile}
-                  onCancel={cancelHypersyncTile}
-                />
-              )}
+              {scvMode !== 'below' && renderModDialogs(false)}
             </div>
             {simpleView && !calibrate && scvMode === 'below' && (
               <CxSimpleCommandView
@@ -3109,6 +3131,7 @@ function CxTileDialog({
   onStart,
   onClose,
   valleyGate = null,
+  flow = false,
 }: {
   action: ChronossusTileActionId;
   tileSides?: Record<string, 'A' | 'B'>;
@@ -3141,18 +3164,23 @@ function CxTileDialog({
     /** Which Worker column an Operator would fill (the topmost empty space). */
     operatorSlot: string;
   } | null;
+  /** Render in normal flow (mobile) rather than absolutely on the board — same as
+   *  DetailPanel, so a module dialog opens exactly where a board Action's does. */
+  flow?: boolean;
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
-  // Surface the verbatim rules box for B-side tiles (Autoleap / combined effects) and for
-  // any tile the rulebook writes up in full in its module section (the new module tiles).
-  const showRulesBox = code.endsWith('B') || tile.detail != null;
-  const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
+  // A tap explanation (readOnly) always shows the tile's verbatim rulebook text, expanded —
+  // that text IS the explanation. Mid-turn the box is kept for the tiles that need it:
+  // B sides (Autoleap / combined effects) and any tile the rulebook writes up in full in
+  // its module section (the new module tiles).
+  const showRulesBox = readOnly || code.endsWith('B') || tile.detail != null;
+  const [showRule, setShowRule] = useState(readOnly); // a tap explanation opens expanded
   const [l, t, w, h] = panel;
   return (
     <div
-      className="detail-panel cx-tile-dialog"
-      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
+      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label={tile.name}
     >
@@ -3311,6 +3339,7 @@ function HypersyncDialog({
   fluxDrawSrc = null,
   onConfirmBlink = () => {},
   onCasingContinue = () => {},
+  flow = false,
 }: {
   code: string;
   bot: ChronossusState;
@@ -3342,6 +3371,8 @@ function HypersyncDialog({
   fluxDrawSrc?: string | null;
   onConfirmBlink?: () => void;
   onCasingContinue?: () => void;
+  /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
+  flow?: boolean;
 }) {
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
@@ -3388,8 +3419,8 @@ function HypersyncDialog({
 
   return (
     <div
-      className="detail-panel cx-tile-dialog"
-      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
+      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label={tile?.name ?? code}
     >
@@ -3465,7 +3496,7 @@ function HypersyncDialog({
                 </button>
               </>
             )}
-            <HypersyncRules tile={tile} code={code} startOpen={false} />
+            <HypersyncRules tile={tile} code={code} startOpen={readOnly} />
             {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         ) : step === 'hexes' ? (
@@ -3687,18 +3718,21 @@ function HypersyncTilePrompt({
   panel,
   onConfirm,
   onCancel,
+  flow = false,
 }: {
   era: number;
   actionLabel: string;
   panel: [number, number, number, number];
   onConfirm: () => void;
   onCancel: () => void;
+  /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
+  flow?: boolean;
 }) {
   const [l, t, w, h] = panel;
   return (
     <div
-      className="detail-panel cx-tile-dialog"
-      style={{ left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
+      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label="Place a Solo Hypersync tile"
     >

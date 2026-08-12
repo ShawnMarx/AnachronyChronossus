@@ -234,6 +234,28 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
 
 - Keep the engine pure and tested; add unit tests for new decision logic.
 - Rule text shown to players should be **verbatim** from the rulebook where possible.
+  A **tap explanation** (a read-only tap on a board Action, a modular tile, or an SCV row)
+  shows that verbatim text **expanded** — the rulebook text *is* the explanation. Only fall
+  back to app-voice copy where no verbatim text exists. Mid-turn dialogs may keep it
+  collapsed.
+- **No decorative icons or emoji in the game UI unless asked for**, with one exception:
+  real **in-game component art** (the Flux Core, Energy Core, Exosuit, tile and die faces
+  in `public/assets/solo/`). Prefer the component's own art over a stand-in glyph — e.g.
+  History shows the Flux Core image on a Blink, not a ⚡. History strings are persisted, so
+  they carry an icon **token** (`{flux}`) that `src/history/HistoryText.tsx` swaps for the
+  art; add new tokens there.
+- **Module dialogs render exactly like base-game Action dialogs.** `DetailPanel` takes a
+  `flow` prop: absolutely positioned on the board normally, in normal flow under the top
+  bar on small screens (`.dp-flow` beats the `max-width: 640px` full-screen rule). Every
+  module dialog (`CxTileDialog`, `HypersyncDialog`, `HypersyncTilePrompt`) takes the same
+  prop and is rendered through `renderModDialogs(flow)` alongside `renderDetailPanel(flow)`.
+  A new module's dialogs must join that helper — otherwise they go full-screen on a tablet
+  while base-game Actions don't.
+- **A new module's Action must show up in History.** `summarizeTurn` was written against
+  the Chronobot's state, so it cannot see module-only pools; `summarizeChronossusExtras`
+  in `ChronossusGame.tsx` adds the Chronossus/Fractures deltas (Flux Cores, Technologies,
+  Operators). Extend it when a module adds a tracked resource, and check both tile sides
+  (A/B) and the module's combos.
 - Match surrounding code style; `npm run build` and `npm test` must stay clean before
   committing.
 - Board art is copyrighted → the GitHub repo is **private**.

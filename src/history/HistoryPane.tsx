@@ -4,6 +4,7 @@
 // (label / die / effects), so the same pane renders Chronobot and Chronossus turns.
 
 import type { HistoryEntry } from '../game/undo';
+import HistoryText from './HistoryText';
 
 export default function HistoryPane({
   entries,
@@ -35,12 +36,12 @@ export default function HistoryPane({
                       {e.die}
                     </span>
                   )}
-                  {e.label}
+                  <HistoryText text={e.label} />
                 </span>
                 {e.effects.length > 0 && (
                   <ul className="history-effects">
                     {e.effects.map((eff, j) => (
-                      <li key={j}>{eff}</li>
+                      <li key={j}><HistoryText text={eff} /></li>
                     ))}
                   </ul>
                 )}
