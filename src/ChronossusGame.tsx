@@ -629,9 +629,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   } | null>(null);
   const placementSpaceRef = useRef<'action' | 'world-council'>('action');
   const blinkRef = useRef(false);
-  // Where the Exosuit a Blink is about to move came from, kept for the History line so a
-  // Blink doesn't read like an ordinary placement (`blink` state is cleared per turn).
-  const blinkFromRef = useRef<{ spaceLabel: string; sameSpaceCount: number } | null>(null);
+  // Where the Exosuit a Blink is about to move came from and where it lands, kept for the
+  // History line so a Blink doesn't read like an ordinary placement (`blink` state is
+  // cleared per turn). Both ends are named by their Capital Action SPACE ("Construct", not
+  // "Construct — Superproject") — the space is what the board shows.
+  const blinkFromRef = useRef<{
+    spaceLabel: string;
+    sameSpaceCount: number;
+    toLabel: string;
+  } | null>(null);
   // Bumped by Undo to remount the Paradox body (its roll log lives in local state).
   const [paradoxNonce, setParadoxNonce] = useState(0);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
@@ -963,13 +969,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const blinkEffect = blinkFrom
       ? `{flux} Blink — Exosuit moved from ${blinkFrom.spaceLabel}${
           blinkFrom.sameSpaceCount > 1 ? ' (the bottom one)' : ''
-        } to ${actionLabel}`
+        } to ${blinkFrom.toLabel}`
       : null;
+    /** The move IS the placement, so it replaces the shared summarizer's "Exosuit placed". */
+    const withBlink = (effects: string[]) => {
+      if (!blinkEffect) return effects;
+      const out = effects.filter((e) => e !== 'Exosuit placed');
+      out.unshift(blinkEffect);
+      return out;
+    };
     if (marker == null) {
       const soloEffects = summarizeTurn(preC, stateA.chronossus!, instrA);
       summarizeChronossusExtras(preC, stateA.chronossus!, soloEffects);
-      if (blinkEffect) soloEffects.unshift(blinkEffect);
-      commit(stateA, ui, turnLabel(instrA, actionLabel, blinkFrom != null), soloEffects, botDieRef.current);
+      commit(stateA, ui, turnLabel(instrA, actionLabel), withBlink(soloEffects), botDieRef.current);
       setResult(instrA);
       setLastResult(instrA);
       return;
@@ -999,14 +1011,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     summarizeChronossusExtras(preC, stateA.chronossus!, effects);
     const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
     if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
-    if (blinkEffect) effects.unshift(blinkEffect);
-    commit(
-      stateA,
-      newUi,
-      turnLabel(instrA, actionLabel, blinkFrom != null),
-      effects,
-      botDieRef.current,
-    );
+    commit(stateA, newUi, turnLabel(instrA, actionLabel), withBlink(effects), botDieRef.current);
     setResult(instrA);
     setLastResult(instrA);
     pendingDieRef.current = null;
@@ -1038,17 +1043,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
-  // One-line History label for a resolved turn (Era · action · +VP). A Blink is marked on
-  // the label itself so the turn doesn't read like a normal placement in the list.
-  const turnLabel = (
-    instructions: Instruction[],
-    actionLabel: string,
-    blinked = false,
-  ): string => {
+  // One-line History label for a resolved turn (Era · action · +VP). A Blink stays OFF this
+  // line — the Action taken is what matters; how the Exosuit got there is an effect below.
+  const turnLabel = (instructions: Instruction[], actionLabel: string): string => {
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    return `Era ${state.era} · ${blinked ? '{flux} Blink → ' : ''}${actionLabel}${
-      vp ? ` · +${vp} VP` : ''
-    }`;
+    return `Era ${state.era} · ${actionLabel}${vp ? ` · +${vp} VP` : ''}`;
   };
 
   // The action hotspot nearest a board point (used to map a marker's landing
@@ -1196,9 +1195,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     blinkRef.current = true;
+    const toSpace = Chronossus.blinkSpaceOf(action, placementSpaceRef.current);
     blinkFromRef.current = {
       spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
       sameSpaceCount: sel.sameSpaceCount,
+      toLabel: toSpace
+        ? Chronossus.BLINK_SPACE_LABEL[toSpace]
+        : (CHRONOBOT_ACTIONS[action as ChronobotActionId]?.label ?? action),
     };
     setBlink({
       spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
@@ -1985,6 +1988,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         blinkFromRef.current = {
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
           sameSpaceCount: sel.sameSpaceCount,
+          toLabel: `${Chronossus.chronossusActionLabel(pendingTile)} (Valley board)`,
         };
         setBlink({
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
@@ -2039,6 +2043,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         blinkFromRef.current = {
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
           sameSpaceCount: sel.sameSpaceCount,
+          toLabel: 'the Hypersync space',
         };
         setBlink({
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
