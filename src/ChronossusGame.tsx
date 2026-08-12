@@ -3198,9 +3198,13 @@ function CxTileDialog({
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
+  // The Valley board's printed Action spaces are always Assimilate and Extract, whichever
+  // tile side (or C14) sits on the Chronossus board — so the player is pointed at the
+  // space's own name, never the tile's ("Assimilate and Score", "Efficient Extract"…).
+  const valleySpaceName = Chronossus.chronossusActionLabel(action);
   // Where a Valley placement/Blink lands, including the Capital fallback (p.11) — the app
   // never renders the Valley board, so the instruction has to name both.
-  const valleyDestination = `${tile.name} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
+  const valleyDestination = `${valleySpaceName} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
   // A tap explanation (readOnly) always shows the tile's verbatim rulebook text, expanded —
   // that text IS the explanation. Mid-turn the box is kept for the tiles that need it:
   // B sides (Autoleap / combined effects) and any tile the rulebook writes up in full in
@@ -3313,7 +3317,7 @@ function CxTileDialog({
           ) : valleyGate && !readOnly ? (
             <>
               <p className="pp-instruct">
-                Is a <b>{tile.name}</b> Action space open on the <b>Valley board</b>?
+                Is an <b>{valleySpaceName}</b> Action space open on the <b>Valley board</b>?
                 {!valleyGate.blinkCheck && <> Place the Chronossus’s Exosuit on it.</>}
               </p>
               <p className="pp-sub">
