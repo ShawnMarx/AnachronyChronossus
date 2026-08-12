@@ -40,6 +40,7 @@ import {
   selectBlinkExosuit,
   resolveCleanUp,
   assimilate,
+  assimilateTakesOperator,
   isMainBoardPlacement,
   placesExosuitFor,
   type EnergyDraw,
@@ -900,6 +901,79 @@ describe('Fractures — Assimilate (C04/C14)', () => {
     assimilate(bot, 'square');
     expect(bot.operators).toBe(3);
     expect(bot.technologies).toBe(2);
+  });
+
+  it('places the Operator in the topmost empty Worker space, as a wildcard', () => {
+    const bot = fracturesBot();
+    // Genius is the topmost space; fill it and the next one goes to administrator.
+    assimilate(bot, 'circle');
+    expect(bot.workers.genius).toBe(1);
+    expect(bot.operatorSlots).toEqual({ genius: 1 });
+    assimilate(bot, 'circle');
+    expect(bot.workers.administrator).toBe(1);
+    expect(bot.operators).toBe(2);
+  });
+
+  it('Operators count towards the +5 VP Worker set, and are discarded with it', () => {
+    const bot = fracturesBot({
+      workers: { genius: 0, administrator: 1, engineer: 1, scientist: 1 },
+    });
+    const before = bot.vp;
+    const res = assimilate(bot, 'circle');
+    expect(res.vp).toBe(5);
+    expect(bot.vp).toBe(before + 5);
+    // The set discarded one of each — including the Operator that completed it.
+    expect(bot.workers).toEqual({ genius: 0, administrator: 0, engineer: 0, scientist: 0 });
+    expect(bot.operators).toBe(0);
+    expect(bot.operatorSlots).toEqual({ genius: 0 });
+  });
+
+  it('keeps an Operator when its column also holds a plain Worker', () => {
+    // The Genius column holds a plain Genius *and* an Operator.
+    const bot = fracturesBot({
+      workers: { genius: 2, administrator: 1, engineer: 1, scientist: 0 },
+      operators: 1,
+      operatorSlots: { genius: 1 },
+    });
+    assimilate(bot, 'circle'); // fills scientist (the topmost empty), completing the set
+    expect(bot.workers.genius).toBe(1); // the plain Genius was the discard, not the Operator
+    expect(bot.operators).toBe(1); // the new scientist Operator went with the set
+    expect(bot.operatorSlots).toEqual({ genius: 1, scientist: 0 });
+  });
+
+  it('no Operators left: Failed Action for 1 VP, no Operator and no Flux Core', () => {
+    const bot = fracturesBot();
+    const before = bot.vp;
+    const res = assimilate(bot, 'circle', false);
+    expect(res.vp).toBe(1);
+    expect(bot.vp).toBe(before + 1);
+    expect(bot.operators).toBe(0);
+    expect(bot.fluxPool!.cores).toBe(0);
+    expect(bot.workers.genius).toBe(0);
+  });
+
+  it('assimilateTakesOperator predicts the branch the gate needs', () => {
+    const bot = fracturesBot({ operators: 2, technologies: 1 });
+    expect(assimilateTakesOperator(bot, 'circle')).toBe(true);
+    expect(assimilateTakesOperator(bot, 'triangle')).toBe(false);
+    expect(assimilateTakesOperator(bot, 'square')).toBe(false); // fewer Technologies
+    expect(assimilateTakesOperator(fracturesBot({ operators: 1, technologies: 1 }), 'square')).toBe(
+      true, // Operator on a tie
+    );
+  });
+
+  it('the Failed Action resolves through the tile action too', () => {
+    const state = chronossusState({
+      config: { ...CONFIG, chronossusMode: 'fractures' },
+    });
+    state.chronossus = { ...state.chronossus!, ...fracturesBot() };
+    const { state: next } = resolveAction(state, {
+      actionId: 'tile-assimilate',
+      shape: 'circle',
+      operatorsAvailable: false,
+    });
+    expect(next.chronossus!.vp).toBe(state.chronossus!.vp + 1);
+    expect(next.chronossus!.operators).toBe(0);
   });
 
   it('resolves through the tile action, with the B side also scoring 1 VP', () => {

@@ -611,8 +611,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // and the space answer for the placement gate's two questions.
   const [fluxDraw, setFluxDraw] = useState<'core' | 'casing' | null>(null);
   // Fractures: the Blink-check step inside the Valley tile dialog, and the space answered.
-  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | null>(null);
+  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | 'operators' | null>(null);
   const valleySpaceRef = useRef<'action' | 'capital'>('action');
+  // Fractures' Assimilate: the shape rolled for this turn, and the placement answers held
+  // while the "are there Operators left?" gate is up (Solo Opponents p.13).
+  const assimShapeRef = useRef<BreakthroughShape | null>(null);
+  const assimGateRef = useRef<{ space?: 'action' | 'capital'; blinked: boolean }>({ blinked: false });
   // Same, for the Hypersync dialog (its hex is another off-board Blink destination).
   const [hsBlinkStep, setHsBlinkStep] = useState<'blink' | 'casing' | null>(null);
   const hsInputRef = useRef<Chronossus.HypersyncActionInput | null>(null);
@@ -1765,21 +1769,30 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // Commit a modular tile action (Reboot / Score / Energy Pack). No player input,
   // so ▶ Start resolves it and advances the marker (the caller then closes).
+  // The live family comes from the mode (so Fractures' C14-for-C04 swap resolves C14's
+  // effect through the shared Assimilate action), falling back to the id's own family.
+  const liveTileFamily = (actionId: ChronossusActionId): string | undefined =>
+    mode.slots.map((sl) => sl.family).find((f) => FAMILY_TO_TILE_ACTION[f] === actionId) ??
+    TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
+  /** Does this tile action resolve an Assimilate (C04 / C14, either side)? */
+  const tileAssimilates = (actionId: ChronossusActionId): boolean => {
+    const family = liveTileFamily(actionId);
+    if (!family) return false;
+    return tileEffect(`${family}${state.config.tileSides?.[family] ?? 'A'}`).assimilate === true;
+  };
+
   const resolveTileSlot = (
     actionId: ChronossusActionId,
     valleySpace?: 'action' | 'capital',
     blinked = false,
+    operatorsAvailable = true,
   ) => {
-    // The live family comes from the mode (so Fractures' C14-for-C04 swap resolves C14's
-    // effect through the shared Assimilate action), falling back to the id's own family.
-    const liveFamily =
-      mode.slots.map((sl) => sl.family).find((f) => FAMILY_TO_TILE_ACTION[f] === actionId) ??
-      TILE_ACTION_FAMILY[actionId as keyof typeof TILE_ACTION_FAMILY];
-    const family = liveFamily;
+    const family = liveTileFamily(actionId);
     const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
     // Fractures' Assimilate rolls the Research shape die first (Solo Opponents p.13);
-    // the app rolls it, as it does for Research.
-    const assimilates = family ? tileEffect(`${family}${tileSide}`).assimilate === true : false;
+    // the app rolls it, as it does for Research. The gate below may have rolled it already.
+    const assimilates = tileAssimilates(actionId);
+    const shape = assimShapeRef.current ?? rollShapeDie();
     const { state: next, instructions } = Chronossus.resolveAction(state, {
       actionId,
       tileSide,
@@ -1788,19 +1801,41 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // 'world-council' marker for it (the same "overflowed to the shared space" idea).
       ...(valleySpace ? { placementSpace: valleySpace === 'capital' ? 'world-council' : 'action' } : {}),
       ...(blinked ? { blink: true, tokenActions: otherTokenActions() } : {}),
-      ...(assimilates ? { shape: rollShapeDie() } : {}),
+      ...(assimilates ? { shape, operatorsAvailable } : {}),
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
     // opens its dialog (so the chain continues one tile at a time).
     const label = Chronossus.chronossusActionLabel(actionId);
+    assimShapeRef.current = null;
     finishTurn(next, instructions, tileAutoleap ? `Autoleap — ${label}` : label);
   };
   // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
   // Autoleap tile) close. The result lands in History / the turn-status aside.
   const startTileTurn = (valleySpace?: 'action' | 'capital', blinked = false) => {
     if (!pendingTile) return;
+    // Assimilate rolls the shape die before the Action; if that branch recruits an
+    // Operator, the player has to say whether any are left in the Valley — with none
+    // left it is a Failed Action instead (Solo Opponents p.13).
+    if (tileAssimilates(pendingTile)) {
+      const shape = assimShapeRef.current ?? rollShapeDie();
+      assimShapeRef.current = shape;
+      if (Chronossus.assimilateTakesOperator(bot, shape)) {
+        assimGateRef.current = { space: valleySpace, blinked };
+        setTileBlinkStep('operators');
+        return;
+      }
+    }
     chainOpenRef.current = false; // finishTurn re-sets it if the chain continues
     resolveTileSlot(pendingTile, valleySpace, blinked);
+    setTileBlinkStep(null);
+    if (!chainOpenRef.current) closeTile();
+  };
+  /** The Operator gate's answer: resolve the Assimilate with (or without) an Operator. */
+  const onOperatorsAnswer = (available: boolean) => {
+    if (!pendingTile) return;
+    const { space, blinked } = assimGateRef.current;
+    chainOpenRef.current = false;
+    resolveTileSlot(pendingTile, space, blinked, available);
     setTileBlinkStep(null);
     if (!chainOpenRef.current) closeTile();
   };
@@ -2457,7 +2492,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       ? { onPlace: onValleyPlace, step: tileBlinkStep, blink, fluxDrawSrc:
                           fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
                           onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
-                          onCasingContinue: () => startTileTurn(valleySpaceRef.current, false) }
+                          onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
+                          onOperatorsAnswer: onOperatorsAnswer,
+                          operatorSlot: Chronossus.operatorWorkerSlot(bot) }
                       : null
                   }
                 />
@@ -2594,7 +2631,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {fracturesMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Technology cards it holds (3 VP each at the end) / Operators it has recruited"
+                      hint="Technology cards it holds (3 VP each at the end) / Operators currently in its Worker collection (wildcards — they also count in the Worker trackers)"
                     >
                       <span className="cx-tech-ops">
                         <b>{bot.technologies ?? 0}</b> Tech · <b>{bot.operators ?? 0}</b> Ops
@@ -2986,7 +3023,9 @@ function tileInstruction(code: string): string {
     parts.push(
       'Assimilates — roll the Research shape die: Circle, it recruits an Operator and ' +
         'gains 1 Flux Core; Triangle, it takes a Technology card (secondary stack); ' +
-        'Square, whichever it has fewer of (Operator if tied)',
+        'Square, whichever it has fewer of (Operator if tied). An Operator is a wildcard ' +
+        'Worker — it fills the topmost empty space of the Worker collection (with none ' +
+        'left in the Valley it is a Failed Action for +1 VP)',
     );
   if (eff.vp) parts.push(`scores +${eff.vp} VP`);
   if (eff.energyCores)
@@ -3031,7 +3070,7 @@ function CxTileDialog({
    */
   valleyGate?: {
     onPlace: (space: 'action' | 'capital') => void;
-    step: 'blink' | 'casing' | null;
+    step: 'blink' | 'casing' | 'operators' | null;
     blink: {
       spaceLabel: string;
       sameSpaceCount: number;
@@ -3041,12 +3080,17 @@ function CxTileDialog({
     fluxDrawSrc: string | null;
     onConfirmBlink: () => void;
     onCasingContinue: () => void;
+    /** Assimilate only: the player's answer to "are there Operators left in the Valley?" */
+    onOperatorsAnswer: (available: boolean) => void;
+    /** Which Worker column an Operator would fill (the topmost empty space). */
+    operatorSlot: string;
   } | null;
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
-  // Surface the verbatim rules box for B-side tiles (Autoleap / combined effects).
-  const showRulesBox = code.endsWith('B');
+  // Surface the verbatim rules box for B-side tiles (Autoleap / combined effects) and for
+  // any tile the rulebook writes up in full in its module section (the new module tiles).
+  const showRulesBox = code.endsWith('B') || tile.detail != null;
   const [showRule, setShowRule] = useState(readOnly); // play mode opens it expanded
   const [l, t, w, h] = panel;
   return (
@@ -3087,6 +3131,32 @@ function CxTileDialog({
               destination={`${tile.name} (Valley board)`}
               onConfirm={valleyGate.onConfirmBlink}
             />
+          ) : valleyGate && !readOnly && valleyGate.step === 'operators' ? (
+            <>
+              <p className="pp-instruct">
+                The Chronossus recruits an <b>Operator</b>. Are there any left in the{' '}
+                <b>Valley</b>?
+              </p>
+              <p className="pp-sub">
+                If so, place it in the <b>{valleyGate.operatorSlot}</b> space — the topmost
+                empty space of its Worker collection. It is a wildcard and counts as that
+                Worker type for everything, the 5 VP set included.
+              </p>
+              <div className="pp-buttons">
+                <button
+                  className="pp-confirm"
+                  onClick={() => valleyGate.onOperatorsAnswer(true)}
+                >
+                  ✓ Yes — it takes an Operator
+                </button>
+                <button
+                  className="pp-cannot"
+                  onClick={() => valleyGate.onOperatorsAnswer(false)}
+                >
+                  ✗ None left — Failed Action (+1 VP)
+                </button>
+              </div>
+            </>
           ) : valleyGate && !readOnly && valleyGate.step === 'casing' ? (
             <FluxCasingPanel
               botName="Chronossus"
@@ -3137,6 +3207,17 @@ function CxTileDialog({
                     {line}
                   </p>
                 ))}
+                {/* The module section's fuller write-up of the same Action, when the
+                    rulebook prints one (the new module tiles). */}
+                {tile.detail?.split('\n').map((line, i) =>
+                  line === '' ? (
+                    <p key={`d${i}`} className="dp-rule dp-rule-gap" />
+                  ) : (
+                    <p key={`d${i}`} className="dp-rule">
+                      {line}
+                    </p>
+                  ),
+                )}
               </div>
             )}
           </div>

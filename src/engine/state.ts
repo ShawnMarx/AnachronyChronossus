@@ -165,8 +165,14 @@ export interface ChronossusState {
   fluxPool?: { cores: number; casings: number; setAside: number };
   /** Fractures of Time only: Technology cards held (3 VP each at game end). */
   technologies?: number;
-  /** Fractures of Time only: Operators recruited (the Assimilate Square tie-break). */
+  /**
+   * Fractures of Time only: Operators currently in the Worker collection (the Assimilate
+   * Square tie-break reads it). Operators are wildcards, so each one also counts in
+   * `workers` under the column it was placed in; `operatorSlots` records which.
+   */
   operators?: number;
+  /** Fractures of Time only: how many of each Worker column's tokens are Operators. */
+  operatorSlots?: Partial<Record<Worker, number>>;
   /**
    * Fractures of Time only: where each of the bot's Exosuits currently sits on the Main
    * board, in placement order. Needed to pick which one Blinks. `space` records what the

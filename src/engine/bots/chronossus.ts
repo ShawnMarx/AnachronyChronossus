@@ -106,6 +106,7 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
           fluxPool: { ...FLUX_POOL_START, cores: FLUX_POOL_START.cores + extraFlux },
           technologies: 0,
           operators: 0,
+          operatorSlots: {},
         }
       : {}),
   };
@@ -228,22 +229,72 @@ export function blinkSpaceOf(action: string, space: 'action' | 'world-council'):
  *
  * Mutates `bot` and returns the phrases describing what it took.
  */
-export function assimilate(bot: ChronossusState, shape?: BreakthroughShape): string[] {
+export function assimilate(
+  bot: ChronossusState,
+  shape?: BreakthroughShape,
+  /** Player answer: are there still Operators available in the Valley? */
+  operatorsAvailable = true,
+): AssimilateResult {
+  const res: AssimilateResult = { gains: [], vp: 0 };
   const takeOperator = () => {
-    // Operators are a Fractures-only Worker type, outside the base `workers` record —
-    // they're tracked on their own counter (the Square tie-break reads it).
+    if (!operatorsAvailable) {
+      // "If it attempts to recruit an Operator, and there are none left, it is a Failed
+      // Action and takes 1 VP." (Solo Opponents p.13) — no Operator, no Flux Core.
+      bot.vp += 1;
+      res.vp += 1;
+      res.gains.push('finds no Operators left — Failed Action: it takes +1 VP instead');
+      return;
+    }
+    // An Operator is a wildcard Worker: it goes into the topmost empty space of the
+    // Chronossus's Worker collection and counts as that type for all purposes, the
+    // +5 VP set included (Solo Opponents p.13). `operatorSlots` remembers which
+    // column each one is in so the set discard knows what it returns to the supply.
+    const slot = operatorWorkerSlot(bot);
+    bot.workers[slot] += 1;
+    bot.operatorSlots = { ...bot.operatorSlots, [slot]: (bot.operatorSlots?.[slot] ?? 0) + 1 };
     bot.operators = (bot.operators ?? 0) + 1;
     if (bot.fluxPool) bot.fluxPool = { ...bot.fluxPool, cores: bot.fluxPool.cores + 1 };
-    return 'recruits an Operator and gains 1 Flux Core into the Flux Pool';
+    res.gains.push(
+      `recruits an Operator (place it in the ${slot} space — the topmost empty space of its Worker collection) and gains 1 Flux Core into the Flux Pool`,
+    );
+    const set = applyWorkerSetBonus(bot);
+    if (set) {
+      res.vp += 5;
+      res.gains.push(set);
+    }
   };
   const takeTechnology = () => {
     bot.technologies = (bot.technologies ?? 0) + 1;
-    return 'takes a Technology card (preferring the secondary stack) — worth 3 VP at the end';
+    res.gains.push('takes a Technology card (preferring the secondary stack) — worth 3 VP at the end');
   };
-  if (shape === 'circle') return [takeOperator()];
-  if (shape === 'triangle') return [takeTechnology()];
+  if (shape === 'circle') takeOperator();
+  else if (shape === 'triangle') takeTechnology();
   // Square (and any missing roll, which the UI shouldn't produce): fewer of the two.
-  return [(bot.operators ?? 0) <= (bot.technologies ?? 0) ? takeOperator() : takeTechnology()];
+  else if ((bot.operators ?? 0) <= (bot.technologies ?? 0)) takeOperator();
+  else takeTechnology();
+  return res;
+}
+
+/** What Assimilate does, as phrases to fold into the tile instruction plus the VP it moved. */
+export interface AssimilateResult {
+  gains: string[];
+  vp: number;
+}
+
+/**
+ * The "topmost empty space of the Chronossus's Worker collection" an Operator fills —
+ * the same reading order the Recruit priority uses. With no empty space (only reachable
+ * if another Action doubled up a column), it joins the topmost column.
+ */
+export function operatorWorkerSlot(bot: ChronossusState): Worker {
+  return RECRUIT_PRIORITY.find((w) => bot.workers[w] === 0) ?? RECRUIT_PRIORITY[0];
+}
+
+/** Whether an Assimilate roll of `shape` would try to recruit an Operator (the UI gates on it). */
+export function assimilateTakesOperator(bot: ChronossusState, shape?: BreakthroughShape): boolean {
+  if (shape === 'triangle') return false;
+  if (shape === 'circle') return true;
+  return (bot.operators ?? 0) <= (bot.technologies ?? 0);
 }
 
 /** Which rule picked the Blinking Exosuit — surfaced in the UI so a contested call is visible. */
@@ -483,6 +534,12 @@ export interface ChronossusActionInput {
   /** Overrides the tile family for that action — Fractures' C14-for-C04 swap. */
   tileFamily?: string;
   /**
+   * Fractures' Assimilate: the player's answer to "are there Operators left in the
+   * Valley?". False makes an Operator branch a Failed Action (+1 VP) per Solo Opponents
+   * p.13. Defaults to true.
+   */
+  operatorsAvailable?: boolean;
+  /**
    * Fractures: where this placement went — the printed Capital Action space, or the
    * World Council space it overflowed to. The gate asks the player both questions, and
    * the answer is recorded on `placedExosuits` so Blink selection can use it. Defaults
@@ -688,6 +745,7 @@ export function resolveAction(
       n,
       input.shape,
       input.tileFamily,
+      input.operatorsAvailable ?? true,
     );
     return { ...finishAction(state, bot, instr), autoleap };
   }
@@ -877,6 +935,7 @@ function resolveTileAction(
   n: number,
   shape?: BreakthroughShape,
   tileFamily?: string,
+  operatorsAvailable = true,
 ): boolean {
   const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
   // C14 replaces C04 (a Fractures difficulty option) and is resolved through the same
@@ -899,8 +958,11 @@ function resolveTileAction(
       `gains ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} into the Flux Pool`,
     );
   }
+  let vp = eff.vp ?? 0;
   if (eff.assimilate) {
-    gains.push(...assimilate(bot, shape));
+    const res = assimilate(bot, shape, operatorsAvailable);
+    gains.push(...res.gains);
+    vp += res.vp;
   }
   const name = tile?.name ?? id;
   let text =
@@ -911,7 +973,7 @@ function resolveTileAction(
   instr.push({
     id: `tile-${code}-${n}`,
     text,
-    ...(eff.vp ? { effect: { vp: eff.vp } } : {}),
+    ...(vp ? { effect: { vp } } : {}),
   });
   return eff.autoleap === true;
 }
@@ -955,11 +1017,45 @@ function resolveRecruit(bot: ChronossusState, instr: Instruction[], recruited: W
   if (target) bot.workers[target] += 1;
   bot.vp += 1;
   instr.push({ id: `rec-${n}`, text: `Recruit a ${target} for the Chronossus (+1 VP).`, effect: { vp: 1 } });
-  if (RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0)) {
-    for (const w of RECRUIT_PRIORITY) bot.workers[w] -= 1;
-    bot.vp += 5;
-    instr.push({ id: `rec-set-${n}`, text: 'The Chronossus holds all 4 Worker types — discard one of each and add 5 VP.', effect: { vp: 5 } });
+  const set = applyWorkerSetBonus(bot);
+  if (set) instr.push({ id: `rec-set-${n}`, text: capitalize(set), effect: { vp: 5 } });
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * The +5 VP Worker set: once the Chronossus holds all 4 Worker types it discards one of
+ * each. Fractures' Operators sit in the Worker collection as wildcards and count towards
+ * their column "for all purposes, including discarding for 5 VPs" (Solo Opponents p.13),
+ * so they can be what gets discarded. A column holding both a plain Worker and an
+ * Operator discards the plain Worker first — the rulebook doesn't specify, and keeping
+ * the wildcard is the reading that leaves the collection unchanged in kind.
+ *
+ * Mutates `bot` and returns the phrase describing the discard, or null when the set
+ * isn't complete.
+ */
+export function applyWorkerSetBonus(bot: ChronossusState): string | null {
+  if (!RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0)) return null;
+  let operatorsDiscarded = 0;
+  for (const w of RECRUIT_PRIORITY) {
+    const ops = bot.operatorSlots?.[w] ?? 0;
+    if (ops > 0 && ops >= bot.workers[w]) {
+      bot.operatorSlots = { ...bot.operatorSlots, [w]: ops - 1 };
+      operatorsDiscarded += 1;
+    }
+    bot.workers[w] -= 1;
   }
+  if (operatorsDiscarded > 0) {
+    bot.operators = Math.max(0, (bot.operators ?? 0) - operatorsDiscarded);
+  }
+  bot.vp += 5;
+  const opsNote =
+    operatorsDiscarded === 0
+      ? ''
+      : operatorsDiscarded === 1
+        ? ' (1 of the discarded tokens is an Operator — return it to the Valley supply)'
+        : ` (${operatorsDiscarded} of the discarded tokens are Operators — return them to the Valley supply)`;
+  return `the Chronossus holds all 4 Worker types — discard one of each and add 5 VP${opsNote}`;
 }
 
 const SET_RESOURCES: Resource[] = ['neutronium', 'uranium', 'gold', 'titanium'];

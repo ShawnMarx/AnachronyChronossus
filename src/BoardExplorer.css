@@ -765,6 +765,10 @@
   line-height: 1.5;
   white-space: pre-wrap;
 }
+/* Blank line between the Appendix summary and the module section's fuller text. */
+.dp-rule-gap {
+  height: 0.5rem;
+}
 
 /* Inline "places an Exosuit" → clickable mech link */
 .mech-link {

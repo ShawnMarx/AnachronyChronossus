@@ -13,11 +13,48 @@ export interface ModularTile {
   code: string;
   /** The tile's printed name (e.g. 'Reboot'). */
   name: string;
-  /** Verbatim rulebook effect text. */
+  /** Verbatim rulebook effect text (the Appendix summary, pp. 20–21). */
   rule: string;
+  /**
+   * The longer, verbatim write-up from the tile's own module section (the rulebook
+   * prints most new Actions twice: a short Appendix entry and a fuller section).
+   * Shown under the Appendix text in the tile dialog's 📖 rules box. Only tiles the
+   * rulebook actually elaborates on have one.
+   */
+  detail?: string;
   /** True for expansion / not-yet-implemented tiles (everything beyond C01–C03A). */
   future?: boolean;
 }
+
+// --- Verbatim module-section text (Solo Opponents pp. 11–13, Fractures of Time) ------
+// The Appendix (pp. 20–21) summarizes each tile in a sentence; the module section spells
+// the same Action out in full. Both are shown — summary first, then this.
+
+/** "NEW ACTION: ASSIMILATE" + "RECRUITING OPERATORS" (Solo Opponents p. 13). */
+const ASSIMILATE_DETAIL =
+  'NEW ACTION: ASSIMILATE\n' +
+  'Before the Chronossus performs the Assimilate Action, roll the Research shape die.\n' +
+  'On Circle: It recruits an Operator and gains 1 Flux Core.\n' +
+  'On Triangle: It takes a Technology card (preferring the secondary stack).\n' +
+  'On Square: It either recruits an Operator (and gains 1 Flux Core) or takes a Technology card, whichever it has fewer of (Operator, if tied).\n' +
+  'If it attempts to recruit an Operator, and there are none left, it is a Failed Action and takes 1 VP.\n' +
+  '\n' +
+  'RECRUITING OPERATORS\n' +
+  'Operators function as wildcards. When taken, place the Operator in the topmost empty space of the Chronossus’s Worker collection. It counts towards that Worker type for all purposes, including discarding for 5 VPs.';
+
+/** "NEW ACTION: EXTRACT" (Solo Opponents p. 13). */
+const EXTRACT_DETAIL =
+  'NEW ACTION: EXTRACT\n' +
+  'When the Chronossus takes the Extract Action, it performs both available effects, gaining 2 Flux Cores (into the Flux Pool) and 2 Energy Cores (into the Energy Pool).';
+
+/**
+ * Valley placement (Solo Opponents p. 11, "GAMEPLAY CHANGES") — shared by both Valley
+ * Actions, which are the only tiles that place an Exosuit.
+ */
+const VALLEY_PLACEMENT_DETAIL =
+  '\n\nGAMEPLAY CHANGES\n' +
+  'Just like with the World Capital Action spaces, if there are no available spaces on a Valley Action, the Chronossus places on the Valley Capital Action space instead.\n' +
+  'When the Chronossus places an Exosuit on the Main board, take an Energy Core directly from supply and place it in the Exosuit.';
 
 /** Every modular Action tile, keyed by its printed code. */
 export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
@@ -51,24 +88,28 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C04A',
     name: 'Assimilate',
     rule: 'Roll a Research Shape die.\n» On Circle: The Chronossus recruits an Operator and gains 1 Flux Core.\n» On Triangle: It takes a Technology card (preferring the secondary stack).\n» On Square: It either recruits an Operator (and gains 1 Flux Core) or takes a Technology card, whichever it has fewer of (Operator if tied).',
+    detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C04B: {
     code: 'C04B',
     name: 'Assimilate and Score',
     rule: 'Same as C04A but the Chronossus also gains 1 VP.',
+    detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C05A: {
     code: 'C05A',
     name: 'Extract',
     rule: 'The Chronossus gets both options: it gains 2 Flux Cores into the Flux Pool and 2 Energy Cores into the Energy Pool.',
+    detail: EXTRACT_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C05B: {
     code: 'C05B',
     name: 'Efficient Extract',
     rule: 'Same as C05A, but the Chronossus gains 2 extra Flux Cores.',
+    detail: EXTRACT_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C06A: {
@@ -171,12 +212,14 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C14A',
     name: 'Assimilate and Flux Pack',
     rule: 'Same as C04A, but it gains 1 additional Flux Core.',
+    detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
   C14B: {
     code: 'C14B',
     name: 'Assimilate, Score and Flux Pack',
     rule: 'Same as C04B, but it gains 1 additional Flux Core.',
+    detail: ASSIMILATE_DETAIL + VALLEY_PLACEMENT_DETAIL,
     future: true,
   },
 };
