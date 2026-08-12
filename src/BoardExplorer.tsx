@@ -126,9 +126,6 @@ export function BlinkPanel({
 }) {
   return (
     <div className="place-prompt">
-      <p className="pp-instruct">
-        <b>Blink check</b>
-      </p>
       {fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Flux Core drawn" />
@@ -200,11 +197,6 @@ export function PlaceExosuitPanel({
 }) {
   return (
     <div className="place-prompt">
-      {drewCasing && (
-        <p className="pp-instruct">
-          <b>Blink check</b>
-        </p>
-      )}
       {drewCasing && fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
