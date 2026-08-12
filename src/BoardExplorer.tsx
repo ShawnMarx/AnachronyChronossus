@@ -18,6 +18,7 @@ import {
   AI_DIE_FACES,
   CHRONOBOT_ACTIONS,
   Chronobot,
+  Chronossus,
   DEFAULT_CONFIG,
   MECH_PLACEMENT,
   PASSING_RULE,
@@ -134,21 +135,43 @@ export function BlinkPanel({
           <span>Drawn from the Flux Pool — Blink activated.</span>
         </div>
       )}
+      {/* The selection rule is folded into the instruction rather than explained beside
+          it — the verbatim box below carries the rulebook's own wording. */}
       <p className="pp-instruct">
-        Move its Exosuit on <b>{blink.spaceLabel}</b>
-        {blink.sameSpaceCount > 1 ? ' (take the bottom one)' : ''} to <b>{destination}</b>,
-        and return that Exosuit’s Energy Core to the supply.
-      </p>
-      <p className="pp-sub">
-        {blink.rule === 'command-token'
-          ? `Rule A: that space matches Command token ${blink.token}.`
-          : 'Rule B: no Exosuit is on a space matching another Command token, so it takes the bottom-left-most one.'}
+        Move its Exosuit from <b>{blink.spaceLabel}</b> (bottom-most space) to{' '}
+        <b>{destination}</b>, and return that Exosuit’s Energy Core to the supply.
       </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onConfirm}>
           ✓ Confirm moved
         </button>
       </div>
+      <BlinkRuleBlock />
+    </div>
+  );
+}
+
+/** Collapsible VERBATIM Blink rules — shown at the bottom of every Blink-check step. */
+export function BlinkRuleBlock() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mech-rules">
+      <button className="mech-cta" onClick={() => setOpen((o) => !o)}>
+        📖 Blink rules {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="rule-body">
+          {Chronossus.BLINK_RULE.split('\n').map((line, i) =>
+            line ? (
+              <p key={i} className="dp-rule">
+                {line}
+              </p>
+            ) : (
+              <p key={i} className="dp-rule dp-rule-gap" />
+            ),
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -197,6 +220,7 @@ export function PlaceExosuitPanel({
           ✓ Confirm placed
         </button>
       </div>
+      {drewCasing && <BlinkRuleBlock />}
     </div>
   );
 }

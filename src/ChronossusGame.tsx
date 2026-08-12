@@ -3198,6 +3198,9 @@ function CxTileDialog({
 }) {
   const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
+  // Where a Valley placement/Blink lands, including the Capital fallback (p.11) — the app
+  // never renders the Valley board, so the instruction has to name both.
+  const valleyDestination = `${tile.name} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
   // A tap explanation (readOnly) always shows the tile's verbatim rulebook text, expanded —
   // that text IS the explanation. Mid-turn the box is kept for the tiles that need it:
   // B sides (Autoleap / combined effects) and any tile the rulebook writes up in full in
@@ -3226,6 +3229,29 @@ function CxTileDialog({
         </button>
       </div>
       <div className="dp-body">
+        {/* BlinkPanel / PlaceExosuitPanel are `.place-prompt` boxes themselves, so they
+            render OUTSIDE the wrapper below — nesting them drew a box inside a box. */}
+        {valleyGate && !readOnly && valleyGate.step === 'blink' && valleyGate.blink && (
+          <BlinkPanel
+            blink={valleyGate.blink}
+            fluxDrawSrc={valleyGate.fluxDrawSrc}
+            destination={valleyDestination}
+            onConfirm={valleyGate.onConfirmBlink}
+          />
+        )}
+        {valleyGate && !readOnly && valleyGate.step === 'casing' && (
+          <PlaceExosuitPanel
+            destination={valleyDestination}
+            fluxDrawSrc={valleyGate.fluxDrawSrc}
+            drewCasing
+            onContinue={valleyGate.onCasingContinue}
+          />
+        )}
+        {!(
+          valleyGate &&
+          !readOnly &&
+          (valleyGate.step === 'blink' || valleyGate.step === 'casing')
+        ) && (
         <div className="place-prompt">
           {autoleap && (
             <p className="pp-sub">
@@ -3235,14 +3261,7 @@ function CxTileDialog({
           )}
           {/* Valley board Actions (Assimilate / Extract) take an Exosuit, so they gate on
               a free space first — Valley Action space, else the Valley Capital space. */}
-          {valleyGate && !readOnly && valleyGate.step === 'blink' && valleyGate.blink ? (
-            <BlinkPanel
-              blink={valleyGate.blink}
-              fluxDrawSrc={valleyGate.fluxDrawSrc}
-              destination={`${tile.name} (Valley board)`}
-              onConfirm={valleyGate.onConfirmBlink}
-            />
-          ) : valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
+          {valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
             <>
               <p className="pp-instruct">
                 The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
@@ -3291,14 +3310,6 @@ function CxTileDialog({
                 </button>
               </div>
             </>
-          ) : valleyGate && !readOnly && valleyGate.step === 'casing' ? (
-            <PlaceExosuitPanel
-              destination={`the ${tile.name} space on the Valley board`}
-              fluxDrawSrc={valleyGate.fluxDrawSrc}
-              drewCasing
-              onContinue={valleyGate.onCasingContinue}
-            />
-
           ) : valleyGate && !readOnly ? (
             <>
               <p className="pp-instruct">
@@ -3330,6 +3341,7 @@ function CxTileDialog({
             </button>
           )}
         </div>
+        )}
 
         {/* Verbatim rulebook text, collapsible — mirrors the action dialogs.
             Only for tiles complex enough to warrant it (see TILES_WITH_RULES_BOX). */}

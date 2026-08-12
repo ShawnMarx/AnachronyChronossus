@@ -193,6 +193,31 @@ export const BLINK_SPACE_ORDER: BlinkSpace[] = [
   'world-council',
 ];
 
+/**
+ * VERBATIM Blink rules (Solo Opponents rulebook p. 12) — the check and the A/B selection
+ * rules, shown as the collapsible rulebook box on every Blink-check step.
+ */
+export const BLINK_RULE =
+  'Whenever the Chronossus is about to take an Action with an Exosuit, perform the ' +
+  'following check:\n' +
+  'Does it have a Blink-ready Exosuit and at least 1 token in the Flux Pool?\n' +
+  '• If not, proceed to Exosuit placement as normal.\n' +
+  '• If yes, draw 1 token from the Flux Pool to perform a Blink check.\n' +
+  '» If it is a Flux Core, discard it, then perform a Blink (see below).\n' +
+  '» If it is an Empty Flux Casing, put it aside. The Chronossus places an Exosuit or ' +
+  'passes, as usual.\n' +
+  '\n' +
+  'BLINKING\n' +
+  'You Blink following the standard rules, as explained in the Fractures of Time ' +
+  'expansion. When the Chronossus decides to Blink (see the check above), it must first ' +
+  'select which Exosuit to Blink with (if there are multiple Blink-ready ones):\n' +
+  '• (A) If any Exosuits are on an Action corresponding to any Command tokens (other than ' +
+  'the one currently selected) on the Chronossus’s board, select that Exosuit. If multiple ' +
+  'Exosuits meet this requirement, pick the one that matches the Command token with the ' +
+  'smaller number.\n' +
+  '• (B) If no Exosuits match a Command token, choose the bottom-left-most one (closest to ' +
+  'the bottom Research space). Priority goes to Exosuits on lower spaces, if two are tied.';
+
 /** Human-facing name of a Blink-from space (used in the "move its Exosuit" instruction). */
 export const BLINK_SPACE_LABEL: Record<BlinkSpace, string> = {
   research: 'Research',
