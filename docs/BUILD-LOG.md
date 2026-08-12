@@ -30,6 +30,13 @@ module needed already shipped.
 - Verified end to end with Playwright against a real Fractures game (Flux draws pinned to
   Cores): the two-question placement gate, the Blink check, a Blink into Assimilate, and the
   panel itself — no console errors. 236 tests, build + lint clean.
+- **Mod-tile taps showed the wrong tile's details** (playtest report, same day). The tap
+  handler and the hover tooltip read `p.action` — the tile `chronossusPaths.ts` names for
+  that slot, which is always the *base* game's C01/C02/C03 — so a Fractures game rendered
+  C04/C05/C06 art but opened Reboot / Score / Energy Pack. Both now go through
+  `tileActionAt(p.key)`, the same mode-aware lookup the die-driven turn and the SCV rows
+  already used. Noted while confirming: with the SCV panel open it covers all three tile
+  spaces, so ◂ Hide is required to reach them — left as is by choice.
 
 ## 2026-08-11 — Fractures of Time (Chronossus module) on staging
 
