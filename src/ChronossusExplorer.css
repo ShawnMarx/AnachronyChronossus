@@ -527,6 +527,11 @@
 .cx-exosuit img {
   width: auto;
   display: block;
+  /* Teal outline traced around the art (same idiom as .cx-cmd-marker) so the dark
+     Exosuit silhouette reads against the dark chip/panel. */
+  filter:
+    drop-shadow(1px 0 0 var(--cx-teal, #2e8c8c)) drop-shadow(-1px 0 0 var(--cx-teal, #2e8c8c))
+    drop-shadow(0 1px 0 var(--cx-teal, #2e8c8c)) drop-shadow(0 -1px 0 var(--cx-teal, #2e8c8c));
 }
 /* Let the icon flags sit inline nicely in the stat bar / Turn popover. */
 .cx-stats .cx-stats-energy,

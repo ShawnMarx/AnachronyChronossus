@@ -52,6 +52,17 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       restarts, which could allow one extra check that phase. Lift that state into the
       snapshot if it ever matters.
 
+## Fractures of Time (from the 2026-08-11 module build)
+- [ ] **Module-section rules text for the other modules' tiles** — C04/C05/C14 now carry the
+      rulebook's fuller write-up in `ModularTile.detail` (shown under the Appendix summary
+      in the 📖 box). C07–C13 (Experiments, Adventure, Guardian, Hypersync) still have only
+      the Appendix line; their sections are Solo Opponents pp.14–17.
+- [ ] **Optional Flux Pool badge** on the Chronossus board — the pool isn't printed on the
+      board, so any position has to be set in calibrate mode. State shows in the turn
+      overview meanwhile. (Dropped from the plan 2026-08-12; lives here if ever wanted.)
+- [ ] **Manual Fractures playthrough on device** + assets/theme pass (the plan's last
+      unchecked F6 item).
+
 ## Chronossus base — ✅ shipped (2026-08-09)
 Base game + Hypersync module are live in prod. See
 `docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`.

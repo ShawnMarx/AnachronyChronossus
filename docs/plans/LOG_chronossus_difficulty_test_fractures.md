@@ -202,19 +202,28 @@ neither needs the main Fractures module/mechanics.
   Empty Flux Casings, plus a ⊘ count of Casings set aside this Era) and a Tech · Ops chip,
   both Fractures-only. Uses the existing `flux-core.png` / `exhausted-flux-core.png` art
 
-### F4 — Board / view / overlays — mostly N/A (2026-08-11)
-- [x] The Valley board stays player-managed (design decision), so there is no new board art
-  or overlay geometry to place; the module's state shows in the turn overview instead
-- [ ] Optional: a Flux Pool badge on the Chronossus board — the Flux Pool is a separate
-  container, not printed on the board, so any badge position would have to be set in
-  calibrate mode. Left for the user to place if wanted
+- [x] **Operators completed 2026-08-11 (2nd pass).** The rulebook's module section (p.13)
+  carries rules the Appendix line doesn't, and two were missing: an Operator is a
+  **wildcard Worker** placed in the topmost empty space of the Worker collection, counting
+  as that type "for all purposes, including discarding for 5 VPs" — so it lands in
+  `bot.workers` (via `operatorWorkerSlot`) and an Assimilate can now complete the **+5 VP
+  set** (`applyWorkerSetBonus`, extracted from `resolveRecruit` and shared). `operatorSlots`
+  records which column each Operator sits in so the set discard knows what returns to the
+  Valley supply. And **"no Operators left" is a Failed Action for +1 VP**: the dialog rolls
+  the shape die first, and when the branch takes an Operator (`assimilateTakesOperator`)
+  gates on "are there any left in the Valley?" before resolving
+- [x] **Verbatim module-section text** on the tiles: `ModularTile.detail` holds the longer
+  write-up (Assimilate + Recruiting Operators, Extract, plus the p.11 Valley placement
+  rule) shown under the Appendix summary; the 📖 box now opens for any tile with a
+  `detail`, not just B sides. C07–C13's sections (pp.14–17) are still Appendix-only
 
-### F5 — Scoring & objectives ✅ done (2026-08-11)
-- [x] Technologies (3 each) and leftover Flux Cores (difficulty) now show in all three
-  score displays: the VP-pill breakdown, the side-by-side tally, and the number-mode list
-- [ ] Solo Objectives: the two Fractures cards ("Technology Cards", "Flux on Track") are
-  added to the deck in setup text; scoring them stays the player-entered tally, as for
-  every other mode
+### F4 / F5 — dropped from the plan (2026-08-12, user request)
+The Valley board stays player-managed, so there was no overlay geometry to place (the
+module's state shows in the turn overview instead), and the scoring the module needed —
+Technologies at 3 VP each + leftover Flux Cores — already shipped in all three score
+displays (VP-pill breakdown, side-by-side tally, number-mode list). The remaining optional
+items (a calibrate-placed Flux Pool board badge; engine-side Solo Objective scoring) are
+not being done: Solo Objectives stay in the player-entered tally, as for every other mode.
 
 ### F-combo — Fractures + Hypersync ✅ done (2026-08-11)
 - [x] `fractures+hypersync` registered and un-stubbed: C12 (I), C04 (II), C05 (III), C13
@@ -229,12 +238,39 @@ neither needs the main Fractures module/mechanics.
   setup boxes appear, and the game seeds a Flux Pool
 
 ### F6 — Ship
-- [x] 230 tests, build + lint clean
+- [x] 236 tests, build + lint clean (6 added for the Operator wildcard / set-bonus /
+  Failed-Action rules)
 - [x] Fractures playthrough variation (3 tests): a full game with the Flux Pool, Blinking
   and all three module tiles; leftover-Flux scoring; and 6 consecutive Blinks spending no
   Exosuit. Plus 4 unit tests for the tiles (C05/C05B, C06/C06B Autoleap, C14 via
   `tileFamily`, and the no-pool no-op outside Fractures)
-- [ ] Manual playthrough on device; assets/theme pass
+- [x] Automated end-to-end playthrough (2026-08-12, Playwright against the dev server, with
+  `Math.random` pinned so every Flux draw is a Core): Fractures game from Setup through
+  Era 1 Action Rounds, hitting the two-question placement gate, the Blink check, a Blink
+  into Assimilate, and the Operator/shape-die branch — zero console/page errors
+- [ ] Manual playthrough **on device** (iPad); assets/theme pass — user-side
+
+### F7 — Turn-overview + History polish ✅ done (2026-08-12)
+- [x] Dead space gone: `.eoa-hint`'s `flex: 1 1 240px` was a 240px min *height* in the
+  popover's column flex container → `flex: 0 0 auto`
+- [x] Pass-state boxes dropped from `TurnBarOverview` (props removed; both bots' call sites
+  updated) — the top-bar buttons already say whose turn it is
+- [x] Count moved onto the title line and renamed: `Era 1 · Phase 5 · Bot Turns 3`
+  (Chronobot: `Bot Actions N / min M`)
+- [x] Teal drop-shadow outline on the Exosuit icon; `.eoa-flag` chips are `inline-flex` +
+  `white-space: nowrap` in a `stretch` row, so the Exosuit pill no longer wraps taller
+- [x] Ops count removed from the Fractures chip (an Operator is a wildcard Worker, already
+  visible in the Worker trackers); Tech kept, hint text updated
+- [x] History calls out a Blink on both the label (`Era 1 · ⚡ Blink → Assimilate`) and the
+  effects (`⚡ Blink — Exosuit moved from Construct to Assimilate; its Energy Core returns
+  to the supply`, plus `(the bottom one)` when the source space holds several). A per-turn
+  `blinkFromRef` is set wherever a Core draw selects a source and consumed in `finishTurn`,
+  covering the Action / Valley-tile / Hypersync-hex paths and cleared on cancel
+- [x] Found while verifying: `commitPhase` labels (`Era 1 · → Warp`) were counted as bot
+  turns — the filter only excluded `Power Up:`/`Warp:` *with a colon*. Now also excludes
+  `· → ` entries, so Bot Turns starts each Era at 0
+- [x] Build + 236 tests + lint clean; verified live in a real Fractures game (screenshot of
+  the panel: single-line chips, no gap, Blink line in Recent bot turns)
 
 ---
 ### Deviations / decisions
@@ -258,3 +294,11 @@ neither needs the main Fractures module/mechanics.
   (p.3, icons only). Not encoded as an engine catalog — the confirmed design has the player
   report each candidate's (VP, eligible) by hand, so the engine only needs the selection
   *rule*, not the tile data itself.
+- **Two-tier rule text (2026-08-11):** the Solo Opponents rulebook describes each new module
+  Action twice — a one-line Appendix entry (pp.20-21) and a fuller section inside the module
+  (Fractures: pp.11-13) — and the tile catalog had only the Appendix tier, which is how the
+  Operator wildcard/5-VP-set and "none left → Failed Action" rules got missed. `detail` now
+  carries the module-section text per tile; when adding a module, transcribe **both** tiers.
+- **Operator discard tie-break (2026-08-11):** when a Worker column holds both a plain Worker
+  and an Operator, the rulebook doesn't say which the +5 VP set discards. We discard the
+  plain Worker and keep the wildcard; noted in code and in the player-facing instruction.

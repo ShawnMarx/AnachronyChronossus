@@ -1954,10 +1954,13 @@
 }
 .eoa-flags {
   display: flex;
-  align-items: center;
+  align-items: stretch;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }
 .eoa-flag {
+  display: inline-flex;
+  align-items: center;
   font-size: 0.78rem;
   font-weight: 700;
   padding: 0.2rem 0.55rem;
@@ -1965,6 +1968,9 @@
   background: #1c1630;
   border: 1px solid var(--sp-debug-bg);
   color: var(--sp-text-mute);
+  /* Keep every tracker chip on one line and the same height as its neighbours —
+     "3 Exo" used to wrap inside its pill and make that chip taller than the rest. */
+  white-space: nowrap;
 }
 .eoa-flag.on {
   background: rgba(var(--sp-accent-rgb), 0.2);
@@ -1979,7 +1985,9 @@
   color: var(--sp-text-base);
 }
 .eoa-hint {
-  flex: 1 1 240px;
+  /* The popover is a COLUMN flex container, so a flex-basis here was read as a
+     240px min height — that was the long gap under the hint text. Size to content. */
+  flex: 0 0 auto;
   margin: 0;
   font-size: 0.85rem;
   line-height: 1.35;

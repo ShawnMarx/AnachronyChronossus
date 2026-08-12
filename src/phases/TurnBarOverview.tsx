@@ -1,5 +1,5 @@
 // TurnBarOverview — the dismissible "Turn" popover opened from the top-bar Turn
-// chip. Shows the Era/Phase, pass state, the turn count, a status hint, the
+// chip. Shows the Era/Phase/turn-count title line, the tracker chips, a status hint, the
 // verbatim "<bot>'s turn" rulebook text, the difficulty options, the recent bot
 // turns, and the collapsible passing rules. Shared by both solo-bot views
 // (formerly the Chronobot-only EndOfActionsBar); the bot-specific values come in
@@ -13,13 +13,11 @@ export interface TurnBarOverviewProps {
   botName: string;
   era: number;
   phaseNumber: number | string;
-  playerPassed: boolean;
-  botPassed: boolean;
-  /** Turns/Actions the bot has taken this Era. */
+  /** Turns/Actions the bot has taken this Era, shown on the title line. */
   actionsThisEra: number;
   /** Chronobot shows "/ min N"; omit for bots without a minimum. */
   minActions?: number;
-  /** Label before the count (default "Actions"). */
+  /** Label before the count (default "Bot Actions"). */
   countLabel?: string;
   /** Extra flag chips for the pass-state row (e.g. Chronossus Exo / Energy). */
   extraFlags?: React.ReactNode;
@@ -42,11 +40,9 @@ export default function TurnBarOverview({
   botName,
   era,
   phaseNumber,
-  playerPassed,
-  botPassed,
   actionsThisEra,
   minActions,
-  countLabel = 'Actions',
+  countLabel = 'Bot Actions',
   extraFlags,
   hint,
   canEnd,
@@ -65,25 +61,16 @@ export default function TurnBarOverview({
     <div className="eoa-popover">
       <div className="eoa-pop-head">
         <span className="eoa-pop-title">
-          Era {era} · Phase {phaseNumber}
+          Era {era} · Phase {phaseNumber} · {countLabel} <b>{actionsThisEra}</b>
+          {minActions != null ? ` / min ${minActions}` : ''}
         </span>
         <button className="eoa-pop-close" onClick={onClose} aria-label="Close">
           ×
         </button>
       </div>
-      <div className="eoa-flags">
-        <span className={`eoa-flag ${playerPassed ? 'on' : ''}`}>
-          You: {playerPassed ? 'passed' : 'active'}
-        </span>
-        <span className={`eoa-flag ${botPassed ? 'on' : ''}`}>
-          Bot: {botPassed ? 'passed' : 'active'}
-        </span>
-        <span className="eoa-count">
-          {countLabel} <b>{actionsThisEra}</b>
-          {minActions != null ? ` / min ${minActions}` : ''}
-        </span>
-        {extraFlags}
-      </div>
+      {/* Whose turn it is is already obvious from the turn buttons at the top of the
+          view, so the pass-state boxes are gone — this row is just the trackers. */}
+      {extraFlags && <div className="eoa-flags">{extraFlags}</div>}
 
       <p className="eoa-hint">{hint}</p>
 

@@ -2,6 +2,70 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-12 — Turn-overview + History polish (Fractures playtest feedback)
+
+Part 4's F7 from `docs/plans/PLAN_chronossus_difficulty_test_fractures.md`, all view-side —
+no rules change. F4 (board overlays) and F5 (scoring/objectives) were dropped from the plan:
+the Valley board stays player-managed so there was no overlay work, and the scoring the
+module needed already shipped.
+
+- **The Turn overview reads as one panel again.** The long gap under the explanation text
+  was `.eoa-hint`'s `flex: 1 1 240px` — in the popover's *column* flex container that basis
+  is a 240px minimum height, not a width. The pass-state boxes ("You: active / Bot: active")
+  are gone: the top-bar buttons already say whose turn it is. The turn count moved onto the
+  title line and got a name — `Era 1 · Phase 5 · Bot Turns 3` (the Chronobot reads
+  `Bot Actions N / min M`). Tracker chips are now `inline-flex` + `nowrap` in a stretch row,
+  so "4 Exo" stops wrapping into a taller pill, and the Exosuit icon carries a teal outline.
+  The Fractures chip lost its Ops count — an Operator is a wildcard Worker, so it is already
+  visible in the Worker trackers.
+- **A Blink no longer hides in History.** It reads as a normal placement otherwise, because
+  a Blink spends no Exosuit from the supply and the state diff shows nothing moving. The
+  entry is now labelled `Era 1 · ⚡ Blink → Assimilate` with a first effect line naming
+  source, destination and the returned Energy Core (plus "(the bottom one)" when several
+  Exosuits share the source space). One per-turn ref, consumed at commit, covers all three
+  paths (Action, Valley tile, Hypersync hex).
+- **Bot Turns was counting phase advances.** `commitPhase` writes `Era 1 · → Warp` labels,
+  but the "not a turn" filter only matched `Power Up:` / `Warp:` *with a colon*, so every
+  Era opened with the count already at 2. Fixed alongside the rename that exposed it.
+- Verified end to end with Playwright against a real Fractures game (Flux draws pinned to
+  Cores): the two-question placement gate, the Blink check, a Blink into Assimilate, and the
+  panel itself — no console errors. 236 tests, build + lint clean.
+
+## 2026-08-11 — Fractures of Time (Chronossus module) on staging
+
+Part 4 of `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — the full module,
+plus the `fractures+hypersync` combo. The Valley board stays player-managed, so the
+module's state lives in the turn overview rather than in new board art.
+
+- **Flux Pool + Blinking.** A second container (Flux Cores + 3 Empty Flux Casings) the
+  Chronossus draws from before each Exosuit Action: a Core is spent to Blink, a Casing is
+  set aside until Clean Up. Blink selection follows the rulebook's A/B rules (an Exosuit on
+  another Command token's Action, smaller number winning; else bottom-left-most). The check
+  runs *after* a free space is confirmed — the bot only Blinks into a space it could have
+  placed into — and is skipped when the pool holds no Cores (documented departure from the
+  literal "at least 1 token", since a Casing-only draw changes nothing that Era).
+- **Valley Actions.** Assimilate (C04/C14) and Extract (C05) are Action spaces on the Valley
+  board, so they take an Exosuit and gate on "is a Valley Action space open?" (else the
+  Valley Capital space). The Valley board is a Blink **destination but never a source**;
+  `placesExosuitFor` / `OFF_MAIN_BOARD_ACTIONS` now generalize that for the modules to come.
+  Power Pack (C06) stays a Chronossus-board effect. Tile art added for C04–C06 + C14A/B.
+- **Operators, in full.** The rulebook prints each new Action twice — a one-line Appendix
+  entry and a fuller module-section write-up — and only the Appendix text had been
+  captured, which left two rules unimplemented. An Operator is now a **wildcard Worker**:
+  it fills the topmost empty space of the Worker collection and counts as that type for
+  everything, so an Assimilate can complete the **+5 VP Worker set** (that discard returns
+  Operators to the Valley supply; a column holding both discards the plain Worker first —
+  our call, the rulebook is silent). And with **no Operators left** the branch is a Failed
+  Action for +1 VP, which the Assimilate dialog now asks about after rolling the shape die.
+- **Rules text.** Tiles carry a `detail` field with the verbatim module-section text
+  (Assimilate + Recruiting Operators, Extract, the Valley placement rule), shown under the
+  Appendix summary in the tile's 📖 rules box — which now opens for any tile that has one,
+  not just B sides. C07–C13's own longer sections are still Appendix-only.
+- **Scoring + combo.** Technologies (3 VP each) and the leftover-Flux-Core difficulty option
+  appear in all three score displays. `fractures+hypersync` is un-stubbed per the setup
+  matrix (C12 in slot I, C04/C05 in II/III, C13 covering Time Travel, Power Pack dropping
+  out), with both modules' setup boxes and difficulty options unioned. 236 tests.
+
 ## 2026-08-11 — Guided-phase UX pass (prompts, Undo, rule sourcing)
 
 Playtest feedback on the non-Action phase screens, worked through in order. All on staging.

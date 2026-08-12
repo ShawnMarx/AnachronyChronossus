@@ -628,6 +628,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   } | null>(null);
   const placementSpaceRef = useRef<'action' | 'world-council'>('action');
   const blinkRef = useRef(false);
+  // Where the Exosuit a Blink is about to move came from, kept for the History line so a
+  // Blink doesn't read like an ordinary placement (`blink` state is cleared per turn).
+  const blinkFromRef = useRef<{ spaceLabel: string; sameSpaceCount: number } | null>(null);
   // Bumped by Undo to remount the Paradox body (its roll log lives in local state).
   const [paradoxNonce, setParadoxNonce] = useState(0);
   const [, setLastResult] = useState<Instruction[]>([]); // kept for turn bookkeeping
@@ -830,6 +833,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const resetFracturesTurn = () => {
     placementSpaceRef.current = 'action';
     blinkRef.current = false;
+    blinkFromRef.current = null;
     setBlink(null);
     setFluxDraw(null);
     setTileBlinkStep(null);
@@ -947,8 +951,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   ) => {
     const preC = state.chronossus!;
     const marker = activeMarkerRef.current;
+    // Fractures: if this turn was a Blink, the placement moved an Exosuit already on the
+    // board (so `summarizeTurn` sees no Exosuit spent and would read as a plain turn) —
+    // call it out with where it came from. Consumed here so it can't leak into a later turn.
+    const blinkFrom = blinkFromRef.current;
+    blinkFromRef.current = null;
+    const blinkEffect = blinkFrom
+      ? `⚡ Blink — Exosuit moved from ${blinkFrom.spaceLabel}${
+          blinkFrom.sameSpaceCount > 1 ? ' (the bottom one)' : ''
+        } to ${actionLabel}; its Energy Core returns to the supply`
+      : null;
     if (marker == null) {
-      commit(stateA, ui, turnLabel(instrA, actionLabel), summarizeTurn(preC, stateA.chronossus!, instrA), botDieRef.current);
+      const soloEffects = summarizeTurn(preC, stateA.chronossus!, instrA);
+      if (blinkEffect) soloEffects.unshift(blinkEffect);
+      commit(stateA, ui, turnLabel(instrA, actionLabel, blinkFrom != null), soloEffects, botDieRef.current);
       setResult(instrA);
       setLastResult(instrA);
       return;
@@ -977,7 +993,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const effects = summarizeTurn(preC, stateA.chronossus!, instrA);
     const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
     if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
-    commit(stateA, newUi, turnLabel(instrA, actionLabel), effects, botDieRef.current);
+    if (blinkEffect) effects.unshift(blinkEffect);
+    commit(
+      stateA,
+      newUi,
+      turnLabel(instrA, actionLabel, blinkFrom != null),
+      effects,
+      botDieRef.current,
+    );
     setResult(instrA);
     setLastResult(instrA);
     pendingDieRef.current = null;
@@ -1009,10 +1032,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
   };
 
-  // One-line History label for a resolved turn (Era · action · +VP).
-  const turnLabel = (instructions: Instruction[], actionLabel: string): string => {
+  // One-line History label for a resolved turn (Era · action · +VP). A Blink is marked on
+  // the label itself so the turn doesn't read like a normal placement in the list.
+  const turnLabel = (
+    instructions: Instruction[],
+    actionLabel: string,
+    blinked = false,
+  ): string => {
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    return `Era ${state.era} · ${actionLabel}${vp ? ` · +${vp} VP` : ''}`;
+    return `Era ${state.era} · ${blinked ? '⚡ Blink → ' : ''}${actionLabel}${
+      vp ? ` · +${vp} VP` : ''
+    }`;
   };
 
   // The action hotspot nearest a board point (used to map a marker's landing
@@ -1146,6 +1176,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setFluxDraw(drawn);
     if (drawn === 'casing') {
       blinkRef.current = false;
+      blinkFromRef.current = null;
       setBlink(null);
       setPending('fluxCasing');
       return;
@@ -1159,6 +1190,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     blinkRef.current = true;
+    blinkFromRef.current = {
+      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      sameSpaceCount: sel.sameSpaceCount,
+    };
     setBlink({
       spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
       sameSpaceCount: sel.sameSpaceCount,
@@ -1852,12 +1887,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setState((cur) => ({ ...cur, chronossus: { ...cur.chronossus!, fluxPool: nextPool } }));
       setFluxDraw(drawn);
       if (drawn === 'casing') {
+        blinkFromRef.current = null;
         setBlink(null);
         setTileBlinkStep('casing');
         return;
       }
       const sel = Chronossus.selectBlinkExosuit(bot, pendingTile, otherTokenActions());
       if (sel) {
+        blinkFromRef.current = {
+          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          sameSpaceCount: sel.sameSpaceCount,
+        };
         setBlink({
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
           sameSpaceCount: sel.sameSpaceCount,
@@ -1901,12 +1941,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setFluxDraw(drawn);
       hsInputRef.current = input;
       if (drawn === 'casing') {
+        blinkFromRef.current = null;
         setBlink(null);
         setHsBlinkStep('casing');
         return;
       }
       const sel = Chronossus.selectBlinkExosuit(bot, 'time-travel', otherTokenActions());
       if (sel) {
+        blinkFromRef.current = {
+          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          sameSpaceCount: sel.sameSpaceCount,
+        };
         setBlink({
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
           sameSpaceCount: sel.sameSpaceCount,
@@ -1930,6 +1975,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const closeHypersync = () => {
     setPendingHypersync(null);
+    // An abandoned Blink check must not label the next committed turn as a Blink.
+    blinkFromRef.current = null;
     botDieRef.current = null;
     activeMarkerRef.current = null;
     pendingDieRef.current = null;
@@ -1951,12 +1998,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     (pendingTile != null && !tileRuleView) ||
     (pendingHypersync != null && !pendingHypersync.readOnly);
 
-  // This Era's committed bot Action turns (drives the Turn tracker + its hover
-  // list). Excludes the pre-Action phase events (Power Up / Warp / Paradox), which
-  // still appear in the full History pane but are not Action Rounds "turns".
+  // This Era's committed bot Action turns (drives the Bot Turns count + its list).
+  // Excludes the pre-Action phase events (Power Up / Warp / Paradox), which still appear
+  // in the full History pane but are not Action Rounds "turns" — including the phase-entry
+  // entries `commitPhase` pushes (`Era N · → Power Up`), which were being counted as turns.
   const thisEraEntries: HistoryEntry[] = entries.filter(
     (e) =>
-      e.state.era === state.era && !/You passed|Power Up:|Warp:|Paradox/.test(e.label),
+      e.state.era === state.era &&
+      !/You passed|Power Up|Warp|Paradox|· → /.test(e.label),
   );
   const turnsThisEra = thisEraEntries.length;
 
@@ -2605,10 +2654,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               botName="Chronossus"
               era={state.era}
               phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
-              playerPassed={state.playerPassed}
-              botPassed={bot.passed}
               actionsThisEra={turnsThisEra}
-              countLabel="Turns"
+              countLabel="Bot Turns"
               extraFlags={
                 <>
                   <TapFlag className="cx-exosuit-flag" hint="Powered Exosuits available this Era">
@@ -2628,13 +2675,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       <CxFluxPool pool={bot.fluxPool} size={18} />
                     </TapFlag>
                   )}
+                  {/* No Operator count: an Operator is a wildcard Worker, so it is already
+                      tracked by the Worker slot it filled — a separate chip only duplicated it. */}
                   {fracturesMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Technology cards it holds (3 VP each at the end) / Operators currently in its Worker collection (wildcards — they also count in the Worker trackers)"
+                      hint="Technology cards it holds (3 VP each at the end)"
                     >
                       <span className="cx-tech-ops">
-                        <b>{bot.technologies ?? 0}</b> Tech · <b>{bot.operators ?? 0}</b> Ops
+                        <b>{bot.technologies ?? 0}</b> Tech
                       </span>
                     </TapFlag>
                   )}

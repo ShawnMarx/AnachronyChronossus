@@ -360,17 +360,39 @@ Time module and the Chronossus base rules apply, unless noted below"):
   machinery (mirroring how base + HFA tiles resolve). Autoleap where applicable.
 - [ ] Unit tests.
 
-### F4. Board / view / overlays
-- [ ] Fractures board art + overlays (Flux Pool, Cores, Fracture Device, X-tiles),
-  calibrate-mode positions, command-marker routes if they differ.
-
-### F5. Scoring & objectives
-- [ ] Fractures expansion scoring deltas + any expansion objectives (confirm player-side vs
-  Chronossus-scored — **open question**). Extend `scoreChronossus` + score screen.
+*(F4 board/overlays and F5 scoring & objectives were dropped from this plan on 2026-08-12 —
+the Valley board stays player-managed so there is no overlay work, and the scoring deltas
+that were needed already shipped.)*
 
 ### F6. Ship
 - [ ] Fractures playthrough test variation (Part 1 seam).
 - [ ] `npm run build` + `npm test` + `npm run lint` clean; manual playthrough; assets/theme pass.
+
+### F7. Turn-overview + History polish (playtest feedback 2026-08-11)
+Chronossus play view only; no engine rules change.
+
+**Turn overview panel** — ✅ shipped 2026-08-12
+- [x] **Kill the dead space.** `.eoa-hint` carried `flex: 1 1 240px` inside a *column* flex
+  container, so the basis was read as a 240px min height — that was the gap. Now `0 0 auto`.
+- [x] **Drop the bot / player turn boxes** (`playerPassed`/`botPassed` props gone from
+  `TurnBarOverview`; the flags row now renders only when a bot supplies tracker chips).
+- [x] **"Turn" → "Bot Turns"**, moved onto the title line (`Era 1 · Phase 5 · Bot Turns 3`);
+  the Chronobot's own count follows as `Bot Actions N / min M`.
+- [x] **Teal outline around the Exosuit icon** — drop-shadow trace on `.cx-exosuit img`,
+  same idiom as `.cx-cmd-marker`.
+- [x] **Remove the Ops tracker** (Tech-only chip; the hint text follows).
+- [x] **Widen the Exosuit tracker** — `.eoa-flag` is now `inline-flex` + `nowrap` and the row
+  is `align-items: stretch`, so every chip is one line at a common height.
+- [x] **Bonus fix found while verifying:** phase-entry History labels (`Era 1 · → Warp`)
+  were being counted as bot turns — the "not a turn" filter only matched `Power Up:`/`Warp:`
+  with a colon. `Bot Turns` now starts each Era at 0.
+
+**History** — ✅ shipped 2026-08-12
+- [x] **Call out a Blink.** The label becomes `Era 1 · ⚡ Blink → Assimilate` and the first
+  effect line reads `⚡ Blink — Exosuit moved from Construct to Assimilate; its Energy Core
+  returns to the supply` (`(the bottom one)` when several share the source space). Driven by
+  a per-turn `blinkFromRef` consumed in `finishTurn`, so all three commit paths (Action,
+  Valley tile, Hypersync hex) get it and a cancelled check can't leak into a later turn.
 
 ---
 
@@ -378,7 +400,8 @@ Time module and the Chronossus base rules apply, unless noted below"):
 1. **Part 1** (test harness: T1 → T2 → T3) — guardrail first. ✅ done
 2. **Part 2 D0** (scoring seam), then **D1…D10** one at a time (feedback pause each). ✅ done
 3. **Part 3** — A1 (Alternate Timelines) → A2 (Variable Anomalies). ✅ done
-4. **Part 4** (F-R → F1 → F2 → F3 → F4 → F5 → F6). ← next up
+4. **Part 4** (F-R → F1 → F2 → F3 → F6). ← built, on staging (F4/F5 dropped 2026-08-12)
+5. **F7** (turn-overview + History polish, from the 2026-08-11 playtest). ← in progress
 
 ## Open questions
 - **New idea (not a strict difficulty increase, deferred):** a *randomized* tile-arrangement
@@ -386,8 +409,6 @@ Time module and the Chronossus base rules apply, unless noted below"):
   D2; every slot the active mode defines, e.g. base's I/II/III, hypersync's I/II/III/V, and
   whatever future modules add). Raised during the D2 discussion; needs its own definition
   later — not in scope for this plan's D-numbered list yet.
-- **F5:** are Fractures expansion objectives player-scored (like Solo Objectives) or does the
-  Chronossus score them? Confirm from the rulebook during F-R.
 - **Combos** (e.g. Fractures + Pioneers/Hypersync) are out of scope here unless trivial.
 
 ## Verification (whole effort)

@@ -21,8 +21,16 @@
 > roll that triggered them, ↶ Undo on the phase screens with every phase advance
 > undoable, and the Hypersync/Alternate-Timelines rules sourced verbatim. Parts 1–3 of the
 > active plan plus that pass are **merged to `main`/production**.
-> **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — next up
-> is the full **Fractures of Time** module (Part 4, not started). Further candidates (Doomsday, Pioneers,
+> **2026-08-11 (later):** **Fractures of Time** (Part 4) is built and on staging — Flux Pool
+> + Blinking, the Valley board Actions (Assimilate / Extract / Power Pack, C04–C06 + C14),
+> Operators as wildcard Workers, module scoring, and the `fractures+hypersync` combo. The
+> Valley board stays player-managed by design, so no new board art was needed.
+> **2026-08-12:** the playtest's turn-overview + History polish (F7) shipped — the Turn
+> panel lost its dead space and pass-state boxes, the count reads `Bot Turns` on the title
+> line, and a Blink is called out in History. Plan items F4 (board overlays) and F5
+> (scoring/objectives) were dropped as unnecessary.
+> **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — Part 4 is
+> complete bar a manual on-device playthrough (and an optional Flux Pool badge). Further candidates (Doomsday, Pioneers,
 > Guardians, Chronossus stats/history) stay in `TODO.md`. The Chronossus knowledge,
 > references, and design decisions here remain the source material behind those efforts.
 

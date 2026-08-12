@@ -1774,8 +1774,6 @@ export default function BoardExplorer({
           botName="Chronobot"
           era={state.era}
           phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
-          playerPassed={state.playerPassed}
-          botPassed={bot.passed}
           actionsThisEra={bot.actionsThisEra}
           minActions={Chronobot.chronobotMinActions(state)}
           hint={
