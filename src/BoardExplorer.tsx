@@ -156,31 +156,48 @@ export function BlinkPanel({
   );
 }
 
-/** Fractures: the Blink check drew an Empty Flux Casing — no Blink; place as usual. */
-export function FluxCasingPanel({
+/**
+ * Fractures: place a new Exosuit from the supply — the step that tells the player to
+ * place, which only comes AFTER the space was confirmed free and the Blink check ran (a
+ * Blink moves an Exosuit already on the board instead, so the app has to know the outcome
+ * before it can say what to do). `drewCasing` adds the Empty-Flux-Casing note when the
+ * check ran and produced no Blink; without it this is simply the placement step.
+ */
+export function PlaceExosuitPanel({
   botName,
+  destination,
   fluxDrawSrc,
+  drewCasing = false,
   onContinue,
 }: {
   botName: string;
+  /** Where it places — the confirmed space ("Construct", "World Council", …). */
+  destination: string;
   fluxDrawSrc?: string | null;
+  drewCasing?: boolean;
   onContinue: () => void;
 }) {
   return (
     <div className="place-prompt">
-      <p className="pp-instruct">
-        <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it aside
-        (it returns to the Flux Pool in Clean Up); it places an Exosuit as usual.
-      </p>
-      {fluxDrawSrc && (
+      {drewCasing && (
+        <p className="pp-instruct">
+          <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it aside
+          (it returns to the Flux Pool in Clean Up); no Blink.
+        </p>
+      )}
+      {drewCasing && fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
           <span>Drawn from the Flux Pool — set it aside.</span>
         </div>
       )}
+      <p className="pp-instruct">
+        Place a new Exosuit from the supply on <b>{destination}</b>, and put an Energy Core
+        from the supply into it.
+      </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onContinue}>
-          ▶ Continue
+          ✓ Confirm placed
         </button>
       </div>
     </div>
@@ -3502,8 +3519,10 @@ export function DetailPanel({
   onConfirmPlace,
   onCannotPlace,
   fractures = false,
+  blinkCheck = false,
   blink,
   fluxDrawSrc = null,
+  placeDestination = null,
   onWorldCouncilYes = () => {},
   onWorldCouncilNo = () => {},
   onConfirmBlink = () => {},
@@ -3538,6 +3557,19 @@ export function DetailPanel({
   onCannotPlace: () => void;
   /** Fractures of Time: splits the placement gate and enables the Blink steps. */
   fractures?: boolean;
+  /**
+   * Fractures: a Blink check will run once this space is confirmed (the Flux Pool holds a
+   * Core AND a Blink-ready Exosuit exists). Then the gate only ASKS — what to do comes
+   * after the draw. When no check can happen there is nothing to wait for, so the gate
+   * instructs the placement directly, exactly like a base-game Action.
+   */
+  blinkCheck?: boolean;
+  /**
+   * Fractures: the space the placement/Blink actually settled on — the printed Action
+   * space or World Council. Named by the caller because only it knows which gate answer
+   * came back; without it a Blink into World Council would read "to Construct".
+   */
+  placeDestination?: string | null;
   /** Fractures: the Blink the app just resolved, when `pending` is 'blink'. */
   blink?: {
     spaceLabel: string;
@@ -3624,7 +3656,8 @@ export function DetailPanel({
               {fractures ? (
                 <>
                   Is a <b>{spaceLabel(hotspot.action)}</b> Action space open (not World
-                  Council)? Place the {botName}’s Exosuit on the topmost one.
+                  Council)?
+                  {!blinkCheck && <> Place the {botName}’s Exosuit on the topmost one.</>}
                 </>
               ) : (
                 <>
@@ -3636,12 +3669,14 @@ export function DetailPanel({
             </p>
             {fractures && (
               <p className="pp-sub">
-                Put an Energy Core from the supply into that Exosuit.
+                {blinkCheck
+                  ? `Don’t place anything yet — the ${botName} Blink-checks first, and a Blink moves an Exosuit it already has on the board instead.`
+                  : 'Put an Energy Core from the supply into that Exosuit. (No Blink is possible, so it places as usual.)'}
               </p>
             )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onConfirmPlace}>
-                {fractures ? '✓ Yes — placed there' : '✓ Confirm placed'}
+                {!fractures ? '✓ Confirm placed' : blinkCheck ? '✓ Yes — one is open' : '✓ Yes — placed there'}
               </button>
               <button className="pp-cannot" onClick={onCannotPlace}>
                 {fractures ? '✗ No — none open' : '✗ Cannot place'}
@@ -3655,15 +3690,18 @@ export function DetailPanel({
           <div className="place-prompt">
             <p className="pp-instruct">
               No <b>{spaceLabel(hotspot.action)}</b> space was open. Is the{' '}
-              <b>World Council</b> space open? Place the {botName}’s Exosuit there instead.
+              <b>World Council</b> space open?
+              {!blinkCheck && <> Place the {botName}’s Exosuit there instead.</>}
             </p>
             <p className="pp-sub">
-              Put an Energy Core from the supply into that Exosuit. It still performs the
-              Action.
+              It still performs the Action from there.{' '}
+              {blinkCheck
+                ? 'Nothing to place yet — the Blink check comes first.'
+                : 'Put an Energy Core from the supply into that Exosuit.'}
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onWorldCouncilYes}>
-                ✓ Yes — placed on World Council
+                {blinkCheck ? '✓ Yes — it’s open' : '✓ Yes — placed on World Council'}
               </button>
               <button className="pp-cannot" onClick={onWorldCouncilNo}>
                 ✗ No — nothing open
@@ -3678,17 +3716,20 @@ export function DetailPanel({
             botName={botName}
             blink={blink}
             fluxDrawSrc={fluxDrawSrc}
-            destination={spaceLabel(hotspot.action)}
+            destination={placeDestination ?? spaceLabel(hotspot.action)}
             onConfirm={onConfirmBlink}
           />
         )}
         {pending === 'fluxCasing' && (
-          <FluxCasingPanel
+          <PlaceExosuitPanel
             botName={botName}
+            destination={placeDestination ?? spaceLabel(hotspot.action)}
             fluxDrawSrc={fluxDrawSrc}
+            drewCasing
             onContinue={onFluxCasingContinue}
           />
         )}
+
 
         {/* Step 2 — Construct: take the higher-VP building, enter its printed VP. */}
         {pending === 'buildingVP' && (

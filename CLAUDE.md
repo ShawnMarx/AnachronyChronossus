@@ -251,6 +251,14 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
   prop and is rendered through `renderModDialogs(flow)` alongside `renderDetailPanel(flow)`.
   A new module's dialogs must join that helper — otherwise they go full-screen on a tablet
   while base-game Actions don't.
+- **Never tell the player to place before the app knows what happens.** With Fractures the
+  order is: ask whether the space is free → Blink check → the app picks which Exosuit →
+  *then* the instruction (move this one, or place a new one). The placement gate therefore
+  only ASKS when a Blink check will follow (`DetailPanel`'s `blinkCheck` prop /
+  `valleyGate.blinkCheck`, both `Chronossus.shouldCheckBlink`); with no check possible — no
+  Flux Cores in the pool, or no Blink-ready Exosuit — it instructs the placement inline,
+  exactly like a base-game Action. Non-Fractures games keep the plain one-step gate. A new
+  module that adds Exosuit-placing spaces must follow the same shape.
 - **A new module's Action must show up in History.** `summarizeTurn` was written against
   the Chronobot's state, so it cannot see module-only pools; `summarizeChronossusExtras`
   in `ChronossusGame.tsx` adds the Chronossus/Fractures deltas (Flux Cores, Technologies,

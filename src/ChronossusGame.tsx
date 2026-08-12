@@ -31,7 +31,7 @@ import {
   ParadoxPhaseBody,
   PARADOX_ICONS,
   BlinkPanel,
-  FluxCasingPanel,
+  PlaceExosuitPanel,
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
@@ -612,7 +612,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // and the space answer for the placement gate's two questions.
   const [fluxDraw, setFluxDraw] = useState<'core' | 'casing' | null>(null);
   // Fractures: the Blink-check step inside the Valley tile dialog, and the space answered.
-  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | 'operators' | null>(null);
+  const [tileBlinkStep, setTileBlinkStep] = useState<'blink' | 'casing' | 'operators' | null>(
+    null,
+  );
   const valleySpaceRef = useRef<'action' | 'capital'>('action');
   // Fractures' Assimilate: the shape rolled for this turn, and the placement answers held
   // while the "are there Operators left?" gate is up (Solo Opponents p.13).
@@ -1533,6 +1535,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
+        blinkCheck={fracturesMode && Chronossus.shouldCheckBlink(bot, active.action)}
+        placeDestination={(() => {
+          const space = Chronossus.blinkSpaceOf(active.action, placementSpaceRef.current);
+          if (!space) return null; // not a Capital Action space — the panel names the Action
+          return space === 'world-council'
+            ? 'the World Council space'
+            : `the topmost open ${Chronossus.BLINK_SPACE_LABEL[space]} Action space`;
+        })()}
         blink={blink}
         fluxDrawSrc={fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null}
         onWorldCouncilYes={onWorldCouncilYes}
@@ -1579,7 +1589,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
                   onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
                   onOperatorsAnswer: onOperatorsAnswer,
-                  operatorSlot: Chronossus.operatorWorkerSlot(bot) }
+                  operatorSlot: Chronossus.operatorWorkerSlot(bot),
+                  blinkCheck: Chronossus.shouldCheckBlink(bot, pendingTile) }
               : null
           }
         />
@@ -1600,6 +1611,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onResolve={resolveHypersyncTurn}
           onClose={closeHypersync}
           blinkStep={hsBlinkStep}
+          deferPlacement={fracturesMode && Chronossus.shouldCheckBlink(bot, 'time-travel')}
           blink={blink}
           fluxDrawSrc={
             fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null
@@ -3168,6 +3180,8 @@ function CxTileDialog({
     onOperatorsAnswer: (available: boolean) => void;
     /** Which Worker column an Operator would fill (the topmost empty space). */
     operatorSlot: string;
+    /** A Blink check will run once the space is confirmed — see DetailPanel's blinkCheck. */
+    blinkCheck: boolean;
   } | null;
   /** Render in normal flow (mobile) rather than absolutely on the board — same as
    *  DetailPanel, so a module dialog opens exactly where a board Action's does. */
@@ -3247,20 +3261,24 @@ function CxTileDialog({
               </div>
             </>
           ) : valleyGate && !readOnly && valleyGate.step === 'casing' ? (
-            <FluxCasingPanel
+            <PlaceExosuitPanel
               botName="Chronossus"
+              destination={`the ${tile.name} space on the Valley board`}
               fluxDrawSrc={valleyGate.fluxDrawSrc}
+              drewCasing
               onContinue={valleyGate.onCasingContinue}
             />
+
           ) : valleyGate && !readOnly ? (
             <>
               <p className="pp-instruct">
-                Is a <b>{tile.name}</b> Action space open on the <b>Valley board</b>? Place
-                the Chronossus’s Exosuit on it.
+                Is a <b>{tile.name}</b> Action space open on the <b>Valley board</b>?
+                {!valleyGate.blinkCheck && <> Place the Chronossus’s Exosuit on it.</>}
               </p>
               <p className="pp-sub">
-                Put an Energy Core from the supply into that Exosuit. It sits on the Valley
-                board, so it can never Blink.
+                {valleyGate.blinkCheck
+                  ? 'Don’t place anything yet — the Chronossus Blink-checks first, and a Blink moves an Exosuit it already has on the Main board onto the Valley space instead.'
+                  : 'Put an Energy Core from the supply into that Exosuit. It sits on the Valley board, so it can never Blink.'}
               </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
@@ -3344,6 +3362,7 @@ function HypersyncDialog({
   fluxDrawSrc = null,
   onConfirmBlink = () => {},
   onCasingContinue = () => {},
+  deferPlacement = false,
   flow = false,
 }: {
   code: string;
@@ -3376,6 +3395,12 @@ function HypersyncDialog({
   fluxDrawSrc?: string | null;
   onConfirmBlink?: () => void;
   onCasingContinue?: () => void;
+  /**
+   * Fractures combo: the hex is a Blink destination, so the dialog only NAMES the space
+   * here — the Blink check decides whether an Exosuit is placed or moved, and the step
+   * after it gives the instruction.
+   */
+  deferPlacement?: boolean;
   /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
   flow?: boolean;
 }) {
@@ -3550,9 +3575,15 @@ function HypersyncDialog({
             onConfirm={onConfirmBlink}
           />
         ) : blinkStep === 'casing' ? (
-          <FluxCasingPanel
+          <PlaceExosuitPanel
             botName="Chronossus"
+            destination={
+              rolledHex != null
+                ? `Hypersync space ${rolledHex}`
+                : 'the Hypersync space matching its furthest-past pending tile'
+            }
             fluxDrawSrc={fluxDrawSrc}
+            drewCasing
             onContinue={onCasingContinue}
           />
         ) : step === 'roll' ? (
@@ -3566,8 +3597,9 @@ function HypersyncDialog({
                   matching its furthest-past pending tile (Era {plan.oldestTileEra}).
                 </p>
                 <p className="pp-sub">
-                  Place a bot Exosuit on that space to block it; it scores 2 VP and
-                  retrieves the tile. (No Time Travel advance.)
+                  {deferPlacement
+                    ? 'It scores 2 VP and retrieves the tile (no Time Travel advance). Don’t place anything yet — the Blink check comes next.'
+                    : 'Place a bot Exosuit on that space to block it; it scores 2 VP and retrieves the tile. (No Time Travel advance.)'}
                 </p>
                 <button className="start-turn" onClick={takeHypersync}>
                   {startLabel ?? '▶ Take Turn'}
@@ -3596,9 +3628,18 @@ function HypersyncDialog({
             ) : (
               <>
                 <p className="pp-instruct">
-                  Place a Bot Exosuit on <b>Hypersync space {rolledHex}</b> — the
-                  Chronossus takes the Hypersync tile from the oldest Era (Era{' '}
-                  {plan.oldestTileEra}).
+                  {deferPlacement ? (
+                    <>
+                      The Chronossus takes <b>Hypersync space {rolledHex}</b> — it takes the
+                      Hypersync tile from the oldest Era (Era {plan.oldestTileEra}).
+                    </>
+                  ) : (
+                    <>
+                      Place a Bot Exosuit on <b>Hypersync space {rolledHex}</b> — the
+                      Chronossus takes the Hypersync tile from the oldest Era (Era{' '}
+                      {plan.oldestTileEra}).
+                    </>
+                  )}
                 </p>
                 <div className="hs-hex-row">
                   {Chronossus.HYPERSYNC_HEXES.map((n) => {
@@ -3616,6 +3657,7 @@ function HypersyncDialog({
                 </div>
                 <p className="pp-sub">
                   It scores 2 VP. Do not advance the Time Travel marker.
+                  {deferPlacement ? ' Don’t place anything yet — the Blink check comes next.' : ''}
                 </p>
                 <button className="start-turn" onClick={takeHypersync}>
                   {startLabel ?? '▶ Take Turn'}
