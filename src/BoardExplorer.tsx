@@ -134,7 +134,7 @@ export function BlinkPanel({
       {fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Flux Core drawn" />
-          <span>Drawn from the Flux Pool — discard it.</span>
+          <span>Drawn from its Flux Pool (the app tracks the pool for you).</span>
         </div>
       )}
       <p className="pp-instruct">
@@ -157,11 +157,14 @@ export function BlinkPanel({
 }
 
 /**
- * Fractures: place a new Exosuit from the supply — the step that tells the player to
+ * Fractures: place one of the bot's available powered Exosuits — the step that tells the
+ * player to
  * place, which only comes AFTER the space was confirmed free and the Blink check ran (a
  * Blink moves an Exosuit already on the board instead, so the app has to know the outcome
  * before it can say what to do). `drewCasing` adds the Empty-Flux-Casing note when the
- * check ran and produced no Blink; without it this is simply the placement step.
+ * check ran and produced no Blink; without it this is simply the placement step. The Flux
+ * Pool is app-held, so the draw is only REPORTED here — never handed to the player to
+ * discard or set aside.
  */
 export function PlaceExosuitPanel({
   botName,
@@ -181,19 +184,19 @@ export function PlaceExosuitPanel({
     <div className="place-prompt">
       {drewCasing && (
         <p className="pp-instruct">
-          <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>. Set it aside
-          (it returns to the Flux Pool in Clean Up); no Blink.
+          <b>Blink check</b> — the {botName} drew an <b>Empty Flux Casing</b>, so there is
+          no Blink.
         </p>
       )}
       {drewCasing && fluxDrawSrc && (
         <div className="flux-draw">
           <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
-          <span>Drawn from the Flux Pool — set it aside.</span>
+          <span>Drawn from its Flux Pool (the app tracks the pool for you).</span>
         </div>
       )}
       <p className="pp-instruct">
-        Place a new Exosuit from the supply on <b>{destination}</b>, and put an Energy Core
-        from the supply into it.
+        Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>, and put
+        an Energy Core from the supply into it.
       </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onContinue}>
