@@ -642,6 +642,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   } | null>(null);
   const placementSpaceRef = useRef<'action' | 'world-council'>('action');
   const blinkRef = useRef(false);
+  // Where the Action's own sub-flow resumes once the Blink check has resolved. Mine and
+  // Recruit-Genius ask their own placement question instead of the shared `mech` gate, so
+  // the continuation can't be derived from the Action id the way `beginPlacementSubflow`
+  // does for the gated Actions.
+  const postBlinkRef = useRef<(() => void) | null>(null);
   // Where the Exosuit a Blink is about to move came from and where it lands, kept for the
   // History line so a Blink doesn't read like an ordinary placement (`blink` state is
   // cleared per turn). Both ends are named by their Capital Action SPACE ("Construct", not
@@ -853,6 +858,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const resetFracturesTurn = () => {
     placementSpaceRef.current = 'action';
     blinkRef.current = false;
+    postBlinkRef.current = null;
     blinkFromRef.current = null;
     setBlink(null);
     setFluxDraw(null);
@@ -1266,6 +1272,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** The Action's own input steps, once placement (or a Blink) is settled. */
   const beginPlacementSubflow = () => {
     if (!active) return;
+    // Mine / Recruit-Genius run the check from their own question and say where to pick up.
+    const resume = postBlinkRef.current;
+    if (resume) {
+      postBlinkRef.current = null;
+      resume();
+      return;
+    }
     const a = active.action;
     if (a === 'construct-superproject') {
       const hasBreakthrough =
@@ -1352,7 +1365,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const onPickVP = (vp: number) => setSelectedVP(vp);
   const onPickWorker = (w: Worker) => setSelectedWorker(w);
-  const onGeniusYes = () => setPending('geniusRecruit');
+  // The Genius question already confirms an open Recruit space, so it IS this Action's
+  // placement gate — the Blink check belongs right after it, before anything is placed.
+  const onGeniusYes = () => {
+    const recruit = () => setPending('geniusRecruit');
+    if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'recruit-genius-research')) {
+      placementSpaceRef.current = 'action';
+      postBlinkRef.current = recruit;
+      runBlinkCheck('recruit-genius-research');
+      return;
+    }
+    recruit();
+  };
   const onGeniusNo = () => setPending('mech');
   const onToggleResource = (r: Resource) => {
     setSelectedResources((cur) => {
@@ -1376,7 +1400,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (pending === 'buildingVP' && selectedVP != null && active) {
       resolve(active, { buildingVP: selectedVP });
     } else if (pending === 'mineResources' && selectedResources.length === 2 && active) {
-      resolve(active, { minedResources: selectedResources });
+      // A Mine space is a Main-board Capital Action space: it is a Blink destination as
+      // much as a Blink source. The check waits until the Resources are picked, because
+      // that choice is what identifies WHICH Mine space the Exosuit is heading for —
+      // only then can the app say "move this one" instead of "place a new one".
+      const mine = () => resolve(active, { minedResources: selectedResources });
+      if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'mine-resource')) {
+        placementSpaceRef.current = 'action';
+        postBlinkRef.current = mine;
+        runBlinkCheck('mine-resource');
+        return;
+      }
+      mine();
     } else if (pending === 'recruitWorker' && selectedWorker && active) {
       resolve(active, { recruitedWorker: selectedWorker });
     } else if (pending === 'research' && rolledShape && active) {
@@ -1547,12 +1582,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
         blinkCheck={fracturesMode && Chronossus.shouldCheckBlink(bot, active.action)}
+        placementHandled={fracturesMode && fluxDraw != null}
         placeDestination={(() => {
           const space = Chronossus.blinkSpaceOf(active.action, placementSpaceRef.current);
           if (!space) return null; // not a Capital Action space — the panel names the Action
-          return space === 'world-council'
-            ? 'the World Council space'
-            : `the topmost open ${Chronossus.BLINK_SPACE_LABEL[space]} Action space`;
+          if (space === 'world-council') return 'the World Council space';
+          // Mine picks its space by the Resources it grants, not by reading down the column.
+          if (space === 'mine') return 'that Mine Action space (the one granting those 2 Resources)';
+          return `the topmost open ${Chronossus.BLINK_SPACE_LABEL[space]} Action space`;
         })()}
         blink={blink}
         fluxDrawSrc={fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null}

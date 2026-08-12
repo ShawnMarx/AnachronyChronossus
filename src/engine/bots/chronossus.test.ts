@@ -755,6 +755,17 @@ describe('Fractures — Blink readiness and selection', () => {
     expect(shouldCheckBlink(emptyChronossusState(), 'research')).toBe(false); // not a Fractures game
   });
 
+  it('Mine and Recruit-Genius are Blink destinations like any other Capital space', () => {
+    // Both ask their own placement question in the UI rather than the shared gate, so the
+    // check has to be wired in there too — these are the states that must trigger it.
+    const bot = withPlaced(placed(['construct-lab', 'action', true]));
+    expect(shouldCheckBlink(bot, 'mine-resource')).toBe(true);
+    expect(shouldCheckBlink(bot, 'recruit-genius-research')).toBe(true);
+    // …and a Genius recruit lands on the Recruit space, so an Exosuit already there is out.
+    const onRecruit = withPlaced(placed(['recruit', 'action', true]));
+    expect(shouldCheckBlink(onRecruit, 'recruit-genius-research')).toBe(false);
+  });
+
   it('rule A: takes an Exosuit matching a Command token, smaller number winning', () => {
     const bot = withPlaced(placed(['recruit', 'action', true], ['construct-lab', 'action', true]));
     const sel = selectBlinkExosuit(bot, 'research', { 4: 'recruit', 2: 'construct-lab' });

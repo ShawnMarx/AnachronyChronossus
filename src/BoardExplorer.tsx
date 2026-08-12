@@ -3537,6 +3537,7 @@ export function DetailPanel({
   onCannotPlace,
   fractures = false,
   blinkCheck = false,
+  placementHandled = false,
   blink,
   fluxDrawSrc = null,
   placeDestination = null,
@@ -3581,6 +3582,12 @@ export function DetailPanel({
    * instructs the placement directly, exactly like a base-game Action.
    */
   blinkCheck?: boolean;
+  /**
+   * Fractures: the Blink check already ran this turn, so the Blink / Empty-Flux-Casing
+   * panel has told the player what to move or place. A later step that would otherwise
+   * repeat "place the Exosuit …" drops that clause.
+   */
+  placementHandled?: boolean;
   /**
    * Fractures: the space the placement/Blink actually settled on — the printed Action
    * space or World Council. Named by the caller because only it knows which gate answer
@@ -3806,12 +3813,20 @@ export function DetailPanel({
         {pending === 'mineResources' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the {botName}’s Exosuit in an open <b>Mine</b> space granting
-              the best 2 Resources by priority order below, based on
-              lacking-first. Give it those <b>2 Resources</b> (pre-selected;
-              adjust to match the space — click a cube twice for <b>×2</b>),
-              then <b>discard those 2 Resource cubes from the board</b>.
+              {blinkCheck ? 'Find the' : `Place the ${botName}’s Exosuit in an`} open{' '}
+              <b>Mine</b> space granting the best 2 Resources by priority order below, based
+              on lacking-first. Give it those <b>2 Resources</b> (pre-selected; adjust to
+              match the space — click a cube twice for <b>×2</b>), then{' '}
+              <b>discard those 2 Resource cubes from the board</b>.
             </p>
+            {/* A Mine space is a Blink destination too, and which Mine space it is depends
+                on the Resources — so the check runs after they're picked, not before. */}
+            {blinkCheck && (
+              <p className="pp-sub">
+                Don’t place anything yet — the {botName} Blink-checks first, and a Blink
+                moves an Exosuit it already has on the board into that space instead.
+              </p>
+            )}
             <div className="resource-picks">
               {mineOrder.map((r, i) => (
                 <Fragment key={r}>
@@ -3826,7 +3841,7 @@ export function DetailPanel({
             </div>
             {selectedResources.length === 2 && (
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {blinkCheck ? '✓ Check for Blink' : startLabel}
               </button>
             )}
           </div>
@@ -3884,9 +3899,18 @@ export function DetailPanel({
         {pending === 'geniusRecruit' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Place the {botName}’s Exosuit on the topmost available <b>Recruit</b>{' '}
-              Action space (or a World Council space if full) and recruit a{' '}
-              <b>Genius</b>, removing it from the board. The bot gains 1 VP.
+              {placementHandled ? (
+                <>
+                  The {botName} recruits a <b>Genius</b> from that Recruit space, removing it
+                  from the board. The bot gains 1 VP.
+                </>
+              ) : (
+                <>
+                  Place the {botName}’s Exosuit on the topmost available <b>Recruit</b> Action
+                  space (or a World Council space if full) and recruit a <b>Genius</b>,
+                  removing it from the board. The bot gains 1 VP.
+                </>
+              )}
             </p>
             <div className="resource-picks worker-picks">
               <WorkerSwatch worker="genius" selected onClick={() => {}} />
