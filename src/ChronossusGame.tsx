@@ -1588,6 +1588,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
                   onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
                   onOperatorsAnswer: onOperatorsAnswer,
+                  onNoSpace: onValleyNoSpace,
                   onAssimilateContinue,
                   assimilateShape: assimShapeRef.current,
                   operatorSlot: Chronossus.operatorWorkerSlot(bot),
@@ -1968,6 +1969,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setTileBlinkStep(null);
     if (!chainOpenRef.current) closeTile();
   };
+  /**
+   * Neither a Valley Action space nor the Valley Capital space was open — the shared
+   * no-space branch handles it as a Failed Action (VP + discard an active Exosuit).
+   */
+  const onValleyNoSpace = () => {
+    if (!pendingTile) return;
+    const { state: next, instructions } = Chronossus.resolveAction(state, {
+      actionId: pendingTile,
+      noSpaceAvailable: true,
+    });
+    chainOpenRef.current = false;
+    setTileBlinkStep(null);
+    finishTurn(next, instructions, Chronossus.chronossusActionLabel(pendingTile));
+    if (!chainOpenRef.current) closeTile();
+  };
+
   /** The Technology branch of Assimilate: the result was shown, now resolve it. */
   const onAssimilateContinue = () => {
     if (!pendingTile) return;
@@ -3183,6 +3200,8 @@ function CxTileDialog({
     onCasingContinue: () => void;
     /** Assimilate only: the player's answer to "are there Operators left in the Valley?" */
     onOperatorsAnswer: (available: boolean) => void;
+    /** Neither the Valley Action space nor the Valley Capital space was open. */
+    onNoSpace: () => void;
     /** Assimilate's Technology branch: the result was shown, resolve the Action. */
     onAssimilateContinue: () => void;
     /** The shape the app rolled for this Assimilate, shown with the result. */
@@ -3316,9 +3335,15 @@ function CxTileDialog({
             </>
           ) : valleyGate && !readOnly ? (
             <>
+              {/* One question for both spaces: the Valley Capital space is the automatic
+                  fallback (p.11), so what matters is whether EITHER is open. */}
               <p className="pp-instruct">
-                Is an <b>{valleySpaceName}</b> Action space open on the <b>Valley board</b>?
-                {!valleyGate.blinkCheck && <> Place the Chronossus’s Exosuit on it.</>}
+                Is an <b>{valleySpaceName}</b> Action space — or the{' '}
+                <b>Valley Capital Action space</b> — open on the <b>Valley board</b>?
+                {!valleyGate.blinkCheck && (
+                  <> Place the Chronossus’s Exosuit on the {valleySpaceName} space, or on
+                    the Valley Capital space if no {valleySpaceName} space is open.</>
+                )}
               </p>
               <p className="pp-sub">
                 {valleyGate.blinkCheck
@@ -3329,8 +3354,8 @@ function CxTileDialog({
                 <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
                   {valleyGate.blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed there'}
                 </button>
-                <button className="pp-cannot" onClick={() => valleyGate.onPlace('capital')}>
-                  ✗ No — use the Valley Capital space
+                <button className="pp-cannot" onClick={valleyGate.onNoSpace}>
+                  ✗ No — neither is open
                 </button>
               </div>
               {/* No effect blurb here: the gate is only asking about the space. What the

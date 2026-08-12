@@ -295,7 +295,11 @@ export function summarizeTurn(
   const out: string[] = [];
   const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
 
-  if (post.exosuitsAvailable < pre.exosuitsAvailable) out.push('Exosuit placed');
+  // A Failed Action costs the Chronossus an active Exosuit — it is discarded, not placed,
+  // so the same "one fewer Exosuit" delta has to read differently.
+  if (post.exosuitsAvailable < pre.exosuitsAvailable) {
+    out.push(hasId('fail') ? 'Discarded an active Exosuit' : 'Exosuit placed');
+  }
   // The VP granted for a Failed Action is normally +1, but the Chronossus's
   // "Failed Actions score VP" difficulty replaces that with +2 — read the actual
   // delta rather than hardcoding +1, so this line never contradicts the turn's
