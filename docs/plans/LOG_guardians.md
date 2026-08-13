@@ -160,8 +160,9 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   with the breakdown in its tooltip and its pop-out: *5 powered figures to place / Normal
   Exosuits 4 / Guardians 1 powered · 1 enlisted*
 - [x] **The turn-overview chip merged**: `5 Exo (inc 1 Guardian)` instead of a separate
-  Guardians chip the player had to add up. The second chip now shows only what the figure
-  count can't — Guardians **enlisted** in total, which persists across Eras
+  Guardians chip the player had to add up. The second chip shows what the figure count
+  can't — `powered/total`, e.g. **`0/1 Guardian`** when it holds one it could not power up
+  this Era. ("Enlisted" as a label was rejected by the user; the counts say it better.)
 - [x] Verified live with the start-with-1-Guardian difficulty; 305 tests, build + lint clean
 
 **Deviation / note**

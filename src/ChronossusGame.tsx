@@ -2685,8 +2685,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                               <div className="cx-mech-pop-energy">
                                 <span className="cx-mech-pop-label">Guardians</span>
                                 <span>
-                                  {bot.guardians!.powered} powered ·{' '}
-                                  {bot.guardians!.owned} enlisted
+                                  {bot.guardians!.powered}/{bot.guardians!.owned} powered
                                 </span>
                               </div>
                             </>
@@ -2954,10 +2953,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {guardiansMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Guardians the Chronossus has enlisted in total. They are permanent — each keeps a Path marker on its Guardian board slot, and every Era it powers up as many of them as it can before its own Exosuits."
+                      hint="Guardians powered up this Era / Guardians it has. They are permanent — each keeps a Path marker on its own Guardian board slot — and every Era it powers up as many of them as it can before its own Exosuits. A gap means it has a Guardian it could not power up."
                     >
                       <span className="cx-tech-ops">
-                        <b>{bot.guardians?.owned ?? 0}</b> enlisted
+                        <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0}{' '}
+                        Guardian{(bot.guardians?.owned ?? 0) === 1 ? '' : 's'}
                       </span>
                     </TapFlag>
                   )}

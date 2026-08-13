@@ -68,8 +68,8 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
       flag: Chronossus.DIFFICULTY_GUARDIANS_START_1,
       label: 'Guardians: it starts the game with 1 Guardian',
       detail:
-        'The Chronossus begins with one Guardian already enlisted — place one of its Path ' +
-        'markers on an empty Guardian board slot at setup, and give it a Guardian.',
+        'The Chronossus starts with 1 Guardian — place one of its Path markers on an empty ' +
+        'Guardian board slot at setup, and give it a Guardian.',
     },
   ],
   hypersync: [
