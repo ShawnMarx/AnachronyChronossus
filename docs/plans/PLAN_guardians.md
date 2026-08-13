@@ -106,15 +106,30 @@ The three open questions are **answered** (see Decisions above) — what's left 
       expected to be nothing), and confirm "the leftmost available Guardian" is simply the
       left-to-right order on the Guardian board, so the instruction can name it without the
       app modelling that board.
-- [x] **No Path-marker cap** (user, 2026-08-13). There is no printed rule capping the bot's
-      Guardians, and the 4 Solo Path markers are a component limit, not a rule: a 5th enlist is
-      unlikely (you'd normally have taken two Guardians first) but **possible**, and the player
-      just substitutes a marker. So the engine holds no cap — the setup/acquire copy carries a
-      one-line note instead.
+- [x] **No Path-marker cap — confirmed verbatim** (user's call 2026-08-13, then verified
+      against the rulebook rather than BGG, whose threads block automated fetching). The Solo
+      Opponents component list (p.2) states it outright:
+      > NOTE: Solo Path markers are not meant to be limited. If they run out, use one of the
+      > unused Paths' markers in their place.
+
+      So the engine holds **no cap**; the acquire copy carries that substitution note.
 - [x] **The real limit is the 6 shared Guardian miniatures** — C11 recruits "the leftmost
       **available** Guardian", and availability depends on how many the *player* has enlisted,
       which the app cannot see. So Acquire Guardian **asks whether a Guardian is still
       available**; none left → the Failed-Action branch (see G3).
+- [x] **"Any Path-marked slot" confirmed** (Classic p.10): a Guardian "may also be placed on
+      the hex space from which they were enlisted, marked with your Path marker… **If you have
+      multiple Guardians enlisted, it doesn't matter which of the marked hex spaces you use.**"
+      Other players may never use a slot marked with your Path marker — hence "uncontested",
+      and hence no question to ask the player.
+- [x] **The 1 Water cost is a no-op for the bot.** Classic p.10 has the *player* pay 1 Water to
+      take a Capital Action from their Guardian space; Solo Opponents p.16 imposes no cost on
+      the Chronossus, and the app doesn't track Water at all (same as the Fractures Anomaly
+      Remover delta).
+- [x] **A placed Guardian counts as a Genius** (Classic p.10): Guardians take Actions without
+      Workers and are "always treated as though a Genius was placed in them". Relevant to the
+      **Recruit Genius / Research** Action, whose gate asks "Genius + open Recruit space?" — a
+      Guardian satisfies the Genius half. Handle in G2.
 
 ## G1. Mode entry & setup
 
@@ -151,14 +166,27 @@ The three open questions are **answered** (see Decisions above) — what's left 
       no-space gate branch, and takes priority over the Solo Hypersync tile in the combo. Since
       every Guardian brings its own space, the only condition is holding a powered Guardian —
       there is no "space taken" question to ask the player.
-- [ ] Unit tests for each of the above, incl. the D4 interaction and the pass rule.
+- [ ] **Clean Up retrieves Guardians too** (Classic p.10): from the Main board like regular
+      Exosuits, *and* from the Guardian board's Path-marked spaces. Only Guardians placed this
+      Era come back — the Path markers stay put permanently, and `owned` never decreases.
+      `powered` resets like `exosuitsAvailable`.
+- [ ] **Recruit Genius / Research:** a placed Guardian is treated as a Genius, so it satisfies
+      that Action's Genius requirement — check the existing gate copy and decision helper.
+- [ ] Unit tests for each of the above, incl. the D4 interaction, Clean Up, and the pass rule.
 
 ## G3. Engine — Acquire Guardian (C11) & the tile
 
 - [ ] `TILE_EFFECTS.C11A` / `C11B`: `autoleap: true` both sides; C11B adds +2 VP.
-- [ ] Acquire Guardian **asks first whether a Guardian is still available** on the Guardian
-      board (the 6 miniatures are shared with the player, so the app can't know). None
-      available → the Failed-Action branch, before the World Council question is even asked.
+- [ ] Acquire Guardian **asks whether a Guardian is still available** on the Guardian board
+      (the 6 miniatures are shared with the player, so the app can't know). None available →
+      the Failed-Action branch, before the World Council question is even asked. **Only ask
+      from Era 4 on**: the board cannot be emptied earlier (user's analysis 2026-08-13 — the
+      bot only acquires via C11, and even with you taking one each time the supply can't run
+      out before Era 4), and Eras 5+ are post-Impact, where the Action is a Failed Action
+      regardless. So in practice the question surfaces **only in Era 4** — the same
+      don't-prompt-for-nothing rule as Fractures' "skip the Blink check with no Cores in the
+      pool". Note the "start with 1 Guardian" difficulty shifts the supply by one; the Era-4
+      question covers it either way.
 - [ ] `resolveAcquireGuardian` branching exactly as p.16: pre-Impact + World Council free →
       Exosuit onto World Council, **becomes First Player** (`state.firstPlayer`), no Action,
       +1 Guardian; World Council taken → spend a Worker by **Most > Scientist > Engineer >

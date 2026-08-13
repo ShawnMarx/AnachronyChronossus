@@ -10,8 +10,11 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   its own guaranteed space on the Guardian board, the slot holding a Chronossus **Path
   marker** (any of them if several). Consequences: setup must have the player keep Path
   markers to hand, and C11 must instruct placing one when it enlists
-- [ ] Classic Expansion pp.9-11: confirm powering up a Guardian costs the Chronossus nothing
-  the app tracks, and that "leftmost available Guardian" is just left-to-right board order
+- [x] **Classic pp.9-11 read (2026-08-13).** Confirmed: powering up a Guardian costs the bot
+  nothing the app tracks; the Guardian space's 1 Water cost is the *player's* and a no-op for
+  the Chronossus (which doesn't track Water); any Path-marked slot may be used ("it doesn't
+  matter which"); a placed Guardian is **treated as a Genius** and needs no Worker; and
+  **Clean Up retrieves Guardians** from both boards while the Path markers stay permanently
 - [x] **No cap on the bot's Guardians** (user, 2026-08-13): the 4 Solo Path markers are a
   component limit, not a rule — a 5th enlist is possible and the player substitutes a marker,
   so the copy carries a note and the engine no cap. The binding limit is the **6 shared
@@ -33,6 +36,8 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [ ] Power Up powers Guardians first, then Exosuits (check D4 + the post-Impact cap)
 - [ ] `spendExosuit(bot)` helper — Guardians last; replaces the ~6 bare `exosuitsAvailable -= 1`
 - [ ] Pass rule counts Guardians (`noExosuitFor` / out-of-Exosuits pass)
+- [ ] Clean Up retrieves Guardians (both boards); `owned` persists, `powered` resets
+- [ ] Recruit Genius / Research: a placed Guardian counts as the Genius
 - [ ] Guardian Action space fallback: Capital Action with no space → place a Guardian on a
   Path-marked Guardian board slot, not a Failed Action; wins over the Hypersync tile in the
   combo; no "is it free?" question, since every Guardian brings its own space
@@ -40,7 +45,9 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 
 ## G3 — Engine: Acquire Guardian (C11)
 - [ ] `TILE_EFFECTS` C11A/C11B (Autoleap both sides; C11B +2 VP)
-- [ ] Acquire Guardian asks "is a Guardian still available?" first; none → Failed Action
+- [ ] Acquire Guardian asks "is a Guardian still available?" first; none → Failed Action.
+  Only asked **from Era 4** (can't be exhausted earlier), and Eras 5+ are post-Impact Failed
+  Actions anyway — so the prompt effectively appears only in Era 4
 - [ ] `resolveAcquireGuardian` — World Council branch (Exosuit + First Player + free Guardian),
   Worker branch (Most > Scientist > Engineer > Administrator > Genius, no Exosuit), and the
   failed branch (post-Impact or neither possible) as a **full** Failed Action — VP + discard
