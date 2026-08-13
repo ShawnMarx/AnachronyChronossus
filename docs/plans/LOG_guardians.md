@@ -163,6 +163,14 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardians chip the player had to add up. The second chip shows what the figure count
   can't — `powered/total`, e.g. **`0/1 Guardian`** when it holds one it could not power up
   this Era. ("Enlisted" as a label was rejected by the user; the counts say it better.)
+- [x] **The turn overview puts every rule box at the bottom**, like the Action dialogs: the
+  bot's-turn text used to sit mid-panel above the difficulty list. Order is now bot's turn →
+  module rules → passing. `TurnBarOverview` gained an `extraRules` slot for the active
+  module (the Chronobot passes nothing, so it is unaffected)
+- [x] **New Guardians rule box** in that footer — the verbatim p.16 POWER UP PHASE and
+  GAMEPLAY CHANGES paragraphs, i.e. exactly how the bot uses Guardians for its Actions
+  (powered first, placed last, and the Guardian board space that stops a no-space Capital
+  Action being a Failed Action)
 - [x] Verified live with the start-with-1-Guardian difficulty; 305 tests, build + lint clean
 
 **Deviation / note**

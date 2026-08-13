@@ -1,9 +1,9 @@
 // TurnBarOverview — the dismissible "Turn" popover opened from the top-bar Turn
-// chip. Shows the Era/Phase/turn-count title line, the tracker chips, a status hint, the
-// verbatim "<bot>'s turn" rulebook text, the difficulty options, the recent bot
-// turns, and the collapsible passing rules. Shared by both solo-bot views
-// (formerly the Chronobot-only EndOfActionsBar); the bot-specific values come in
-// as props.
+// chip. Shows the Era/Phase/turn-count title line, the tracker chips, a status hint,
+// the difficulty options and the recent bot turns — then EVERY verbatim rule box in a
+// footer at the bottom, the same shape as the Action dialogs (see CLAUDE.md): the
+// bot's-turn text, any module rules the view passes in, then the passing rules.
+// Shared by both solo-bot views; the bot-specific values come in as props.
 
 import { useState } from 'react';
 import RulesBox from './RulesBox';
@@ -28,6 +28,11 @@ export interface TurnBarOverviewProps {
   canEnd: boolean;
   /** Verbatim "<bot>'s turn" rulebook text (omit to hide the box). */
   turnRules?: string;
+  /**
+   * Extra verbatim rule boxes for the active module(s) — rendered in the footer with the
+   * other rule boxes. The Chronossus passes its Guardians / module text here.
+   */
+  extraRules?: React.ReactNode;
   /** Difficulty option labels to list; omit to hide the section entirely. */
   difficulty?: string[];
   /** Recent bot turns (oldest→newest); the last few show as a mini turn log. */
@@ -48,6 +53,7 @@ export default function TurnBarOverview({
   hint,
   canEnd,
   turnRules,
+  extraRules,
   difficulty,
   entries,
   passingRule,
@@ -79,12 +85,6 @@ export default function TurnBarOverview({
         <div className="eoa-buttons">
           <span className="eoa-end">✓ Action Rounds Phase ends</span>
         </div>
-      )}
-
-      {turnRules && (
-        <RulesBox label={`${botName}'s turn — rulebook text`}>
-          <p>{turnRules}</p>
-        </RulesBox>
       )}
 
       {difficulty && (
@@ -159,6 +159,17 @@ export default function TurnBarOverview({
           </ol>
         </div>
       )}
+
+      {/* Rule boxes live together at the bottom, in a fixed order — the bot's turn, the
+          active module's own rules, then passing. Same footer convention the Action and
+          module dialogs follow. */}
+      {turnRules && (
+        <RulesBox label={`${botName}'s turn — rulebook text`}>
+          <p>{turnRules}</p>
+        </RulesBox>
+      )}
+
+      {extraRules}
 
       <div className="eoa-rule">
         <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>

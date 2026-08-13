@@ -2980,6 +2980,27 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               hint={chronossusTurnHint(bot)}
               canEnd={bothPassed}
               turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
+              extraRules={
+                guardiansMode ? (
+                  <RulesBox label="Guardians of the Council — rulebook text">
+                    <p>
+                      <b>3 POWER UP PHASE:</b> The Chronossus first powers up as many
+                      Guardians as it can, then it powers up its own Exosuits (e.g. if it
+                      needs to power up 4 Exosuits and has 2 Guardians, it will power up
+                      both of them and 2 of its own).
+                    </p>
+                    <p>
+                      <b>GAMEPLAY CHANGES:</b> When deciding which Exosuit to place, the
+                      Chronossus places Guardians last. If it wants to take a Capital Action
+                      (Research, Recruit, Construct) and there are no Action spaces
+                      remaining (including the World Council Action space), it places a
+                      Guardian (if it has any) on the reserved Guardian Action space and
+                      performs the Capital Action. This means the Action is not a Failed
+                      Action, so it does not take 1 VP.
+                    </p>
+                  </RulesBox>
+                ) : undefined
+              }
               difficulty={state.config.difficulty.map((f) =>
                 chronossusDifficultyLabel(f, state.config.difficultyValues),
               )}
