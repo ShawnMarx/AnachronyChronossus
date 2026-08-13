@@ -88,11 +88,11 @@ const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'fractures', label: 'Fractures of Time', available: true },
   { id: 'doomsday', label: 'Doomsday', available: false },
   { id: 'pioneers', label: 'Pioneers of New Earth', available: false },
-  { id: 'guardians', label: 'Guardians of the Council', available: false },
+  { id: 'guardians', label: 'Guardians of the Council', available: true },
   { id: 'hypersync', label: 'Hypersync Future Actions', available: true },
   { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: false },
   { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: true },
-  { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: false },
+  { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: true },
   { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: false },
 ];
 
@@ -612,6 +612,21 @@ export default function ChronossusSetupFlow({
                 </RulesBox>
               )}
 
+              {moduleId?.includes('guardians') && (
+                <RulesBox label="Guardians of the Council — setup" showPreamble>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C02A to the (I) empty space, C11A
+                    to the (II) empty space. Leave C03A in play.
+                  </p>
+                  <p>Add the “Guardians” Solo Objective card to the Solo Objective deck.</p>
+                  <p>
+                    Cover the right World Council Action space with a Hex Unavailable tile
+                    (as noted in the Guardians of the Council rules for 2 players).
+                  </p>
+                </RulesBox>
+              )}
+
               {moduleId?.includes('hypersync') && (
                 <RulesBox label="Hypersync Future Actions — setup" showPreamble>
                   <p>
@@ -678,6 +693,21 @@ export default function ChronossusSetupFlow({
                       )}
                     </>
                   )}
+                  {moduleId?.includes('guardians') && (
+                    <>
+                      <li>
+                        Set up the <b>Guardian board</b> as for a 2-player game, and keep the
+                        Chronossus’s <b>Path markers</b> to hand — when it acquires a
+                        Guardian you place one on an empty Guardian board slot, and that slot
+                        becomes that Guardian’s own Action space. (Solo Path markers aren’t
+                        meant to be limited; if they run out, use an unused Path’s markers.)
+                      </li>
+                      <li>
+                        The app tracks how many Guardians the Chronossus owns and how many
+                        are powered up; you place and retrieve the miniatures as prompted.
+                      </li>
+                    </>
+                  )}
                   <li>
                     Place the Chronossus’s Banner on the First Player spot; it is the
                     First Player in the 1st Era. You receive 1 additional Water (for being
@@ -710,6 +740,21 @@ export default function ChronossusSetupFlow({
 
               {/* Visible per-mode setup steps (below the app rules) — the verbatim
                   Hypersync setup MINUS the tile-layout line the app handles for you. */}
+              {moduleId?.includes('guardians') && (
+                <div className="setup-modified">
+                  <h3>Guardians of the Council setup</h3>
+                  <ul>
+                    <li>
+                      Set up the Guardian board as for a 2-player game, and cover the right
+                      World Council Action space with a Hex Unavailable tile (as noted in the
+                      Guardians of the Council rules for 2 players).
+                    </li>
+                    <li>Add the “Guardians” Solo Objective card to the Solo Objective deck.</li>
+                    <li>Keep the Chronossus’s Path markers to hand for the Guardian board.</li>
+                  </ul>
+                </div>
+              )}
+
               {moduleId?.includes('hypersync') && (
                 <div className="setup-modified">
                   <h3>Hypersync Future Actions setup</h3>

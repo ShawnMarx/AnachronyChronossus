@@ -5,8 +5,11 @@
 // effect sits where) read from — every new module is added here, so it runs under
 // the same system rather than as one-off special-casing.
 //
-// See the mode → tile matrix (memory: chronossus-mode-tile-matrix) transcribed
-// from the setup reference table. Only Base and Hypersync are implemented so far.
+// See the mode → tile matrix transcribed from the setup reference table
+// (Solo Opponents p.18). Implemented: Base, Hypersync, Fractures, Guardians and the
+// Fractures+Hypersync / Guardians+Hypersync combos. Doomsday and Pioneers are still
+// stubs — and per that page, Doomsday combines with nothing and Fractures+Guardians
+// is not a legal pairing.
 
 /** A modular-tile slot on the board (roman numerals I–III are the native tile
  *  spaces; IV/V mark tiles that COVER a printed Action space). */
@@ -78,6 +81,31 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
       { slot: 'V', family: 'C13', covers: 'time-travel' },
     ],
   },
+  guardians: {
+    id: 'guardians',
+    label: 'Guardians of the Council',
+    available: true,
+    slots: [
+      // C02A moves to slot I and C11A (Acquire Guardian) takes slot II; C03A stays
+      // (Solo Opponents p.16).
+      { slot: 'I', family: 'C02', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C11', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C03', posKey: SLOT_III_POS },
+    ],
+  },
+  'guardians+hypersync': {
+    id: 'guardians+hypersync',
+    label: 'Guardians of the Council + Hypersync Future Actions',
+    available: true,
+    // Per the setup matrix: C12 takes slot I, C11 keeps slot II, C03 stays, and C13
+    // covers Time Travel.
+    slots: [
+      { slot: 'I', family: 'C12', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C11', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C03', posKey: SLOT_III_POS },
+      { slot: 'V', family: 'C13', covers: 'time-travel' },
+    ],
+  },
   hypersync: {
     id: 'hypersync',
     label: 'Hypersync Future Actions',
@@ -144,8 +172,8 @@ export function slotCovering(mode: ChronossusMode, action: CoveredAction): ModeS
 /**
  * Whether `modeId`'s own setup rules already require covering the right World
  * Council space with a Hex Unavailable tile (Hypersync's 2-player setup note;
- * Guardians of the Council — not yet implemented — has the same requirement per
- * its rulebook). True for any mode id built from Hypersync or Guardians, including
+ * Guardians of the Council carries the same requirement, Solo Opponents p.16).
+ * True for any mode id built from Hypersync or Guardians, including
  * combos (e.g. 'guardians+hypersync', 'fractures+hypersync'). When true, the
  * "Cover the right World Council space" difficulty option (D9) isn't a real choice
  * for that mode — it's mandatory setup, not an optional difficulty increase — so

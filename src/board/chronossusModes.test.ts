@@ -162,6 +162,70 @@ describe('Fractures + Hypersync combo mode', () => {
   });
 });
 
+describe('Guardians of the Council mode', () => {
+  it('moves C02 to slot I and puts C11 in slot II, leaving C03 in III', () => {
+    const mode = getMode('guardians');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.map((s) => [s.slot, s.family])).toEqual([
+      ['I', 'C02'],
+      ['II', 'C11'],
+      ['III', 'C03'],
+    ]);
+  });
+
+  it('mandates the World Council cover (Solo Opponents p.16 setup)', () => {
+    expect(worldCouncilMandatory('guardians')).toBe(true);
+  });
+
+  it('swaps I/III under D2 without moving the Acquire Guardian tile', () => {
+    const mode = getMode('guardians', [DIFFICULTY_SWAP_TILES]);
+    expect(mode.slots.map((s) => [s.slot, s.family])).toEqual([
+      ['I', 'C03'],
+      ['II', 'C11'],
+      ['III', 'C02'],
+    ]);
+  });
+
+  it('resolves the B side of the new tile through tileCodeFor', () => {
+    expect(tileCodeFor('C11', { C11: 'B' })).toBe('C11B');
+    expect(tileCodeFor('C11', undefined)).toBe('C11A');
+  });
+
+  it('is untouched by the Fractures C14 option (no C04 to replace)', () => {
+    expect(getMode('guardians', [DIFFICULTY_FRACTURES_C14]).slots.map((s) => s.family)).toEqual([
+      'C02',
+      'C11',
+      'C03',
+    ]);
+  });
+});
+
+describe('Guardians + Hypersync combo mode', () => {
+  it('lays C12 / C11 / C03 and covers Time Travel with C13', () => {
+    const mode = getMode('guardians+hypersync');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.map((s) => [s.slot, s.family])).toEqual([
+      ['I', 'C12'],
+      ['II', 'C11'],
+      ['III', 'C03'],
+      ['V', 'C13'],
+    ]);
+    expect(slotCovering(mode, 'time-travel')?.family).toBe('C13');
+    expect(slotAtPos(mode, 'm3s3')?.family).toBe('C11');
+  });
+
+  it('mandates the World Council cover (both modules require it)', () => {
+    expect(worldCouncilMandatory('guardians+hypersync')).toBe(true);
+  });
+
+  it('keeps the covering C13 slot intact through a D2 swap', () => {
+    const mode = getMode('guardians+hypersync', [DIFFICULTY_SWAP_TILES]);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C03');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C12');
+    expect(slotCovering(mode, 'time-travel')?.family).toBe('C13');
+  });
+});
+
 describe('Worker badges line up with the Operator slots', () => {
   it('every Worker column an Operator can fill has a board counter of the same key', () => {
     // `counterInfo` (ChronossusGame) reads `operatorSlots[counter.key]` to say how many of

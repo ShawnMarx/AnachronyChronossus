@@ -163,6 +163,14 @@ export interface ChronossusState {
    * pool in Clean Up). `undefined` in every other mode.
    */
   fluxPool?: { cores: number; casings: number; setAside: number };
+  /**
+   * Guardians of the Council only: the Guardians the Chronossus has enlisted.
+   * `owned` never decreases (a Guardian is permanent, and its Path marker stays on
+   * the Guardian board); `powered` is how many are powered up and unplaced this Era,
+   * the Guardian half of `exosuitsAvailable`. Guardians power up FIRST and are placed
+   * LAST (Solo Opponents p.16). `undefined` in every other mode.
+   */
+  guardians?: { owned: number; powered: number };
   /** Fractures of Time only: Technology cards held (3 VP each at game end). */
   technologies?: number;
   /**

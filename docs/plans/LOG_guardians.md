@@ -24,15 +24,31 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardian miniatures**: C11 takes "the leftmost **available** Guardian", and the app can't
   see how many the player holds, so the Action asks — none available is a Failed Action
 
-## G1 — Mode entry & setup
-- [ ] `CHRONOSSUS_MODES.guardians` (I=C02, II=C11, III=C03)
-- [ ] `CHRONOSSUS_MODES['guardians+hypersync']` (I=C12, II=C11, III=C03, V=C13 covers Time Travel)
-- [ ] Un-stub both in `MODULE_CONFIGS`
-- [ ] Setup screen: verbatim p.16 box + app-modified bullets, combo-aware
-- [ ] Setup bullet: keep the Chronossus's Path markers to hand for the Guardian board
-- [ ] Slice seeded at setup (`guardians` = 0, or 1 with the difficulty — which also instructs
-  a starting Path marker + Guardian)
-- [ ] Tests: tile codes per slot for both modes, incl. the B-side picker and the I/III swap
+## G1 — Mode entry & setup ✅ done (2026-08-13)
+- [x] `CHRONOSSUS_MODES.guardians` (I=C02, II=C11, III=C03)
+- [x] `CHRONOSSUS_MODES['guardians+hypersync']` (I=C12, II=C11, III=C03, V=C13 covers Time Travel)
+- [x] Un-stub both in `MODULE_CONFIGS`
+- [x] Setup screen: verbatim p.16 box + app-modified bullets + a "Guardians of the Council
+  setup" steps block, all combo-aware (`includes('guardians')`)
+- [x] Setup bullet: keep the Chronossus's Path markers to hand for the Guardian board,
+  including the rulebook's "not meant to be limited" substitution note
+- [x] Slice seeded at setup — `guardians: { owned, powered }`, 0 or 1 under
+  `DIFFICULTY_GUARDIANS_START_1`; `undefined` in every other mode
+- [x] Tests: 8 mode tests (both modes, D2 swap, B-side, C14 no-op) + 5 seeding tests.
+  **260 tests, build + lint clean**
+- [x] Verified live (Playwright, Guardians mode start → Era 1 Action Rounds): both modes
+  selectable, setup copy renders, D9's World Council checkbox correctly hidden as mandatory,
+  and the board lays out C02A / **C11A** / C03A with the copied art loading (no 4xx, no
+  console errors)
+
+**Deviations / notes**
+- The `guardians` state field landed here rather than in G2: setup has to seed it, and the
+  seam (`applyDifficultySetup`) is the same one Fractures/Variable Anomalies use.
+- `DIFFICULTY_GUARDIANS_START_1` was defined here so seeding could read it; its Setup-screen
+  checkbox is still G5, so the option isn't selectable yet.
+- **C11 is inert until G3.** `TILE_ACTION_FAMILY` has no `C11` entry, so tapping the tile
+  opens nothing and a marker landing on that slot resolves as "no effect" (the TILE_EFFECTS
+  default). No error, but the module isn't playable until G3 adds the action id and resolver.
 
 ## G2 — Engine: Guardian state, Power Up, placement
 - [ ] `guardians?: { owned: number; powered: number }` on `ChronossusState`

@@ -77,11 +77,23 @@ export function isFracturesMode(modeId: string | undefined): boolean {
   return !!modeId && modeId.includes('fractures');
 }
 
+// --- Guardians of the Council (Solo Opponents p.16) ------------------------
+/** Its "Increasing the Difficulty" bullets. The B-side flip is the shared
+ *  `chronossus-tiles-b-side`; these two are the module's own. */
+export const DIFFICULTY_GUARDIANS_POSTIMPACT_2VP = 'chronossus-guardians-postimpact-2vp';
+export const DIFFICULTY_GUARDIANS_START_1 = 'chronossus-guardians-start-1';
+
+/** Whether a mode id runs the Guardians of the Council module (including its combos). */
+export function isGuardiansMode(modeId: string | undefined): boolean {
+  return !!modeId && modeId.includes('guardians');
+}
+
 /**
  * Apply setup-time adjustments to a fresh Chronossus slice — D3's extra starting
- * Energy Cores (added energized), and Variable Anomalies seeding its held-Anomaly
+ * Energy Cores (added energized), Variable Anomalies seeding its held-Anomaly
  * VP list (`anomalyVps: []`, distinguishing "using this module, 0 held" from
- * `undefined`/not using it). Called once when a game begins, before Era 1.
+ * `undefined`/not using it), Fractures seeding its Flux Pool, and Guardians seeding
+ * its Guardian counter. Called once when a game begins, before Era 1.
  */
 export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): ChronossusState {
   const extra = config.difficulty.includes(DIFFICULTY_EXTRA_ENERGY)
@@ -96,7 +108,12 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
   const extraFlux = config.difficulty.includes(DIFFICULTY_FRACTURES_EXTRA_FLUX)
     ? (config.difficultyValues?.[DIFFICULTY_FRACTURES_EXTRA_FLUX] ?? 0)
     : 0;
-  if (extra === 0 && !variableAnomalies && !fractures) return bot;
+  // Guardians seeds its own counter the same way — its presence marks a Guardians
+  // game. The module's difficulty option starts the bot with 1 already enlisted (so
+  // the player also places a Path marker on the Guardian board at setup).
+  const guardians = isGuardiansMode(config.chronossusMode);
+  const startingGuardians = config.difficulty.includes(DIFFICULTY_GUARDIANS_START_1) ? 1 : 0;
+  if (extra === 0 && !variableAnomalies && !fractures && !guardians) return bot;
   return {
     ...bot,
     energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra },
@@ -109,6 +126,7 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
           operatorSlots: {},
         }
       : {}),
+    ...(guardians ? { guardians: { owned: startingGuardians, powered: 0 } } : {}),
   };
 }
 

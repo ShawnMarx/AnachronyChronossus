@@ -43,6 +43,7 @@ import {
   assimilateTakesOperator,
   isMainBoardPlacement,
   placesExosuitFor,
+  DIFFICULTY_GUARDIANS_START_1,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -577,6 +578,45 @@ describe('applyDifficultySetup — D3 "Extra starting Energy Cores"', () => {
     const config = { ...CONFIG, difficulty: [DIFFICULTY_EXTRA_ENERGY] };
     const next = applyDifficultySetup(bot, config);
     expect(next.energyPool).toEqual({ energized: 5, exhausted: 5 });
+  });
+});
+
+describe('applyDifficultySetup — Guardians of the Council seeding', () => {
+  const guardiansConfig = { ...CONFIG, chronossusMode: 'guardians' };
+
+  it('seeds an empty Guardian counter for a Guardians game', () => {
+    const next = applyDifficultySetup(emptyChronossusState(), guardiansConfig);
+    expect(next.guardians).toEqual({ owned: 0, powered: 0 });
+  });
+
+  it('starts the bot with 1 Guardian under that difficulty option', () => {
+    const config = {
+      ...guardiansConfig,
+      difficulty: [DIFFICULTY_GUARDIANS_START_1],
+    };
+    expect(applyDifficultySetup(emptyChronossusState(), config).guardians).toEqual({
+      owned: 1,
+      powered: 0,
+    });
+  });
+
+  it('seeds the counter in the Hypersync combo too', () => {
+    const config = { ...CONFIG, chronossusMode: 'guardians+hypersync' };
+    expect(applyDifficultySetup(emptyChronossusState(), config).guardians).toEqual({
+      owned: 0,
+      powered: 0,
+    });
+  });
+
+  it('leaves guardians undefined in every other mode', () => {
+    expect(applyDifficultySetup(emptyChronossusState(), CONFIG).guardians).toBeUndefined();
+    const fractures = { ...CONFIG, chronossusMode: 'fractures' };
+    expect(applyDifficultySetup(emptyChronossusState(), fractures).guardians).toBeUndefined();
+  });
+
+  it('ignores the start-with-1 option outside a Guardians game', () => {
+    const config = { ...CONFIG, difficulty: [DIFFICULTY_GUARDIANS_START_1] };
+    expect(applyDifficultySetup(emptyChronossusState(), config).guardians).toBeUndefined();
   });
 });
 
