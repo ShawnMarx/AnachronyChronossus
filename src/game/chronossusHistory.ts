@@ -43,6 +43,22 @@ export function summarizeChronossusExtras(
     else effects.push(line);
   }
 
+  // Guardians — enlisted Guardians (permanent) and the Worker an Acquire Guardian spent.
+  // `owned` only ever rises; `powered` is per-Era bookkeeping and isn't worth a line.
+  const gained = (post.guardians?.owned ?? 0) - (pre.guardians?.owned ?? 0);
+  if (gained > 0) {
+    effects.push(`Acquired ${gained} Guardian${gained === 1 ? '' : 's'}`);
+    // The Worker branch spends one; the shared summarizer has no idea why it went.
+    const spent = WORKER_KEYS.find((w) => post.workers[w] < pre.workers[w]);
+    if (spent) effects.push(`Spent a ${spent} to acquire it`);
+  }
+  // A Guardian placed from the powered pool when no Exosuit was left (or onto its own
+  // Guardian board space) — the Exosuit count doesn't move, so nothing else would say so.
+  const guardiansPlaced = (pre.guardians?.powered ?? 0) - (post.guardians?.powered ?? 0);
+  if (guardiansPlaced > 0 && gained === 0) {
+    effects.push(`Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}`);
+  }
+
   // Hypersync (HFA) — Solo Hypersync tiles placed on / retrieved from the Timeline.
   const hsBefore = pre.hypersyncTiles.length;
   const hsAfter = post.hypersyncTiles.length;

@@ -284,6 +284,8 @@ const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
   C14: 'tile-assimilate',
   C05: 'tile-extract',
   C06: 'tile-power-pack',
+  // Guardians of the Council
+  C11: 'tile-acquire-guardian',
 };
 
 /** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since
@@ -556,6 +558,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // A modular tile action (Reboot / Score / Energy Pack) awaiting its ▶ Start
   // (the marker landed on a tile slot). Its dialog waits like every other action.
   const [pendingTile, setPendingTile] = useState<ChronossusTileActionId | null>(null);
+  /**
+   * Guardians (C11): which step of the Acquire Guardian flow is on screen. It asks before
+   * it instructs — availability (Era 4 only) → the World Council space (only when it has a
+   * figure to place) → then the step that says what to physically do.
+   */
+  const [guardianStep, setGuardianStep] = useState<
+    'available' | 'world-council' | 'place' | 'worker' | 'failed' | null
+  >(null);
+  /** The answers gathered so far this Acquire Guardian, replayed into the resolver. */
+  const guardianAnswersRef = useRef<{ worldCouncilFree: boolean; guardianAvailable: boolean }>({
+    worldCouncilFree: false,
+    guardianAvailable: true,
+  });
   // The current pendingTile was reached by an Autoleap (marker moved onto it): its
   // dialog shows the Autoleap note and its resolution is logged "Autoleap — …".
   const [tileAutoleap, setTileAutoleap] = useState(false);
@@ -737,6 +752,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const hypersyncMode = mode.slots.some((s) => tileEffect(`${s.family}A`).hypersync === true);
   /** Fractures of Time: splits the placement gate, runs the Blink check, tracks the Flux Pool. */
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
+  const guardiansMode = Chronossus.isGuardiansMode(state.config.chronossusMode);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
   // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
   // every pre-commit "Failed Action" button label agrees with what actually resolves.
@@ -1575,6 +1591,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         mineOrder={Chronobot.mineResourceOrder(bot)}
         workerOrder={Chronobot.recruitWorkerOrder(bot)}
         botName="Chronossus"
+        figure={Chronossus.nextFigure(bot) ?? 'exosuit'}
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
         fractures={fracturesMode}
@@ -1625,6 +1642,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           startLabel={startLabel}
           onStart={startTileTurn}
           onClose={cancelPanel}
+          guardianGate={
+            pendingTile === 'tile-acquire-guardian' && !tileRuleView && guardianStep
+              ? {
+                  step: guardianStep,
+                  worker: Chronossus.guardianWorkerToSpend(bot),
+                  figure: Chronossus.nextFigure(bot),
+                  impact: state.impact,
+                  failVP: Chronossus.failedActionVP(state.config.difficulty),
+                  postImpact2VP: state.config.difficulty.includes(
+                    Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
+                  ),
+                  onAvailable: onGuardianAvailable,
+                  onWorldCouncil: onGuardianWorldCouncil,
+                  onCommit: commitGuardian,
+                }
+              : null
+          }
           valleyGate={
             fracturesMode &&
             Chronossus.VALLEY_TILE_ACTIONS.includes(pendingTile) &&
@@ -1987,6 +2021,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       ...(valleySpace ? { placementSpace: valleySpace === 'capital' ? 'world-council' : 'action' } : {}),
       ...(blinked ? { blink: true, tokenActions: otherTokenActions() } : {}),
       ...(assimilates ? { shape, operatorsAvailable } : {}),
+      ...(actionId === 'tile-acquire-guardian' ? guardianAnswersRef.current : {}),
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
     // opens its dialog (so the chain continues one tile at a time).
@@ -1996,6 +2031,52 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
   // Autoleap tile) close. The result lands in History / the turn-status aside.
+  /**
+   * Guardians (C11): the first question of an Acquire Guardian. The supply question only
+   * matters in Era 4, and the World Council question only when it has a figure to place —
+   * with none it isn't an Exosuit Action at all and goes straight to the Worker option.
+   */
+  const openGuardianFlow = () => {
+    guardianAnswersRef.current = { worldCouncilFree: false, guardianAvailable: true };
+    if (state.impact) return setGuardianStep('failed');
+    if (Chronossus.shouldAskGuardianAvailable(state.era)) return setGuardianStep('available');
+    if (Chronossus.acquireGuardianAsksWorldCouncil(bot)) return setGuardianStep('world-council');
+    return setGuardianStep(Chronossus.guardianWorkerToSpend(bot) ? 'worker' : 'failed');
+  };
+  /** Answer to "is a Guardian still available?" (Era 4). */
+  const onGuardianAvailable = (available: boolean) => {
+    guardianAnswersRef.current = { ...guardianAnswersRef.current, guardianAvailable: available };
+    if (!available) return setGuardianStep('failed');
+    if (Chronossus.acquireGuardianAsksWorldCouncil(bot)) return setGuardianStep('world-council');
+    return setGuardianStep(Chronossus.guardianWorkerToSpend(bot) ? 'worker' : 'failed');
+  };
+  /** Answer to "is the World Council Action space open?" */
+  const onGuardianWorldCouncil = (free: boolean) => {
+    guardianAnswersRef.current = { ...guardianAnswersRef.current, worldCouncilFree: free };
+    if (free) return setGuardianStep('place');
+    return setGuardianStep(Chronossus.guardianWorkerToSpend(bot) ? 'worker' : 'failed');
+  };
+  /** Commit the Acquire Guardian once the player has been told what to do. */
+  const commitGuardian = () => {
+    if (!pendingTile) return;
+    chainOpenRef.current = false;
+    resolveTileSlot(pendingTile);
+    setGuardianStep(null);
+    if (!chainOpenRef.current) closeTile();
+  };
+
+  // Acquire Guardian opens on a question, whichever way the tile was reached (die roll,
+  // Autoleap chain, or a debug tap) — one effect instead of a call at every open site.
+  useEffect(() => {
+    if (pendingTile === 'tile-acquire-guardian' && !tileRuleView) {
+      if (guardianStep === null) openGuardianFlow();
+    } else if (guardianStep !== null) {
+      setGuardianStep(null);
+    }
+    // openGuardianFlow reads the live bot/era; re-running on those would restart the flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTile, tileRuleView]);
+
   const startTileTurn = (valleySpace?: 'action' | 'capital', blinked = false) => {
     if (!pendingTile) return;
     // Assimilate rolls the shape die once the Exosuit is settled, then SHOWS the result
@@ -2091,6 +2172,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setPendingTile(null);
     setTileAutoleap(false);
     setTileRuleView(false);
+    setGuardianStep(null);
     setResult([]);
     botDieRef.current = null;
     activeMarkerRef.current = null;
@@ -2803,6 +2885,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       </span>
                     </TapFlag>
                   )}
+                  {guardiansMode && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint="Guardians it has enlisted, and how many of them are powered up this Era. Guardians power up FIRST and are placed LAST; each has its own Action space on the Guardian board."
+                    >
+                      <span className="cx-tech-ops">
+                        <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0} Guardians
+                      </span>
+                    </TapFlag>
+                  )}
                   {hypersyncMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
@@ -3217,6 +3309,7 @@ function CxTileDialog({
   startLabel = '▶ Start Your Turn',
   onStart,
   onClose,
+  guardianGate = null,
   valleyGate = null,
   flow = false,
 }: {
@@ -3234,6 +3327,24 @@ function CxTileDialog({
    * Fractures: the Valley placement question for the tile Actions that take an Exosuit,
    * plus the Blink check that follows it (the Valley board is a legal Blink destination).
    */
+  /**
+   * Guardians (C11): the Acquire Guardian flow. It asks first (is a Guardian left? is the
+   * World Council space open?) and only then says what to physically do — the app decides
+   * which branch runs, exactly like the Fractures placement gate.
+   */
+  guardianGate?: {
+    step: 'available' | 'world-council' | 'place' | 'worker' | 'failed';
+    /** The Worker the bot would spend (Most > Scientist > Engineer > Administrator > Genius). */
+    worker: Worker | null;
+    /** Which figure it would place on the World Council space, if it places one. */
+    figure: 'exosuit' | 'guardian' | null;
+    impact: boolean;
+    failVP: number;
+    postImpact2VP: boolean;
+    onAvailable: (available: boolean) => void;
+    onWorldCouncil: (free: boolean) => void;
+    onCommit: () => void;
+  } | null;
   valleyGate?: {
     onPlace: (space: 'action' | 'capital') => void;
     step: 'blink' | 'casing' | 'operators' | 'assimilate' | null;
@@ -3326,9 +3437,95 @@ function CxTileDialog({
               now — then the Command marker advances one extra space.
             </p>
           )}
-          {/* Valley board Actions (Assimilate / Extract) take an Exosuit, so they gate on
-              a free space first — Valley Action space, else the Valley Capital space. */}
-          {valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
+          {/* Guardians (C11): ask, decide, then instruct. */}
+          {guardianGate && !readOnly && guardianGate.step === 'available' ? (
+            <>
+              <p className="pp-instruct">
+                Is a <b>Guardian</b> still available on the <b>Guardian board</b>?
+              </p>
+              <p className="pp-sub">
+                The six Guardians are shared with you, so the app can’t see how many are
+                left. From this Era on they could be gone.
+              </p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={() => guardianGate.onAvailable(true)}>
+                  ✓ Yes — one is available
+                </button>
+                <button className="pp-cannot" onClick={() => guardianGate.onAvailable(false)}>
+                  ✗ None left — Failed Action (+{guardianGate.failVP} VP)
+                </button>
+              </div>
+            </>
+          ) : guardianGate && !readOnly && guardianGate.step === 'world-council' ? (
+            <>
+              <p className="pp-instruct">
+                Is the <b>World Council Action space</b> open?
+              </p>
+              <p className="pp-sub">
+                Don’t place anything yet — if it’s taken, the Chronossus spends a Worker
+                instead and places no Exosuit at all.
+              </p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={() => guardianGate.onWorldCouncil(true)}>
+                  ✓ Yes — it’s open
+                </button>
+                <button className="pp-cannot" onClick={() => guardianGate.onWorldCouncil(false)}>
+                  ✗ No — it’s taken
+                </button>
+              </div>
+            </>
+          ) : guardianGate && !readOnly && guardianGate.step === 'place' ? (
+            <>
+              <p className="pp-instruct">
+                Place the Chronossus’s{' '}
+                <b>{guardianGate.figure === 'guardian' ? 'Guardian' : 'Exosuit'}</b> on the{' '}
+                <b>World Council Action space</b> — it becomes the <b>First Player</b>. It
+                performs no Action there; instead it recruits the <b>leftmost available
+                Guardian</b> at no cost.
+              </p>
+              <p className="pp-sub">
+                Put one of the Chronossus’s <b>Path markers</b> on an empty Guardian board
+                slot for it — that slot becomes this Guardian’s own Action space. (If its
+                Path markers run out, use an unused Path’s markers.)
+              </p>
+              <button className="start-turn" onClick={guardianGate.onCommit}>
+                {startLabel}
+              </button>
+            </>
+          ) : guardianGate && !readOnly && guardianGate.step === 'worker' ? (
+            <>
+              <p className="pp-instruct">
+                The Chronossus spends a <b>{guardianGate.worker}</b> and recruits the{' '}
+                <b>leftmost available Guardian</b> — no Exosuit is placed.
+              </p>
+              <p className="pp-sub">
+                Worker priority: the one it has most of, then Scientist &gt; Engineer &gt;
+                Administrator &gt; Genius. Put one of its <b>Path markers</b> on an empty
+                Guardian board slot for the new Guardian — that slot becomes its own Action
+                space.
+              </p>
+              <button className="start-turn" onClick={guardianGate.onCommit}>
+                {startLabel}
+              </button>
+            </>
+          ) : guardianGate && !readOnly && guardianGate.step === 'failed' ? (
+            <>
+              <p className="pp-instruct">
+                {guardianGate.impact
+                  ? guardianGate.postImpact2VP
+                    ? 'The Impact has happened, so the Chronossus can no longer acquire Guardians — difficulty option: it scores 2 VP instead.'
+                    : `The Impact has happened, so the Chronossus can no longer acquire Guardians — Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`
+                  : guardianGate.worker
+                    ? `Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`
+                    : `It has no Workers left to spend on a Guardian — Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`}
+              </p>
+              <button className="start-turn" onClick={guardianGate.onCommit}>
+                {startLabel}
+              </button>
+            </>
+          ) : /* Valley board Actions (Assimilate / Extract) take an Exosuit, so they gate on
+              a free space first — Valley Action space, else the Valley Capital space. */
+          valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
             <>
               <p className="pp-instruct">
                 The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
@@ -3408,7 +3605,7 @@ function CxTileDialog({
           ) : (
             <p className="pp-instruct">{tileInstruction(code)}</p>
           )}
-          {!readOnly && !valleyGate && (
+          {!readOnly && !valleyGate && !guardianGate && (
             <button className="start-turn" onClick={onStart}>
               {startLabel}
             </button>

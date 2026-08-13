@@ -111,13 +111,32 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   already matched; the final Failed-Action copy was reworded, since the only way to reach it
   is an empty Worker pool — it used to read "can neither place… nor spend a Worker".
 
-## G4 — UI: dialog, trackers, History, art
-- [ ] `C11A.png` / `C11B.png` copied from `temp/Mod Tiles/`
-- [ ] `AcquireGuardianDialog` — `flow` prop, in `renderModDialogs`, rule box in the footer,
-  asks before it instructs
-- [ ] Turn-overview Guardians chip (owned · powered), Guardians modes only
-- [ ] Placement instructions name a Guardian when one was spent (incl. the fallback)
-- [ ] `summarizeChronossusExtras` covers Guardians + the spent Worker
+## G4 — UI: dialog, trackers, History, art ✅ done (2026-08-13)
+- [x] `C11A.png` / `C11B.png` copied in (done in G1)
+- [x] The Acquire Guardian flow is a **`guardianGate` on `CxTileDialog`**, not a new dialog —
+  see the deviation below. Steps: availability (Era 4) → World Council (only when it has a
+  figure) → the instruction → commit. Rule box stays in the footer; `flow` and
+  `renderModDialogs` come free
+- [x] Turn-overview chip `powered/owned Guardians`, Guardians modes only, with a hint saying
+  they power up first and are placed last
+- [x] `DetailPanel` gained `figure` — the base-Action placement gate says "place the
+  Chronossus's **Guardian**" once its own Exosuits are gone (Chronobot/other modes unaffected)
+- [x] `summarizeChronossusExtras`: Guardians acquired, the Worker spent to acquire one, and a
+  Guardian placed (the Exosuit count doesn't move, so nothing else would say so) + 4 tests
+- [x] 299 tests, build + lint clean. Verified live end to end: the C11 dialog asks, decides
+  and instructs; History reads `Era 1 · Acquire Guardian / Exosuit placed / Acquired 1
+  Guardian`; the chip shows `0/1 Guardians`
+
+**Deviations / notes**
+- **No separate `AcquireGuardianDialog`.** The plan called for one, but `CxTileDialog` already
+  carries the tile art, name, rule box, `flow` handling and commit button, and it already has
+  a gate prop for exactly this shape (`valleyGate`). A `guardianGate` alongside it is less
+  code and inherits the module-dialog conventions instead of re-implementing them.
+- **Found while wiring: `FAMILY_TO_TILE_ACTION` in the view had no `C11`.** `tileActionAt`
+  returned null, so tapping the tile did nothing at all and a marker landing on it would have
+  silently resolved as "no effect" — the G1 note said the tile was inert, and this was why.
+  The engine-side `TILE_ACTION_FAMILY` and the view-side map are separate lists; a new
+  module's tile has to be added to BOTH.
 
 ## G5 — Difficulty options
 - [ ] `chronossus-guardians-postimpact-2vp`

@@ -3560,6 +3560,7 @@ export function DetailPanel({
   botName = 'Chronobot',
   startLabel = '▶ Start Your Turn',
   researchNewShape = false,
+  figure = 'exosuit',
 }: {
   hotspot: Hotspot;
   readOnly: boolean;
@@ -3629,8 +3630,17 @@ export function DetailPanel({
    *  was forced to one the bot doesn't already have (or has the fewest of), not a free
    *  roll. Changes the Research step's copy; no-op (default) for the Chronobot. */
   researchNewShape?: boolean;
+  /**
+   * Guardians (Chronossus): which figure the bot would place next. It places Guardians
+   * LAST, so once its own Exosuits are gone the instruction has to name the Guardian —
+   * the engine has already decided, and the player is looking for a different miniature.
+   * Defaults to 'exosuit' (every other mode and the Chronobot).
+   */
+  figure?: 'exosuit' | 'guardian';
 }) {
   const def = CHRONOBOT_ACTIONS[hotspot.action];
+  /** What to call the piece being placed — a Guardian is an Exosuit type of its own. */
+  const figureLabel = figure === 'guardian' ? 'Guardian' : 'Exosuit';
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
   const [showMech, setShowMech] = useState(false);
   // In play mode the rule opens expanded (mech placement stays collapsed).
@@ -3683,11 +3693,13 @@ export function DetailPanel({
                 <>
                   Is a <b>{spaceLabel(hotspot.action)}</b> Action space open (not World
                   Council)?
-                  {!blinkCheck && <> Place the {botName}’s Exosuit on the topmost one.</>}
+                  {!blinkCheck && (
+                    <> Place the {botName}’s {figureLabel} on the topmost one.</>
+                  )}
                 </>
               ) : (
                 <>
-                  Place the {botName}’s Exosuit on the topmost available{' '}
+                  Place the {botName}’s {figureLabel} on the topmost available{' '}
                   <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
                   space if none are free).
                 </>
@@ -3721,7 +3733,7 @@ export function DetailPanel({
             <p className="pp-instruct">
               No <b>{spaceLabel(hotspot.action)}</b> space was open. Is the{' '}
               <b>World Council</b> space open?
-              {!blinkCheck && <> Place the {botName}’s Exosuit there instead.</>}
+              {!blinkCheck && <> Place the {botName}’s {figureLabel} there instead.</>}
             </p>
             <p className="pp-sub">
               It still performs the Action from there.{' '}

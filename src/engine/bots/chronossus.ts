@@ -807,7 +807,7 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
 export const DIFFICULTY_FAILED_ACTION_VP = 'chronossus-failed-action-vp';
 
 /** VP a Failed Action grants: 2 with D7 active, 1 otherwise (the base rule). */
-function failedActionVP(difficulty: string[] | undefined): number {
+export function failedActionVP(difficulty: string[] | undefined): number {
   return difficulty?.includes(DIFFICULTY_FAILED_ACTION_VP) ? 2 : 1;
 }
 

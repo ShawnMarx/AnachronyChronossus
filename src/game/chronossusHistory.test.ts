@@ -140,3 +140,39 @@ describe('Chronossus History extras — Hypersync tiles', () => {
     expect(lines).toContain('Solo Hypersync tile retrieved');
   });
 });
+
+describe('summarizeChronossusExtras — Guardians of the Council', () => {
+  const base = emptyChronossusState();
+
+  it('logs an acquired Guardian', () => {
+    const pre = { ...base, guardians: { owned: 0, powered: 0 } };
+    const post = { ...base, guardians: { owned: 1, powered: 0 } };
+    expect(summarizeChronossusExtras(pre, post, [])).toContain('Acquired 1 Guardian');
+  });
+
+  it('names the Worker an Acquire Guardian spent', () => {
+    const pre = {
+      ...base,
+      guardians: { owned: 0, powered: 0 },
+      workers: { ...base.workers, engineer: 2 },
+    };
+    const post = {
+      ...base,
+      guardians: { owned: 1, powered: 0 },
+      workers: { ...base.workers, engineer: 1 },
+    };
+    const lines = summarizeChronossusExtras(pre, post, []);
+    expect(lines).toContain('Acquired 1 Guardian');
+    expect(lines).toContain('Spent a engineer to acquire it');
+  });
+
+  it('logs a Guardian being placed (the Exosuit count never moves)', () => {
+    const pre = { ...base, guardians: { owned: 2, powered: 2 } };
+    const post = { ...base, guardians: { owned: 2, powered: 1 } };
+    expect(summarizeChronossusExtras(pre, post, [])).toContain('Placed 1 Guardian');
+  });
+
+  it('says nothing for a game without the module', () => {
+    expect(summarizeChronossusExtras(base, base, [])).toEqual([]);
+  });
+});
