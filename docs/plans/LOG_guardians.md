@@ -13,8 +13,11 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] **Classic pp.9-11 read (2026-08-13).** Confirmed: powering up a Guardian costs the bot
   nothing the app tracks; the Guardian space's 1 Water cost is the *player's* and a no-op for
   the Chronossus (which doesn't track Water); any Path-marked slot may be used ("it doesn't
-  matter which"); a placed Guardian is **treated as a Genius** and needs no Worker; and
-  **Clean Up retrieves Guardians** from both boards while the Path markers stay permanently
+  matter which"); and **Clean Up retrieves Guardians** from both boards while the Path markers
+  stay permanently. The "Guardians are treated as though a Genius was placed in them" rule is
+  **player-only** and does not apply here — the Chronossus never puts Workers in Exosuits, and
+  it is unrelated to the Recruit Genius / Research gate, which asks whether a Genius is
+  available *to recruit*
 - [x] **No cap on the bot's Guardians** (user, 2026-08-13): the 4 Solo Path markers are a
   component limit, not a rule — a 5th enlist is possible and the player substitutes a marker,
   so the copy carries a note and the engine no cap. The binding limit is the **6 shared
@@ -37,7 +40,6 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [ ] `spendExosuit(bot)` helper — Guardians last; replaces the ~6 bare `exosuitsAvailable -= 1`
 - [ ] Pass rule counts Guardians (`noExosuitFor` / out-of-Exosuits pass)
 - [ ] Clean Up retrieves Guardians (both boards); `owned` persists, `powered` resets
-- [ ] Recruit Genius / Research: a placed Guardian counts as the Genius
 - [ ] Guardian Action space fallback: Capital Action with no space → place a Guardian on a
   Path-marked Guardian board slot, not a Failed Action; wins over the Hypersync tile in the
   combo; no "is it free?" question, since every Guardian brings its own space

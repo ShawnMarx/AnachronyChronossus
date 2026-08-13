@@ -126,10 +126,13 @@ The three open questions are **answered** (see Decisions above) — what's left 
       take a Capital Action from their Guardian space; Solo Opponents p.16 imposes no cost on
       the Chronossus, and the app doesn't track Water at all (same as the Fractures Anomaly
       Remover delta).
-- [x] **A placed Guardian counts as a Genius** (Classic p.10): Guardians take Actions without
-      Workers and are "always treated as though a Genius was placed in them". Relevant to the
-      **Recruit Genius / Research** Action, whose gate asks "Genius + open Recruit space?" — a
-      Guardian satisfies the Genius half. Handle in G2.
+- [x] **"Treated as a Genius" does not apply to the Chronossus** (user, 2026-08-13). Classic
+      p.10 says Guardians take Actions without Workers and are "always treated as though a
+      Genius was placed in them" — that exists for the *player*, who must put Workers in
+      Exosuits. The Chronossus never does, so the rule has nothing to attach to. It is **not**
+      related to the Recruit Genius / Research gate either: that asks whether a Genius is
+      available **to recruit** (a Worker entering the bot's collection), not whether one is
+      inside an Exosuit. No work.
 
 ## G1. Mode entry & setup
 
@@ -170,8 +173,6 @@ The three open questions are **answered** (see Decisions above) — what's left 
       Exosuits, *and* from the Guardian board's Path-marked spaces. Only Guardians placed this
       Era come back — the Path markers stay put permanently, and `owned` never decreases.
       `powered` resets like `exosuitsAvailable`.
-- [ ] **Recruit Genius / Research:** a placed Guardian is treated as a Genius, so it satisfies
-      that Action's Genius requirement — check the existing gate copy and decision helper.
 - [ ] Unit tests for each of the above, incl. the D4 interaction, Clean Up, and the pass rule.
 
 ## G3. Engine — Acquire Guardian (C11) & the tile
