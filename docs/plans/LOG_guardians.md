@@ -50,16 +50,33 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   opens nothing and a marker landing on that slot resolves as "no effect" (the TILE_EFFECTS
   default). No error, but the module isn't playable until G3 adds the action id and resolver.
 
-## G2 — Engine: Guardian state, Power Up, placement
-- [ ] `guardians?: { owned: number; powered: number }` on `ChronossusState`
-- [ ] Power Up powers Guardians first, then Exosuits (check D4 + the post-Impact cap)
-- [ ] `spendExosuit(bot)` helper — Guardians last; replaces the ~6 bare `exosuitsAvailable -= 1`
-- [ ] Pass rule counts Guardians (`noExosuitFor` / out-of-Exosuits pass)
-- [ ] Clean Up retrieves Guardians (both boards); `owned` persists, `powered` resets
-- [ ] Guardian Action space fallback: Capital Action with no space → place a Guardian on a
-  Path-marked Guardian board slot, not a Failed Action; wins over the Hypersync tile in the
-  combo; no "is it free?" question, since every Guardian brings its own space
-- [ ] Unit tests for each
+## G2 — Engine: Guardian state, Power Up, placement ✅ done (2026-08-13)
+- [x] `guardians?: { owned, powered }` on `ChronossusState` (landed in G1 with the seeding)
+- [x] Power Up powers Guardians first, then Exosuits — the rulebook's own example (needs 4,
+  owns 2 → 2 Guardians + 2 Exosuits) is a test. D4's excess-to-VP conversion now measures
+  against Guardians + `exosuitsTotal` together, so a bot with Guardians wastes nothing; the
+  post-Impact max-4 cap still applies across both
+- [x] `spendFigure(bot)` / `nextFigure` / `placeableFigures` — Guardians last, in ONE place;
+  replaced all 6 bare `exosuitsAvailable -= 1` sites (Main-board and Valley placements, the
+  Hypersync hex, and the three Failed-Action discards)
+- [x] Pass rule counts Guardians — `wouldPassOn` reads `placeableFigures`, so it only passes
+  once Exosuits AND powered Guardians are gone. `hypersyncPlan.hasExosuit` likewise
+- [x] Clean Up resets `powered` to 0 and keeps `owned` (Path markers never leave the board)
+- [x] Guardian board fallback: a Capital Action with no space left places a Guardian on a
+  Path-marked slot and resolves normally — no +1 VP, no discard. Checked BEFORE the Hypersync
+  Solo-tile branch, so it wins in the combo (tested)
+- [x] 22 new tests (282 total); build + lint clean; base/HFA/Fractures playthroughs unaffected
+
+**Deviations / notes**
+- **Failed-Action discards use the same order.** "Discard an active Exosuit" goes through
+  `spendFigure`, so with no plain Exosuits left it discards a Guardian. The rulebook only
+  spells the Guardians-last ordering out for *placement*; a Guardian is an Exosuit the bot
+  has, so this seemed the honest reading. Flagged in the code comment.
+- **New result fields** `figurePlaced` / `usedGuardianSpace` on `ChronossusActionResult` — the
+  engine decides which figure goes down, so the view has to be told in order to say "place a
+  Guardian". G4 consumes them.
+- The Guardian-space fallback keys off the existing `noSpaceAvailable` / `hypersyncNoTile`
+  inputs, so no new question is asked of the player (every Guardian brings its own space).
 
 ## G3 — Engine: Acquire Guardian (C11)
 - [ ] `TILE_EFFECTS` C11A/C11B (Autoleap both sides; C11B +2 VP)

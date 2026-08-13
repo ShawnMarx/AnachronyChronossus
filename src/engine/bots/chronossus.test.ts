@@ -44,6 +44,11 @@ import {
   isMainBoardPlacement,
   placesExosuitFor,
   DIFFICULTY_GUARDIANS_START_1,
+  nextFigure,
+  placeableFigures,
+  spendFigure,
+  isGuardianCapitalAction,
+  canUseGuardianSpace,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -1473,5 +1478,216 @@ describe('resolveAction remove-anomaly — Variable Anomalies removal rule', () 
   it('fails when there are no held Anomalies (Variable Anomalies mode)', () => {
     const { state } = resolveAction(withHeldAnomalies([]), { actionId: 'remove-anomaly' });
     expect(state.chronossus!.vp).toBe(1); // Failed Action, base +1 VP
+  });
+});
+
+// --------------------------------------------------------------------------
+// Guardians of the Council (Solo Opponents p.16) — Power Up order, placement
+// order, the Guardian board fallback, Clean Up and the pass rule.
+// --------------------------------------------------------------------------
+
+const GUARDIANS_CONFIG: GameConfig = { ...CONFIG, chronossusMode: 'guardians' };
+
+/** A Guardians-mode game with `owned` Guardians and `powered`/`exosuits` ready. */
+function guardiansState(
+  guardians: { owned: number; powered: number },
+  exosuitsAvailable = 0,
+  overrides: Partial<GameState> = {},
+): GameState {
+  return {
+    ...createInitialState(GUARDIANS_CONFIG),
+    chronossus: { ...emptyChronossusState(), guardians, exosuitsAvailable },
+    phase: 'actions',
+    ...overrides,
+  };
+}
+
+describe('Guardians — placement order (Guardians go last)', () => {
+  it('nextFigure prefers a plain Exosuit while any remain', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 1, guardians: { owned: 2, powered: 2 } };
+    expect(nextFigure(bot)).toBe('exosuit');
+  });
+
+  it('nextFigure falls to a Guardian once the Exosuits are gone', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 0, guardians: { owned: 2, powered: 2 } };
+    expect(nextFigure(bot)).toBe('guardian');
+  });
+
+  it('nextFigure is null when nothing is powered', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 0, guardians: { owned: 2, powered: 0 } };
+    expect(nextFigure(bot)).toBeNull();
+    expect(placeableFigures(bot)).toBe(0);
+  });
+
+  it('placeableFigures counts Exosuits + powered Guardians', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 3, guardians: { owned: 2, powered: 2 } };
+    expect(placeableFigures(bot)).toBe(5);
+  });
+
+  it('spendFigure takes Exosuits first, then Guardians, leaving owned intact', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 1, guardians: { owned: 2, powered: 2 } };
+    expect(spendFigure(bot)).toBe('exosuit');
+    expect(bot.exosuitsAvailable).toBe(0);
+    expect(spendFigure(bot)).toBe('guardian');
+    expect(bot.guardians).toEqual({ owned: 2, powered: 1 });
+    expect(spendFigure(bot)).toBe('guardian');
+    expect(spendFigure(bot)).toBeNull();
+    expect(bot.guardians).toEqual({ owned: 2, powered: 0 }); // owned never drops
+  });
+
+  it('a Construct places the Guardian once no Exosuits are left', () => {
+    const res = resolveAction(guardiansState({ owned: 1, powered: 1 }, 0), {
+      actionId: 'construct-factory',
+      buildingVP: 3,
+    });
+    expect(res.figurePlaced).toBe('guardian');
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 1, powered: 0 });
+  });
+
+  it('…but spends a plain Exosuit while one remains', () => {
+    const res = resolveAction(guardiansState({ owned: 1, powered: 1 }, 2), {
+      actionId: 'construct-factory',
+      buildingVP: 3,
+    });
+    expect(res.figurePlaced).toBe('exosuit');
+    expect(res.state.chronossus!.exosuitsAvailable).toBe(1);
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 1, powered: 1 });
+  });
+});
+
+describe('Guardians — Power Up powers Guardians first', () => {
+  function powerUp(guardiansOwned: number, draw: EnergyDraw, difficulty: string[] = []) {
+    const state: GameState = {
+      ...createInitialState({ ...GUARDIANS_CONFIG, difficulty }),
+      chronossus: { ...emptyChronossusState(), guardians: { owned: guardiansOwned, powered: 0 } },
+      phase: 'powerup',
+    };
+    return resolvePowerUp(state, draw).chronossus!;
+  }
+
+  it('the rulebook example: needs 4, has 2 Guardians → 2 Guardians + 2 Exosuits', () => {
+    const bot = powerUp(2, { energized: 1, exhausted: 2 }); // pre-Impact 3+1 = 4
+    expect(bot.guardians).toEqual({ owned: 2, powered: 2 });
+    expect(bot.exosuitsAvailable).toBe(2);
+  });
+
+  it('uses the whole number on Guardians when it owns enough', () => {
+    const bot = powerUp(5, { energized: 0, exhausted: 3 }); // 3 pre-Impact
+    expect(bot.guardians).toEqual({ owned: 5, powered: 3 });
+    expect(bot.exosuitsAvailable).toBe(0);
+  });
+
+  it('powers up none when it owns none (unchanged base behaviour)', () => {
+    const bot = powerUp(0, { energized: 2, exhausted: 1 });
+    expect(bot.guardians).toEqual({ owned: 0, powered: 0 });
+    expect(bot.exosuitsAvailable).toBe(5);
+  });
+
+  it('total placeable never exceeds the powered number', () => {
+    const bot = powerUp(2, { energized: 3, exhausted: 0 }); // capped at 6 pre-Impact
+    expect(placeableFigures(bot)).toBe(6);
+  });
+
+  it('post-Impact the max-4 cap still applies across both', () => {
+    const state: GameState = {
+      ...createInitialState(GUARDIANS_CONFIG),
+      chronossus: { ...emptyChronossusState(), guardians: { owned: 3, powered: 0 } },
+      phase: 'powerup',
+      impact: true,
+    };
+    const bot = resolvePowerUp(state, { energized: 3, exhausted: 0 }).chronossus!;
+    expect(placeableFigures(bot)).toBe(4);
+    expect(bot.guardians!.powered).toBe(3);
+    expect(bot.exosuitsAvailable).toBe(1);
+  });
+
+  it('D4 converts to VP only once Guardians AND all 6 Exosuit figures are used', () => {
+    // Pre-Impact max draw caps at 6; +1 free would be a 7th. With 2 Guardians the bot
+    // has capacity for 2 + 6 = 8, so nothing is wasted and no VP is scored.
+    const bot = powerUp(2, { energized: 3, exhausted: 0 }, [DIFFICULTY_EXTRA_POWERUP]);
+    expect(bot.vp).toBe(0);
+    expect(bot.guardians!.powered).toBe(2);
+    expect(bot.exosuitsAvailable).toBe(5);
+  });
+});
+
+describe('Guardians — the Guardian board fallback', () => {
+  it('a Capital Action with no space places a Guardian instead of failing', () => {
+    const res = resolveAction(guardiansState({ owned: 1, powered: 1 }, 0), {
+      actionId: 'research',
+      noSpaceAvailable: true,
+      shape: 'circle',
+    });
+    const bot = res.state.chronossus!;
+    expect(res.usedGuardianSpace).toBe(true);
+    expect(bot.vp).toBe(0); // NOT a Failed Action — no +1 VP
+    expect(bot.guardians).toEqual({ owned: 1, powered: 0 });
+    expect(bot.breakthroughs.circle).toBe(1); // the Action itself still resolved
+  });
+
+  it('is offered for Research, Recruit and every Construct — but not Mine', () => {
+    expect(isGuardianCapitalAction('research')).toBe(true);
+    expect(isGuardianCapitalAction('recruit')).toBe(true);
+    expect(isGuardianCapitalAction('recruit-genius-research')).toBe(true);
+    expect(isGuardianCapitalAction('construct-factory')).toBe(true);
+    expect(isGuardianCapitalAction('construct-superproject')).toBe(true);
+    expect(isGuardianCapitalAction('mine-resource')).toBe(false);
+    expect(isGuardianCapitalAction('time-travel')).toBe(false);
+  });
+
+  it('falls back to the normal Failed Action with no powered Guardian', () => {
+    const res = resolveAction(guardiansState({ owned: 1, powered: 0 }, 0), {
+      actionId: 'research',
+      noSpaceAvailable: true,
+    });
+    expect(res.usedGuardianSpace).toBeUndefined();
+    expect(res.state.chronossus!.vp).toBe(1); // Failed Action VP
+  });
+
+  it('canUseGuardianSpace needs both a powered Guardian and a Capital Action', () => {
+    const withGuardian = { ...emptyChronossusState(), guardians: { owned: 1, powered: 1 } };
+    expect(canUseGuardianSpace(withGuardian, 'construct-factory')).toBe(true);
+    expect(canUseGuardianSpace(withGuardian, 'mine-resource')).toBe(false);
+    const noneOwned = { ...emptyChronossusState(), guardians: { owned: 0, powered: 0 } };
+    expect(canUseGuardianSpace(noneOwned, 'construct-factory')).toBe(false);
+  });
+
+  it('beats the Hypersync Solo-tile fallback in the combo', () => {
+    const state: GameState = {
+      ...createInitialState({ ...CONFIG, chronossusMode: 'guardians+hypersync' }),
+      chronossus: { ...emptyChronossusState(), guardians: { owned: 1, powered: 1 } },
+      phase: 'actions',
+    };
+    const res = resolveAction(state, {
+      actionId: 'research',
+      noSpaceAvailable: true,
+      placeHypersyncTile: true,
+    });
+    expect(res.usedGuardianSpace).toBe(true);
+    expect(res.state.chronossus!.hypersyncTiles).toEqual([]); // no tile was placed
+  });
+});
+
+describe('Guardians — passing and Clean Up', () => {
+  it('does not pass while a powered Guardian remains', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 0, guardians: { owned: 1, powered: 1 } };
+    expect(wouldPassOn(bot, 'construct-factory')).toBe(false);
+  });
+
+  it('passes once both Exosuits and Guardians are spent', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 0, guardians: { owned: 1, powered: 0 } };
+    expect(wouldPassOn(bot, 'construct-factory')).toBe(true);
+  });
+
+  it('Clean Up retrieves the Guardians but keeps them owned', () => {
+    const state = guardiansState({ owned: 2, powered: 1 }, 3, { phase: 'cleanup' });
+    const bot = resolveCleanUp(state).chronossus!;
+    expect(bot.exosuitsAvailable).toBe(0);
+    expect(bot.guardians).toEqual({ owned: 2, powered: 0 });
+  });
+
+  it('leaves guardians undefined alone in every other mode', () => {
+    const state: GameState = { ...chronossusState({ phase: 'cleanup' }) };
+    expect(resolveCleanUp(state).chronossus!.guardians).toBeUndefined();
   });
 });

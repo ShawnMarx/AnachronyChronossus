@@ -88,6 +88,68 @@ export function isGuardiansMode(modeId: string | undefined): boolean {
   return !!modeId && modeId.includes('guardians');
 }
 
+/** A figure the Chronossus can put on a board this Era. */
+export type Figure = 'exosuit' | 'guardian';
+
+/**
+ * Powered figures the Chronossus still has to place this Era — its own Exosuits plus
+ * any powered Guardians. This, not `exosuitsAvailable` alone, is what "out of Exosuits"
+ * means once Guardians are in play.
+ */
+export function placeableFigures(bot: ChronossusState): number {
+  return bot.exosuitsAvailable + (bot.guardians?.powered ?? 0);
+}
+
+/**
+ * Which figure the Chronossus spends next: "When deciding which Exosuit to place, the
+ * Chronossus places Guardians last" (Solo Opponents p.16). Null when it has none left.
+ */
+export function nextFigure(bot: ChronossusState): Figure | null {
+  if (bot.exosuitsAvailable > 0) return 'exosuit';
+  if ((bot.guardians?.powered ?? 0) > 0) return 'guardian';
+  return null;
+}
+
+/**
+ * Spend one powered figure — a plain Exosuit while any remain, else a Guardian — and
+ * report which went. Mutates the (already cloned) slice; a no-op returning null when
+ * nothing is left. Every place-an-Exosuit and discard-an-active-Exosuit site goes
+ * through this, so the Guardians-last rule holds everywhere at once.
+ *
+ * The Failed-Action discard uses the same order: the rulebook only spells the ordering
+ * out for placement, but a Guardian is an Exosuit the bot has, so when it has nothing
+ * else active that is what it discards.
+ */
+export function spendFigure(bot: ChronossusState): Figure | null {
+  const which = nextFigure(bot);
+  if (which === 'exosuit') bot.exosuitsAvailable -= 1;
+  else if (which === 'guardian' && bot.guardians) {
+    bot.guardians = { ...bot.guardians, powered: bot.guardians.powered - 1 };
+  }
+  return which;
+}
+
+/** The Capital Actions a Guardian may take from its own Guardian board space (p.16). */
+export function isGuardianCapitalAction(actionId: string): boolean {
+  const space = blinkSpaceOf(actionId, 'action');
+  return space === 'research' || space === 'recruit' || space === 'construct';
+}
+
+/**
+ * Guardians p.16: "If it wants to take a Capital Action (Research, Recruit, Construct)
+ * and there are no Action spaces remaining (including the World Council Action space),
+ * it places a Guardian (if it has any) on the reserved Guardian Action space and performs
+ * the Capital Action. This means the Action is not a Failed Action."
+ *
+ * Every Guardian brings its own space — the slot on the Guardian board carrying one of the
+ * Chronossus's Path markers, which no other player may use — so having a powered Guardian
+ * is the whole condition. There is nothing to ask the player, and the fallback can't run
+ * out. It also takes priority over Hypersync's Solo-tile fallback in the combo.
+ */
+export function canUseGuardianSpace(bot: ChronossusState, actionId: string): boolean {
+  return (bot.guardians?.powered ?? 0) > 0 && isGuardianCapitalAction(actionId);
+}
+
 /**
  * Apply setup-time adjustments to a fresh Chronossus slice — D3's extra starting
  * Energy Cores (added energized), Variable Anomalies seeding its held-Anomaly
@@ -479,26 +541,44 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   const capped = poweredExosuits(state.impact, draw.energized);
   const extraPowerup = state.config.difficulty?.includes(DIFFICULTY_EXTRA_POWERUP) ?? false;
   const attempted = extraPowerup ? capped + 1 : capped;
-  const exosuitsAvailable = Math.min(attempted, state.chronossus.exosuitsTotal);
-  const bonusVP = Math.max(0, attempted - state.chronossus.exosuitsTotal) * 2;
+  // Guardians p.16: "The Chronossus first powers up as many Guardians as it can, then it
+  // powers up its own Exosuits" — they share the same number, Guardians taking it first.
+  const guardiansOwned = state.chronossus.guardians?.owned ?? 0;
+  const guardiansPowered = Math.min(guardiansOwned, attempted);
+  const exosuitsAvailable = Math.min(attempted - guardiansPowered, state.chronossus.exosuitsTotal);
+  // D4's excess-to-VP conversion measures against everything it could have powered up:
+  // its own Exosuit figures plus the Guardians that just took part of the number.
+  const bonusVP =
+    Math.max(0, attempted - guardiansPowered - state.chronossus.exosuitsTotal) * 2;
   const bot = {
     ...state.chronossus,
     exosuitsAvailable,
     vp: state.chronossus.vp + bonusVP,
     passed: false,
     energyPool: poolAfterDraw(state.chronossus.energyPool, draw),
+    ...(state.chronossus.guardians
+      ? { guardians: { ...state.chronossus.guardians, powered: guardiansPowered } }
+      : {}),
   };
   const drawnTotal = draw.energized + draw.exhausted;
   const returned = draw.exhausted > 0 ? 1 : 0;
   const instructions: Instruction[] = [
     {
       id: 'powerup',
-      text: `Power up ${exosuitsAvailable} of the Chronossus's Exosuits.`,
+      text: guardiansPowered
+        ? `Power up ${guardiansPowered} of the Chronossus's Guardians` +
+          (exosuitsAvailable
+            ? ` and ${exosuitsAvailable} of its Exosuits.`
+            : ' (that uses up its whole number — no Exosuits power up).')
+        : `Power up ${exosuitsAvailable} of the Chronossus's Exosuits.`,
       detail:
         `Drew ${drawnTotal} token${drawnTotal === 1 ? '' : 's'} from the Energy Pool: ` +
         `${draw.energized} Energy + ${draw.exhausted} Exhausted. ${state.impact ? '2' : '3'}+${draw.energized} ` +
         `= ${capped} Exosuit${capped === 1 ? '' : 's'} ` +
         `(max ${powerUpCap(state.impact)} ${state.impact ? 'after' : 'before'} the Impact). ` +
+        (guardiansPowered
+          ? `It powers up its ${guardiansPowered} Guardian${guardiansPowered === 1 ? '' : 's'} first, then its own Exosuits. `
+          : '') +
         (extraPowerup
           ? bonusVP
             ? `Difficulty: +1 free Exosuit would exceed the max of ${state.chronossus.exosuitsTotal} — ` +
@@ -519,6 +599,7 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
     log: [
       ...state.log,
       `Power Up: drew ${draw.energized}E/${draw.exhausted}X → ${exosuitsAvailable} Exosuits` +
+      (guardiansPowered ? ` + ${guardiansPowered} Guardians` : '') +
         (bonusVP ? ` + ${bonusVP} VP (difficulty).` : '.'),
     ],
   };
@@ -616,6 +697,18 @@ export interface ChronossusActionResult {
    * advance). Only set by tile actions whose B side (or C12B/C13B) autoleaps.
    */
   autoleap?: boolean;
+  /**
+   * Guardians: which figure this Action actually placed. The engine picks it (Guardians
+   * go last), so the view has to be told in order to say "place a Guardian" rather than
+   * "place an Exosuit". Undefined when nothing was placed.
+   */
+  figurePlaced?: Figure;
+  /**
+   * Guardians: the Action ran off the Guardian board's own space — no Capital Action
+   * space was free, so a Guardian went onto a Path-marked slot and the Action resolved
+   * normally (NOT a Failed Action, p.16).
+   */
+  usedGuardianSpace?: boolean;
 }
 
 /**
@@ -719,11 +812,35 @@ export function resolveAction(
     text: `The Chronossus takes the "${chronossusActionLabel(input.actionId)}" action.`,
   });
 
+  // Guardians fallback (p.16): a Capital Action with no space left anywhere — World
+  // Council included — puts a Guardian on its own Guardian board space and performs the
+  // Action normally. Checked FIRST: it beats Hypersync's Solo-tile fallback in the combo,
+  // because it is a real placement onto a space reserved for this bot. Every Guardian
+  // brings its own Path-marked slot, so having a powered one is the whole condition.
+  const usingGuardianSpace =
+    (input.noSpaceAvailable === true || input.hypersyncNoTile === true) &&
+    canUseGuardianSpace(bot, input.actionId);
+  if (usingGuardianSpace) {
+    spendFigure(bot); // Exosuits are gone by definition here, so this takes the Guardian
+    instr.push({
+      id: `guardian-space-${n}`,
+      text:
+        'No Action space remained (including World Council) — place one of the ' +
+        "Chronossus's Guardians on the Guardian board, on a slot marked with one of its " +
+        'Path markers, and perform the Action normally.',
+      detail:
+        'It does not matter which of its marked slots you use. This is NOT a Failed ' +
+        'Action, so it takes no +1 VP.',
+    });
+  }
+
   // Hypersync fallback: no Action space, but a Solo Hypersync tile is placed on
   // this Era and the Capital Action is performed normally (no Exosuit, NOT a
   // Failed Action). Falls through to the normal switch with placement suppressed.
-  const usingHypersyncTile = input.placeHypersyncTile === true;
-  if (usingHypersyncTile) {
+  const usingHypersyncTile = !usingGuardianSpace && input.placeHypersyncTile === true;
+  if (usingGuardianSpace) {
+    // fall through to the switch with the placement already made
+  } else if (usingHypersyncTile) {
     bot.hypersyncTiles = [...bot.hypersyncTiles, state.era];
     instr.push({
       id: `hs-tile-${n}`,
@@ -736,7 +853,7 @@ export function resolveAction(
     // Failed Action from lack of free spaces, so the base rule applies — VP AND
     // discard an active Exosuit.
     bot.vp += failVP;
-    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    spendFigure(bot);
     instr.push({
       id: `hs-fail-notile-${n}`,
       text: `No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +${failVP} VP and additionally discards one active Exosuit.`,
@@ -747,7 +864,7 @@ export function resolveAction(
     // Failed from no available space: VP AND discard an active Exosuit (the
     // Chronossus-only nuance vs. the Chronobot).
     bot.vp += failVP;
-    if (bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    spendFigure(bot);
     instr.push({
       id: `fail-nospace-${n}`,
       text: `No available Action space — the Chronossus takes +${failVP} VP and additionally discards one active Exosuit (no Exosuit placed).`,
@@ -775,11 +892,11 @@ export function resolveAction(
           text: `Blink: move that Exosuit to ${where} instead of placing a new one.`,
           detail: "Return the moved Exosuit's Energy Core to the supply.",
         });
-      } else if (bot.exosuitsAvailable > 0) {
-        bot.exosuitsAvailable -= 1;
+      } else if (placeableFigures(bot) > 0) {
+        const figure = spendFigure(bot);
         instr.push({
           id: `valley-place-${n}`,
-          text: `Place the Chronossus's Exosuit on ${where}.`,
+          text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on ${where}.`,
           detail:
             'Put an Energy Core from the supply into it. It cannot Blink again from the Valley board.',
         });
@@ -799,10 +916,11 @@ export function resolveAction(
   }
 
   const def = actionDef(input.actionId);
+  let figurePlaced: Figure | null = null;
   const placeExosuit = () => {
     // The Hypersync-tile fallback places a tile instead of an Exosuit, and some Actions
     // place none at all.
-    if (usingHypersyncTile || !def.placesExosuit) return;
+    if (usingHypersyncTile || usingGuardianSpace || !def.placesExosuit) return;
     const fractures = bot.fluxPool != null;
     if (input.blink && fractures) {
       // Fractures: no new Exosuit — the selected one moves here and loses its Energy
@@ -813,8 +931,8 @@ export function resolveAction(
       );
       return;
     }
-    if (bot.exosuitsAvailable > 0) {
-      bot.exosuitsAvailable -= 1;
+    if (placeableFigures(bot) > 0) {
+      figurePlaced = spendFigure(bot);
       // Fractures: every placement takes an Energy Core from supply into that Exosuit.
       // Only Main-board placements are recorded — an Exosuit on another expansion's board
       // can never Blink from there (see OFF_MAIN_BOARD_ACTIONS).
@@ -831,7 +949,7 @@ export function resolveAction(
     }
   };
   const failCantPerform = (why: string) => {
-    if (def.placesExosuit && bot.exosuitsAvailable > 0) bot.exosuitsAvailable -= 1;
+    if (def.placesExosuit) spendFigure(bot);
     bot.vp += failVP;
     instr.push({
       id: `fail-perform-${n}`,
@@ -965,7 +1083,10 @@ export function resolveAction(
       break;
   }
 
-  return finishAction(state, bot, instr);
+  return finishAction(state, bot, instr, {
+    figurePlaced: usingGuardianSpace ? 'guardian' : figurePlaced,
+    usedGuardianSpace: usingGuardianSpace,
+  });
 }
 
 /**
@@ -1134,7 +1255,12 @@ function describeCubes(cubes: Resource[]): string {
   return Object.entries(counts).map(([r, c]) => `${c} ${r}`).join(' + ');
 }
 
-function finishAction(state: GameState, bot: ChronossusState, instr: Instruction[]): ChronossusActionResult {
+function finishAction(
+  state: GameState,
+  bot: ChronossusState,
+  instr: Instruction[],
+  extra?: { figurePlaced?: Figure | null; usedGuardianSpace?: boolean },
+): ChronossusActionResult {
   bot.actionsThisEra += 1;
   bot.totalActions += 1;
   const next: GameState = {
@@ -1143,7 +1269,12 @@ function finishAction(state: GameState, bot: ChronossusState, instr: Instruction
     currentInstructions: instr,
     log: [...state.log, `Chronossus action ${bot.totalActions} (Era ${state.era}).`],
   };
-  return { state: next, instructions: instr };
+  return {
+    state: next,
+    instructions: instr,
+    ...(extra?.figurePlaced ? { figurePlaced: extra.figurePlaced } : {}),
+    ...(extra?.usedGuardianSpace ? { usedGuardianSpace: true } : {}),
+  };
 }
 
 // --------------------------------------------------------------------------
@@ -1161,7 +1292,8 @@ function finishAction(state: GameState, bot: ChronossusState, instr: Instruction
  * longer has — i.e. attempting it makes the Chronossus pass instead.
  */
 export function wouldPassOn(bot: ChronossusState, actionId: ChronossusActionId): boolean {
-  return placesExosuitFor(actionId) && bot.exosuitsAvailable <= 0;
+  // Guardians count: it only passes once its Exosuits AND its powered Guardians are gone.
+  return placesExosuitFor(actionId) && placeableFigures(bot) <= 0;
 }
 
 /**
@@ -1245,7 +1377,7 @@ export interface HypersyncPlan {
  */
 export function hypersyncPlan(bot: ChronossusState, era: number): HypersyncPlan {
   const prior = bot.hypersyncTiles.filter((e) => e < era).sort((a, b) => a - b);
-  const hasExosuit = bot.exosuitsAvailable > 0;
+  const hasExosuit = placeableFigures(bot) > 0;
   return {
     canHypersync: prior.length > 0 && hasExosuit,
     oldestTileEra: prior.length ? prior[0] : null,
@@ -1297,17 +1429,18 @@ export function resolveHypersyncAction(
     // Fractures combo: the Hypersync board is another off-Main-board destination, so it
     // can be Blinked into — the Exosuit moves there and leaves the Blink-from list — but
     // never Blinked out of (nothing on that board is recorded).
+    let hsFigure: Figure | null = null;
     if (input.blink && bot.fluxPool) {
       const sel = selectBlinkExosuit(bot, 'time-travel', input.tokenActions ?? {});
       bot.placedExosuits = (bot.placedExosuits ?? []).filter((e) => e !== sel?.exosuit);
-    } else if (bot.exosuitsAvailable > 0) {
-      bot.exosuitsAvailable -= 1;
+    } else {
+      hsFigure = spendFigure(bot);
     }
     bot.vp += 2;
     const where = input.hex != null ? `Hypersync hex ${input.hex}` : 'the Hypersync space for its furthest-past pending tile';
     instr.push({
       id: `hs-place-${n}`,
-      text: `Send an Exosuit to ${where}; the Chronossus scores 2 VP and retrieves its pending Solo Hypersync tile from Era ${era}.`,
+      text: `Send ${hsFigure === 'guardian' ? 'a Guardian' : 'an Exosuit'} to ${where}; the Chronossus scores 2 VP and retrieves its pending Solo Hypersync tile from Era ${era}.`,
       detail:
         'Do NOT advance the Time Travel marker. In post-Impact Eras it ignores the printed effect of Supercharge tiles.',
       effect: { vp: 2 },
@@ -1357,7 +1490,15 @@ export function resolveHypersyncAction(
 /** Retrieve Exosuits; Collapsing Capital flips happen on the physical board. */
 export function resolveCleanUp(state: GameState): GameState {
   if (!state.chronossus) throw new Error('resolveCleanUp: no Chronossus state');
-  const bot = { ...state.chronossus, exosuitsAvailable: 0 };
+  const bot = {
+    ...state.chronossus,
+    exosuitsAvailable: 0,
+    // Guardians come back too, but they stay OWNED — only the powered-this-Era count
+    // resets. Their Path markers never leave the Guardian board (Classic p.10).
+    ...(state.chronossus.guardians
+      ? { guardians: { ...state.chronossus.guardians, powered: 0 } }
+      : {}),
+  };
   const instructions: Instruction[] = [
     { id: 'cleanup-retrieve', text: "Retrieve the Chronossus's Exosuits along with your own." },
     {
