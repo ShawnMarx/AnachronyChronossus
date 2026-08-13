@@ -42,8 +42,11 @@ to the Droplet as `deploy`, `git reset --hard origin/main`, `npm ci`, `npm run b
 **nginx serves `/var/www/anachrony/dist` directly** — no backend, no systemd service,
 no `sudo` in the deploy path. CI uses a dedicated `the deploy key` deploy key
 (repo secrets `PROD_HOST` + `DEPLOY_SSH_KEY`). Full runbook, nginx block, and server
-setup live in **`docs/DEPLOYMENT.md`**. Not yet done (deferred): staging, access-gating
-via `auth.boardgameedge.com`, and listing on the `boardgameedge.com` landing page.
+setup live in **`docs/DEPLOYMENT.md`**. **Staging** mirrors it at
+`anachrony.staging.boardgameedge.com`, deploying on push to the **`staging`** branch (same
+Droplet, `/var/www/anachrony-staging`) — work lands there first, then `staging → main`.
+Not yet done (deferred): access-gating via `auth.boardgameedge.com`, and listing on the
+`boardgameedge.com` landing page.
 
 ## Architecture
 
@@ -273,6 +276,16 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
   Flux Cores in the pool, or no Blink-ready Exosuit — it instructs the placement inline,
   exactly like a base-game Action. Non-Fractures games keep the plain one-step gate. A new
   module that adds Exosuit-placing spaces must follow the same shape.
+- **Every Exosuit-placing path has to run the Blink check.** Mine and Recruit Genius shipped
+  broken because they ask their own question instead of using the shared `mech` gate — the
+  only place the check ran. Actions with their own gate route through `runBlinkCheck` with a
+  `postBlinkRef` continuation (their resume point can't be derived from the Action id), and
+  the check goes *after* whatever input identifies the target space (Mine: the Resources).
+- **Rule boxes live in the dialog footer, never inside a step box.** Every Action / tile /
+  module dialog renders its verbatim 📖 collapsibles below `.dp-body`'s step content, in a
+  fixed order — the Action's own rule first, then whatever the current step adds (Blink,
+  Time Travel, Autoleap, Exosuit placement). `.place-prompt` step boxes must not contain
+  one: a rule box drawn inside the amber box is the bug, not the layout.
 - **A new module's Action must show up in History.** `summarizeTurn` was written against
   the Chronobot's state, so it cannot see module-only pools; `summarizeChronossusExtras`
   in `ChronossusGame.tsx` adds the Chronossus/Fractures deltas (Flux Cores, Technologies,

@@ -53,6 +53,9 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       snapshot if it ever matters.
 
 ## Fractures of Time (from the 2026-08-11 module build)
+See `docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md` — the module
+shipped to production 2026-08-13.
+
 - [ ] **Module-section rules text for the other modules' tiles** — C04/C05/C14 now carry the
       rulebook's fuller write-up in `ModularTile.detail` (shown under the Appendix summary
       in the 📖 box). C07–C13 (Experiments, Adventure, Guardian, Hypersync) still have only
@@ -60,16 +63,24 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 - [ ] **Optional Flux Pool badge** on the Chronossus board — the pool isn't printed on the
       board, so any position has to be set in calibrate mode. State shows in the turn
       overview meanwhile. (Dropped from the plan 2026-08-12; lives here if ever wanted.)
-- [ ] **Manual Fractures playthrough on device** + assets/theme pass (the plan's last
-      unchecked F6 item).
+- [ ] **Manual Fractures playthrough on device** + assets/theme pass — the only item the
+      plan closed unfinished (F6). Everything else was verified automated/live in-browser.
+- [ ] **Verbatim rule box for the Solo Hypersync tile prompt** — `HypersyncTilePrompt` (the
+      "no Action space → place a Solo Hypersync tile" dialog) is the one Action-ish dialog
+      with no 📖 box, because that fallback's rulebook text was never transcribed. Pull it
+      from the Future Imperfect / Solo Opponents rules if wanted.
+- [ ] **Randomized tile arrangement** (deferred open question from the D2 discussion) —
+      a difficulty-ish option that shuffles **all** of the active mode's modular-tile slots,
+      not just Slot I↔III like D2. Needs its own definition; not a strict difficulty increase.
 
 ## Chronossus base — ✅ shipped (2026-08-09)
 Base game + Hypersync module are live in prod. See
 `docs/complete/20260809_CHRONOSSUS_BASE_COMPLETED.md`.
 
-**In the active plan** (`docs/plans/PLAN_chronossus_difficulty_test_fractures.md`): the
-playthrough test harness, the base+HFA difficulty options, and Alternate Timelines /
-Variable Anomalies are all done (2026-08-10). **Fractures of Time** (the full module) is next.
+The playthrough test harness, all 10 difficulty options, Alternate Timelines, Variable
+Anomalies and **Fractures of Time** (incl. the Fractures + Hypersync combo) shipped with it —
+archived 2026-08-13 in
+`docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`. No plan is active.
 
 Still backlog (not yet in a plan):
 - [ ] **More modules** — Doomsday, Pioneers, Guardians (stubbed in the Module menu). Each

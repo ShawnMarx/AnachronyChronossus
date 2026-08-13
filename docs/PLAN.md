@@ -5,8 +5,9 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-11): Chronobot and Chronossus base are both complete and live; the
-> Chronossus difficulty options and two small extra modules are also done, on staging.**
+> **Status (2026-08-13): Chronobot, Chronossus base, all 10 difficulty options, Alternate
+> Timelines, Variable Anomalies and Fractures of Time are complete and live in production.
+> No plan is active.**
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
@@ -29,10 +30,15 @@
 > panel lost its dead space and pass-state boxes, the count reads `Bot Turns` on the title
 > line, and a Blink is called out in History. Plan items F4 (board overlays) and F5
 > (scoring/objectives) were dropped as unnecessary.
-> **Active plan:** `docs/plans/PLAN_chronossus_difficulty_test_fractures.md` — Part 4 is
-> complete bar a manual on-device playthrough (and an optional Flux Pool badge). Further candidates (Doomsday, Pioneers,
-> Guardians, Chronossus stats/history) stay in `TODO.md`. The Chronossus knowledge,
-> references, and design decisions here remain the source material behind those efforts.
+> **2026-08-13:** the Fractures playtest-fix pass (F8) — placement now asks, Blink-checks,
+> decides, *then* instructs; Mine and Recruit Genius joined the Blink check; module dialogs
+> render like base-game Action dialogs and every one puts its verbatim rule box below the
+> body; History gained the module-only deltas. **Merged to `main`/production and the whole
+> plan archived** to `docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`.
+> **No plan is active.** The one item it closed unfinished is a manual on-device playthrough.
+> Next candidates (Doomsday, Pioneers, Guardians, Chronossus stats/history) stay in
+> `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
+> decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
 
@@ -183,10 +189,13 @@ Per-Era phases:
 - **Phase 3 — Guided web UI. ✅ done** (for Chronobot). The full per-Era phase loop
   (Landing → Start/Difficulty/Setup → Phases 1–6 → End Game) ships in `BoardExplorer`
   + `src/phases/` + `src/game/flow.ts`. Deployed to Digital Ocean.
-- **Phase 2 — Chronossus base engine. ← NEXT.** Energy Pool bag draws, phases, Action
-  tiles C01A–C03A, Autoleap, failed-action penalty, Solo Objective scoring. Own `/plan`.
-- **Phase 4 — Modules/expansions.** Fractures of Time, Doomsday, Pioneers, Guardians,
-  Hypersync — via the C04–C14 tile table + per-module setup/gameplay deltas.
+- **Phase 2 — Chronossus base engine. ✅ done (2026-08-09).** Energy Pool bag draws,
+  phases, Action tiles C01A–C03A, Autoleap, failed-action penalty, Solo Objective scoring,
+  plus (2026-08-10) the playthrough test harness and all 10 difficulty options.
+- **Phase 4 — Modules/expansions. ← IN PROGRESS.** Shipped: **Hypersync Future Actions**
+  (2026-08-09), **Alternate Timelines** + **Variable Anomalies** (2026-08-10), **Fractures
+  of Time** and the `fractures+hypersync` combo (2026-08-13). Remaining: Doomsday, Pioneers,
+  Guardians — each its own `/plan`, via the C04–C14 tile table + per-module deltas.
 - **Phase 5 — Optional login + stats.** Shared-auth (staging) integration; persist
   results only when logged in. (Chronobot already deploys to Digital Ocean.)
 - **Cross-cutting — Asset pipeline.** Script to extract TTS images, render thumbnails,

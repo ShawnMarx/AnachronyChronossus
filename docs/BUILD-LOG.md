@@ -2,6 +2,47 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-13 — Fractures playtest fixes, and Fractures ships to production
+
+The playtest-fix pass on Fractures of Time (logged as F8), then the whole effort — the
+playthrough test harness, all 10 difficulty options, Alternate Timelines, Variable Anomalies
+and Fractures — merged to `main` and deployed. Archived as
+`docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`; no plan is active.
+
+- **Ask, check, decide, *then* tell the player to place.** The gates were instructing a
+  placement and only then running the Blink check — but a Blink moves an Exosuit already on
+  the board, so the instruction came before the app knew what should happen. Every
+  Exosuit-placing path now asks whether the space is free, runs the check, lets the app pick
+  the Exosuit, and only then gives the instruction; with no check possible (no Cores in the
+  pool, or no Blink-ready Exosuit) it instructs inline exactly like a base-game Action.
+- **Mine and Recruit Genius were walking past the Blink check.** Neither uses the shared
+  `mech` placement gate — the only place the check ran — so both always placed a new Exosuit
+  even when the Chronossus should have Blinked. Both now route through `runBlinkCheck` via a
+  continuation ref; Mine checks *after* the Resources are picked, since that choice is what
+  identifies the space it's heading for.
+- **The Valley gate asks a question that can be answered.** It now asks whether the Action
+  space *or* the Valley Capital fallback is open, with a real "neither" that resolves the
+  engine's no-space branch — before, the negative answer always placed on the Capital space,
+  so a Valley Action could never fail. It also names the printed space (Assimilate / Extract)
+  rather than the tile, so a B side no longer asks about "Assimilate and Score".
+- **Module dialogs match base-game Action dialogs.** `CxTileDialog` / `HypersyncDialog` /
+  `HypersyncTilePrompt` never took `DetailPanel`'s `flow` prop, so on a small screen a module
+  Action went full-screen while a board Action didn't; all three render through
+  `renderModDialogs(flow)` now. And every dialog puts its **verbatim rule box below the
+  body**: the tile dialog used to show one only for read-only taps, B sides and tiles with a
+  module write-up, the Hypersync dialog only in two of its five steps, and `BlinkRuleBlock`
+  was drawn *inside* the action box.
+- **History shows what the module did.** A Blink is an effect rather than the headline — the
+  label names the Action, the Blink line names both ends by their Capital Action *space*, and
+  it replaces "Exosuit placed" since nothing came from the supply. It carries the Flux Core
+  art through a persisted `{flux}` token. `summarizeChronossusExtras` adds the pools
+  `summarizeTurn` can't see (Flux Cores, Technologies, Operators, Hypersync tiles).
+- **Operators are Workers.** The +5 VP set now always discards the Operator when a column
+  holds both (a table call — the rulebook doesn't say), tapping a Worker badge says how many
+  of that column are Operators, and there's no separate Operator tracker anywhere.
+- Landing page: Chronossus 50% → 60%, now listing Fractures of Time. 247 tests, build + lint
+  clean; deployed to production as `cbf6578` (39 commits).
+
 ## 2026-08-12 — Turn-overview + History polish (Fractures playtest feedback)
 
 Part 4's F7 from `docs/plans/PLAN_chronossus_difficulty_test_fractures.md`, all view-side —
