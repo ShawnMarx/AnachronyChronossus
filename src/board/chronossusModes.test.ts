@@ -10,6 +10,10 @@ import {
   CHRONOSSUS_MODES,
 } from './chronossusModes';
 import { CHRONOSSUS_COUNTERS } from './chronossusHotspots';
+import {
+  modeDifficultyFor,
+  chronossusDifficultyLabel,
+} from '../phases/ChronossusSetupFlow';
 import { emptyChronossusState, Chronossus } from '../engine';
 
 const { operatorWorkerSlot } = Chronossus;
@@ -238,5 +242,31 @@ describe('Worker badges line up with the Operator slots', () => {
       const slot = operatorWorkerSlot({ ...bot, workers: { ...bot.workers, [w]: 0 } });
       expect(counterKeys).toContain(slot);
     }
+  });
+});
+
+describe('Guardians difficulty options', () => {
+  it('are listed for the Guardians mode and its combo, and nowhere else', () => {
+    const forGuardians = modeDifficultyFor('guardians').map((o) => o.flag);
+    expect(forGuardians).toContain(Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP);
+    expect(forGuardians).toContain(Chronossus.DIFFICULTY_GUARDIANS_START_1);
+    // The combo unions both modules' options.
+    const combo = modeDifficultyFor('guardians+hypersync').map((o) => o.flag);
+    expect(combo).toContain(Chronossus.DIFFICULTY_GUARDIANS_START_1);
+    expect(combo).toContain('chronossus-hypersync-targeted');
+    // Not offered to other modes.
+    expect(modeDifficultyFor('fractures').map((o) => o.flag)).not.toContain(
+      Chronossus.DIFFICULTY_GUARDIANS_START_1,
+    );
+    expect(modeDifficultyFor('base').map((o) => o.flag)).toEqual([]);
+  });
+
+  it('both flags have a human label for the score screen', () => {
+    expect(chronossusDifficultyLabel(Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP)).toMatch(
+      /Guardians/,
+    );
+    expect(chronossusDifficultyLabel(Chronossus.DIFFICULTY_GUARDIANS_START_1)).toMatch(
+      /1 Guardian/,
+    );
   });
 });

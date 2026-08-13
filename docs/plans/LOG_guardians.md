@@ -138,10 +138,18 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   The engine-side `TILE_ACTION_FAMILY` and the view-side map are separate lists; a new
   module's tile has to be added to BOTH.
 
-## G5 — Difficulty options
-- [ ] `chronossus-guardians-postimpact-2vp`
-- [ ] `chronossus-guardians-start-1` (via `applyDifficultySetup`)
-- [ ] Both tested and shown in the score-screen setup note
+## G5 — Difficulty options ✅ done (2026-08-13)
+- [x] Both registered in `MODE_DIFFICULTY.guardians`, so `modeDifficultyFor` offers them for
+  `guardians` **and** unions them with Hypersync's in the combo
+- [x] `chronossus-guardians-postimpact-2vp` — engine side shipped in G3
+- [x] `chronossus-guardians-start-1` — engine side shipped in G1; the Setup screen now also
+  tells the player to hand it a Guardian and place a Path marker at setup
+- [x] `chronossusDifficultyLabel` needed no change (it already reads every `MODE_DIFFICULTY`
+  entry), so both show in the score-screen setup note and the share summary
+- [x] 2 new tests (301 total); build + lint clean. Verified live: both appear on the
+  difficulty step for the Guardians mode, and ticking the second adds the setup bullet
+- [x] The third rulebook bullet ("flip the new Action tile to its B side") is the existing
+  shared `chronossus-tiles-b-side` picker — no new flag, as planned
 
 ## G6 — Ship
 - [ ] Playthrough variations: `guardians`, `guardians+hypersync`

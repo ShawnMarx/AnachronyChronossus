@@ -19,7 +19,7 @@ export const DIFFICULTY_HYPERSYNC_TARGETED = 'chronossus-hypersync-targeted';
 
 /** Extra difficulty options that only apply to specific modules. */
 /** A mode's own difficulty options — combos ('fractures+hypersync') take both lists. */
-function modeDifficultyFor(modeId: string | undefined): DifficultyOption[] {
+export function modeDifficultyFor(modeId: string | undefined): DifficultyOption[] {
   if (!modeId) return [];
   return Object.entries(MODE_DIFFICULTY)
     .filter(([id]) => modeId.includes(id))
@@ -54,6 +54,22 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
       detail:
         'Roll the Glitch die after setup and place the rolled Glitch for yourself, in ' +
         'addition to the two starting Glitches from the Fractures of Time rules.',
+    },
+  ],
+  guardians: [
+    {
+      flag: Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
+      label: 'Guardians: Acquire Guardian scores 2 VP post-Impact',
+      detail:
+        'After the Impact the Chronossus can no longer acquire Guardians. Instead of the ' +
+        'usual Failed Action, it scores 2 VPs when it resolves the Acquire Guardian Action.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_GUARDIANS_START_1,
+      label: 'Guardians: it starts the game with 1 Guardian',
+      detail:
+        'The Chronossus begins with one Guardian already enlisted — place one of its Path ' +
+        'markers on an empty Guardian board slot at setup, and give it a Guardian.',
     },
   ],
   hypersync: [
@@ -280,6 +296,7 @@ export default function ChronossusSetupFlow({
     ? (difficultyValues[Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX] ?? 0)
     : 0;
   const playerGlitch = difficulty.has(Chronossus.DIFFICULTY_FRACTURES_PLAYER_GLITCH);
+  const startingGuardian = difficulty.has(Chronossus.DIFFICULTY_GUARDIANS_START_1);
   const objectiveCount = fewerObjectives
     ? (difficultyValues[Chronossus.DIFFICULTY_FEWER_OBJECTIVES] ?? 0)
     : 3;
@@ -706,6 +723,12 @@ export default function ChronossusSetupFlow({
                         The app tracks how many Guardians the Chronossus owns and how many
                         are powered up; you place and retrieve the miniatures as prompted.
                       </li>
+                      {startingGuardian && (
+                        <li>
+                          <b>Give the Chronossus 1 Guardian now</b> and place one of its Path
+                          markers on an empty Guardian board slot (difficulty option selected).
+                        </li>
+                      )}
                     </>
                   )}
                   <li>
