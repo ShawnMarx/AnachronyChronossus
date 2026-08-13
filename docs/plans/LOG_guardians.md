@@ -194,6 +194,12 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   `spendGuardian(bot)` takes a Guardian specifically. Test added with 4 Exosuits still in hand
 - [x] History now reads `Factory taken (1 VP)` + `Placed 1 Guardian`
 - [x] 306 tests, build + lint clean; verified live end to end
+- [x] **Pass hint corrected too**: `chronossusTurnHint` said "out of Exosuits — it passes
+  next time" whenever `exosuitsAvailable` hit 0, which is wrong while a Guardian is still
+  powered. It now reads `placeableFigures`, and says "only Guardians left to place" in that
+  state
+- [x] **Autoleap chain verified** (die pinned to a 3 so marker 3 walks onto the C11 slot):
+  the dialog opens with the Autoleap note *and* the World Council question
 
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing

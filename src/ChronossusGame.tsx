@@ -241,8 +241,15 @@ function isConstructBuilding(a: string): boolean {
 /** One-line status hint for the Turn popover (the Chronossus pass model). */
 function chronossusTurnHint(bot: ChronossusState): string {
   if (bot.passed) return 'The Chronossus has passed for this Era.';
-  if (bot.exosuitsAvailable <= 0)
-    return 'The Chronossus is out of Exosuits — it passes the next time it would place one (Time Travel / Reboot still resolve).';
+  // Guardians count as figures it can still place, so "out of Exosuits" has to mean out of
+  // BOTH — otherwise the hint says it is about to pass while a Guardian is still powered.
+  if (Chronossus.placeableFigures(bot) <= 0) {
+    const hadGuardians = (bot.guardians?.owned ?? 0) > 0;
+    return `The Chronossus is out of ${hadGuardians ? 'Exosuits and Guardians' : 'Exosuits'} — it passes the next time it would place one (Time Travel / Reboot still resolve).`;
+  }
+  if ((bot.guardians?.powered ?? 0) > 0 && bot.exosuitsAvailable <= 0) {
+    return 'The Chronossus has only Guardians left to place — it places them last, and passes once they are gone too.';
+  }
   return 'The Chronossus alternates turns with you. It passes once it is out of Exosuits and would place one; when you have both passed, the Action Rounds Phase ends.';
 }
 

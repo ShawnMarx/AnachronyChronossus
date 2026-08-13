@@ -2,6 +2,46 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-13 (later) — Guardians of the Council
+
+The Classic expansion's Guardians module for the Chronossus, plus the
+`guardians+hypersync` combo — built stage by stage from `docs/plans/PLAN_guardians.md`.
+A Guardian is a Path-independent Exosuit the bot powers up **first**, places **last**, and
+can drop onto its own reserved space when the Capital is full.
+
+- **Setup & modes.** `guardians` lays C02 / **C11** / C03 into the three tile slots (the combo:
+  C12 / C11 / C03 + C13 covering Time Travel); both were un-stubbed in the module picker.
+  `worldCouncilMandatory` already covered Guardians, so the Hex Unavailable line was free. The
+  setup screen carries the verbatim p.16 box plus the two things the module needs from the
+  player: keep the Chronossus's **Path markers** to hand, and place/retrieve the miniatures.
+- **The rules that touch every placement.** `spendFigure` / `nextFigure` / `placeableFigures`
+  put "Guardians last" in one place and replaced all six scattered `exosuitsAvailable -= 1`
+  sites, so Main-board and Valley placements, the Hypersync hex and the Failed-Action discards
+  all follow it at once. Power Up splits its number Guardians-first (the rulebook's own
+  4-with-2-Guardians example is a test), the pass rule counts both, and Clean Up resets
+  `powered` while `owned` persists — a Guardian's Path marker never leaves its slot.
+- **The Guardian board fallback.** A Capital Action with no space left anywhere — World
+  Council included — places a Guardian on a Path-marked slot and resolves **normally**: no
+  +1 VP, no discard. It beats Hypersync's Solo-tile fallback in the combo, and needs no
+  question, because every Guardian brings its own space.
+- **Acquire Guardian (C11).** Asks whether the World Council space is open (only when it has
+  a figure to place — otherwise it isn't an Exosuit Action at all), then either places there
+  and takes First Player, or spends a Worker (Most > Scientist > Engineer > Administrator >
+  Genius) and places nothing. Post-Impact, no Guardian left, or no Workers → a full Failed
+  Action. The "is a Guardian still available?" prompt only appears in Era 4: the shared six
+  can't run out earlier, and Eras 5+ fail regardless.
+- **Reading as one figure count** (playtest feedback). Power Up says *"Powered up 5 in total —
+  1 Guardian and 4 normal Exosuits"*; the Exosuit badge, its pop-out and the board marker art
+  all count Guardians in the same pile, with the split in the pop-out; the turn chip reads
+  `5 Exo (inc 1 Guardian)` beside `0/1 Guardian` for one it couldn't power up.
+- **Two bugs the playtest surfaced.** The view's `FAMILY_TO_TILE_ACTION` had no `C11`, so the
+  tile was inert — a marker landing on it silently did nothing (the engine and view keep
+  separate maps; a module's tile needs both). And the board fallback called `spendFigure`,
+  which takes a plain Exosuit while any remain — but it fires when **Action spaces** run out,
+  not figures, so it now spends a Guardian specifically.
+- 306 tests (four new end-to-end playthrough variations), build + lint clean. The playthrough
+  helper gained an `onPhase` hook for per-Era state that Clean Up resets.
+
 ## 2026-08-13 — Fractures playtest fixes, and Fractures ships to production
 
 The playtest-fix pass on Fractures of Time (logged as F8), then the whole effort — the
