@@ -542,6 +542,7 @@
 /* Fractures: the token the Blink check drew, shown like a die result. */
 .flux-draw {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.7rem;
   padding: 0.5rem 0.7rem;
@@ -549,11 +550,22 @@
   border-radius: 10px;
   background: var(--sp-panel-2);
   font-size: 0.85rem;
+  line-height: 1.4;
   color: var(--sp-text-1);
 }
 .flux-draw img {
   height: 2.6rem;
   width: auto;
+  /* Never squeeze the token art to buy the caption room — the caption wraps (and the
+     whole row wraps below the token) in a narrow dialog instead. */
+  flex: 0 0 auto;
+}
+.flux-draw span {
+  /* `min-width: auto` on a flex item holds the caption at its longest word, so in a
+     narrow dialog it ran past the box edge instead of wrapping. */
+  flex: 1 1 7rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 /* Fractures: set-aside Casings + the Tech/Ops counts in the turn overview. */
 .cx-flux-aside {
