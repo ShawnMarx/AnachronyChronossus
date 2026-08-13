@@ -25,6 +25,20 @@ already in `chronossusTiles.ts`.
 - **Art:** `C11A.png` / `C11B.png` already exist in
   `…/OneDrive/Program Development/Anachrony Chronossus/temp/Mod Tiles/` (167×114, same as
   every other tile) — copy them in; no TTS extraction and no placeholder needed.
+- **A failed Acquire Guardian is a full Failed Action** — the Chronossus's usual +1 VP **and
+  discard an active Exosuit**, routed through the existing failed-action path (so D7's +2 VP
+  option applies too), not a VP-only special case.
+- **In the combo, the Guardian space wins.** With no Capital space left, try the Guardian
+  fallback first; the Solo Hypersync tile stays the fallback for when nothing can be placed
+  at all.
+- **Every Guardian has its own guaranteed Action space, so the fallback can never run out.**
+  Enlisting a Guardian puts a **Chronossus Path marker** on a slot of the Guardian board, and
+  that slot is that Guardian's own uncontested Action space. When a Capital Action (Construct,
+  Research, Recruit) has no space left — World Council included — the Guardian goes on the
+  Guardian board where a Chronossus Path marker sits; **which marker doesn't matter** if it
+  has several. Two consequences the app has to carry: **setup must tell the player to have
+  Chronossus Path markers on hand** for the Guardian board, and **C11 must instruct placing
+  one** as part of acquiring the Guardian.
 
 ### Verbatim source (Solo Opponents p.16)
 
@@ -85,14 +99,17 @@ already in `chronossusTiles.ts`.
 
 ## G-R. Research & design
 
-- [ ] Read the Classic Expansion rulebook's Guardian chapter (pp.9-11) for the two facts the
-      Solo Opponents delta assumes: **how many reserved Guardian Action spaces exist** (and
-      whether they can run out — "their own designated Action spaces, where they can take a
-      Capital Action without being contested"), and whether powering up a Guardian costs the
-      Chronossus anything it tracks.
-- [ ] Confirm what "the leftmost available Guardian" means physically (Guardian board slots,
-      left to right) so the instruction can name it without the app modelling the board.
-- [ ] Resolve the two open questions below with the user before G3.
+The three open questions are **answered** (see Decisions above) — what's left is small:
+
+- [ ] Classic Expansion pp.9-11: confirm whether powering up a Guardian costs the Chronossus
+      anything the app tracks (the Chronossus pays no Worker/asset costs elsewhere, so this is
+      expected to be nothing), and confirm "the leftmost available Guardian" is simply the
+      left-to-right order on the Guardian board, so the instruction can name it without the
+      app modelling that board.
+- [ ] **Is the Chronossus capped at 4 Guardians?** The shared solo components include **4 Solo
+      Path markers** while Classic ships 6 Guardian miniatures — if each enlist consumes one
+      marker, the bot can hold at most 4. Confirm before G2 sizes the state; if real, the
+      Acquire Guardian Action needs an "out of Path markers" branch.
 
 ## G1. Mode entry & setup
 
@@ -102,7 +119,11 @@ already in `chronossusTiles.ts`.
 - [ ] Setup screen: verbatim p.16 CHANGES AT SETUP box + app-modified bullets (the app holds
       the Guardian count; the Hex Unavailable line already renders via `requiresHexUnavailable`).
       Combo-aware, like Fractures+Hypersync (`includes()`, not `===`).
-- [ ] Seed the slice at setup: `guardians` starts at 0 (or 1 with the difficulty).
+- [ ] **Setup bullet: keep the Chronossus's Path markers to hand** — they mark the Guardian
+      board slots the bot enlists into, and each marked slot is a Guardian's own guaranteed
+      Action space. The player places them; the app only says when.
+- [ ] Seed the slice at setup: `guardians` starts at 0 — or **1 with the difficulty**, which
+      also means instructing a starting Path marker + Guardian at setup.
 
 ## G2. Engine — Guardian state, Power Up, placement
 
@@ -119,9 +140,12 @@ already in `chronossusTiles.ts`.
 - [ ] **Pass rule:** `noExosuitFor` / the out-of-Exosuits pass must count Guardians too — it
       only passes when both are gone.
 - [ ] **Guardian Action space fallback:** for a Capital Action (Research / Recruit / Construct)
-      with no space left including World Council, place a Guardian on the reserved Guardian
-      Action space and perform the Action — **not** a Failed Action, no +1 VP, no Exosuit
-      discard. Slots into the existing no-space gate branch.
+      with no space left including World Council, place a Guardian **on the Guardian board, on
+      a slot holding a Chronossus Path marker** (any of them, if several) and perform the
+      Action — **not** a Failed Action, no +1 VP, no Exosuit discard. Slots into the existing
+      no-space gate branch, and takes priority over the Solo Hypersync tile in the combo. Since
+      every Guardian brings its own space, the only condition is holding a powered Guardian —
+      there is no "space taken" question to ask the player.
 - [ ] Unit tests for each of the above, incl. the D4 interaction and the pass rule.
 
 ## G3. Engine — Acquire Guardian (C11) & the tile
@@ -131,7 +155,10 @@ already in `chronossusTiles.ts`.
       Exosuit onto World Council, **becomes First Player** (`state.firstPlayer`), no Action,
       +1 Guardian; World Council taken → spend a Worker by **Most > Scientist > Engineer >
       Administrator > Genius**, +1 Guardian, no Exosuit; neither possible, or post-Impact →
-      the Failed-Action branch (see Open question 1).
+      the full Failed-Action path (+1 VP, or D7's +2, **and discard an active Exosuit**).
+- [ ] Both acquiring branches instruct the player to **place a Chronossus Path marker on an
+      empty Guardian board slot** and take the leftmost available Guardian — that marker is
+      what gives the Guardian its own Action space later.
 - [ ] A `spendWorkerByPriority` helper for the Most-first ordering (the existing Recruit and
       Remove-Anomaly priorities are the same shape but different orders).
 - [ ] Unit tests per branch, incl. no-Workers, post-Impact, and the Autoleap advance.
@@ -186,18 +213,12 @@ Two new flags in `MODE_DIFFICULTY.guardians` (unioned automatically for the comb
 
 ## Open questions
 
-1. **What exactly is "as if it was a Failed Action"?** A Chronossus Failed Action is harsher
-   than the Chronobot's: +1 VP **and discard an active Exosuit**. p.16 says a failed Acquire
-   Guardian "gains 1 VP, as if it was a Failed Action". *Recommendation:* route it through the
-   existing failed-action path (VP + discard), so D7's +2 VP option and the discard stay
-   consistent with every other Failed Action — but it is arguably VP-only.
-2. **In the Hypersync combo, which no-space fallback wins?** Both modules define one: place a
-   Guardian on the reserved Guardian Action space (not a Failed Action) vs. place a Solo
-   Hypersync tile (also not a Failed Action). *Recommendation:* try the **Guardian** first —
-   it is a real placement onto a reserved space, and the Hypersync tile is explicitly the
-   fallback for when nothing can be placed at all.
-3. **Do the reserved Guardian Action spaces run out?** (G-R research item.) If there are fewer
-   spaces than Guardians, the fallback needs a limit and the player has to be asked.
+All three opening questions were answered 2026-08-13 and moved into **Decisions** above
+(full Failed Action; Guardian space beats the Hypersync tile; every Guardian brings its own
+guaranteed space via its Path marker). What remains:
+
+1. **A 4-Guardian cap?** — see G-R. Four Solo Path markers ship in the shared solo components;
+   if each enlist consumes one, Acquire Guardian needs an "out of Path markers" branch.
 
 ## Verification (whole effort)
 
@@ -206,6 +227,8 @@ Two new flags in `MODE_DIFFICULTY.guardians` (unioned automatically for the comb
 - Base / Hypersync / Fractures regression: unchanged behaviour, no Guardian state leaking into
   modes that don't have it (`guardians` stays `undefined`).
 - Power Up order visibly correct: with N Guardians owned, the first N powered are Guardians.
-- A Capital Action with no space left places a Guardian and does **not** score the Failed +1 VP.
+- A Capital Action with no space left places a Guardian on a Path-marked Guardian board slot
+  and does **not** score the Failed +1 VP (and beats the Hypersync tile in the combo).
+- A failed Acquire Guardian takes the full Failed-Action treatment (VP **and** the discard).
 - Acquire Guardian: all three branches, First Player set on the World Council branch, and the
   Autoleap advance.
