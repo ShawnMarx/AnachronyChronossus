@@ -31,6 +31,7 @@ import {
   ParadoxPhaseBody,
   PARADOX_ICONS,
   BlinkPanel,
+  BlinkRuleBlock,
   PlaceExosuitPanel,
   summarizeTurn,
   type PendingStep,
@@ -3452,6 +3453,12 @@ function CxTileDialog({
             )}
           </div>
         )}
+
+        {/* Fractures — the Blink rules sit with the tile's own rule box, below the
+            boxes rather than inside the Blink step. */}
+        {valleyGate &&
+          !readOnly &&
+          (valleyGate.step === 'blink' || valleyGate.step === 'casing') && <BlinkRuleBlock />}
       </div>
     </div>
   );
@@ -3801,6 +3808,9 @@ function HypersyncDialog({
             {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         )}
+
+        {/* Fractures — the Blink rules go below the box, like the other rule boxes. */}
+        {(blinkStep === 'blink' || blinkStep === 'casing') && <BlinkRuleBlock />}
       </div>
     </div>
   );

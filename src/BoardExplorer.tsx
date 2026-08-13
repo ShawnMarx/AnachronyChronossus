@@ -143,12 +143,15 @@ export function BlinkPanel({
           ✓ Confirm moved
         </button>
       </div>
-      <BlinkRuleBlock />
     </div>
   );
 }
 
-/** Collapsible VERBATIM Blink rules — shown at the bottom of every Blink-check step. */
+/**
+ * Collapsible VERBATIM Blink rules. Rendered by each dialog's FOOTER, below the boxes with
+ * the other 📖 rule collapsibles — not inside the Blink step, which is a `.place-prompt`
+ * box of its own.
+ */
 export function BlinkRuleBlock() {
   const [open, setOpen] = useState(false);
   return (
@@ -212,7 +215,6 @@ export function PlaceExosuitPanel({
           ✓ Confirm placed
         </button>
       </div>
-      {drewCasing && <BlinkRuleBlock />}
     </div>
   );
 }
@@ -4029,6 +4031,10 @@ export function DetailPanel({
         {def.placesExosuit && (
           <MechRules open={showMech} onToggle={toggleMech} botName={botName} />
         )}
+
+        {/* Fractures — the Blink rules keep the other rule boxes company while the
+            Blink check's outcome is on screen. */}
+        {(pending === 'blink' || pending === 'fluxCasing') && <BlinkRuleBlock />}
       </div>
     </div>
   );
