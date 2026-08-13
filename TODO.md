@@ -80,11 +80,15 @@ Base game + Hypersync module are live in prod. See
 The playthrough test harness, all 10 difficulty options, Alternate Timelines, Variable
 Anomalies and **Fractures of Time** (incl. the Fractures + Hypersync combo) shipped with it —
 archived 2026-08-13 in
-`docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`. No plan is active.
+`docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`.
+
+**Active plan:** `docs/plans/PLAN_guardians.md` — Guardians of the Council + the
+`guardians+hypersync` combo (started 2026-08-13).
 
 Still backlog (not yet in a plan):
-- [ ] **More modules** — Doomsday, Pioneers, Guardians (stubbed in the Module menu). Each
-      becomes its own `/plan`.
+- [ ] **More modules** — Doomsday, Pioneers (stubbed in the Module menu). Each becomes its
+      own `/plan`. Note the rulebook's limits (Solo Opponents p.18): Doomsday combines with
+      nothing, and Fractures + Guardians is not allowed. Guardians is in the active plan.
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 

@@ -35,9 +35,11 @@
 > render like base-game Action dialogs and every one puts its verbatim rule box below the
 > body; History gained the module-only deltas. **Merged to `main`/production and the whole
 > plan archived** to `docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`.
-> **No plan is active.** The one item it closed unfinished is a manual on-device playthrough.
-> Next candidates (Doomsday, Pioneers, Guardians, Chronossus stats/history) stay in
-> `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
+> The one item it closed unfinished is a manual on-device playthrough.
+> **Active plan (2026-08-13):** `docs/plans/PLAN_guardians.md` — **Guardians of the Council**
+> + the `guardians+hypersync` combo (new Guardian Exosuit type, C11 Acquire Guardian, full
+> engine-side tracking). Remaining candidates (Doomsday, Pioneers, Chronossus stats/history)
+> stay in `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
 > decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
