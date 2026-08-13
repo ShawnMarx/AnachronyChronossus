@@ -96,6 +96,12 @@ export interface PlaythroughOptions {
   /** Variable Anomalies: the tile the Chronossus took, reported whenever `rollParadox`
    *  defers a gain (module active). Default: a -2 VP, non-retrieve-eligible tile. */
   variableAnomalyTaken?: () => VariableAnomalyCandidate;
+  /**
+   * Called after each phase resolves, with the state as it then stands. Lets a variation
+   * assert on MID-game state that the end of the run would have cleared — e.g. Guardians'
+   * per-Era power-up split, which Clean Up resets to 0.
+   */
+  onPhase?: (phase: 'powerup' | 'warp' | 'actions' | 'cleanup', state: GameState) => void;
 }
 
 export interface PlaythroughResult {
@@ -167,6 +173,7 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     paradoxRollCycle = [1],
     positiveSpacesForEra = () => 0,
     variableAnomalyTaken = () => ({ vp: -2, retrieveEligible: false }),
+    onPhase,
   } = opts;
 
   let state = setupChronossus(config);
@@ -202,16 +209,20 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
     const draw = deterministicEnergyDraw(state.chronossus!.energyPool);
     state = Chronossus.resolvePowerUp(state, draw);
     assertInvariants(state);
+    onPhase?.('powerup', state);
 
     const warpPlace = Math.max(0, warpRollForEra(state.era));
     state = Chronossus.resolveWarp(state, warpPlace, positiveSpacesForEra(state.era, warpPlace));
     assertInvariants(state);
+    onPhase?.('warp', state);
 
     state = runActionRounds(state, actionsForEra(state.era));
     assertInvariants(state);
+    onPhase?.('actions', state);
 
     state = Chronossus.resolveCleanUp(state);
     assertInvariants(state);
+    onPhase?.('cleanup', state);
 
     state = finishEra(state);
   }

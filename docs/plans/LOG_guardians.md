@@ -151,10 +151,16 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] The third rulebook bullet ("flip the new Action tile to its B side") is the existing
   shared `chronossus-tiles-b-side` picker — no new flag, as planned
 
-## G6 — Ship
-- [ ] Playthrough variations: `guardians`, `guardians+hypersync`
-- [ ] Build + tests + lint clean
-- [ ] Live verification (both modes), then staging
+## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
+- [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
+  Guardians, the Guardians-first power-up split per Era, and the Guardian board fallback
+  keeping a no-space Capital Action from failing) and `guardians+hypersync` (1 test)
+- [x] **`onPhase(phase, state)` hook added to the playthrough helper** — Guardians' per-Era
+  `powered` count is reset by Clean Up, so the end of a run can't see it. Documented in the
+  test-file header for the next module
+- [x] Build + 305 tests + lint clean
+- [x] Live verification: Guardians mode end to end (setup → the C11 dialog's three steps →
+  History), and the combo's difficulty step showing both modules' options
 - [ ] Manual playthrough on device — user-side
 
 ---

@@ -4,14 +4,17 @@
 // asserting it never throws, per-phase invariants hold throughout, and the final
 // score is a coherent breakdown.
 //
-// Adding a new mode variation (e.g. Fractures of Time, PART 3 of
-// docs/plans/PLAN_chronossus_difficulty_test_fractures.md): add a new `describe`
-// below that calls `playChronossus({ config: { ...CONFIG, expansions: [...],
-// chronossusMode: '<mode>' }, actionsForEra: <custom script> })`, overriding only
-// `actionsForEra` (and `warpRollForEra` / `paradoxRollCycle` if useful) to exercise
-// the mode's new Actions/tiles — see the Hypersync `describe` below for the pattern
-// of splicing a mode-specific `Turn` into a couple of Eras and letting the shared
+// Adding a new mode variation: add a new `describe` below that calls
+// `playChronossus({ config: { ...BASE_CONFIG, chronossusMode: '<mode>' },
+// actionsForEra: <custom script> })`, overriding only `actionsForEra` (and
+// `warpRollForEra` / `paradoxRollCycle` if useful) to exercise the mode's new
+// Actions/tiles — see the Hypersync `describe` below for the pattern of splicing a
+// mode-specific `Turn` into a couple of Eras and letting the shared
 // `defaultActionsForEra` script fill the rest.
+//
+// For state a mode resets between Eras (Guardians' per-Era `powered` count, say),
+// assert through the `onPhase(phase, state)` hook — the end of a run has already
+// been through Clean Up, so mid-Era facts are gone by the time the result comes back.
 
 import { describe, expect, it } from 'vitest';
 import { action, defaultActionsForEra, hypersyncTurn, playChronossus, type Turn } from './chronossusPlaythrough';
@@ -293,5 +296,89 @@ describe('Chronossus full-game playthrough — Fractures of Time', () => {
     const bot = state.chronossus!;
     expect(bot.exosuitsAvailable).toBeGreaterThanOrEqual(0);
     expect(bot.placedExosuits).toEqual([]); // cleared each Clean Up
+  });
+});
+
+describe('Chronossus full-game playthrough — Guardians of the Council', () => {
+  const GUARDIANS_CONFIG: GameConfig = { ...BASE_CONFIG, chronossusMode: 'guardians' };
+
+  it('plays a full game acquiring, powering and placing Guardians', () => {
+    const { state, score } = playChronossus({
+      config: GUARDIANS_CONFIG,
+      // Acquire on the World Council space every Era, then spend the Era's figures. The
+      // later Constructs run once the Exosuits are gone, so Guardians get placed too.
+      actionsForEra: () => [
+        action('tile-acquire-guardian', { worldCouncilFree: true }),
+        action('recruit', { placementSpace: 'action' }),
+        action('research', { shape: 'circle', placementSpace: 'action' }),
+        action('construct-lab', { buildingVP: 3, placementSpace: 'action' }),
+        action('construct-factory', { buildingVP: 2, placementSpace: 'action' }),
+        action('mine-resource', { placementSpace: 'action' }),
+        action('tile-score'),
+      ],
+    });
+    expect(state.finished).toBe(true);
+    const bot = state.chronossus!;
+    // It acquired Guardians and they persist across Eras (owned never drops).
+    expect(bot.guardians!.owned).toBeGreaterThan(0);
+    // Clean Up leaves none powered at the end of the final Era.
+    expect(bot.guardians!.powered).toBe(0);
+    expect(score.total).toBeGreaterThan(0);
+  });
+
+  it('powers Guardians up first, so they take part of each Era\'s number', () => {
+    const seen: { owned: number; powered: number; exosuits: number }[] = [];
+    playChronossus({
+      config: GUARDIANS_CONFIG,
+      actionsForEra: () => [action('tile-acquire-guardian', { worldCouncilFree: true })],
+      onPhase: (phase, state) => {
+        // Right after Power Up, before any figure has been spent.
+        if (phase === 'powerup' && state.chronossus?.guardians) {
+          seen.push({
+            owned: state.chronossus.guardians.owned,
+            powered: state.chronossus.guardians.powered,
+            exosuits: state.chronossus.exosuitsAvailable,
+          });
+        }
+      },
+    });
+    // Once it owns Guardians, every Era powers up as many as it can before Exosuits.
+    const withGuardians = seen.filter((s) => s.owned > 0);
+    expect(withGuardians.length).toBeGreaterThan(0);
+    for (const s of withGuardians) expect(s.powered).toBe(Math.min(s.owned, s.powered + s.exosuits));
+  });
+
+  it('the Guardian board fallback keeps a no-space Capital Action from failing', () => {
+    const { state } = playChronossus({
+      config: GUARDIANS_CONFIG,
+      actionsForEra: (era) =>
+        era === 1
+          ? [action('tile-acquire-guardian', { worldCouncilFree: true })]
+          : [
+              // No space anywhere: without a Guardian this is a Failed Action; with one it
+              // resolves normally from the Guardian board.
+              action('research', { shape: 'square', noSpaceAvailable: true }),
+            ],
+    });
+    expect(state.finished).toBe(true);
+    // It researched from the Guardian board in later Eras rather than only scoring fail VP.
+    const shapes = state.chronossus!.breakthroughs;
+    expect(shapes.square).toBeGreaterThan(0);
+  });
+});
+
+describe('Chronossus full-game playthrough — Guardians + Hypersync combo', () => {
+  it('runs both modules in one game', () => {
+    const { state } = playChronossus({
+      config: { ...BASE_CONFIG, chronossusMode: 'guardians+hypersync' },
+      actionsForEra: () => [
+        action('tile-acquire-guardian', { worldCouncilFree: true }),
+        action('recruit', { placementSpace: 'action' }),
+        hypersyncTurn({ code: 'C12A', outcome: 'time-travel' }),
+        action('construct-lab', { buildingVP: 3, placementSpace: 'action' }),
+      ],
+    });
+    expect(state.finished).toBe(true);
+    expect(state.chronossus!.guardians!.owned).toBeGreaterThan(0);
   });
 });
