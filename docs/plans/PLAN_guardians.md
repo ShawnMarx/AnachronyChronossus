@@ -178,6 +178,12 @@ The three open questions are **answered** (see Decisions above) — what's left 
 ## G3. Engine — Acquire Guardian (C11) & the tile
 
 - [ ] `TILE_EFFECTS.C11A` / `C11B`: `autoleap: true` both sides; C11B adds +2 VP.
+- [ ] **Question order (confirmed 2026-08-13):** with a figure available, C11 opens by asking
+      whether the **World Council space is open** — yes routes to that method. Otherwise it is
+      **not an Exosuit Action at all** and goes straight to spending a Worker, so the question
+      is not asked (`acquireGuardianAsksWorldCouncil`). Past that, the only failure paths are
+      **no Guardian remains** and **no Workers in the bot's pool** (plus post-Impact, which is
+      its own rule).
 - [ ] Acquire Guardian **asks whether a Guardian is still available** on the Guardian board
       (the 6 miniatures are shared with the player, so the app can't know). None available →
       the Failed-Action branch, before the World Council question is even asked. **Only ask

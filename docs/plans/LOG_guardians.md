@@ -104,6 +104,12 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardians game never has a Flux Pool.
 - The World Council branch falls through to the Worker option when the bot has no figure to
   place — "if it cannot do either option" reads as per-option, not "option 1 only".
+- **Question order confirmed by the user (2026-08-13):** with a figure available C11 opens on
+  "is the World Council space open?"; with none it is not an Exosuit Action at all and goes
+  straight to the Worker option, so the question isn't asked
+  (`acquireGuardianAsksWorldCouncil`, which G4's dialog gates on). The engine's branch order
+  already matched; the final Failed-Action copy was reworded, since the only way to reach it
+  is an empty Worker pool — it used to read "can neither place… nor spend a Worker".
 
 ## G4 — UI: dialog, trackers, History, art
 - [ ] `C11A.png` / `C11B.png` copied from `temp/Mod Tiles/`

@@ -1247,6 +1247,18 @@ export function shouldAskGuardianAvailable(era: number): boolean {
   return era >= GUARDIAN_SUPPLY_QUESTION_ERA && !isPostImpact(era);
 }
 
+/**
+ * Whether an Acquire Guardian should even ASK about the World Council space. It is only an
+ * Exosuit-placing Action when the bot has a figure to place; with none, the World Council
+ * option is off the table and it goes straight to spending a Worker, so asking would be
+ * asking for nothing (the same don't-prompt-for-nothing rule as Fractures' Blink check).
+ *
+ * Once past that, the only failure paths are "no Guardian remains" and "no Workers left".
+ */
+export function acquireGuardianAsksWorldCouncil(bot: ChronossusState): boolean {
+  return placeableFigures(bot) > 0;
+}
+
 /** What an Acquire Guardian resolved to — drives the dialog copy and History. */
 export type AcquireGuardianOutcome = 'world-council' | 'worker' | 'failed';
 
@@ -1345,7 +1357,8 @@ export function resolveAcquireGuardian(
     return { outcome: 'world-council', figurePlaced: figure, becameFirstPlayer: true };
   }
 
-  // Option 2 — World Council taken (or nothing to place): spend a Worker instead.
+  // Option 2 — World Council taken, or it has no figure to place (in which case this was
+  // never an Exosuit Action at all): spend a Worker instead.
   const worker = guardianWorkerToSpend(bot);
   if (worker) {
     bot.workers[worker] -= 1;
@@ -1363,14 +1376,16 @@ export function resolveAcquireGuardian(
     return { outcome: 'worker', figurePlaced: null, becameFirstPlayer: false };
   }
 
-  // Neither option was possible.
+  // Only one way to get here: the Worker option was the one to take and its pool is empty.
+  // (Post-Impact and "no Guardian left" are handled above; a taken World Council space — or
+  // no figure to place — just routes to the Worker option.)
   bot.vp += opts.failVP;
   spendFigure(bot);
   instr.push({
     id: `guardian-fail-${n}`,
     text:
-      'It can neither place on the World Council space nor spend a Worker — Failed Action: ' +
-      `the Chronossus takes +${opts.failVP} VP and discards one active Exosuit.`,
+      'It has no Workers left to spend on a Guardian — Failed Action: the Chronossus takes ' +
+      `+${opts.failVP} VP and discards one active Exosuit.`,
     effect: { vp: opts.failVP },
   });
   return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };

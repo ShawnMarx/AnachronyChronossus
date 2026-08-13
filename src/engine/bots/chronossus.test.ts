@@ -51,6 +51,7 @@ import {
   canUseGuardianSpace,
   guardianWorkerToSpend,
   shouldAskGuardianAvailable,
+  acquireGuardianAsksWorldCouncil,
   DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
   type EnergyDraw,
   type VariableAnomalyCandidate,
@@ -1795,10 +1796,26 @@ describe('Guardians — Acquire Guardian (C11)', () => {
     expect(res.state.chronossus!.vp).toBe(1);
   });
 
-  it('neither option possible (no figure, no Worker) is a Failed Action', () => {
+  it('an empty Worker pool is the only other failure path', () => {
     const res = acquire(acquireState({ exosuits: 0 }), { worldCouncilFree: false });
     expect(res.acquireGuardian).toBe('failed');
     expect(res.state.chronossus!.vp).toBe(1);
+    // Same outcome whatever the World Council answer was — it never got that far.
+    const free = acquire(acquireState({ exosuits: 0 }), { worldCouncilFree: true });
+    expect(free.acquireGuardian).toBe('failed');
+  });
+
+  it('only asks about the World Council space when it has a figure to place', () => {
+    const withFigure = { ...emptyChronossusState(), exosuitsAvailable: 1 };
+    expect(acquireGuardianAsksWorldCouncil(withFigure)).toBe(true);
+    const guardianOnly = {
+      ...emptyChronossusState(),
+      exosuitsAvailable: 0,
+      guardians: { owned: 1, powered: 1 },
+    };
+    expect(acquireGuardianAsksWorldCouncil(guardianOnly)).toBe(true);
+    const nothing = { ...emptyChronossusState(), exosuitsAvailable: 0 };
+    expect(acquireGuardianAsksWorldCouncil(nothing)).toBe(false);
   });
 
   it('falls back to the Worker option when it has no figure to place', () => {
