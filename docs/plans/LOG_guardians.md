@@ -151,6 +151,24 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] The third rulebook bullet ("flip the new Action tile to its B side") is the existing
   shared `chronossus-tiles-b-side` picker — no new flag, as planned
 
+## G7 — Guardians read as one figure count (playtest feedback 2026-08-13) ✅ done
+- [x] **Power Up calls out the split.** The screen said "Powered up N Exosuits" whatever the
+  mix; it now reads *"Powered up 5 in total — 1 Guardian and 4 normal Exosuits. It powers up
+  as many Guardians as it can first."* The player is pulling two different miniatures, so the
+  instruction has to say which
+- [x] **The Exosuit badge counts every figure it can place** (Exosuits + powered Guardians),
+  with the breakdown in its tooltip and its pop-out: *5 powered figures to place / Normal
+  Exosuits 4 / Guardians 1 powered · 1 enlisted*
+- [x] **The turn-overview chip merged**: `5 Exo (inc 1 Guardian)` instead of a separate
+  Guardians chip the player had to add up. The second chip now shows only what the figure
+  count can't — Guardians **enlisted** in total, which persists across Eras
+- [x] Verified live with the start-with-1-Guardian difficulty; 305 tests, build + lint clean
+
+**Deviation / note**
+- The **board overlay art keeps counting plain Exosuits only** — that art is literally
+  Exosuit-marker art, and a Guardian is a different miniature. The badge (a number) counts
+  both; the art does not.
+
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
   Guardians, the Guardians-first power-up split per Era, and the Guardian board fallback

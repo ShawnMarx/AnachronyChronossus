@@ -394,8 +394,12 @@ function counterInfo(bot: ChronossusState, c: BoardCounter): string {
       : `${c.label}: 0 (max 3 of a type)`;
   }
   switch (c.key) {
-    case 'mech':
-      return `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+    case 'mech': {
+      const guardians = bot.guardians?.powered ?? 0;
+      return guardians > 0
+        ? `${c.label}: ${count} to place — ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${guardians} Guardian${guardians === 1 ? '' : 's'}`
+        : `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+    }
     case 'anomaly':
       // Variable Anomalies: list each held tile's VP, same pattern as buildings.
       return bot.anomalyVps
@@ -432,7 +436,9 @@ function counterValue(bot: ChronossusState, key: BoardCounter['key']): number {
     case 'anomaly':
       return bot.anomalyVps?.length ?? bot.anomalies;
     case 'mech':
-      return bot.exosuitsAvailable;
+      // Guardians are figures it can place too (last), so the tracker counts both —
+      // the pop-out and tooltip break them apart.
+      return bot.exosuitsAvailable + (bot.guardians?.powered ?? 0);
     case 'breakthrough':
       return bot.breakthroughs.circle + bot.breakthroughs.triangle + bot.breakthroughs.square;
     case 'neutronium':
@@ -460,11 +466,29 @@ const EXOSUIT_ICON = '/assets/solo/chronossus/exosuit.png';
 const PATH_ICON = '/assets/solo/chronossus/path-marker.png';
 
 /** The Exosuit icon + count (replaces the 🦾 emoji in the stat bar / Turn popover). */
-function CxExosuit({ count, size = 18 }: { count: number; size?: number }) {
+function CxExosuit({
+  count,
+  guardians = 0,
+  size = 18,
+}: {
+  /** Powered plain Exosuits. */
+  count: number;
+  /** Guardians of the Council: powered Guardians, counted in the same total. */
+  guardians?: number;
+  size?: number;
+}) {
+  // Guardians are Exosuits the bot places (last), so they belong in the same number —
+  // a separate chip made the player add two counts to know what it can still do.
   return (
     <span className="cx-exosuit">
       <img src={EXOSUIT_ICON} alt="Powered Exosuits" style={{ height: size }} />
-      {count} Exo
+      {count + guardians} Exo
+      {guardians > 0 && (
+        <span className="cx-exo-guardians">
+          {' '}
+          (inc {guardians} Guardian{guardians === 1 ? '' : 's'})
+        </span>
+      )}
     </span>
   );
 }
@@ -2644,10 +2668,34 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     {open && c.key === 'mech' && (
                       <BadgePopover rect={tappedRect} variant="text">
                         <div className="cx-mech-pop">
-                          <div>
-                            {bot.exosuitsAvailable} powered Exosuit
-                            {bot.exosuitsAvailable === 1 ? '' : 's'} available
-                          </div>
+                          {(bot.guardians?.powered ?? 0) > 0 ? (
+                            <>
+                              <div>
+                                {bot.exosuitsAvailable + bot.guardians!.powered} powered
+                                figure
+                                {bot.exosuitsAvailable + bot.guardians!.powered === 1
+                                  ? ''
+                                  : 's'}{' '}
+                                to place
+                              </div>
+                              <div className="cx-mech-pop-energy">
+                                <span className="cx-mech-pop-label">Normal Exosuits</span>
+                                <span>{bot.exosuitsAvailable}</span>
+                              </div>
+                              <div className="cx-mech-pop-energy">
+                                <span className="cx-mech-pop-label">Guardians</span>
+                                <span>
+                                  {bot.guardians!.powered} powered ·{' '}
+                                  {bot.guardians!.owned} enlisted
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <div>
+                              {bot.exosuitsAvailable} powered Exosuit
+                              {bot.exosuitsAvailable === 1 ? '' : 's'} available
+                            </div>
+                          )}
                           <div className="cx-mech-pop-energy">
                             <span className="cx-mech-pop-label">Energy Pool</span>
                             <CxEnergyPool pool={bot.energyPool} size={24} />
@@ -2679,7 +2727,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   Chronossus owns > 0 of a type. Shared art with the Chronobot. */}
               <BotOverlayLayer
                 overlays={CHRONOSSUS_OVERLAYS}
-                count={(k) => counterValue(bot, k)}
+                // The 'mech' overlay art IS Exosuit-marker art, so it keeps counting the
+                // bot's own Exosuits — a Guardian is a different miniature, tracked by the
+                // badge (which counts both) and its pop-out.
+                count={(k) => (k === 'mech' ? bot.exosuitsAvailable : counterValue(bot, k))}
                 positions={positions}
                 widths={overlayWidths}
                 curves={overlayCurves}
@@ -2856,8 +2907,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               countLabel="Bot Turns"
               extraFlags={
                 <>
-                  <TapFlag className="cx-exosuit-flag" hint="Powered Exosuits available this Era">
-                    <CxExosuit count={bot.exosuitsAvailable} size={18} />
+                  <TapFlag
+                    className="cx-exosuit-flag"
+                    hint={
+                      (bot.guardians?.powered ?? 0) > 0
+                        ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
+                        : 'Powered Exosuits available this Era'
+                    }
+                  >
+                    <CxExosuit
+                      count={bot.exosuitsAvailable}
+                      guardians={bot.guardians?.powered ?? 0}
+                      size={18}
+                    />
                   </TapFlag>
                   <TapFlag
                     className="cx-energy-flag"
@@ -2885,13 +2947,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       </span>
                     </TapFlag>
                   )}
+                  {/* No separate Guardians chip: a powered Guardian is one of the figures
+                      the Exosuit chip counts (it shows "inc N Guardians"). This one is the
+                      total ENLISTED, which the Exosuit count can't show — they persist
+                      across Eras while `powered` resets. */}
                   {guardiansMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Guardians it has enlisted, and how many of them are powered up this Era. Guardians power up FIRST and are placed LAST; each has its own Action space on the Guardian board."
+                      hint="Guardians the Chronossus has enlisted in total. They are permanent — each keeps a Path marker on its Guardian board slot, and every Era it powers up as many of them as it can before its own Exosuits."
                     >
                       <span className="cx-tech-ops">
-                        <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0} Guardians
+                        <b>{bot.guardians?.owned ?? 0}</b> enlisted
                       </span>
                     </TapFlag>
                   )}
@@ -3055,11 +3121,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     <img className="cx-exosuit-outlined" src={EXOSUIT_ICON} alt="" />
                     <img src={PATH_ICON} alt="" />
                   </span>
-                  <span>
-                    Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
-                    {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
-                    place on the board for this Era.
-                  </span>
+                  {/* Guardians power up FIRST and share the same number, so the player has
+                      to be told which pieces to pull — they're different miniatures. */}
+                  {(bot.guardians?.powered ?? 0) > 0 ? (
+                    <span>
+                      Powered up{' '}
+                      <b>{bot.guardians!.powered + bot.exosuitsAvailable}</b> in total —{' '}
+                      <b>{bot.guardians!.powered}</b> Guardian
+                      {bot.guardians!.powered === 1 ? '' : 's'}
+                      {bot.exosuitsAvailable > 0 ? (
+                        <>
+                          {' '}
+                          and <b>{bot.exosuitsAvailable}</b> normal Exosuit
+                          {bot.exosuitsAvailable === 1 ? '' : 's'}
+                        </>
+                      ) : (
+                        ' (its whole number)'
+                      )}
+                      . It powers up as many Guardians as it can first. Set these aside
+                      ready to place on the board for this Era.
+                    </span>
+                  ) : (
+                    <span>
+                      Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
+                      {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
+                      place on the board for this Era.
+                    </span>
+                  )}
                 </p>
               </div>
               <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>

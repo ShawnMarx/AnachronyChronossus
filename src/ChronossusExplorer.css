@@ -1046,3 +1046,11 @@ button.eoa-flag.tap-flag {
   color: var(--sp-text-2);
   margin: 0.3rem 0;
 }
+
+/* Guardians: the Exosuit chip carries the "(inc N Guardians)" split, so the figure
+   count stays one number. Muted + smaller so the count still reads first. */
+.cx-exo-guardians {
+  font-size: 0.82em;
+  opacity: 0.78;
+  white-space: nowrap;
+}
