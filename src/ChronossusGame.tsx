@@ -654,7 +654,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // "Construct — Superproject") — the space is what the board shows.
   const blinkFromRef = useRef<{
     spaceLabel: string;
-    sameSpaceCount: number;
     toLabel: string;
   } | null>(null);
   // Bumped by Undo to remount the Paradox body (its roll log lives in local state).
@@ -987,9 +986,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // `{flux}` renders as the Flux Core art (HistoryText) — the Blink's own component.
     // The Energy Core going back to the supply is in the rules and implied here.
     const blinkEffect = blinkFrom
-      ? `{flux} Blink — Exosuit moved from ${blinkFrom.spaceLabel}${
-          blinkFrom.sameSpaceCount > 1 ? ' (the bottom one)' : ''
-        } to ${blinkFrom.toLabel}`
+      ? `{flux} Blink — Exosuit moved from ${blinkFrom.spaceLabel} to ${blinkFrom.toLabel}`
       : null;
     /** The move IS the placement, so it replaces the shared summarizer's "Exosuit placed". */
     const withBlink = (effects: string[]) => {
@@ -1218,7 +1215,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const toSpace = Chronossus.blinkSpaceOf(action, placementSpaceRef.current);
     blinkFromRef.current = {
       spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
-      sameSpaceCount: sel.sameSpaceCount,
       toLabel: toSpace
         ? Chronossus.BLINK_SPACE_LABEL[toSpace]
         : (CHRONOBOT_ACTIONS[action as ChronobotActionId]?.label ?? action),
@@ -2075,7 +2071,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       if (sel) {
         blinkFromRef.current = {
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
-          sameSpaceCount: sel.sameSpaceCount,
           toLabel: `${Chronossus.chronossusActionLabel(pendingTile)} (Valley board)`,
         };
         setBlink({
@@ -2130,7 +2125,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       if (sel) {
         blinkFromRef.current = {
           spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
-          sameSpaceCount: sel.sameSpaceCount,
           toLabel: 'the Hypersync space',
         };
         setBlink({
