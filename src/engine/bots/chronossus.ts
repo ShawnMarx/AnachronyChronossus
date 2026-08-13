@@ -111,6 +111,18 @@ export function nextFigure(bot: ChronossusState): Figure | null {
 }
 
 /**
+ * Spend a powered GUARDIAN specifically, whatever else the bot has. Only the Guardian
+ * board fallback uses this: that space is reserved for a Guardian, so it is not "the next
+ * figure" — the bot can still hold plain Exosuits and yet have no Action space to put one
+ * on, which is exactly when the fallback fires.
+ */
+export function spendGuardian(bot: ChronossusState): boolean {
+  if ((bot.guardians?.powered ?? 0) <= 0) return false;
+  bot.guardians = { ...bot.guardians!, powered: bot.guardians!.powered - 1 };
+  return true;
+}
+
+/**
  * Spend one powered figure — a plain Exosuit while any remain, else a Guardian — and
  * report which went. Mutates the (already cloned) slice; a no-op returning null when
  * nothing is left. Every place-an-Exosuit and discard-an-active-Exosuit site goes
@@ -840,7 +852,9 @@ export function resolveAction(
     (input.noSpaceAvailable === true || input.hypersyncNoTile === true) &&
     canUseGuardianSpace(bot, input.actionId);
   if (usingGuardianSpace) {
-    spendFigure(bot); // Exosuits are gone by definition here, so this takes the Guardian
+    // A GUARDIAN specifically — the reserved space is its own. The bot may well still have
+    // powered Exosuits; what it has run out of is Action spaces to place one on.
+    spendGuardian(bot);
     instr.push({
       id: `guardian-space-${n}`,
       text:

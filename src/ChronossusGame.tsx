@@ -591,6 +591,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     'available' | 'world-council' | 'place' | 'worker' | 'failed' | null
   >(null);
   /** The answers gathered so far this Acquire Guardian, replayed into the resolver. */
+  /** Guardians: this turn's Action is being taken from a Guardian board space. */
+  const guardianSpaceRef = useRef(false);
   const guardianAnswersRef = useRef<{ worldCouncilFree: boolean; guardianAvailable: boolean }>({
     worldCouncilFree: false,
     guardianAvailable: true,
@@ -919,6 +921,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRuleView(false);
     setPendingTile(null);
     setTileRuleView(false);
+    // A cancelled turn must not leave the Guardian-board flag set for the next one.
+    guardianSpaceRef.current = false;
     resetFracturesTurn();
   };
   // Full close: dialog + the rolled die + marker highlight. Used after a committed
@@ -1137,6 +1141,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   ) => {
     const input: ChronossusActionInput = { actionId: h.action };
     if (opts.cannotPlace) input.noSpaceAvailable = true;
+    // Guardians: the Action ran from a Guardian board space — the engine takes that
+    // branch off the same no-space input plus a powered Guardian.
+    if (guardianSpaceRef.current) input.noSpaceAvailable = true;
     if (opts.buildingVP != null) input.buildingVP = opts.buildingVP;
     if (opts.minedResources) input.minedResources = opts.minedResources;
     if (opts.recruitedWorker) input.recruitedWorker = opts.recruitedWorker;
@@ -1156,6 +1163,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     setPending(null);
     hypersyncTileRef.current = false; // consumed
+    guardianSpaceRef.current = false; // consumed
     // Advance the marker + resolve any Autoleap tiles it lands on, then commit.
     finishTurn(next, instructions, CHRONOBOT_ACTIONS[h.action].label);
   };
@@ -1306,6 +1314,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     beginPlacementSubflow();
   };
 
+  /**
+   * Guardians: the player has put the Guardian on its Guardian board space. The Action
+   * itself is unaffected, so fall into its normal input steps (Construct's VP tap, Mine's
+   * resources…) — `guardianSpaceRef` makes `resolve` send the no-space input the engine
+   * keys the Guardian branch off.
+   */
+  const onGuardianSpace = () => {
+    if (!active) return;
+    beginPlacementSubflow();
+  };
+
   /** The Action's own input steps, once placement (or a Blink) is settled. */
   const beginPlacementSubflow = () => {
     if (!active) return;
@@ -1373,6 +1392,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   const cannotPlaceFallback = () => {
     if (!active) return;
+    // Guardians: a Capital Action with no space anywhere puts a Guardian on its own
+    // Guardian board space and performs the Action normally. Checked FIRST — it beats
+    // Hypersync's Solo-tile fallback in the combo (Solo Opponents p.16).
+    if (Chronossus.canUseGuardianSpace(bot, active.action)) {
+      guardianSpaceRef.current = true;
+      setPending('guardianSpace');
+      return;
+    }
     // Hypersync mode: a Capital Action with no space places a Solo Hypersync tile
     // instead (if allowed) rather than Failing.
     if (hypersyncMode && CAPITAL_ACTIONS.has(active.action)) {
@@ -1618,6 +1645,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         figure={Chronossus.nextFigure(bot) ?? 'exosuit'}
         onConfirmPlace={onConfirmPlace}
         onCannotPlace={onCannotPlace}
+        onGuardianSpace={onGuardianSpace}
         fractures={fracturesMode}
         blinkCheck={fracturesMode && Chronossus.shouldCheckBlink(bot, active.action)}
         placementHandled={fracturesMode && fluxDraw != null}

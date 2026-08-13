@@ -222,6 +222,8 @@ export function PlaceExosuitPanel({
 export type PendingStep =
   | null
   | 'mech'
+  /** Guardians: no space anywhere, so a Guardian goes on its own Guardian board slot. */
+  | 'guardianSpace'
   | 'buildingVP'
   | 'mineOpen'
   | 'mineResources'
@@ -3537,6 +3539,7 @@ export function DetailPanel({
   workerOrder,
   onConfirmPlace,
   onCannotPlace,
+  onGuardianSpace = () => {},
   fractures = false,
   blinkCheck = false,
   placementHandled = false,
@@ -3576,6 +3579,8 @@ export function DetailPanel({
   workerOrder: Worker[];
   onConfirmPlace: () => void;
   onCannotPlace: () => void;
+  /** Guardians: the player confirmed the Guardian went on its Guardian board space. */
+  onGuardianSpace?: () => void;
   /** Fractures of Time: splits the placement gate and enables the Blink steps. */
   fractures?: boolean;
   /**
@@ -3722,6 +3727,27 @@ export function DetailPanel({
               </button>
               <button className="pp-cannot" onClick={onCannotPlace}>
                 {fractures ? '✗ No — none open' : '✗ Cannot place'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Guardians — no space anywhere, so it uses a Guardian's own board space. The
+            Action still happens (not a Failed Action), so its normal steps follow. */}
+        {pending === 'guardianSpace' && (
+          <div className="place-prompt">
+            <p className="pp-instruct">
+              No Action space was open, so the {botName} places a <b>Guardian</b> on the{' '}
+              <b>Guardian board</b>, on an open space marked with one of its{' '}
+              <b>Path markers</b> — and performs the Action from there.
+            </p>
+            <p className="pp-sub">
+              It doesn’t matter which of its marked spaces you use. This is <b>not</b> a
+              Failed Action, so it takes no +1 VP.
+            </p>
+            <div className="pp-buttons">
+              <button className="pp-confirm" onClick={onGuardianSpace}>
+                ✓ Placed on the Guardian board
               </button>
             </div>
           </div>

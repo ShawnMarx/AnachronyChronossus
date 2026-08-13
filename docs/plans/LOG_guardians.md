@@ -179,6 +179,22 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   powered Guardians too, and `overlayCount` in `botOverlays.ts` gained the same rule so every
   consumer agrees. The pop-out is the one place the two are broken apart.
 
+## G8 — Guardian-board placement had no dialog (playtest 2026-08-13) ✅ done
+- [x] **The fallback now has its own step.** "Cannot place" on a Capital Action used to jump
+  straight to the resolution, so the player was never told to put a Guardian anywhere. New
+  `guardianSpace` pending step: *"No Action space was open, so the Chronossus places a
+  **Guardian** on the **Guardian board**, on an open space marked with one of its **Path
+  markers** — and performs the Action from there."* Confirming it falls into the Action's
+  normal sub-flow (Construct's VP tap, Mine's resources…), so nothing is skipped
+- [x] Checked **before** the Hypersync Solo-tile fallback in the view too, matching the engine
+- [x] **Bug found by the History line it printed:** the engine's fallback called
+  `spendFigure`, which takes a plain Exosuit while any remain — so it was spending an Exosuit
+  and History read "Exosuit placed". The fallback fires when **Action spaces** run out, not
+  figures, so the bot can still hold Exosuits; the reserved space is a Guardian's. New
+  `spendGuardian(bot)` takes a Guardian specifically. Test added with 4 Exosuits still in hand
+- [x] History now reads `Factory taken (1 VP)` + `Placed 1 Guardian`
+- [x] 306 tests, build + lint clean; verified live end to end
+
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
   Guardians, the Guardians-first power-up split per Era, and the Guardian board fallback

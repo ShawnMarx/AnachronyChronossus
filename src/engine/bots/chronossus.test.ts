@@ -1630,6 +1630,19 @@ describe('Guardians — the Guardian board fallback', () => {
     expect(bot.breakthroughs.circle).toBe(1); // the Action itself still resolved
   });
 
+  it('spends a GUARDIAN even when powered Exosuits remain (spaces ran out, not figures)', () => {
+    const res = resolveAction(guardiansState({ owned: 1, powered: 1 }, 4), {
+      actionId: 'construct-factory',
+      noSpaceAvailable: true,
+      buildingVP: 3,
+    });
+    const bot = res.state.chronossus!;
+    expect(res.usedGuardianSpace).toBe(true);
+    expect(bot.guardians).toEqual({ owned: 1, powered: 0 }); // the Guardian went
+    expect(bot.exosuitsAvailable).toBe(4); // its Exosuits are untouched
+    expect(bot.vp).toBe(3); // the Construct resolved normally — no Failed +1 VP
+  });
+
   it('is offered for Research, Recruit and every Construct — but not Mine', () => {
     expect(isGuardianCapitalAction('research')).toBe(true);
     expect(isGuardianCapitalAction('recruit')).toBe(true);

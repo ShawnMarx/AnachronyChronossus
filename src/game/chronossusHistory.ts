@@ -52,8 +52,9 @@ export function summarizeChronossusExtras(
     const spent = WORKER_KEYS.find((w) => post.workers[w] < pre.workers[w]);
     if (spent) effects.push(`Spent a ${spent} to acquire it`);
   }
-  // A Guardian placed from the powered pool when no Exosuit was left (or onto its own
-  // Guardian board space) — the Exosuit count doesn't move, so nothing else would say so.
+  // A Guardian placed — because no Exosuit was left, or onto its own Guardian board space
+  // when the Action spaces ran out. The Exosuit count doesn't move either way, so nothing
+  // else in the summary would mention it.
   const guardiansPlaced = (pre.guardians?.powered ?? 0) - (post.guardians?.powered ?? 0);
   if (guardiansPlaced > 0 && gained === 0) {
     effects.push(`Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}`);
