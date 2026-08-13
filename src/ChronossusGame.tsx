@@ -2727,10 +2727,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   Chronossus owns > 0 of a type. Shared art with the Chronobot. */}
               <BotOverlayLayer
                 overlays={CHRONOSSUS_OVERLAYS}
-                // The 'mech' overlay art IS Exosuit-marker art, so it keeps counting the
-                // bot's own Exosuits — a Guardian is a different miniature, tracked by the
-                // badge (which counts both) and its pop-out.
-                count={(k) => (k === 'mech' ? bot.exosuitsAvailable : counterValue(bot, k))}
+                // A Guardian is an Exosuit — a better one — so it counts in the same
+                // marker pile as the rest. `counterValue` includes powered Guardians, and
+                // the badge's pop-out is where the two are broken apart.
+                count={(k) => counterValue(bot, k)}
                 positions={positions}
                 widths={overlayWidths}
                 curves={overlayCurves}

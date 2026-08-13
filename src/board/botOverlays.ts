@@ -106,13 +106,19 @@ export interface OverlayCountable {
   anomalies: number;
   exosuitsAvailable: number;
   breakthroughs: { circle: number; triangle: number; square: number };
+  /**
+   * Guardians of the Council (Chronossus): a Guardian is an Exosuit — a better one — so a
+   * powered Guardian counts in the same 'mech' pile as the rest. Absent for the Chronobot
+   * and every other mode.
+   */
+  guardians?: { owned: number; powered: number };
 }
 
 /** How many of `key` the bot currently owns (drives whether its overlay shows). */
 export function overlayCount(bot: OverlayCountable, key: OverlayKey): number {
   switch (key) {
     case 'mech':
-      return bot.exosuitsAvailable;
+      return bot.exosuitsAvailable + (bot.guardians?.powered ?? 0);
     case 'superproject':
       return bot.superprojects;
     case 'anomaly':

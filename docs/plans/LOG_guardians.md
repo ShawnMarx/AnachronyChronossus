@@ -165,9 +165,10 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] Verified live with the start-with-1-Guardian difficulty; 305 tests, build + lint clean
 
 **Deviation / note**
-- The **board overlay art keeps counting plain Exosuits only** — that art is literally
-  Exosuit-marker art, and a Guardian is a different miniature. The badge (a number) counts
-  both; the art does not.
+- **Corrected same day (user):** "an exo is an exo — some are just better, it should be shown
+  together". The board overlay art had been left counting plain Exosuits only; it now counts
+  powered Guardians too, and `overlayCount` in `botOverlays.ts` gained the same rule so every
+  consumer agrees. The pop-out is the one place the two are broken apart.
 
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
