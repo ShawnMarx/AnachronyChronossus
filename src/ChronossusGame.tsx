@@ -3276,11 +3276,9 @@ function CxTileDialog({
   // Where a Valley placement/Blink lands, including the Capital fallback (p.11) — the app
   // never renders the Valley board, so the instruction has to name both.
   const valleyDestination = `${valleySpaceName} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
-  // A tap explanation (readOnly) always shows the tile's verbatim rulebook text, expanded —
-  // that text IS the explanation. Mid-turn the box is kept for the tiles that need it:
-  // B sides (Autoleap / combined effects) and any tile the rulebook writes up in full in
-  // its module section (the new module tiles).
-  const showRulesBox = readOnly || code.endsWith('B') || tile.detail != null;
+  // The verbatim rule box sits below the dialog body for EVERY tile, like a base-game
+  // Action's rule box — collapsed mid-turn, expanded for a tap explanation (readOnly),
+  // where the rulebook text IS the explanation.
   const [showRule, setShowRule] = useState(readOnly); // a tap explanation opens expanded
   const [l, t, w, h] = panel;
   return (
@@ -3424,35 +3422,33 @@ function CxTileDialog({
         </div>
         )}
 
-        {/* Verbatim rulebook text, collapsible — mirrors the action dialogs.
-            Only for tiles complex enough to warrant it (see TILES_WITH_RULES_BOX). */}
-        {showRulesBox && (
-          <div className="mech-rules">
-            <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
-              📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
-            </button>
-            {showRule && (
-              <div className="rule-body">
-                {tile.rule.split('\n').map((line, i) => (
-                  <p key={i} className="dp-rule">
+        {/* Verbatim rulebook text, collapsible — mirrors the action dialogs, and shown
+            for every tile in every step so the box is always in the same place. */}
+        <div className="mech-rules">
+          <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
+            📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
+          </button>
+          {showRule && (
+            <div className="rule-body">
+              {tile.rule.split('\n').map((line, i) => (
+                <p key={i} className="dp-rule">
+                  {line}
+                </p>
+              ))}
+              {/* The module section's fuller write-up of the same Action, when the
+                  rulebook prints one (the new module tiles). */}
+              {tile.detail?.split('\n').map((line, i) =>
+                line === '' ? (
+                  <p key={`d${i}`} className="dp-rule dp-rule-gap" />
+                ) : (
+                  <p key={`d${i}`} className="dp-rule">
                     {line}
                   </p>
-                ))}
-                {/* The module section's fuller write-up of the same Action, when the
-                    rulebook prints one (the new module tiles). */}
-                {tile.detail?.split('\n').map((line, i) =>
-                  line === '' ? (
-                    <p key={`d${i}`} className="dp-rule dp-rule-gap" />
-                  ) : (
-                    <p key={`d${i}`} className="dp-rule">
-                      {line}
-                    </p>
-                  ),
-                )}
-              </div>
-            )}
-          </div>
-        )}
+                ),
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Fractures — the Blink rules sit with the tile's own rule box, below the
             boxes rather than inside the Blink step. */}
@@ -3656,8 +3652,6 @@ function HypersyncDialog({
                 </button>
               </>
             )}
-            <HypersyncRules tile={tile} code={code} startOpen={readOnly} />
-            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         ) : step === 'hexes' ? (
           <div className="place-prompt">
@@ -3693,8 +3687,6 @@ function HypersyncDialog({
                   : `▶ Failed Action (+${failVP} VP)`
                 : '▶ Confirm Available Hypersync space'}
             </button>
-            <HypersyncRules tile={tile} code={code} startOpen={false} />
-            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         ) : blinkStep === 'blink' && blink ? (
           <BlinkPanel
@@ -3804,12 +3796,20 @@ function HypersyncDialog({
             <button className="start-turn" onClick={() => onResolve({ code, outcome: 'time-travel' })}>
               ▶ Start Your Turn
             </button>
-            <TimeTravelRuleBlockCollapsible />
-            {isAutoleap && <AutoleapRuleBlockCollapsible />}
           </div>
         )}
 
-        {/* Fractures — the Blink rules go below the box, like the other rule boxes. */}
+        {/* Verbatim rule boxes, always below the dialog body and in the same order,
+            whichever step is on screen — the tile's own text first, then the rules the
+            current step brings with it (Time Travel fallback, Autoleap, Blink). The
+            readOnly tap explanation already prints the tile text expanded above. */}
+        {!readOnly && (
+          <>
+            <HypersyncRules tile={tile} code={code} startOpen={false} />
+            {step === 'timetravel' && <TimeTravelRuleBlockCollapsible />}
+            {isAutoleap && <AutoleapRuleBlockCollapsible />}
+          </>
+        )}
         {(blinkStep === 'blink' || blinkStep === 'casing') && <BlinkRuleBlock />}
       </div>
     </div>
