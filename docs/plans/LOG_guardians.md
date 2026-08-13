@@ -12,8 +12,11 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   markers to hand, and C11 must instruct placing one when it enlists
 - [ ] Classic Expansion pp.9-11: confirm powering up a Guardian costs the Chronossus nothing
   the app tracks, and that "leftmost available Guardian" is just left-to-right board order
-- [ ] Confirm whether **4 Solo Path markers cap the bot at 4 Guardians** (Classic ships 6
-  miniatures); if so, Acquire Guardian needs an out-of-markers branch
+- [x] **No cap on the bot's Guardians** (user, 2026-08-13): the 4 Solo Path markers are a
+  component limit, not a rule — a 5th enlist is possible and the player substitutes a marker,
+  so the copy carries a note and the engine no cap. The binding limit is the **6 shared
+  Guardian miniatures**: C11 takes "the leftmost **available** Guardian", and the app can't
+  see how many the player holds, so the Action asks — none available is a Failed Action
 
 ## G1 — Mode entry & setup
 - [ ] `CHRONOSSUS_MODES.guardians` (I=C02, II=C11, III=C03)
@@ -37,6 +40,7 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 
 ## G3 — Engine: Acquire Guardian (C11)
 - [ ] `TILE_EFFECTS` C11A/C11B (Autoleap both sides; C11B +2 VP)
+- [ ] Acquire Guardian asks "is a Guardian still available?" first; none → Failed Action
 - [ ] `resolveAcquireGuardian` — World Council branch (Exosuit + First Player + free Guardian),
   Worker branch (Most > Scientist > Engineer > Administrator > Genius, no Exosuit), and the
   failed branch (post-Impact or neither possible) as a **full** Failed Action — VP + discard

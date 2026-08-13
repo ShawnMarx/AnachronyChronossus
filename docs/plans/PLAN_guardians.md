@@ -106,10 +106,15 @@ The three open questions are **answered** (see Decisions above) — what's left 
       expected to be nothing), and confirm "the leftmost available Guardian" is simply the
       left-to-right order on the Guardian board, so the instruction can name it without the
       app modelling that board.
-- [ ] **Is the Chronossus capped at 4 Guardians?** The shared solo components include **4 Solo
-      Path markers** while Classic ships 6 Guardian miniatures — if each enlist consumes one
-      marker, the bot can hold at most 4. Confirm before G2 sizes the state; if real, the
-      Acquire Guardian Action needs an "out of Path markers" branch.
+- [x] **No Path-marker cap** (user, 2026-08-13). There is no printed rule capping the bot's
+      Guardians, and the 4 Solo Path markers are a component limit, not a rule: a 5th enlist is
+      unlikely (you'd normally have taken two Guardians first) but **possible**, and the player
+      just substitutes a marker. So the engine holds no cap — the setup/acquire copy carries a
+      one-line note instead.
+- [x] **The real limit is the 6 shared Guardian miniatures** — C11 recruits "the leftmost
+      **available** Guardian", and availability depends on how many the *player* has enlisted,
+      which the app cannot see. So Acquire Guardian **asks whether a Guardian is still
+      available**; none left → the Failed-Action branch (see G3).
 
 ## G1. Mode entry & setup
 
@@ -151,6 +156,9 @@ The three open questions are **answered** (see Decisions above) — what's left 
 ## G3. Engine — Acquire Guardian (C11) & the tile
 
 - [ ] `TILE_EFFECTS.C11A` / `C11B`: `autoleap: true` both sides; C11B adds +2 VP.
+- [ ] Acquire Guardian **asks first whether a Guardian is still available** on the Guardian
+      board (the 6 miniatures are shared with the player, so the app can't know). None
+      available → the Failed-Action branch, before the World Council question is even asked.
 - [ ] `resolveAcquireGuardian` branching exactly as p.16: pre-Impact + World Council free →
       Exosuit onto World Council, **becomes First Player** (`state.firstPlayer`), no Action,
       +1 Guardian; World Council taken → spend a Worker by **Most > Scientist > Engineer >
@@ -158,7 +166,8 @@ The three open questions are **answered** (see Decisions above) — what's left 
       the full Failed-Action path (+1 VP, or D7's +2, **and discard an active Exosuit**).
 - [ ] Both acquiring branches instruct the player to **place a Chronossus Path marker on an
       empty Guardian board slot** and take the leftmost available Guardian — that marker is
-      what gives the Guardian its own Action space later.
+      what gives the Guardian its own Action space later. If the bot has run out of Path
+      markers (a 5th Guardian), the copy says to substitute any spare token.
 - [ ] A `spendWorkerByPriority` helper for the Most-first ordering (the existing Recruit and
       Remove-Anomaly priorities are the same shape but different orders).
 - [ ] Unit tests per branch, incl. no-Workers, post-Impact, and the Autoleap advance.
@@ -217,8 +226,9 @@ All three opening questions were answered 2026-08-13 and moved into **Decisions*
 (full Failed Action; Guardian space beats the Hypersync tile; every Guardian brings its own
 guaranteed space via its Path marker). What remains:
 
-1. **A 4-Guardian cap?** — see G-R. Four Solo Path markers ship in the shared solo components;
-   if each enlist consumes one, Acquire Guardian needs an "out of Path markers" branch.
+_None open._ (The 4-Path-marker question was answered 2026-08-13: no cap in the engine — the
+player substitutes a marker in the unlikely 5th-Guardian case. The binding limit is the 6
+shared Guardian miniatures, handled as a question in the Acquire Guardian flow.)
 
 ## Verification (whole effort)
 
@@ -229,6 +239,7 @@ guaranteed space via its Path marker). What remains:
 - Power Up order visibly correct: with N Guardians owned, the first N powered are Guardians.
 - A Capital Action with no space left places a Guardian on a Path-marked Guardian board slot
   and does **not** score the Failed +1 VP (and beats the Hypersync tile in the combo).
-- A failed Acquire Guardian takes the full Failed-Action treatment (VP **and** the discard).
+- A failed Acquire Guardian takes the full Failed-Action treatment (VP **and** the discard),
+  including when the player reports no Guardian is left on the Guardian board.
 - Acquire Guardian: all three branches, First Player set on the World Council branch, and the
   Autoleap advance.
