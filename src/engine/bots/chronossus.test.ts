@@ -49,6 +49,9 @@ import {
   spendFigure,
   isGuardianCapitalAction,
   canUseGuardianSpace,
+  guardianWorkerToSpend,
+  shouldAskGuardianAvailable,
+  DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
   type EnergyDraw,
   type VariableAnomalyCandidate,
 } from './chronossus';
@@ -60,7 +63,8 @@ import {
   type GameState,
   type EnergyPool,
 } from '../state';
-import type { GameConfig } from '../types';
+import type { GameConfig, Worker as EngineWorker } from '../types';
+import type { ChronossusActionInput as ChronossusActionInputType } from './chronossus';
 import type { ChronossusState } from '../state';
 
 const CONFIG: GameConfig = {
@@ -1689,5 +1693,149 @@ describe('Guardians — passing and Clean Up', () => {
   it('leaves guardians undefined alone in every other mode', () => {
     const state: GameState = { ...chronossusState({ phase: 'cleanup' }) };
     expect(resolveCleanUp(state).chronossus!.guardians).toBeUndefined();
+  });
+});
+
+describe('Guardians — Acquire Guardian (C11)', () => {
+  /** A Guardians game in `era`, with the given Workers and powered figures. */
+  function acquireState(
+    opts: {
+      era?: number;
+      impact?: boolean;
+      exosuits?: number;
+      guardians?: { owned: number; powered: number };
+      workers?: Partial<Record<EngineWorker, number>>;
+      difficulty?: string[];
+    } = {},
+  ): GameState {
+    const base = createInitialState({ ...GUARDIANS_CONFIG, difficulty: opts.difficulty ?? [] });
+    return {
+      ...base,
+      era: opts.era ?? 1,
+      impact: opts.impact ?? false,
+      phase: 'actions',
+      chronossus: {
+        ...emptyChronossusState(),
+        exosuitsAvailable: opts.exosuits ?? 3,
+        guardians: opts.guardians ?? { owned: 0, powered: 0 },
+        workers: { genius: 0, administrator: 0, engineer: 0, scientist: 0, ...opts.workers },
+      },
+    };
+  }
+  const acquire = (state: GameState, input: Partial<ChronossusActionInputType> = {}) =>
+    resolveAction(state, { actionId: 'tile-acquire-guardian', tileSide: 'A', ...input });
+
+  it('World Council free: places an Exosuit, takes First Player, gains a Guardian', () => {
+    const res = acquire(acquireState(), { worldCouncilFree: true });
+    const bot = res.state.chronossus!;
+    expect(res.acquireGuardian).toBe('world-council');
+    expect(res.figurePlaced).toBe('exosuit');
+    expect(bot.exosuitsAvailable).toBe(2);
+    expect(bot.guardians).toEqual({ owned: 1, powered: 0 });
+    expect(res.state.firstPlayer).toBe('bot');
+    expect(bot.vp).toBe(0); // no Action performed, no VP on the A side
+  });
+
+  it('World Council taken: spends the Worker it has most of, places nothing', () => {
+    // Start from "the player is First Player" so the assertion below is meaningful.
+    const state = { ...acquireState({ workers: { scientist: 1, engineer: 3 } }), firstPlayer: 'player' as const };
+    const res = acquire(state, { worldCouncilFree: false });
+    const bot = res.state.chronossus!;
+    expect(res.acquireGuardian).toBe('worker');
+    expect(bot.workers.engineer).toBe(2); // most-of wins over the listed order
+    expect(bot.workers.scientist).toBe(1);
+    expect(bot.exosuitsAvailable).toBe(3); // no Exosuit placed
+    expect(bot.guardians).toEqual({ owned: 1, powered: 0 });
+    expect(res.state.firstPlayer).toBe('player'); // unchanged — no World Council placement
+  });
+
+  it('breaks a Worker tie by Scientist > Engineer > Administrator > Genius', () => {
+    const bot = {
+      ...emptyChronossusState(),
+      workers: { genius: 2, administrator: 2, engineer: 2, scientist: 2 },
+    };
+    expect(guardianWorkerToSpend(bot)).toBe('scientist');
+    const noScientist = { ...bot, workers: { ...bot.workers, scientist: 0 } };
+    expect(guardianWorkerToSpend(noScientist)).toBe('engineer');
+    const geniusOnly = {
+      ...bot,
+      workers: { genius: 1, administrator: 0, engineer: 0, scientist: 0 },
+    };
+    expect(guardianWorkerToSpend(geniusOnly)).toBe('genius');
+    expect(guardianWorkerToSpend(emptyChronossusState())).toBeNull();
+  });
+
+  it('post-Impact it is a full Failed Action — VP and a discarded Exosuit', () => {
+    const res = acquire(acquireState({ era: 5, impact: true }), { worldCouncilFree: true });
+    const bot = res.state.chronossus!;
+    expect(res.acquireGuardian).toBe('failed');
+    expect(bot.vp).toBe(1);
+    expect(bot.exosuitsAvailable).toBe(2); // discarded one
+    expect(bot.guardians).toEqual({ owned: 0, powered: 0 }); // nothing acquired
+  });
+
+  it('post-Impact scores 2 VP instead under that difficulty option, with no discard', () => {
+    const state = acquireState({
+      era: 5,
+      impact: true,
+      difficulty: [DIFFICULTY_GUARDIANS_POSTIMPACT_2VP],
+    });
+    const res = acquire(state, { worldCouncilFree: true });
+    expect(res.state.chronossus!.vp).toBe(2);
+    expect(res.state.chronossus!.exosuitsAvailable).toBe(3);
+  });
+
+  it('no Guardian left on the board is a Failed Action', () => {
+    const res = acquire(acquireState({ era: 4 }), {
+      worldCouncilFree: true,
+      guardianAvailable: false,
+    });
+    expect(res.acquireGuardian).toBe('failed');
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 0, powered: 0 });
+    expect(res.state.chronossus!.vp).toBe(1);
+  });
+
+  it('neither option possible (no figure, no Worker) is a Failed Action', () => {
+    const res = acquire(acquireState({ exosuits: 0 }), { worldCouncilFree: false });
+    expect(res.acquireGuardian).toBe('failed');
+    expect(res.state.chronossus!.vp).toBe(1);
+  });
+
+  it('falls back to the Worker option when it has no figure to place', () => {
+    const state = acquireState({ exosuits: 0, workers: { administrator: 1 } });
+    const res = acquire(state, { worldCouncilFree: true });
+    expect(res.acquireGuardian).toBe('worker');
+    expect(res.state.chronossus!.workers.administrator).toBe(0);
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 1, powered: 0 });
+  });
+
+  it('places its last Guardian on World Council when no Exosuit remains', () => {
+    const state = acquireState({ exosuits: 0, guardians: { owned: 1, powered: 1 } });
+    const res = acquire(state, { worldCouncilFree: true });
+    expect(res.figurePlaced).toBe('guardian');
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 2, powered: 0 });
+  });
+
+  it('both sides Autoleap; the B side also scores 2 VP', () => {
+    const a = acquire(acquireState(), { worldCouncilFree: true, tileSide: 'A' });
+    expect(a.autoleap).toBe(true);
+    expect(a.state.chronossus!.vp).toBe(0);
+    const b = acquire(acquireState(), { worldCouncilFree: true, tileSide: 'B' });
+    expect(b.autoleap).toBe(true);
+    expect(b.state.chronossus!.vp).toBe(2);
+  });
+
+  it('never forces a pass — the Worker option survives an empty Exosuit supply', () => {
+    const bot = { ...emptyChronossusState(), exosuitsAvailable: 0 };
+    expect(wouldPassOn(bot, 'tile-acquire-guardian')).toBe(false);
+    expect(placesExosuitFor('tile-acquire-guardian')).toBe(false);
+  });
+
+  it('only asks whether a Guardian is available in Era 4', () => {
+    expect(shouldAskGuardianAvailable(1)).toBe(false);
+    expect(shouldAskGuardianAvailable(3)).toBe(false);
+    expect(shouldAskGuardianAvailable(4)).toBe(true);
+    expect(shouldAskGuardianAvailable(5)).toBe(false); // post-Impact: always fails
+    expect(shouldAskGuardianAvailable(7)).toBe(false);
   });
 });

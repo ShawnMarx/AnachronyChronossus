@@ -62,6 +62,31 @@ const VALLEY_PLACEMENT_DETAIL =
   'When the Chronossus places an Exosuit on the Main board, take an Energy Core directly from supply and place it in the Exosuit.';
 
 /** Every modular Action tile, keyed by its printed code. */
+/** "NEW ACTION: ACQUIRE GUARDIAN" + the module's gameplay changes (Solo Opponents p.16). */
+const ACQUIRE_GUARDIAN_DETAIL =
+  'NEW ACTION: ACQUIRE GUARDIAN\n' +
+  'IF THIS ACTION IS SELECTED BEFORE IMPACT:\n' +
+  '• The Chronossus places an Exosuit on the World Council Action space and becomes the ' +
+  'First Player (if possible), but it does not perform an Action. Instead, it recruits the ' +
+  'leftmost available Guardian at no additional cost.\n' +
+  '• If the World Council Action space is already taken, it spends a Worker (Most > ' +
+  'Scientist > Engineer > Administrator > Genius), then acquires a Guardian without placing ' +
+  'an Exosuit.\n' +
+  'If it cannot do either option, or the Impact has already happened, it gains 1 VP, as if ' +
+  'it was a Failed Action.\n' +
+  '\n' +
+  'GAMEPLAY CHANGES\n' +
+  'When deciding which Exosuit to place, the Chronossus places Guardians last. If it wants ' +
+  'to take a Capital Action (Research, Recruit, Construct) and there are no Action spaces ' +
+  'remaining (including the World Council Action space), it places a Guardian (if it has ' +
+  'any) on the reserved Guardian Action space and performs the Capital Action. This means ' +
+  'the Action is not a Failed Action, so it does not take 1 VP.\n' +
+  '\n' +
+  '3 POWER UP PHASE\n' +
+  'The Chronossus first powers up as many Guardians as it can, then it powers up its own ' +
+  'Exosuits (e.g. if it needs to power up 4 Exosuits and has 2 Guardians, it will power up ' +
+  'both of them and 2 of its own).';
+
 export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   // --- Base-game default setup (A sides of C01/C02/C03) --------------------
   C01A: { code: 'C01A', name: 'Reboot', rule: 'The Chronossus does nothing.' },
@@ -181,13 +206,13 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C11A',
     name: 'Acquire Guardian (Autoleap)',
     rule: 'The Chronossus places an Exosuit on the World Council space, taking the First Player (if able), but it does not perform an Action. Instead, it recruits the leftmost available Guardian at no additional cost. If the World Council space is already taken, it spends a Worker (Most > Scientist > Engineer > Administrator > Genius), and acquires a Guardian the same way. (See page 16 for details). Then, move the Command token to the next position.',
-    future: true,
+    detail: ACQUIRE_GUARDIAN_DETAIL,
   },
   C11B: {
     code: 'C11B',
     name: 'Acquire Guardian and Score (Autoleap)',
     rule: 'The Chronossus places an Exosuit on the World Council space, taking the First Player (if able), but it does not perform an Action. Instead, it recruits the leftmost available Guardian at no additional cost. If the World Council space is already taken, it spends a Worker (Most > Scientist > Engineer > Administrator > Genius), and acquires a Guardian the same way. (See page 16 for details). It also gains 2 VPs. Then, move the Command token to the next position.',
-    future: true,
+    detail: ACQUIRE_GUARDIAN_DETAIL,
   },
   C12A: {
     code: 'C12A',
@@ -239,6 +264,8 @@ export const TILE_ACTION_CODE = {
   'tile-assimilate': 'C04A',
   'tile-extract': 'C05A',
   'tile-power-pack': 'C06A',
+  // Guardians of the Council
+  'tile-acquire-guardian': 'C11A',
 } as const;
 
 /** The side-agnostic tile family for each in-play modular tile action. */
@@ -249,6 +276,7 @@ export const TILE_ACTION_FAMILY = {
   'tile-assimilate': 'C04',
   'tile-extract': 'C05',
   'tile-power-pack': 'C06',
+  'tile-acquire-guardian': 'C11',
 } as const;
 
 /** The live tile code (family + selected side) for an in-play tile action. */
@@ -282,6 +310,8 @@ export interface TileEffect {
   fluxCores?: number;
   /** Fractures: the Assimilate Action (needs a Research shape-die roll first). */
   assimilate?: boolean;
+  /** Guardians: the Acquire Guardian Action (its own World Council / Worker branch). */
+  acquireGuardian?: boolean;
 }
 
 export const TILE_EFFECTS: Record<string, TileEffect> = {
@@ -308,6 +338,11 @@ export const TILE_EFFECTS: Record<string, TileEffect> = {
   C12B: { hypersync: true, energyCores: 1, autoleap: true },
   C13A: { hypersync: true },
   C13B: { hypersync: true, vp: 1 },
+  // Guardians of the Council. Both sides Autoleap (the printed "then move the Command
+  // token to the next position"); the B side also scores 2 VP. The acquisition itself
+  // runs through `resolveAcquireGuardian`, not a flat effect.
+  C11A: { acquireGuardian: true, autoleap: true },
+  C11B: { acquireGuardian: true, autoleap: true, vp: 2 },
 };
 
 /** Effect lookup for a tile code, defaulting to "no effect". */

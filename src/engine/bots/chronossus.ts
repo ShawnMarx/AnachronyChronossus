@@ -625,7 +625,9 @@ export type ChronossusTileActionId =
   // Fractures of Time
   | 'tile-assimilate'
   | 'tile-extract'
-  | 'tile-power-pack';
+  | 'tile-power-pack'
+  // Guardians of the Council
+  | 'tile-acquire-guardian';
 
 /** Every action a Chronossus space can trigger (base actions + tile actions). */
 export type ChronossusActionId = ChronobotActionId | ChronossusTileActionId;
@@ -686,6 +688,13 @@ export interface ChronossusActionInput {
    * `exosuitsAvailable` alone.
    */
   blink?: boolean;
+  /** Guardians (C11): player answer — is the World Council Action space still free? */
+  worldCouncilFree?: boolean;
+  /**
+   * Guardians (C11): player answer — is a Guardian still available on the Guardian board?
+   * Only asked from Era 4 (`shouldAskGuardianAvailable`); defaults to true otherwise.
+   */
+  guardianAvailable?: boolean;
 }
 
 export interface ChronossusActionResult {
@@ -709,6 +718,8 @@ export interface ChronossusActionResult {
    * normally (NOT a Failed Action, p.16).
    */
   usedGuardianSpace?: boolean;
+  /** Guardians (C11): which branch the Acquire Guardian Action resolved to. */
+  acquireGuardian?: AcquireGuardianOutcome;
 }
 
 /**
@@ -723,7 +734,14 @@ export interface ChronossusActionResult {
  */
 export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate', 'tile-extract'];
 
-/** Whether an Action places an Exosuit — including the Valley board's tile Actions. */
+/**
+ * Whether an Action places an Exosuit — including the Valley board's tile Actions.
+ *
+ * Guardians' Acquire Guardian is deliberately NOT one: it only places an Exosuit when the
+ * World Council space happens to be free, and otherwise spends a Worker instead (p.16). If
+ * it counted here, a bot out of Exosuits would PASS on the tile rather than take the
+ * Worker option it is still entitled to. `resolveAcquireGuardian` does its own placing.
+ */
 export function placesExosuitFor(actionId: ChronossusActionId): boolean {
   if (isTileAction(actionId)) return VALLEY_TILE_ACTIONS.includes(actionId);
   return actionDef(actionId).placesExosuit === true;
@@ -753,6 +771,7 @@ const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-assimilate': { label: 'Assimilate' },
   'tile-extract': { label: 'Extract' },
   'tile-power-pack': { label: 'Power Pack' },
+  'tile-acquire-guardian': { label: 'Acquire Guardian' },
 };
 
 /** Human-facing label for any Chronossus action id. */
@@ -874,6 +893,7 @@ export function resolveAction(
   }
 
   if (isTileAction(input.actionId)) {
+    let tileFigure: Figure | null = null;
     // Valley board Actions take an Exosuit. No free Valley space sends it to the Valley
     // Capital space (p.11, as with World Capital); neither available is a Failed Action,
     // handled by the shared no-space branch above.
@@ -894,6 +914,7 @@ export function resolveAction(
         });
       } else if (placeableFigures(bot) > 0) {
         const figure = spendFigure(bot);
+        tileFigure = figure;
         instr.push({
           id: `valley-place-${n}`,
           text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on ${where}.`,
@@ -902,6 +923,7 @@ export function resolveAction(
         });
       }
     }
+    let acquired: ReturnType<typeof resolveAcquireGuardian> | null = null;
     const autoleap = resolveTileAction(
       bot,
       instr,
@@ -911,8 +933,30 @@ export function resolveAction(
       input.shape,
       input.tileFamily,
       input.operatorsAvailable ?? true,
+      {
+        impact: state.impact,
+        failVP,
+        worldCouncilFree: input.worldCouncilFree ?? false,
+        guardianAvailable: input.guardianAvailable ?? true,
+        postImpact2VP: state.config.difficulty.includes(DIFFICULTY_GUARDIANS_POSTIMPACT_2VP),
+        onResolved: (r) => {
+          acquired = r;
+        },
+      },
     );
-    return { ...finishAction(state, bot, instr), autoleap };
+    const res = acquired as ReturnType<typeof resolveAcquireGuardian> | null;
+    const done = finishAction(state, bot, instr, {
+      figurePlaced: res?.figurePlaced ?? tileFigure,
+    });
+    return {
+      ...done,
+      autoleap,
+      // Acquiring on the World Council space makes the Chronossus the First Player.
+      ...(res?.becameFirstPlayer
+        ? { state: { ...done.state, firstPlayer: 'bot' as const } }
+        : {}),
+      ...(res ? { acquireGuardian: res.outcome } : {}),
+    };
   }
 
   const def = actionDef(input.actionId);
@@ -1105,6 +1149,14 @@ function resolveTileAction(
   shape?: BreakthroughShape,
   tileFamily?: string,
   operatorsAvailable = true,
+  guardian?: {
+    impact: boolean;
+    failVP: number;
+    worldCouncilFree: boolean;
+    guardianAvailable: boolean;
+    postImpact2VP: boolean;
+    onResolved: (r: ReturnType<typeof resolveAcquireGuardian>) => void;
+  },
 ): boolean {
   const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
   // C14 replaces C04 (a Fractures difficulty option) and is resolved through the same
@@ -1128,6 +1180,20 @@ function resolveTileAction(
     );
   }
   let vp = eff.vp ?? 0;
+  if (eff.acquireGuardian && guardian) {
+    const res = resolveAcquireGuardian(bot, instr, n, guardian);
+    guardian.onResolved(res);
+    // The B side's 2 VP are scored above, whatever the branch — the tile grants them for
+    // resolving the Action, not for succeeding.
+    const name = CHRONOSSUS_TILES[code]?.name ?? id;
+    if (eff.autoleap) {
+      instr.push({
+        id: `tile-${code}-autoleap-${n}`,
+        text: `${code} ${name}: advance its Command marker to the next position (Autoleap).`,
+      });
+    }
+    return eff.autoleap === true;
+  }
   if (eff.assimilate) {
     const res = assimilate(bot, shape, operatorsAvailable);
     gains.push(...res.gains);
@@ -1145,6 +1211,169 @@ function resolveTileAction(
     ...(vp ? { effect: { vp } } : {}),
   });
   return eff.autoleap === true;
+}
+
+
+// --- Guardians: the Acquire Guardian Action (C11, Solo Opponents p.16) -----
+
+/**
+ * The Worker the Chronossus spends to acquire a Guardian when the World Council space is
+ * taken: "Most > Scientist > Engineer > Administrator > Genius". "Most" is whichever
+ * column it holds the most of; the named order breaks ties (and it keeps its Genius
+ * longest). Returns null when it has no Workers at all.
+ */
+export const GUARDIAN_WORKER_PRIORITY: Worker[] = [
+  'scientist',
+  'engineer',
+  'administrator',
+  'genius',
+];
+
+export function guardianWorkerToSpend(bot: ChronossusState): Worker | null {
+  const most = Math.max(...GUARDIAN_WORKER_PRIORITY.map((w) => bot.workers[w]));
+  if (most <= 0) return null;
+  return GUARDIAN_WORKER_PRIORITY.find((w) => bot.workers[w] === most) ?? null;
+}
+
+/**
+ * Whether the shared 6 Guardian miniatures could plausibly be gone, i.e. whether the app
+ * has to ASK before resolving an Acquire Guardian. The player enlists Guardians too and
+ * the app cannot see how many they hold — but the supply cannot empty before Era 4, and
+ * from Era 5 the Action is a Failed Action anyway (post-Impact), so Era 4 is the only
+ * Era where the question is worth a prompt.
+ */
+export const GUARDIAN_SUPPLY_QUESTION_ERA = 4;
+export function shouldAskGuardianAvailable(era: number): boolean {
+  return era >= GUARDIAN_SUPPLY_QUESTION_ERA && !isPostImpact(era);
+}
+
+/** What an Acquire Guardian resolved to — drives the dialog copy and History. */
+export type AcquireGuardianOutcome = 'world-council' | 'worker' | 'failed';
+
+/**
+ * Resolve C11 — Acquire Guardian (Solo Opponents p.16). Mutates `bot`, pushes the
+ * instructions, and reports which branch ran.
+ *
+ *   pre-Impact, World Council free  → place a figure there, become First Player, take the
+ *                                     leftmost available Guardian (no Action performed)
+ *   pre-Impact, World Council taken → spend a Worker (Most > Scientist > Engineer >
+ *                                     Administrator > Genius), take a Guardian, no figure
+ *   otherwise / post-Impact         → a full Failed Action: +VP AND discard an active
+ *                                     Exosuit (the Chronossus-only nuance)
+ *
+ * Either acquiring branch also has the player put one of the Chronossus's Path markers on
+ * an empty Guardian board slot — that slot becomes this Guardian's own Action space.
+ */
+export function resolveAcquireGuardian(
+  bot: ChronossusState,
+  instr: Instruction[],
+  n: number,
+  opts: {
+    impact: boolean;
+    failVP: number;
+    /** Player answer: is the World Council Action space still free? */
+    worldCouncilFree: boolean;
+    /** Player answer (Era 4+): is a Guardian still available on the Guardian board? */
+    guardianAvailable: boolean;
+    /** Guardians difficulty: post-Impact this Action scores 2 VP instead. */
+    postImpact2VP: boolean;
+  },
+): { outcome: AcquireGuardianOutcome; figurePlaced: Figure | null; becameFirstPlayer: boolean } {
+  const gain = (figure: Figure | null, workerSpent: Worker | null) => {
+    bot.guardians = {
+      owned: (bot.guardians?.owned ?? 0) + 1,
+      powered: bot.guardians?.powered ?? 0,
+    };
+    return { figure, workerSpent };
+  };
+
+  // Post-Impact the Action can no longer acquire anything (p.16). The module's difficulty
+  // option scores 2 VP for it instead of the Failed Action's 1.
+  if (opts.impact) {
+    if (opts.postImpact2VP) {
+      bot.vp += 2;
+      instr.push({
+        id: `guardian-postimpact-${n}`,
+        text:
+          'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
+          'difficulty option: it scores 2 VP instead.',
+        effect: { vp: 2 },
+      });
+      return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
+    }
+    bot.vp += opts.failVP;
+    spendFigure(bot);
+    instr.push({
+      id: `guardian-postimpact-${n}`,
+      text:
+        'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
+        `Failed Action: it takes +${opts.failVP} VP and discards one active Exosuit.`,
+      effect: { vp: opts.failVP },
+    });
+    return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
+  }
+
+  // No Guardian left on the Guardian board (the 6 are shared with the player).
+  if (!opts.guardianAvailable) {
+    bot.vp += opts.failVP;
+    spendFigure(bot);
+    instr.push({
+      id: `guardian-none-${n}`,
+      text:
+        'No Guardian is available to recruit — Failed Action: the Chronossus takes ' +
+        `+${opts.failVP} VP and discards one active Exosuit.`,
+      effect: { vp: opts.failVP },
+    });
+    return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
+  }
+
+  // Option 1 — the World Council space is free and it has a figure to put there.
+  if (opts.worldCouncilFree && placeableFigures(bot) > 0) {
+    const figure = spendFigure(bot);
+    gain(figure, null);
+    instr.push({
+      id: `guardian-wc-${n}`,
+      text:
+        `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the ` +
+        'World Council Action space — it becomes the First Player. It performs no Action ' +
+        'there; instead it recruits the leftmost available Guardian at no cost.',
+      detail:
+        "Put one of the Chronossus's Path markers on an empty Guardian board slot for it — " +
+        'that slot becomes this Guardian\'s own Action space. (Solo Path markers are not ' +
+        'meant to be limited: if they run out, use an unused Path\'s markers.)',
+    });
+    return { outcome: 'world-council', figurePlaced: figure, becameFirstPlayer: true };
+  }
+
+  // Option 2 — World Council taken (or nothing to place): spend a Worker instead.
+  const worker = guardianWorkerToSpend(bot);
+  if (worker) {
+    bot.workers[worker] -= 1;
+    gain(null, worker);
+    instr.push({
+      id: `guardian-worker-${n}`,
+      text:
+        `The World Council Action space is taken — the Chronossus spends a ${worker} ` +
+        'and recruits the leftmost available Guardian without placing an Exosuit.',
+      detail:
+        'Worker priority: the one it has most of, then Scientist > Engineer > Administrator > ' +
+        "Genius. Put one of the Chronossus's Path markers on an empty Guardian board slot for " +
+        "the new Guardian — that slot becomes its own Action space.",
+    });
+    return { outcome: 'worker', figurePlaced: null, becameFirstPlayer: false };
+  }
+
+  // Neither option was possible.
+  bot.vp += opts.failVP;
+  spendFigure(bot);
+  instr.push({
+    id: `guardian-fail-${n}`,
+    text:
+      'It can neither place on the World Council space nor spend a Worker — Failed Action: ' +
+      `the Chronossus takes +${opts.failVP} VP and discards one active Exosuit.`,
+    effect: { vp: opts.failVP },
+  });
+  return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
 }
 
 /** D8 — "Research takes a new Breakthrough shape": on Research, give the Chronossus a

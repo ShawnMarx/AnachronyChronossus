@@ -78,18 +78,32 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - The Guardian-space fallback keys off the existing `noSpaceAvailable` / `hypersyncNoTile`
   inputs, so no new question is asked of the player (every Guardian brings its own space).
 
-## G3 — Engine: Acquire Guardian (C11)
-- [ ] `TILE_EFFECTS` C11A/C11B (Autoleap both sides; C11B +2 VP)
-- [ ] Acquire Guardian asks "is a Guardian still available?" first; none → Failed Action.
-  Only asked **from Era 4** (can't be exhausted earlier), and Eras 5+ are post-Impact Failed
-  Actions anyway — so the prompt effectively appears only in Era 4
-- [ ] `resolveAcquireGuardian` — World Council branch (Exosuit + First Player + free Guardian),
-  Worker branch (Most > Scientist > Engineer > Administrator > Genius, no Exosuit), and the
-  failed branch (post-Impact or neither possible) as a **full** Failed Action — VP + discard
-- [ ] Both acquiring branches instruct placing a Chronossus Path marker on an empty Guardian
-  board slot and taking the leftmost available Guardian
-- [ ] `spendWorkerByPriority` helper
-- [ ] Unit tests per branch, incl. no Workers, post-Impact, Autoleap advance
+## G3 — Engine: Acquire Guardian (C11) ✅ done (2026-08-13)
+- [x] `tile-acquire-guardian` action id + label; `TILE_ACTION_CODE`/`TILE_ACTION_FAMILY`
+  entries, so the tile resolves through the same machinery as every other module tile
+- [x] `TILE_EFFECTS` C11A/C11B — `acquireGuardian` + Autoleap both sides, C11B +2 VP (scored
+  for resolving the Action, whichever branch runs). `future: true` dropped from both
+- [x] `resolveAcquireGuardian` — World Council branch (places a figure, **First Player**,
+  free Guardian), Worker branch (no figure), and the failed branch as a **full** Failed
+  Action (VP + discard). Post-Impact fails; the difficulty option scores 2 VP with no discard
+- [x] `guardianWorkerToSpend` — "Most", then Scientist > Engineer > Administrator > Genius
+- [x] Both acquiring branches instruct placing a Path marker on an empty Guardian board slot,
+  with the "not meant to be limited" substitution note
+- [x] `shouldAskGuardianAvailable(era)` — true only in Era 4 (can't empty earlier; Eras 5+
+  fail post-Impact regardless)
+- [x] Verbatim p.16 module-section text added as `ModularTile.detail` on both sides (the
+  two-tier rule-text convention)
+- [x] 12 new tests (294 total); build + lint clean
+
+**Deviations / notes**
+- **`placesExosuitFor('tile-acquire-guardian')` is FALSE.** The Action only places when the
+  World Council space happens to be free, and otherwise spends a Worker — if it counted as an
+  Exosuit-placing Action, a bot out of Exosuits would *pass* on the tile instead of taking the
+  Worker option it is still entitled to. The resolver does its own placing. Tested.
+- **No Blink interaction to worry about:** the rulebook forbids Fractures + Guardians, so a
+  Guardians game never has a Flux Pool.
+- The World Council branch falls through to the Worker option when the bot has no figure to
+  place — "if it cannot do either option" reads as per-option, not "option 1 only".
 
 ## G4 — UI: dialog, trackers, History, art
 - [ ] `C11A.png` / `C11B.png` copied from `temp/Mod Tiles/`
