@@ -163,14 +163,14 @@ export default function TurnBarOverview({
           active module's own rules, then passing. Same footer convention the Action and
           module dialogs follow. */}
       {turnRules && (
-        <RulesBox label={`${botName}'s turn — rulebook text`}>
+        <RulesBox label={`${botName}'s turn`}>
           <p>{turnRules}</p>
         </RulesBox>
       )}
 
       {extraRules}
 
-      <RulesBox label="Passing & End of Actions rules">
+      <RulesBox label="Passing & End of Actions">
         {passingRule.split('\n\n').map((para, i) => (
           <p key={i}>{para}</p>
         ))}

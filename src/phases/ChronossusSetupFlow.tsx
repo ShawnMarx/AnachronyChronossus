@@ -579,7 +579,7 @@ export default function ChronossusSetupFlow({
                   Begin Era 1 ▶
                 </button>
               </div>
-              <RulesBox label="Setup — rulebook text" showPreamble>
+              <RulesBox label="Setup" showPreamble>
                 <p>
                   Set up a 2-player game with the Chronossus as one of the players. In
                   addition to using the Chronossus’s side of the Solo board, the

@@ -320,7 +320,7 @@ function TimeTravelRuleBlockCollapsible() {
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 Time Travel rules {open ? '▾' : '▸'}
+        📖 Time Travel {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -348,7 +348,7 @@ function AutoleapRuleBlockCollapsible() {
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 Autoleap rules {open ? '▾' : '▸'}
+        📖 Autoleap {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -3051,7 +3051,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
               extraRules={
                 guardiansMode ? (
-                  <RulesBox label="Guardians of the Council — rulebook text">
+                  <RulesBox label="Guardians of the Council">
                     <p>
                       <b>3 POWER UP PHASE:</b> The Chronossus first powers up as many
                       Guardians as it can, then it powers up its own Exosuits (e.g. if it
@@ -3276,7 +3276,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           }
           extraRules={
             altTimelines ? (
-              <RulesBox label="Alternate Timelines — rulebook text">
+              <RulesBox label="Alternate Timelines">
                 <p>
                   <b>WARP PHASE:</b> In the Warp Phase, you must decide how many Resources
                   and/or Workers to warp first, then roll for the Chronossus. Place the
@@ -3795,7 +3795,7 @@ function CxTileDialog({
             for every tile in every step so the box is always in the same place. */}
         <div className="mech-rules">
           <button className="mech-cta" onClick={() => setShowRule((s) => !s)}>
-            📖 {tile.name} rules ({code}) {showRule ? '▾' : '▸'}
+            📖 {tile.name} ({code}) {showRule ? '▾' : '▸'}
           </button>
           {showRule && (
             <div className="rule-body">
@@ -4241,7 +4241,7 @@ function VariableAnomalyGainPrompt({
           </div>
         </>
       )}
-      <RulesBox label="Variable Anomalies — rulebook text">
+      <RulesBox label="Variable Anomalies">
         <p>
           <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
           Anomalies and does not receive an Anomaly Remover tile.
@@ -4327,7 +4327,7 @@ function HypersyncRules({
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 {tile.name} rules ({code}) {open ? '▾' : '▸'}
+        📖 {tile.name} ({code}) {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -5162,7 +5162,7 @@ function CxScoreScreen({
           <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
         </ul>
         <div className="score-rules">
-          <RulesBox label="End Game scoring — rulebook text">
+          <RulesBox label="End Game scoring">
             <p>{CHRONOSSUS_ENDGAME_RULES}</p>
           </RulesBox>
         </div>

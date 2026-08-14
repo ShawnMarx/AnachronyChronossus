@@ -1,10 +1,12 @@
 import { useState } from 'react';
 
 /**
- * A collapsible box holding **verbatim** rulebook text. Used across the phase
- * screens so the affordance is consistent: a 📖 button that expands to the exact
- * rules as written in the "Chronobot & Chronossus Solo Opponents" rulebook. Any
- * app-specific changes are shown separately by the caller (see the Setup screen).
+ * A collapsible box holding **verbatim** rulebook text. Used across the phase screens,
+ * the turn overview and the Action dialogs so the affordance is identical everywhere:
+ * an accent-tinted 📖 bar with the chevron on the RIGHT, expanding to the exact rules as
+ * written in the "Chronobot & Chronossus Solo Opponents" rulebook. The label needs no
+ * "rules"/"rulebook text" suffix — the icon says what it is. Any app-specific changes are
+ * shown separately by the caller (see the Setup screen).
  */
 export default function RulesBox({
   label = 'Rulebook text',
@@ -27,9 +29,9 @@ export default function RulesBox({
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
       >
-        <span className="rules-box-caret">{open ? '▾' : '▸'}</span>
         <span className="rules-box-icon">📖</span>
         <span className="rules-box-label">{label}</span>
+        <span className="rules-box-caret">{open ? '▾' : '▸'}</span>
       </button>
       {open && (
         <div className="rules-box-body">

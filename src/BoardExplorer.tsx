@@ -157,7 +157,7 @@ export function BlinkRuleBlock() {
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((o) => !o)}>
-        📖 Blink rules {open ? '▾' : '▸'}
+        📖 Blink {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -2027,7 +2027,7 @@ function PhaseBody({
         </p>
       )}
       {meta.rules && (
-        <RulesBox label={`${meta.name} — rulebook text`}>
+        <RulesBox label={meta.name}>
           <p>{meta.rules}</p>
         </RulesBox>
       )}
@@ -2075,7 +2075,7 @@ function CleanUpPhaseBody({
         </p>
       )}
       {meta.rules && (
-        <RulesBox label={`${meta.name} — rulebook text`}>
+        <RulesBox label={meta.name}>
           <p>{meta.rules}</p>
         </RulesBox>
       )}
@@ -2199,7 +2199,7 @@ export function WarpPhaseBody({
       {/* Verbatim rules last, same as the Paradox screen: reference material sits under
           what the player has to act on. */}
       {meta.rules && (
-        <RulesBox label={`${meta.name} — rulebook text`}>
+        <RulesBox label={meta.name}>
           <p>{meta.rules}</p>
         </RulesBox>
       )}
@@ -2427,7 +2427,7 @@ export function ParadoxPhaseBody({
       </div>
 
       {meta.rules && (
-        <RulesBox label={`${meta.name} — rulebook text`}>
+        <RulesBox label={meta.name}>
           <p>{meta.rules}</p>
         </RulesBox>
       )}
@@ -2438,7 +2438,7 @@ export function ParadoxPhaseBody({
           below" — and its notes never touch the Paradox Phase). Verbatim so the player
           can check the majority + extra-roll prompts against the source. */}
       {hypersyncTiles != null && (
-        <RulesBox label="Hypersync in the Paradox Phase — rulebook text">
+        <RulesBox label="Hypersync in the Paradox Phase">
           <p>
             During the Paradox Phase, the presence of a Hypersync tile counts as a Warp
             tile when checking for most Warp tiles per Timeline tile. Therefore, if a
@@ -2601,7 +2601,7 @@ function ScoreScreen({
           </div>
           <ScoreBreakdown score={s} botTurns={bot.totalActions} />
           <div className="score-rules">
-            <RulesBox label="End Game scoring — rulebook text">
+            <RulesBox label="End Game scoring">
               <p>{ENDGAME_RULES}</p>
             </RulesBox>
           </div>
@@ -3675,9 +3675,8 @@ export function DetailPanel({
   const paragraphs = def.rule.split('\n\n').map(sub);
   const buildingLabel = def.label.replace('Construct — ', '');
   const isSuperproject = hotspot.action === 'construct-superproject';
-  const ruleLabel = hotspot.action.startsWith('construct')
-    ? 'Construct rules'
-    : `${def.label} rules`;
+  // No "rules" suffix: the 📖 icon already says what the box is.
+  const ruleLabel = hotspot.action.startsWith('construct') ? 'Construct' : def.label;
   const failedInstr = result.find((ins) => /fail/i.test(ins.id));
 
   return (
