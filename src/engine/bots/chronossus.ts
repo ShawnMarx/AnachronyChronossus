@@ -948,7 +948,9 @@ export function resolveAction(
       input.tileFamily,
       input.operatorsAvailable ?? true,
       {
-        impact: state.impact,
+        // Era 5+ is post-Impact by rule; `state.impact` is the stored flag and can lag
+        // (a debug Era jump, an older save), so the Era decides.
+        impact: state.impact || isPostImpact(state.era),
         failVP,
         worldCouncilFree: input.worldCouncilFree ?? false,
         guardianAvailable: input.guardianAvailable ?? true,

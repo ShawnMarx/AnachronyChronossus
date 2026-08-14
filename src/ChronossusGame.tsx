@@ -794,6 +794,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Fractures of Time: splits the placement gate, runs the Blink check, tracks the Flux Pool. */
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
   const guardiansMode = Chronossus.isGuardiansMode(state.config.chronossusMode);
+  /** Post-Impact from Era 5 on, whatever the stored flag says (it can lag a debug jump). */
+  const postImpactNow = state.impact || Chronossus.isPostImpact(state.era);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
   // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
   // every pre-commit "Failed Action" button label agrees with what actually resolves.
@@ -1757,7 +1759,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   step: guardianStep,
                   worker: Chronossus.guardianWorkerToSpend(bot),
                   figure: Chronossus.nextFigure(bot),
-                  impact: state.impact,
+                  impact: postImpactNow,
                   failVP: Chronossus.failedActionVP(state.config.difficulty),
                   postImpact2VP: state.config.difficulty.includes(
                     Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
@@ -2184,7 +2186,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    */
   const openGuardianFlow = () => {
     guardianAnswersRef.current = { worldCouncilFree: false, guardianAvailable: true };
-    if (state.impact) return setGuardianStep('failed');
+    if (postImpactNow) return setGuardianStep('failed');
     if (Chronossus.shouldAskGuardianAvailable(state.era)) return setGuardianStep('available');
     if (Chronossus.acquireGuardianAsksWorldCouncil(bot)) return setGuardianStep('world-council');
     return setGuardianStep(Chronossus.guardianWorkerToSpend(bot) ? 'worker' : 'failed');
@@ -2387,7 +2389,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setUi((u) => ({ ...u, botDie: null, activeMarker: null, hsRolledHex: null }));
   };
   const changeEra = (d: number) =>
-    setState((s) => ({ ...s, era: Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d)) }));
+    setState((s) => {
+      const era = Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d));
+      // Keep the Impact flag with the Era, as `startNextEra` does. Without this a debug
+      // jump to Era 5 left `impact` false, so every post-Impact rule (the 2+X Power Up,
+      // Acquire Guardian's post-Impact branch) silently kept its pre-Impact behaviour.
+      return { ...s, era, impact: Chronossus.isPostImpact(era) };
+    });
   const playerPass = () => {
     closePanel();
     setState((s) => ({ ...s, playerPassed: true }));

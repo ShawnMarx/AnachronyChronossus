@@ -241,6 +241,12 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardians rather than naming them separately
 - [x] **Rule boxes**: labels lost their "rules"/"rulebook text" suffixes, and `RulesBox` now
   matches the dialogs' 📖 bars (accent tint, chevron right) everywhere
+- [x] **The debug Era stepper didn't set the Impact flag**, which is what made the
+  post-Impact 2 VP difficulty look broken: stepping to Era 5 left `impact` false, so every
+  post-Impact rule (Acquire Guardian's branch, Power Up's 2+X) kept its pre-Impact
+  behaviour. `startNextEra` had always derived it; the debug jump now does too, and the
+  engine reads `state.impact || isPostImpact(state.era)` so a stale flag (or an old save)
+  can't change a rule. 3 tests, incl. "scores exactly 2 VP and nothing else changes"
 - [x] **A failed Acquire Guardian discards nothing** (revised from the G-R call). It was
   taking the Chronossus's usual "+VP and discard an active Exosuit", but with the World
   Council space taken this Action spends a Worker instead — it is not an Exosuit placement,

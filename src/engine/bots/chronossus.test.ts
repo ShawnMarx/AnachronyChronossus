@@ -1950,3 +1950,60 @@ describe('Capital Action spaces — the one list both fallbacks use', () => {
     expect(isGuardianCapitalAction('mine-resource')).toBe(false);
   });
 });
+
+describe('Acquire Guardian — post-Impact is decided by the Era', () => {
+  const guardiansCfg = (difficulty: string[] = []) => ({
+    ...CONFIG,
+    chronossusMode: 'guardians',
+    difficulty,
+  });
+  /** Era 5 with a STALE `impact: false` — what a debug Era jump used to leave behind. */
+  const staleEra5 = (difficulty: string[] = []): GameState => ({
+    ...createInitialState(guardiansCfg(difficulty)),
+    era: 5,
+    impact: false,
+    phase: 'actions',
+    chronossus: {
+      ...emptyChronossusState(),
+      exosuitsAvailable: 3,
+      guardians: { owned: 0, powered: 0 },
+      workers: { genius: 1, administrator: 1, engineer: 1, scientist: 1 },
+    },
+  });
+
+  it('fails post-Impact even when the stored flag says otherwise', () => {
+    const res = resolveAction(staleEra5(), {
+      actionId: 'tile-acquire-guardian',
+      tileSide: 'A',
+      worldCouncilFree: true,
+    });
+    expect(res.acquireGuardian).toBe('failed');
+    expect(res.state.chronossus!.guardians).toEqual({ owned: 0, powered: 0 });
+    expect(res.state.chronossus!.vp).toBe(1);
+  });
+
+  it('scores exactly 2 VP with the difficulty — nothing else changes', () => {
+    const state = staleEra5([DIFFICULTY_GUARDIANS_POSTIMPACT_2VP]);
+    const before = state.chronossus!;
+    const res = resolveAction(state, {
+      actionId: 'tile-acquire-guardian',
+      tileSide: 'A',
+      worldCouncilFree: true,
+    });
+    const bot = res.state.chronossus!;
+    expect(bot.vp).toBe(2);
+    expect(bot.exosuitsAvailable).toBe(before.exosuitsAvailable); // no figure spent
+    expect(bot.workers).toEqual(before.workers); // no Worker spent
+    expect(bot.guardians).toEqual({ owned: 0, powered: 0 }); // no Guardian acquired
+    expect(res.state.firstPlayer).toBe(state.firstPlayer); // no World Council placement
+  });
+
+  it('the B side still adds its own 2 VP on top', () => {
+    const res = resolveAction(staleEra5([DIFFICULTY_GUARDIANS_POSTIMPACT_2VP]), {
+      actionId: 'tile-acquire-guardian',
+      tileSide: 'B',
+      worldCouncilFree: true,
+    });
+    expect(res.state.chronossus!.vp).toBe(4); // 2 (difficulty) + 2 (C11B)
+  });
+});
