@@ -599,9 +599,11 @@ button.eoa-flag.tap-flag {
   width: max-content;
   padding: 0.45rem 0.6rem;
   border-radius: 8px;
-  background: #1b1430;
+  /* Themed, not hard-coded: this file is shared, and the literals were the Chronobot's
+     purple panel/lavender text, which stayed purple in a Chronossus game. */
+  background: var(--sp-panel-2);
   border: 1px solid rgba(var(--sp-accent-rgb), 0.6);
-  color: #ece8f5;
+  color: var(--sp-text-1);
   font-size: 0.8rem;
   line-height: 1.35;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);

@@ -15,7 +15,7 @@
 // can reconcile the Action Rounds first. The non-Phase-5 phase bodies are honest
 // skeletons for now; a debug phase rail lets you jump around.
 
-import { useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useId, useRef, useState } from 'react';
 import './BoardExplorer.css';
 import './ChronossusExplorer.css';
 import './phases/phases.css';
@@ -163,6 +163,13 @@ interface ChronossusUi {
   warpRoll: number | null;
   paradoxRoll: number | null;
   hsRolledHex: number | null;
+  /**
+   * An Autoleap the marker has landed on whose Action has NOT been resolved yet. The
+   * marker already moved and the previous turn is committed, so this resolution is owed —
+   * closing its dialog must not lose it, and Take Bot Action must re-open it rather than
+   * roll a fresh die. Cleared when it resolves. Persisted, so a reload resumes it too.
+   */
+  owedLeap: { code: string; actionId: ChronossusTileActionId | null; isHypersync: boolean } | null;
 }
 const emptyCxUi = (): ChronossusUi => ({
   markerSteps: initialMarkerSteps(),
@@ -172,6 +179,7 @@ const emptyCxUi = (): ChronossusUi => ({
   warpRoll: null,
   paradoxRoll: null,
   hsRolledHex: null,
+  owedLeap: null,
 });
 
 // Simple Command View is a display preference shared across bots (own key).
@@ -1088,6 +1096,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // A Hypersync roll (if this turn was one) is consumed by this commit; the snapshot
       // pushed by commit still carries it, so Undo re-seeds the same hex (#4).
       hsRolledHex: null,
+      // Record an Autoleap the marker just landed on: its Action still owes a resolution,
+      // so closing the dialog must not drop it (Take Bot Action re-opens it).
+      owedLeap: leap ? { code: leap.code, actionId: leap.actionId, isHypersync: leap.isHypersync } : null,
     };
     // History effects: the action's state-diff summary + Energy Cores gained
     // (summarizeTurn doesn't read the Energy Pool, so an energy-only tile like C03B would
@@ -1826,7 +1837,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // the phase, so ↶ Undo always steps back to the screen you came from. Leaving Power
   // Up also consumes this Era's draw (`lastDraw: null`) — restored by the snapshot.
   const commitPhase = (next: GameState, label: string, effects: string[] = []) =>
-    commit(next, { ...ui, lastDraw: null }, label, effects);
+    // Leaving the phase drops any owed Autoleap: Action Rounds are over, so there is no
+    // turn left to resolve it in.
+    commit(next, { ...ui, lastDraw: null, owedLeap: null }, label, effects);
   /** "Era 3 · → Power Up" — the label a phase move gets in History. */
   const enteredLabel = (next: GameState) =>
     `Era ${next.era} · → ${CHRONOSSUS_PHASE_META[next.phase]?.name ?? next.phase}`;
@@ -2045,6 +2058,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // marker, resolve the Action space it currently sits on, then advance it.
   const takeBotTurn = () => {
     if (bot.passed || active || pendingTile || pendingHypersync) return;
+    // An Autoleap the marker already moved onto still owes its Action. Closing that
+    // dialog must not skip it — re-open it instead of rolling a new die (the leap takes
+    // no roll of its own; the marker is already there).
+    const owed = ui.owedLeap;
+    if (owed) {
+      botDieRef.current = null;
+      activeMarkerRef.current = ui.activeMarker;
+      chainOpenRef.current = true;
+      setResult([]);
+      setUi((u) => ({ ...u, botDie: null }));
+      if (owed.isHypersync) {
+        setPendingHypersync({ code: owed.code, readOnly: false, viaChain: true });
+      } else if (owed.actionId) {
+        setTileAutoleap(true);
+        setPendingTile(owed.actionId);
+      }
+      return;
+    }
     // Reuse a rolled-but-uncommitted die (e.g. after cancelling the dialog, or an
     // Undo) so it repeats the same roll; otherwise roll fresh.
     const die = (pendingDieRef.current ?? rollAiDie()) as CommandNum;
@@ -2996,7 +3027,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               actionsThisEra={turnsThisEra}
               countLabel="Bot Turns"
               extraFlags={
-                <>
+                <TapFlagRow>
                   <TapFlag
                     className="cx-exosuit-flag"
                     hint={
@@ -3066,7 +3097,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
                     </TapFlag>
                   )}
-                </>
+                </TapFlagRow>
               }
               hint={chronossusTurnHint(bot)}
               canEnd={bothPassed}
@@ -4009,16 +4040,7 @@ function HypersyncDialog({
         </button>
       </div>
       <div className="dp-body">
-        {readOnly ? (
-          <div className="rule-body">
-            {(tile?.rule ?? '').split('\n').map((line, i) => (
-              <p key={i} className="dp-rule">
-                {line}
-              </p>
-            ))}
-            <TimeTravelRuleBlock />
-          </div>
-        ) : step === 'intro' ? (
+        {readOnly ? null : step === 'intro' ? (
           <div className="place-prompt">
             {plan.canHypersync ? (
               <>
@@ -4205,7 +4227,11 @@ function HypersyncDialog({
             whichever step is on screen — the tile's own text first, then the rules the
             current step brings with it (Time Travel fallback, Autoleap, Blink). The
             readOnly tap explanation already prints the tile text expanded above. */}
-        {!readOnly && (
+        {/* A tap opens the box; mid-turn it starts collapsed. Either way it is the same
+            📖 collapsible every other dialog shows. */}
+        {readOnly ? (
+          <HypersyncRules tile={tile} code={code} startOpen />
+        ) : (
           <>
             <HypersyncRules tile={tile} code={code} startOpen={false} />
             {step === 'timetravel' && <TimeTravelRuleBlockCollapsible />}
@@ -4378,6 +4404,22 @@ function HypersyncRules({
 
 // A Turn-bar tracker chip whose description opens on TAP (works on iPad, where a
 // `title` hover-tooltip never appears) as well as on hover.
+/**
+ * Which tracker chip's popover is open, shared by every `TapFlag` in one row — with
+ * per-chip state they all stayed open at once, so tapping the next one just added another
+ * popover instead of replacing it. Provided by `TapFlagRow`.
+ */
+const TapFlagCtx = createContext<{
+  openId: string | null;
+  setOpenId: (id: string | null) => void;
+} | null>(null);
+
+/** Wraps a row of `TapFlag` chips so only one popover is open at a time. */
+function TapFlagRow({ children }: { children: React.ReactNode }) {
+  const [openId, setOpenId] = useState<string | null>(null);
+  return <TapFlagCtx.Provider value={{ openId, setOpenId }}>{children}</TapFlagCtx.Provider>;
+}
+
 function TapFlag({
   className,
   hint,
@@ -4387,7 +4429,16 @@ function TapFlag({
   hint: string;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
+  const ctx = useContext(TapFlagCtx);
+  const id = useId();
+  // Standalone (no row provider) falls back to its own state.
+  const [soloOpen, setSoloOpen] = useState(false);
+  const open = ctx ? ctx.openId === id : soloOpen;
+  const toggle = () => {
+    if (ctx) ctx.setOpenId(open ? null : id);
+    else setSoloOpen((o) => !o);
+  };
+  const close = () => (ctx ? ctx.setOpenId(null) : setSoloOpen(false));
   return (
     <span className="tap-flag-wrap">
       <button
@@ -4395,12 +4446,13 @@ function TapFlag({
         className={`eoa-flag tap-flag ${className}`}
         title={hint}
         aria-label={hint}
-        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        onClick={toggle}
       >
         {children}
       </button>
       {open && (
-        <span className="tap-flag-pop" role="tooltip" onClick={() => setOpen(false)}>
+        <span className="tap-flag-pop" role="tooltip" onClick={close}>
           {hint}
         </span>
       )}

@@ -1119,7 +1119,8 @@
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 .scv-toggle:hover {
-  background: rgba(48, 30, 78, 0.96);
+  /* Was the Chronobot's purple as a literal — the Chronossus kept it on hover. */
+  background: var(--sp-panel-2);
 }
 .scv-toggle.shown {
   color: #fff;
