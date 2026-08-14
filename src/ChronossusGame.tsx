@@ -3118,7 +3118,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {hypersyncMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Pending Solo Hypersync tiles (max one per Era, 3 total)"
+                      hint={`Pending Solo Hypersync tiles (max one per Era, 3 total). Hypersync placed this Era: ${
+                        bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N — the no-space fallback is still open'
+                      }`}
                     >
                       <img
                         src="/assets/solo/chronossus/hypersync-solo-tile.png"
