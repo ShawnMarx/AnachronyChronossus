@@ -176,3 +176,19 @@ describe('summarizeChronossusExtras — Guardians of the Council', () => {
     expect(summarizeChronossusExtras(base, base, [])).toEqual([]);
   });
 });
+
+describe('summarizeChronossusExtras — Guardian board placement', () => {
+  const base = emptyChronossusState();
+  const pre = { ...base, guardians: { owned: 1, powered: 1 } };
+  const post = { ...base, guardians: { owned: 1, powered: 0 } };
+
+  it('names the Guardian board when the Action ran from its own space', () => {
+    expect(summarizeChronossusExtras(pre, post, [], { guardianBoard: true })).toContain(
+      'Placed 1 Guardian on the Guardian board',
+    );
+  });
+
+  it('says just "Placed" for an ordinary placement', () => {
+    expect(summarizeChronossusExtras(pre, post, [])).toContain('Placed 1 Guardian');
+  });
+});

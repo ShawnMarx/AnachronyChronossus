@@ -378,6 +378,8 @@ const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
   'tile-assimilate': 'Assimilate: roll the shape die — Operator + Flux Core, or a Technology',
   'tile-extract': 'Extract: +2 Flux Cores and +2 Energy Cores',
   'tile-power-pack': 'Power Pack: +1 Energy Core and +1 Flux Core',
+  'tile-acquire-guardian':
+    'Acquire Guardian: World Council + the leftmost Guardian free, or spend a Worker',
 };
 
 const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
@@ -600,6 +602,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** The answers gathered so far this Acquire Guardian, replayed into the resolver. */
   /** Guardians: this turn's Action is being taken from a Guardian board space. */
   const guardianSpaceRef = useRef(false);
+  /** Same fact, kept for `finishTurn`'s History line (resolve clears the one above). */
+  const guardianBoardTurnRef = useRef(false);
   const guardianAnswersRef = useRef<{ worldCouncilFree: boolean; guardianAvailable: boolean }>({
     worldCouncilFree: false,
     guardianAvailable: true,
@@ -1058,7 +1062,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     };
     if (marker == null) {
       const soloEffects = summarizeTurn(preC, stateA.chronossus!, instrA);
-      summarizeChronossusExtras(preC, stateA.chronossus!, soloEffects);
+      summarizeChronossusExtras(preC, stateA.chronossus!, soloEffects, {
+        guardianBoard: guardianBoardTurnRef.current,
+      });
+      guardianBoardTurnRef.current = false;
       commit(stateA, ui, turnLabel(instrA, actionLabel), withBlink(soloEffects), botDieRef.current);
       setResult(instrA);
       setLastResult(instrA);
@@ -1086,7 +1093,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // (summarizeTurn doesn't read the Energy Pool, so an energy-only tile like C03B would
     // otherwise leave no trace).
     const effects = summarizeTurn(preC, stateA.chronossus!, instrA);
-    summarizeChronossusExtras(preC, stateA.chronossus!, effects);
+    summarizeChronossusExtras(preC, stateA.chronossus!, effects, {
+      guardianBoard: guardianBoardTurnRef.current,
+    });
+    guardianBoardTurnRef.current = false;
     const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
     if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
     commit(stateA, newUi, turnLabel(instrA, actionLabel), withBlink(effects), botDieRef.current);
@@ -1180,6 +1190,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     setPending(null);
     hypersyncTileRef.current = false; // consumed
+    guardianBoardTurnRef.current = guardianSpaceRef.current; // for the History line
     guardianSpaceRef.current = false; // consumed
     // Advance the marker + resolve any Autoleap tiles it lands on, then commit.
     finishTurn(next, instructions, CHRONOBOT_ACTIONS[h.action].label);
@@ -1848,13 +1859,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const resolved = Chronossus.resolvePowerUp(state, draw);
     const next = { ...resolved, phase: 'powerup' as Phase };
     const b = next.chronossus!;
+    // Guardians power up first and share the same number, so the total is Exosuits +
+    // Guardians — the label said only the Exosuit half, making a 5 read as a 4. The two
+    // are split across their own lines, since they are different miniatures to pull.
+    const guardiansUp = b.guardians?.powered ?? 0;
+    const total = b.exosuitsAvailable + guardiansUp;
+    const plural = (n: number) => (n === 1 ? '' : 's');
     commit(
       next,
       { ...ui, lastDraw: draw },
-      `Era ${state.era} · Power Up: ${b.exosuitsAvailable} Exosuit${b.exosuitsAvailable === 1 ? '' : 's'}`,
+      `Era ${state.era} · Power Up: ${total} Exosuit${plural(total)}`,
       [
         `Drew ${draw.energized} Energy + ${draw.exhausted} Exhausted`,
-        `Powered up ${b.exosuitsAvailable} Exosuit${b.exosuitsAvailable === 1 ? '' : 's'}`,
+        ...(guardiansUp > 0
+          ? [
+              `Powered up ${b.exosuitsAvailable} Normal Exosuit${plural(b.exosuitsAvailable)}`,
+              `Powered up ${guardiansUp} Guardian${plural(guardiansUp)}`,
+            ]
+          : [`Powered up ${b.exosuitsAvailable} Exosuit${plural(b.exosuitsAvailable)}`]),
         `Pool now ${b.energyPool.energized}/${b.energyPool.exhausted}`,
       ],
     );
@@ -3471,6 +3493,12 @@ function tileInstruction(code: string): string {
     parts.push(
       `adds ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} to its Flux Pool`,
     );
+  if (eff.acquireGuardian)
+    parts.push(
+      'acquires a Guardian — an Exosuit onto the World Council space (becoming First ' +
+        'Player) and the leftmost available Guardian for free, or, if that space is taken, ' +
+        'a spent Worker instead',
+    );
   let s = parts.length
     ? `The Chronossus ${parts.join(' and ')}.`
     : 'The Chronossus does nothing this turn — its Command marker still advances.';
@@ -3603,11 +3631,14 @@ function CxTileDialog({
             onContinue={valleyGate.onCasingContinue}
           />
         )}
-        {!(
-          valleyGate &&
-          !readOnly &&
-          (valleyGate.step === 'blink' || valleyGate.step === 'casing')
-        ) && (
+        {/* A play-mode tap is an EXPLANATION: the expanded rule box below is the whole
+            answer, so no instruction box at all. Anything else would read as if the tile
+            had just been activated. */}
+        {!readOnly &&
+          !(
+            valleyGate &&
+            (valleyGate.step === 'blink' || valleyGate.step === 'casing')
+          ) && (
         <div className="place-prompt">
           {autoleap && (
             <p className="pp-sub">

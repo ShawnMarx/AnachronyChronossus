@@ -19,6 +19,9 @@ export function summarizeChronossusExtras(
   pre: ChronossusState,
   post: ChronossusState,
   effects: string[],
+  /** Guardians: this turn's placement went onto the Guardian board's own space. The state
+   *  diff can't show that — both routes just decrement `guardians.powered`. */
+  opts: { guardianBoard?: boolean } = {},
 ): string[] {
   // Fractures — Flux Pool. Only gains: a Blink's spent Core is already reported by the
   // Blink line itself, and Casings moving to the set-aside pile is bookkeeping.
@@ -57,7 +60,10 @@ export function summarizeChronossusExtras(
   // else in the summary would mention it.
   const guardiansPlaced = (pre.guardians?.powered ?? 0) - (post.guardians?.powered ?? 0);
   if (guardiansPlaced > 0 && gained === 0) {
-    effects.push(`Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}`);
+    const where = opts.guardianBoard ? ' on the Guardian board' : '';
+    effects.push(
+      `Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}${where}`,
+    );
   }
 
   // Hypersync (HFA) — Solo Hypersync tiles placed on / retrieved from the Timeline.

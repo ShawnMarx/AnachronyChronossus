@@ -3700,7 +3700,9 @@ export function DetailPanel({
         </button>
       </div>
       <div className="dp-body">
-        {hotspot.note && <p className="dp-note">{sub(hotspot.note)}</p>}
+        {/* A play-mode tap is an EXPLANATION: the verbatim rule box (opened below) is the
+            whole answer. The app-voice note belongs to a turn being taken. */}
+        {!readOnly && hotspot.note && <p className="dp-note">{sub(hotspot.note)}</p>}
 
 
         {/* Step 1 — placement gate for any mech-placing action. Fractures asks it as two
