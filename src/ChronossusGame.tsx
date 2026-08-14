@@ -4134,8 +4134,7 @@ function HypersyncDialog({
         ) : step === 'hexes' ? (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Tap any Hypersync hex space that is already occupied on your board, then
-              confirm which spaces are available.
+              Tap any Hypersync hex space that is already occupied on the board.
             </p>
             <div className="hs-hex-row">
               {Chronossus.HYPERSYNC_HEXES.map((n) => {
