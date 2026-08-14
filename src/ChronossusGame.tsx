@@ -2412,6 +2412,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   );
   const turnsThisEra = thisEraEntries.length;
 
+  /**
+   * Debug: step the bot's pending Solo Hypersync tiles. Adding puts the tile on the
+   * furthest-back Era that doesn't already have one (max one per Era), because only a
+   * tile in a PRIOR Era is retrievable — dropping it on the current Era would leave the
+   * Hypersync Action with nothing to take, which is the opposite of what this is for.
+   * Removing takes the most recent tile back off.
+   */
+  const setDebugHypersyncTiles = (delta: number) => {
+    setState((s) => {
+      const c = s.chronossus!;
+      const tiles = [...c.hypersyncTiles].sort((a, b) => a - b);
+      if (delta > 0) {
+        if (tiles.length >= Chronossus.MAX_HYPERSYNC_TILES) return s;
+        // Eras 1..era-1, first one free; fall back to the current Era only if the past
+        // is full (still legal state, just not retrievable this turn).
+        const era =
+          Array.from({ length: Math.max(0, s.era - 1) }, (_, i) => i + 1).find(
+            (e) => !tiles.includes(e),
+          ) ?? (tiles.includes(s.era) ? null : s.era);
+        if (era == null) return s;
+        return { ...s, chronossus: { ...c, hypersyncTiles: [...tiles, era].sort((a, b) => a - b) } };
+      }
+      if (!tiles.length) return s;
+      return { ...s, chronossus: { ...c, hypersyncTiles: tiles.slice(0, -1) } };
+    });
+  };
+
   // Debug toggle: turning it OFF also forces the dev-only outline/calibrate off
   // (so they can't get stuck on) and closes any open panel — mirrors the Chronobot.
   const toggleDebug = () => {
@@ -2568,6 +2595,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           },
         }))
       }
+      {...(hypersyncMode
+        ? {
+            hypersyncTiles: bot.hypersyncTiles.length,
+            maxHypersyncTiles: Chronossus.MAX_HYPERSYNC_TILES,
+            onHypersyncTiles: (d: number) => setDebugHypersyncTiles(d),
+          }
+        : {})}
       extra={
         <OverlayDebugControls
           count={(k) => overlayCount(bot, k)}

@@ -44,6 +44,10 @@ export interface DebugBarProps {
   timeTravel?: number;
   maxTimeTravel?: number;
   onTimeTravel?: (delta: number) => void;
+  /** Optional pending Solo Hypersync tile stepper (HFA modes only). */
+  hypersyncTiles?: number;
+  maxHypersyncTiles?: number;
+  onHypersyncTiles?: (delta: number) => void;
   /** Any bot-specific debug controls, rendered at the bottom of the dropdown. */
   extra?: React.ReactNode;
 }
@@ -66,6 +70,9 @@ export default function DebugBar(props: DebugBarProps) {
     timeTravel,
     maxTimeTravel = 6,
     onTimeTravel,
+    hypersyncTiles,
+    maxHypersyncTiles = 3,
+    onHypersyncTiles,
     extra,
   } = props;
 
@@ -127,6 +134,14 @@ export default function DebugBar(props: DebugBarProps) {
                 onTimeTravel,
                 (timeTravel ?? 0) > 0,
                 (timeTravel ?? 0) < maxTimeTravel,
+              )}
+            {onHypersyncTiles != null &&
+              stepper(
+                'Hypersync tiles',
+                hypersyncTiles ?? 0,
+                onHypersyncTiles,
+                (hypersyncTiles ?? 0) > 0,
+                (hypersyncTiles ?? 0) < maxHypersyncTiles,
               )}
             <div className="debug-row">
               <span className="debug-row-label">Impact</span>

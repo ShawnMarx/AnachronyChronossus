@@ -223,6 +223,29 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] **History docked open by default** for both bots (it was opt-in)
 - [x] 314 tests, build + lint clean
 
+## G10 — Playtest round 2 (2026-08-14) ✅ done
+- [x] **Autoleap could be lost.** Closing an Autoleap dialog dropped the resolution it still
+  owed (the marker had already moved and the turn was committed), so Take Bot Action rolled a
+  fresh die and the Action never happened. `ui.owedLeap` now persists it: Take Bot Action
+  re-opens the dialog, a reload resumes it, and leaving the phase clears it
+- [x] **Tracker chip popovers**: shared open state (`TapFlagRow`) — each held its own, so
+  tapping the next one stacked another popover instead of replacing it
+- [x] **Two hard-coded Chronobot purples** in shared CSS stayed purple in a Chronossus game —
+  the SCV show/hide hover and the chip popover's background/text. Both use theme tokens now
+- [x] **C12/C13's read-only tap** dumped its rule text raw with no 📖 collapsible — the only
+  dialog that didn't match. Same box as everywhere else, opened
+- [x] **Play-mode taps show only the rule box** (no app-voice "what it does" line, which read
+  as if the tile had been activated); C11 gained its own description/instruction text
+- [x] **History**: Power Up counts Guardians in the total and splits the lines; a Guardian on
+  its own board space says so; a pass records the die and why; "Out of Exosuits" covers
+  Guardians rather than naming them separately
+- [x] **Rule boxes**: labels lost their "rules"/"rulebook text" suffixes, and `RulesBox` now
+  matches the dialogs' 📖 bars (accent tint, chevron right) everywhere
+- [x] **Debug**: a Hypersync-tile stepper that adds to the furthest-back PRIOR Era, so a
+  retrievable tile can be set up for testing (the current Era is only a fallback once the
+  past is full)
+- [x] 316 tests, build + lint clean throughout
+
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
   Guardians, the Guardians-first power-up split per Era, and the Guardian board fallback
