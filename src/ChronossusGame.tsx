@@ -3692,7 +3692,7 @@ function CxTileDialog({
                 performs no Action there; instead it recruits the <b>leftmost available
                 Guardian</b> at no cost.
               </p>
-              <p className="pp-sub">
+              <p className="pp-instruct">
                 Put one of the Chronossus’s <b>Path markers</b> on an empty Guardian board
                 slot for it — that slot becomes this Guardian’s own Action space. (If its
                 Path markers run out, use an unused Path’s markers.)
@@ -3707,11 +3707,13 @@ function CxTileDialog({
                 The Chronossus spends a <b>{guardianGate.worker}</b> and recruits the{' '}
                 <b>leftmost available Guardian</b> — no Exosuit is placed.
               </p>
+              <p className="pp-instruct">
+                Put one of the Chronossus’s <b>Path markers</b> on an empty Guardian board
+                slot for the new Guardian — that slot becomes its own Action space.
+              </p>
               <p className="pp-sub">
                 Worker priority: the one it has most of, then Scientist &gt; Engineer &gt;
-                Administrator &gt; Genius. Put one of its <b>Path markers</b> on an empty
-                Guardian board slot for the new Guardian — that slot becomes its own Action
-                space.
+                Administrator &gt; Genius.
               </p>
               <button className="start-turn" onClick={guardianGate.onCommit}>
                 {startLabel}
