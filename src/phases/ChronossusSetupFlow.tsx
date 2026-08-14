@@ -77,8 +77,9 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
       flag: DIFFICULTY_HYPERSYNC_TARGETED,
       label: 'Hypersync: take your oldest tile’s space (no random roll)',
       detail:
-        'Instead of randomly selecting a Hypersync Action space, the Chronossus takes the ' +
-        'one corresponding to your pending Hypersync tile furthest in the past.',
+        'Instead of randomly selecting a Hypersync Action space to take, the Chronossus ' +
+        'takes the one corresponding to one of your pending Hypersync tiles. If you have ' +
+        'more than one, it takes the one furthest in the past.',
     },
   ],
 };

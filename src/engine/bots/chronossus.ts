@@ -1727,7 +1727,10 @@ export function resolveHypersyncAction(
       hsFigure = spendFigure(bot);
     }
     bot.vp += 2;
-    const where = input.hex != null ? `Hypersync hex ${input.hex}` : 'the Hypersync space for its furthest-past pending tile';
+    const where =
+      input.hex != null
+        ? `Hypersync hex ${input.hex}`
+        : "the Hypersync space matching your furthest-in-the-past pending tile";
     instr.push({
       id: `hs-place-${n}`,
       text: `Send ${hsFigure === 'guardian' ? 'a Guardian' : 'an Exosuit'} to ${where}; the Chronossus scores 2 VP and retrieves its pending Solo Hypersync tile from Era ${era}.`,

@@ -241,6 +241,13 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardians rather than naming them separately
 - [x] **Rule boxes**: labels lost their "rules"/"rulebook text" suffixes, and `RulesBox` now
   matches the dialogs' 📖 bars (accent tint, chevron right) everywhere
+- [x] **Targeted Hypersync (D10) was reading the wrong tiles** — a rules bug, not just copy.
+  The rulebook says the Chronossus takes the space "corresponding to **one of your** pending
+  Hypersync tiles"; the dialog matched the **bot's** own. The flow is now: mark the occupied
+  hexes → *"Does one of the available spaces match a Hypersync tile YOU have pending from a
+  prior Era?"* → yes, place on your furthest-in-the-past one; no, fall through to the normal
+  roll. The verbatim difficulty text is a footer rule box, and the Setup option's detail now
+  quotes it in full
 - [x] **Debug**: a Hypersync-tile stepper that adds to the furthest-back PRIOR Era, so a
   retrievable tile can be set up for testing (the current Era is only a fallback once the
   past is full)
