@@ -1549,10 +1549,42 @@ function finishAction(
  * True when taking `actionId` would require placing an Exosuit the Chronossus no
  * longer has — i.e. attempting it makes the Chronossus pass instead.
  */
-export function wouldPassOn(bot: ChronossusState, actionId: ChronossusActionId): boolean {
+export function wouldPassOn(
+  bot: ChronossusState,
+  actionId: ChronossusActionId,
+  /** HFA only: the current Era + whether the mode is running, so a Solo Hypersync tile
+   *  can stand in for the Exosuit it no longer has. Omit outside Hypersync games. */
+  hypersync?: { era: number; active: boolean },
+): boolean {
+  // Only an Action that would put a figure down can trigger a pass — rolling into Time
+  // Travel, Remove Anomaly or Reboot just resolves and the Era carries on.
+  if (!placesExosuitFor(actionId)) return false;
   // Guardians count: it only passes once its Exosuits AND its powered Guardians are gone.
-  return placesExosuitFor(actionId) && placeableFigures(bot) <= 0;
+  if (placeableFigures(bot) > 0) return false;
+  // HFA: a Capital Action it cannot place an Exosuit for is still performed by placing a
+  // Solo Hypersync tile instead (max one per Era, 3 pending) — so while a tile is
+  // available it has something to "place" and does not pass.
+  if (
+    hypersync?.active &&
+    CAPITAL_ACTION_IDS.includes(actionId) &&
+    canPlaceHypersyncTile(bot, hypersync.era)
+  ) {
+    return false;
+  }
+  return true;
 }
+
+/** The Capital Actions (the ones a Solo Hypersync tile or a Guardian space can serve). */
+export const CAPITAL_ACTION_IDS: ChronossusActionId[] = [
+  'research',
+  'recruit',
+  'recruit-genius-research',
+  'construct-factory',
+  'construct-lab',
+  'construct-powerplant',
+  'construct-support',
+  'construct-superproject',
+];
 
 /**
  * The Chronossus passes for the Era (it is out of Exosuits and the attempted

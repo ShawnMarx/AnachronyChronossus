@@ -645,7 +645,10 @@ export default function BoardExplorer({
   // Viewport rect of the last-tapped badge, so its popover (portaled to <body>
   // to escape the badge's transform) can anchor near it while staying on-screen.
   const [tappedRect, setTappedRect] = useState<DOMRect | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
+  // Docked open by default: the turn log is the main way to see what the bot just did
+  // (and why it passed), so it should be there without being asked for. The ⚙ menu and
+  // the 🕑 button still toggle it.
+  const [showHistory, setShowHistory] = useState(true);
   // Rules mode: a full-viewport GameBrain rules frame overlays the game view
   // (which stays mounted underneath, so Back-to-Game restores the exact spot).
   const [modeRules, setModeRules] = useState(false);

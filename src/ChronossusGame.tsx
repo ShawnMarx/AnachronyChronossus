@@ -270,16 +270,13 @@ const TRACK_KEYS = CHRONOSSUS_TRACK_POSITIONS.map((p) => p.key);
 const MOD_SLOTS = CHRONOSSUS_TRACK_POSITIONS.filter((p) => p.tile);
 /** Capital Actions (Research / Recruit / Construct) — the ones the Hypersync
  *  no-space fallback lets the Chronossus perform via a Solo Hypersync tile. */
-const CAPITAL_ACTIONS = new Set<ChronossusActionId>([
-  'research',
-  'recruit',
-  'recruit-genius-research',
-  'construct-factory',
-  'construct-lab',
-  'construct-powerplant',
-  'construct-support',
-  'construct-superproject',
-]);
+/**
+ * The Capital Action spaces. Both module fallbacks that stand in for an Exosuit — HFA's
+ * Solo Hypersync tile and the Guardian board space — apply to these ONLY, never to Mine,
+ * Time Travel, Remove Anomaly or Reboot. One list, shared with the engine's pass rule, so
+ * the two can't drift apart.
+ */
+const CAPITAL_ACTIONS = new Set<ChronossusActionId>(Chronossus.CAPITAL_ACTION_IDS);
 /** Reverse of TILE_ACTION_FAMILY: a tile family → its in-play tile-action id. */
 const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
   C01: 'tile-reboot',
@@ -579,7 +576,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const activeMarker = ui.activeMarker;
   const botDie = ui.botDie;
   const lastDraw = ui.lastDraw; // this Era's Power-Up draw (persisted in the ui slice)
-  const [showHistory, setShowHistory] = useState(false);
+  // Docked open by default: the turn log is the main way to see what the bot just did
+  // (and why it passed), so it should be there without being asked for. The ⚙ menu and
+  // the 🕑 button still toggle it.
+  const [showHistory, setShowHistory] = useState(true);
   const [modeRules, setModeRules] = useState(false); // GameBrain rules overlay open
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
@@ -1223,7 +1223,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // can still act if a Blink is possible, since that moves an Exosuit already on the
     // board rather than taking one from the supply.
     if (
-      Chronossus.wouldPassOn(bot, h.action) &&
+      Chronossus.wouldPassOn(bot, h.action, { era: state.era, active: hypersyncMode }) &&
       !(fracturesMode && Chronossus.shouldCheckBlink(bot, h.action))
     ) {
       const { state: next, instructions } = Chronossus.passChronossus(state);
@@ -1238,6 +1238,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       );
       closePanel();
       setLastResult(instructions); // shown in the turn-status aside
+      return;
+    }
+    // HFA: out of figures, but a Solo Hypersync tile can stand in for the Exosuit — so
+    // there is nothing to place and no space question to ask. Go straight to the tile.
+    if (
+      hypersyncMode &&
+      CAPITAL_ACTIONS.has(h.action) &&
+      Chronossus.placeableFigures(bot) <= 0 &&
+      Chronossus.canPlaceHypersyncTile(bot, state.era)
+    ) {
+      setShowHypersyncTilePrompt(true);
       return;
     }
     if (h.action === 'mine-resource') {
@@ -1972,7 +1983,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     closePanel();
     setLastResult([]);
     setCalibrate(false);
-    setShowHistory(false);
+    setShowHistory(true);
     setShowFirstPlayer(false);
     setActionsIntroEra(null);
     botDieRef.current = null;
@@ -2037,7 +2048,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // depends on the mode's slot, not the base tile printed in the path data.
       const tileAction = tileActionAt(key) ?? (tp.action as ChronossusTileActionId);
       // Fractures' Valley Actions take an Exosuit, so the passing rule applies to them.
-      if (Chronossus.wouldPassOn(bot, tileAction)) {
+      if (Chronossus.wouldPassOn(bot, tileAction, { era: state.era, active: hypersyncMode })) {
         const { state: next, instructions } = Chronossus.passChronossus(state);
         commit(
           next,

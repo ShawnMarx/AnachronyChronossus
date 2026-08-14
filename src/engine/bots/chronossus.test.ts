@@ -52,6 +52,7 @@ import {
   guardianWorkerToSpend,
   shouldAskGuardianAvailable,
   acquireGuardianAsksWorldCouncil,
+  CAPITAL_ACTION_IDS,
   DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
   type EnergyDraw,
   type VariableAnomalyCandidate,
@@ -1867,5 +1868,71 @@ describe('Guardians — Acquire Guardian (C11)', () => {
     expect(shouldAskGuardianAvailable(4)).toBe(true);
     expect(shouldAskGuardianAvailable(5)).toBe(false); // post-Impact: always fails
     expect(shouldAskGuardianAvailable(7)).toBe(false);
+  });
+});
+
+describe('wouldPassOn — what actually triggers a pass', () => {
+  const noFigures = { ...emptyChronossusState(), exosuitsAvailable: 0 };
+
+  it('only Actions that place a figure can trigger it', () => {
+    expect(wouldPassOn(noFigures, 'construct-lab')).toBe(true);
+    expect(wouldPassOn(noFigures, 'research')).toBe(true);
+    expect(wouldPassOn(noFigures, 'mine-resource')).toBe(true);
+    // Rolling into one of these resolves and the Era carries on.
+    expect(wouldPassOn(noFigures, 'time-travel')).toBe(false);
+    expect(wouldPassOn(noFigures, 'remove-anomaly')).toBe(false);
+    expect(wouldPassOn(noFigures, 'reboot')).toBe(false);
+  });
+
+  it('never triggers while it still has a figure', () => {
+    const withOne = { ...emptyChronossusState(), exosuitsAvailable: 1 };
+    expect(wouldPassOn(withOne, 'construct-lab')).toBe(false);
+  });
+
+  it('HFA: an available Solo Hypersync tile stands in for the Exosuit', () => {
+    const hfa = { era: 3, active: true };
+    expect(wouldPassOn(noFigures, 'construct-lab', hfa)).toBe(false);
+    // Non-Capital Actions have no tile substitution — Mine still passes.
+    expect(wouldPassOn(noFigures, 'mine-resource', hfa)).toBe(true);
+  });
+
+  it('HFA: it passes once no tile can be placed (one per Era, 3 pending)', () => {
+    const usedThisEra = { ...noFigures, hypersyncTiles: [3] };
+    expect(wouldPassOn(usedThisEra, 'construct-lab', { era: 3, active: true })).toBe(true);
+    const allThree = { ...noFigures, hypersyncTiles: [1, 2, 4] };
+    expect(wouldPassOn(allThree, 'construct-lab', { era: 3, active: true })).toBe(true);
+  });
+
+  it('the tile substitution is HFA-only — other modes are unaffected', () => {
+    expect(wouldPassOn(noFigures, 'construct-lab', { era: 3, active: false })).toBe(true);
+    expect(wouldPassOn(noFigures, 'construct-lab')).toBe(true);
+  });
+});
+
+describe('Capital Action spaces — the one list both fallbacks use', () => {
+  it('covers Research, Recruit (both), and every Construct', () => {
+    expect([...CAPITAL_ACTION_IDS].sort()).toEqual(
+      [
+        'construct-factory',
+        'construct-lab',
+        'construct-powerplant',
+        'construct-superproject',
+        'construct-support',
+        'recruit',
+        'recruit-genius-research',
+        'research',
+      ].sort(),
+    );
+  });
+
+  it('excludes Mine, Time Travel, Remove Anomaly and Reboot', () => {
+    for (const id of ['mine-resource', 'time-travel', 'remove-anomaly', 'reboot'] as const) {
+      expect(CAPITAL_ACTION_IDS).not.toContain(id);
+    }
+  });
+
+  it('every Guardian-space Action is a Capital Action (and Mine is not)', () => {
+    for (const id of CAPITAL_ACTION_IDS) expect(isGuardianCapitalAction(id)).toBe(true);
+    expect(isGuardianCapitalAction('mine-resource')).toBe(false);
   });
 });

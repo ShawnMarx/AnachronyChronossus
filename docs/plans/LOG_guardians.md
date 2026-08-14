@@ -201,6 +201,27 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] **Autoleap chain verified** (die pinned to a 3 so marker 3 walks onto the C11 slot):
   the dialog opens with the Autoleap note *and* the World Council question
 
+## G9 — Passing, History and the HFA substitution (playtest 2026-08-13) ✅ done
+- [x] **History shows the roll behind a pass.** Both Chronossus pass sites now hand `commit`
+  the die and a reason: *"Rolled onto Construct — Superproject, which needs a figure placed /
+  Out of Exosuits and Guardians — it passes"*. They were passing neither before
+- [x] **The Chronobot rolls before its pass turn.** Its final Time-Travel-then-pass IS a turn,
+  so it rolls and shows the die; the outcome stays forced, per its printed rule (user's call —
+  the Chronobot keeps "runs out → Time Travel next turn → pass" rather than the Chronossus's
+  roll-based rule). Its other "pass" is the phase ending after you passed, so no roll
+- [x] **Turn overview is z-index 90**, above the action dialog (80) and its small-screen
+  full-screen form (65) — it was 62, i.e. underneath
+- [x] **HFA: a Solo Hypersync tile stands in for the Exosuit** (user's call). `wouldPassOn`
+  takes an optional `{ era, active }` and returns false while a tile can be placed, so the bot
+  keeps acting instead of passing; the view then opens the tile prompt directly rather than
+  asking a placement question it cannot satisfy
+- [x] **Capital Actions only** — one shared `CAPITAL_ACTION_IDS` in the engine, which the view
+  now builds its `CAPITAL_ACTIONS` set from, so the tile substitution and the Guardian board
+  space can't drift apart. Mine / Time Travel / Remove Anomaly / Reboot are excluded, with
+  tests both ways (verified live too: it passed on Mine Resource, correctly)
+- [x] **History docked open by default** for both bots (it was opt-in)
+- [x] 314 tests, build + lint clean
+
 ## G6 — Ship ✅ engine/UI done (2026-08-13); on-device pass outstanding
 - [x] Playthrough variations: `guardians` (3 tests — a full game acquiring/powering/placing
   Guardians, the Guardians-first power-up split per Era, and the Guardian board fallback
