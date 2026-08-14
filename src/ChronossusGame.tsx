@@ -3787,13 +3787,15 @@ function CxTileDialog({
           ) : guardianGate && !readOnly && guardianGate.step === 'failed' ? (
             <>
               <p className="pp-instruct">
+                {/* No Exosuit discard: with the World Council space taken this Action
+                    spends a Worker instead, so it never was an Exosuit placement. */}
                 {guardianGate.impact
                   ? guardianGate.postImpact2VP
                     ? 'The Impact has happened, so the Chronossus can no longer acquire Guardians — difficulty option: it scores 2 VP instead.'
-                    : `The Impact has happened, so the Chronossus can no longer acquire Guardians — Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`
+                    : `The Impact has happened, so the Chronossus can no longer acquire Guardians — Failed Action: +${guardianGate.failVP} VP.`
                   : guardianGate.worker
-                    ? `Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`
-                    : `It has no Workers left to spend on a Guardian — Failed Action: +${guardianGate.failVP} VP, and discard one of its active Exosuits.`}
+                    ? `Failed Action: +${guardianGate.failVP} VP.`
+                    : `It has no Workers left to spend on a Guardian — Failed Action: +${guardianGate.failVP} VP.`}
               </p>
               <button className="start-turn" onClick={guardianGate.onCommit}>
                 {startLabel}

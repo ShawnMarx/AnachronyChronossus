@@ -5,7 +5,7 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 
 ## G-R — Research & design
 - [x] **Open questions 1-3 answered by the user (2026-08-13):** a failed Acquire Guardian is a
-  **full** Failed Action (VP + discard an active Exosuit); the **Guardian space beats** the
+  Failed Action (**revised 2026-08-14 to VP only, no discard** — see G10); the **Guardian space beats** the
   Solo Hypersync tile in the combo; and the fallback **can never run out** — each Guardian has
   its own guaranteed space on the Guardian board, the slot holding a Chronossus **Path
   marker** (any of them if several). Consequences: setup must have the player keep Path
@@ -241,6 +241,11 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
   Guardians rather than naming them separately
 - [x] **Rule boxes**: labels lost their "rules"/"rulebook text" suffixes, and `RulesBox` now
   matches the dialogs' 📖 bars (accent tint, chevron right) everywhere
+- [x] **A failed Acquire Guardian discards nothing** (revised from the G-R call). It was
+  taking the Chronossus's usual "+VP and discard an active Exosuit", but with the World
+  Council space taken this Action spends a Worker instead — it is not an Exosuit placement,
+  which is exactly why `placesExosuitFor` is false for it. All three failure paths are now
+  VP-only, in the engine and the dialog copy
 - [x] **Targeted Hypersync (D10) was reading the wrong tiles** — a rules bug, not just copy.
   The rulebook says the Chronossus takes the space "corresponding to **one of your** pending
   Hypersync tiles"; the dialog matched the **bot's** own. The flow is now: mark the occupied

@@ -1780,13 +1780,27 @@ describe('Guardians — Acquire Guardian (C11)', () => {
     expect(guardianWorkerToSpend(emptyChronossusState())).toBeNull();
   });
 
-  it('post-Impact it is a full Failed Action — VP and a discarded Exosuit', () => {
+  it('post-Impact it is a Failed Action for VP only — no Exosuit discarded', () => {
     const res = acquire(acquireState({ era: 5, impact: true }), { worldCouncilFree: true });
     const bot = res.state.chronossus!;
     expect(res.acquireGuardian).toBe('failed');
     expect(bot.vp).toBe(1);
-    expect(bot.exosuitsAvailable).toBe(2); // discarded one
+    // The Action falls back to spending a Worker when the space is taken, so it is not an
+    // Exosuit placement and a failure costs it no figure.
+    expect(bot.exosuitsAvailable).toBe(3);
     expect(bot.guardians).toEqual({ owned: 0, powered: 0 }); // nothing acquired
+  });
+
+  it('no failure path discards a figure', () => {
+    for (const state of [
+      acquireState({ era: 4 }),                       // no Guardian left (answer below)
+      acquireState({ exosuits: 2 }),                  // no Workers, World Council taken
+    ]) {
+      const before = state.chronossus!.exosuitsAvailable;
+      const res = acquire(state, { worldCouncilFree: false, guardianAvailable: false });
+      expect(res.acquireGuardian).toBe('failed');
+      expect(res.state.chronossus!.exosuitsAvailable).toBe(before);
+    }
   });
 
   it('post-Impact scores 2 VP instead under that difficulty option, with no discard', () => {

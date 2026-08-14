@@ -25,9 +25,11 @@ already in `chronossusTiles.ts`.
 - **Art:** `C11A.png` / `C11B.png` already exist in
   `…/OneDrive/Program Development/Anachrony Chronossus/temp/Mod Tiles/` (167×114, same as
   every other tile) — copy them in; no TTS extraction and no placeholder needed.
-- **A failed Acquire Guardian is a full Failed Action** — the Chronossus's usual +1 VP **and
-  discard an active Exosuit**, routed through the existing failed-action path (so D7's +2 VP
-  option applies too), not a VP-only special case.
+- **A failed Acquire Guardian is +VP only — no Exosuit discarded** (revised 2026-08-14 in
+  playtest; it was first called as a full Failed Action). Once the World Council space is
+  taken the Action falls back to spending a Worker, so it is not an Exosuit placement at all
+  (`placesExosuitFor` is false for it) and the discard has nothing to attach to. D7's +2 VP
+  still applies to the VP half.
 - **In the combo, the Guardian space wins.** With no Capital space left, try the Guardian
   fallback first; the Solo Hypersync tile stays the fallback for when nothing can be placed
   at all.

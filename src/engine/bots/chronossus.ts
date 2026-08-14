@@ -1284,8 +1284,11 @@ export type AcquireGuardianOutcome = 'world-council' | 'worker' | 'failed';
  *                                     leftmost available Guardian (no Action performed)
  *   pre-Impact, World Council taken → spend a Worker (Most > Scientist > Engineer >
  *                                     Administrator > Genius), take a Guardian, no figure
- *   otherwise / post-Impact         → a full Failed Action: +VP AND discard an active
- *                                     Exosuit (the Chronossus-only nuance)
+ *   otherwise / post-Impact         → a Failed Action worth +VP only. NO Exosuit is
+ *                                     discarded: once the World Council space is taken this
+ *                                     Action falls back to spending a Worker, so it is not
+ *                                     an Exosuit placement at all (`placesExosuitFor` is
+ *                                     false for it) and the discard has nothing to attach to
  *
  * Either acquiring branch also has the player put one of the Chronossus's Path markers on
  * an empty Guardian board slot — that slot becomes this Guardian's own Action space.
@@ -1328,12 +1331,11 @@ export function resolveAcquireGuardian(
       return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
     }
     bot.vp += opts.failVP;
-    spendFigure(bot);
     instr.push({
       id: `guardian-postimpact-${n}`,
       text:
         'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
-        `Failed Action: it takes +${opts.failVP} VP and discards one active Exosuit.`,
+        `Failed Action: it takes +${opts.failVP} VP.`,
       effect: { vp: opts.failVP },
     });
     return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1342,12 +1344,9 @@ export function resolveAcquireGuardian(
   // No Guardian left on the Guardian board (the 6 are shared with the player).
   if (!opts.guardianAvailable) {
     bot.vp += opts.failVP;
-    spendFigure(bot);
     instr.push({
       id: `guardian-none-${n}`,
-      text:
-        'No Guardian is available to recruit — Failed Action: the Chronossus takes ' +
-        `+${opts.failVP} VP and discards one active Exosuit.`,
+      text: `No Guardian is available to recruit — Failed Action: the Chronossus takes +${opts.failVP} VP.`,
       effect: { vp: opts.failVP },
     });
     return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1394,12 +1393,9 @@ export function resolveAcquireGuardian(
   // (Post-Impact and "no Guardian left" are handled above; a taken World Council space — or
   // no figure to place — just routes to the Worker option.)
   bot.vp += opts.failVP;
-  spendFigure(bot);
   instr.push({
     id: `guardian-fail-${n}`,
-    text:
-      'It has no Workers left to spend on a Guardian — Failed Action: the Chronossus takes ' +
-      `+${opts.failVP} VP and discards one active Exosuit.`,
+    text: `It has no Workers left to spend on a Guardian — Failed Action: the Chronossus takes +${opts.failVP} VP.`,
     effect: { vp: opts.failVP },
   });
   return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
