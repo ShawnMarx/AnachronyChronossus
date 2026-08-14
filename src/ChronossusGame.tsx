@@ -2855,15 +2855,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                             <span className="cx-mech-pop-label">Energy Pool</span>
                             <CxEnergyPool pool={bot.energyPool} size={24} />
                           </div>
+                          {/* What matters here is THIS Era: a tile can be placed only once
+                              per Era, so "N" means the no-space fallback is still open. The
+                              running pending total lives on the turn-overview chip. */}
                           {hypersyncMode && (
                             <div className="cx-mech-pop-energy">
-                              <span className="cx-mech-pop-label">Hypersync tiles</span>
-                              <span>
-                                {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
-                                {bot.hypersyncTiles.length > 0
-                                  ? ` (Eras ${[...bot.hypersyncTiles].sort((a, b) => a - b).join(', ')})`
-                                  : ''}
-                              </span>
+                              <span className="cx-mech-pop-label">Hypersync placed</span>
+                              <span>{bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N'}</span>
                             </div>
                           )}
                         </div>
