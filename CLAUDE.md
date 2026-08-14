@@ -233,6 +233,26 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
 
 `resolveHypersyncAction` already records nothing for the same reason.
 
+**A new module's tile needs BOTH action maps.** The engine has `TILE_ACTION_FAMILY` /
+`TILE_ACTION_CODE` (`chronossusTiles.ts`) and the view has its own `FAMILY_TO_TILE_ACTION`
+(`ChronossusGame.tsx`). Guardians' C11 shipped in only the first: the tile rendered, but
+`tileActionAt` returned null, so tapping it did nothing and a marker landing on the slot
+resolved as "no effect" — with no error to notice.
+
+**Guardians: a Guardian is an Exosuit.** `placeableFigures` / `nextFigure` / `spendFigure`
+(`chronossus.ts`) are the single place the "Guardians last" rule lives — every placement and
+every Failed-Action discard goes through them, so a new Action gets the rule for free.
+Counting is always combined (badges, chips, the pass rule, the board's marker art); the two
+are named separately ONLY where the player must pull a different miniature — Power Up's
+split, the `(inc N Guardians)` chip, the badge pop-out. `spendGuardian` is the one exception:
+the Guardian board fallback fires when Action **spaces** run out, not figures, so it spends a
+Guardian specifically even while plain Exosuits remain.
+
+**Post-Impact is derived from the Era.** `state.impact` is stored, but `startNextEra` and the
+debug Era stepper both set it from `isPostImpact(era)`, and rules that branch on it read
+`state.impact || isPostImpact(state.era)`. A stored flag that lags (a debug jump, an old
+save) must never change a rule.
+
 ## Conventions
 
 - Keep the engine pure and tested; add unit tests for new decision logic.

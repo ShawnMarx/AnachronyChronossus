@@ -2,10 +2,45 @@
 
 Running log of implementation progress. Newest first.
 
-## 2026-08-13 (later) — Guardians of the Council
+## 2026-08-14 — Guardians of the Council
+
+The Classic expansion's Guardians module for the Chronossus, plus the `guardians+hypersync`
+combo — archived as `docs/complete/20260814_GUARDIANS_COMPLETED.md`. A Guardian is a
+Path-independent Exosuit the bot powers up **first**, places **last**, and can drop onto its
+own reserved Guardian board space when the Capital is full; C11 Acquire Guardian is the new
+Action tile.
+
+- **One figure count, one code path.** `spendFigure` / `nextFigure` / `placeableFigures`
+  replaced six scattered `exosuitsAvailable -= 1` sites, so "Guardians last" holds for
+  Main-board and Valley placements, the Hypersync hex and the Failed-Action discards at once.
+  Power Up splits its number Guardians-first (the rulebook's own 4-with-2-Guardians example is
+  a test), the pass rule counts both, and Clean Up resets `powered` while `owned` persists.
+- **The Guardian board fallback**: a Capital Action with no space left anywhere places a
+  Guardian on a Path-marked slot and resolves normally — no +1 VP, no discard. It beats
+  Hypersync's Solo-tile fallback in the combo and needs no question, because every Guardian
+  brings its own space.
+- **Acquire Guardian** asks only what the app can't see: whether the World Council space is
+  open (and only when it has a figure to place — otherwise it isn't an Exosuit Action at all),
+  and, in Era 4 alone, whether a Guardian is still on the board. Post-Impact it fails for VP.
+- **Playtesting drove four rounds of fixes**, including two genuine rules bugs: the board
+  fallback was spending a plain Exosuit rather than a Guardian (it fires when Action *spaces*
+  run out, not figures), and the targeted-Hypersync difficulty matched the **bot's** pending
+  tiles instead of the **player's**, which is the whole point of the option.
+- **Also fixed along the way:** an Autoleap dialog closed mid-chain was lost (Take Bot Action
+  re-rolled instead of resuming — the owed leap is persisted now); the debug Era stepper
+  didn't set the Impact flag, so every post-Impact rule silently kept pre-Impact behaviour;
+  two hard-coded Chronobot purples in shared CSS; tracker popovers that stacked instead of
+  replacing; and a play-mode tap printing an app-voice line as if the tile had acted.
+- **Rule boxes are now one thing everywhere** — labels lost their "rules"/"rulebook text"
+  suffixes, and `RulesBox` matches the dialogs' 📖 bars (accent tint, chevron right), in the
+  phase screens, setup, the turn overview and every dialog.
+- 320 tests, build + lint clean. Landing page: Chronossus 60% → 70%.
+
+## 2026-08-13 (later) — Guardians of the Council (build stages G1–G6)
 
 The Classic expansion's Guardians module for the Chronossus, plus the
-`guardians+hypersync` combo — built stage by stage from `docs/plans/PLAN_guardians.md`.
+`guardians+hypersync` combo — built stage by stage (see the 2026-08-14 entry above for the
+playtest rounds and the archive link).
 A Guardian is a Path-independent Exosuit the bot powers up **first**, places **last**, and
 can drop onto its own reserved space when the Capital is full.
 

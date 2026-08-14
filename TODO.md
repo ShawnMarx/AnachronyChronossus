@@ -45,6 +45,14 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       phase screens gained the header Undo plus `commitPhase` (every phase advance is
       undoable); the Chronobot's phase screens have neither. Pairs with the item above.
 
+## Guardians follow-ups (from the 2026-08-14 module build)
+- [ ] **Mirror the Chronossus's phase/History polish to the Chronobot** where it applies —
+      the Chronobot's pass entry gained a reason line, but its phase screens still lack the
+      turn-overview rule-box footer treatment and the History pane opens docked only because
+      both views default it now.
+- [ ] **Guardian board art/overlays** — the board stays player-managed (the app names the
+      Path-marked slot in text). Only worth doing if the Valley board ever gets art too.
+
 ## Guided-phase UX (from the 2026-08-11 pass)
 - [ ] **Paradox roll log clears on Undo** — `ParadoxPhaseBody` keeps its roll log and
       check count in local state that no snapshot rewinds, so Undo remounts it. Earlier
@@ -82,13 +90,15 @@ Anomalies and **Fractures of Time** (incl. the Fractures + Hypersync combo) ship
 archived 2026-08-13 in
 `docs/complete/20260813_CHRONOSSUS_DIFFICULTY_TEST_FRACTURES_COMPLETED.md`.
 
-**Active plan:** `docs/plans/PLAN_guardians.md` — Guardians of the Council + the
-`guardians+hypersync` combo (started 2026-08-13).
+**Guardians of the Council** + the `guardians+hypersync` combo shipped 2026-08-14 —
+archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 
 Still backlog (not yet in a plan):
 - [ ] **More modules** — Doomsday, Pioneers (stubbed in the Module menu). Each becomes its
       own `/plan`. Note the rulebook's limits (Solo Opponents p.18): Doomsday combines with
-      nothing, and Fractures + Guardians is not allowed. Guardians is in the active plan.
+      nothing, and Fractures + Guardians is not allowed. Pioneers also unlocks the
+      `guardians+pioneers` and `fractures+pioneers` combos (a 4th tile covers Recruit
+      Genius / Research).
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 
