@@ -1021,6 +1021,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * tile — open that dialog to resolve it. On a free-tap (no active marker) nothing
    * advances and no Autoleap fires.
    */
+  /**
+   * History detail for a pass. The die and the Action it landed on are the whole reason
+   * the bot passed, so a later read-back can see WHY without replaying the turn.
+   */
+  const passEffects = (actionId: ChronossusActionId): string[] => {
+    const label = Chronossus.chronossusActionLabel(actionId);
+    const out = (bot.guardians?.owned ?? 0) > 0 ? 'Exosuits and Guardians' : 'Exosuits';
+    return [`Rolled onto ${label}, which needs a figure placed`, `Out of ${out} — it passes`];
+  };
+
   const finishTurn = (
     stateA: GameState,
     instrA: Instruction[],
@@ -1217,8 +1227,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       !(fracturesMode && Chronossus.shouldCheckBlink(bot, h.action))
     ) {
       const { state: next, instructions } = Chronossus.passChronossus(state);
-      // The token does NOT advance on a pass → keep ui.markerSteps as-is.
-      commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
+      // The token does NOT advance on a pass → keep ui.markerSteps as-is. The rolled die
+      // and the Action it hit go into the entry, so History shows why it passed.
+      commit(
+        next,
+        { ...ui, botDie: botDieRef.current },
+        `Era ${state.era} · Chronossus passed`,
+        passEffects(h.action),
+        botDieRef.current,
+      );
       closePanel();
       setLastResult(instructions); // shown in the turn-status aside
       return;
@@ -2022,7 +2039,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // Fractures' Valley Actions take an Exosuit, so the passing rule applies to them.
       if (Chronossus.wouldPassOn(bot, tileAction)) {
         const { state: next, instructions } = Chronossus.passChronossus(state);
-        commit(next, { ...ui, botDie: botDieRef.current }, `Era ${state.era} · Chronossus passed`);
+        commit(
+          next,
+          { ...ui, botDie: botDieRef.current },
+          `Era ${state.era} · Chronossus passed`,
+          passEffects(tileAction),
+          botDieRef.current,
+        );
         closePanel();
         setLastResult(instructions);
         return;

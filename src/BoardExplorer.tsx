@@ -1026,12 +1026,17 @@ export default function BoardExplorer({
       // the Time Travel box just as if that space activated; committing it (via
       // startTurn) resolves the pass. If no Warp tiles remain there is nothing to
       // remove, so resolve the (failed) Time Travel + pass straight away.
-      botDieRef.current = null;
       activeTokenRef.current = null;
-      pendingDieRef.current = null;
-      setBotDie(null);
       setActiveToken(null);
       setPassMsg(null);
+      // A bot turn always starts with a roll — this one is a turn (it takes the final
+      // Time Travel and counts toward its Actions), so roll and SHOW the die even though
+      // the Action is forced. History records it, so a later read-back sees the turn that
+      // ended in the pass rather than a bare "Bot passed".
+      const passDie = pendingDieRef.current ?? rollAiDie();
+      pendingDieRef.current = null;
+      botDieRef.current = passDie;
+      setBotDie(passDie);
       const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === 'time-travel');
       if (h && bot.warpTilesOnTimeline > 0) {
         passTimeTravelRef.current = true;
@@ -1042,7 +1047,11 @@ export default function BoardExplorer({
           next,
           tokens,
           `Era ${state.era} · Bot: Time Travel + pass`,
-          summarizeTurn(state.chronobot, next.chronobot, instructions),
+          [
+            ...summarizeTurn(state.chronobot, next.chronobot, instructions),
+            'Out of Exosuits — its final Time Travel, then it passes',
+          ],
+          passDie,
         );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       }
@@ -1050,7 +1059,11 @@ export default function BoardExplorer({
     }
     if (decision === 'pass') {
       const { state: next, instructions } = Chronobot.resolveBotPass(state);
-      commit(next, tokens, `Era ${state.era} · Bot passed`);
+      // No roll here: this isn't a bot turn — you passed first and it has met its minimum,
+      // so the phase ends immediately (rulebook's "However" exception).
+      commit(next, tokens, `Era ${state.era} · Bot passed`, [
+        `You passed and it has taken its ${Chronobot.chronobotMinActions(state)} Actions — the Action Rounds Phase ends`,
+      ]);
       setPassMsg(instructions.map((i) => i.text).join(' '));
       setBotDie(null);
       setActiveToken(null);
@@ -1284,7 +1297,11 @@ export default function BoardExplorer({
           next,
           tokens,
           `Era ${state.era} · Bot: Time Travel + pass`,
-          summarizeTurn(state.chronobot, next.chronobot, instructions),
+          [
+            ...summarizeTurn(state.chronobot, next.chronobot, instructions),
+            'Out of Exosuits — its final Time Travel, then it passes',
+          ],
+          botDieRef.current,
         );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       } else {

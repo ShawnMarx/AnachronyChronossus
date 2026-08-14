@@ -1888,7 +1888,10 @@
   left: 50%;
   transform: translateX(-50%);
   width: min(460px, 92vw);
-  z-index: 62;
+  /* Above the action dialog (80) and its small-screen full-screen form (65): the player
+     opened this ON PURPOSE, so it must never come up underneath the dialog. Still below
+     the modal overlay (100). */
+  z-index: 90;
   background: var(--sp-panel);
   border: 1px solid var(--sp-accent);
   border-radius: 12px;
