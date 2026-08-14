@@ -59,7 +59,6 @@ export default function TurnBarOverview({
   passingRule,
   onClose,
 }: TurnBarOverviewProps) {
-  const [showRule, setShowRule] = useState(false);
   // Past this many selected options, collapse the list behind a "(N selected)" toggle
   // so a heavily-modded game doesn't push the recent-turns section far down.
   const [showDifficulty, setShowDifficulty] = useState(false);
@@ -171,18 +170,11 @@ export default function TurnBarOverview({
 
       {extraRules}
 
-      <div className="eoa-rule">
-        <button className="eoa-rule-cta" onClick={() => setShowRule((s) => !s)}>
-          📖 Passing &amp; End of Actions rules {showRule ? '▾' : '▸'}
-        </button>
-        {showRule && (
-          <div className="eoa-rule-body">
-            {passingRule.split('\n\n').map((para, i) => (
-              <p key={i}>{para}</p>
-            ))}
-          </div>
-        )}
-      </div>
+      <RulesBox label="Passing & End of Actions rules">
+        {passingRule.split('\n\n').map((para, i) => (
+          <p key={i}>{para}</p>
+        ))}
+      </RulesBox>
     </div>
   );
 }

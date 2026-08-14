@@ -1918,39 +1918,7 @@
   line-height: 1;
   cursor: pointer;
 }
-.eoa-rule-cta {
-  background: rgba(var(--sp-accent-rgb), 0.14);
-  border: 1px solid rgba(var(--sp-accent-rgb), 0.4);
-  color: var(--sp-text-1);
-  font-weight: 700;
-  font-size: 0.82rem;
-  padding: 0.35rem 0.6rem;
-  border-radius: 8px;
-  cursor: pointer;
-  width: 100%;
-  text-align: left;
-}
-.eoa-rule-cta:hover {
-  background: rgba(var(--sp-accent-rgb), 0.28);
-}
-.eoa-rule-body {
-  margin-top: 0.5rem;
-  padding: 0.55rem 0.7rem;
-  border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
-  border-radius: 8px;
-  background: rgba(var(--sp-accent-rgb), 0.06);
-  max-height: 40vh;
-  overflow-y: auto;
-}
-.eoa-rule-body p {
-  margin: 0 0 0.55rem;
-  font-size: 0.82rem;
-  line-height: 1.5;
-  color: var(--sp-text-2);
-}
-.eoa-rule-body p:last-child {
-  margin-bottom: 0;
-}
+/* (the Passing rules box uses the shared .rules-box — see RulesBox.tsx) */
 
 .eoa-bar {
   flex: 0 0 auto;
