@@ -1032,14 +1032,12 @@ export default function BoardExplorer({
       activeTokenRef.current = null;
       setActiveToken(null);
       setPassMsg(null);
-      // A bot turn always starts with a roll — this one is a turn (it takes the final
-      // Time Travel and counts toward its Actions), so roll and SHOW the die even though
-      // the Action is forced. History records it, so a later read-back sees the turn that
-      // ended in the pass rather than a bare "Bot passed".
-      const passDie = pendingDieRef.current ?? rollAiDie();
+      // No roll: this turn's Action is guaranteed by the rulebook ("it takes a Time Travel
+      // Action on its next turn, then passes"), so there is no die to read. It is still a
+      // TURN, and History states it as one — just without a die.
+      botDieRef.current = null;
       pendingDieRef.current = null;
-      botDieRef.current = passDie;
-      setBotDie(passDie);
+      setBotDie(null);
       const h = CHRONOBOT_HOTSPOTS.find((x) => x.action === 'time-travel');
       if (h && bot.warpTilesOnTimeline > 0) {
         passTimeTravelRef.current = true;
@@ -1054,7 +1052,6 @@ export default function BoardExplorer({
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
             'Out of Exosuits — its final Time Travel, then it passes',
           ],
-          passDie,
         );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       }
@@ -1304,7 +1301,6 @@ export default function BoardExplorer({
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
             'Out of Exosuits — its final Time Travel, then it passes',
           ],
-          botDieRef.current,
         );
         setPassMsg(instructions.map((i) => i.text).join(' '));
       } else {

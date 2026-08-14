@@ -205,10 +205,11 @@ deviations inline. See `PLAN_guardians.md` for the design and the verbatim ruleb
 - [x] **History shows the roll behind a pass.** Both Chronossus pass sites now hand `commit`
   the die and a reason: *"Rolled onto Construct — Superproject, which needs a figure placed /
   Out of Exosuits and Guardians — it passes"*. They were passing neither before
-- [x] **The Chronobot rolls before its pass turn.** Its final Time-Travel-then-pass IS a turn,
-  so it rolls and shows the die; the outcome stays forced, per its printed rule (user's call —
-  the Chronobot keeps "runs out → Time Travel next turn → pass" rather than the Chronossus's
-  roll-based rule). Its other "pass" is the phase ending after you passed, so no roll
+- [x] **The Chronobot needed no behaviour change** (user, 2026-08-14). Its final Time Travel is
+  the *guaranteed* Action of that turn, so there is no die to read — it is a **turn stated in
+  History, just without a roll**. A roll was briefly added and reverted; what stayed is the
+  History entry saying why (`Out of Exosuits — its final Time Travel, then it passes`). Its
+  other "pass" is the phase ending after you passed, which isn't a turn at all
 - [x] **Turn overview is z-index 90**, above the action dialog (80) and its small-screen
   full-screen form (65) — it was 62, i.e. underneath
 - [x] **HFA: a Solo Hypersync tile stands in for the Exosuit** (user's call). `wouldPassOn`
