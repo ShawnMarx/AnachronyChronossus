@@ -8,8 +8,11 @@
 // When a new module adds tracked state, extend this (and its tests) — see CLAUDE.md.
 
 import type { ChronossusState } from '../engine';
+import { adventureCard } from '../data/adventureCards';
+import { UPGRADE_SLOTS } from '../engine/bots/pioneers';
 
 const WORKER_KEYS = ['genius', 'administrator', 'engineer', 'scientist'] as const;
+const RESOURCE_KEYS = ['titanium', 'uranium', 'gold', 'neutronium'] as const;
 
 /**
  * Append the Chronossus/Fractures/Hypersync deltas of one turn to `effects`
@@ -64,6 +67,43 @@ export function summarizeChronossusExtras(
     effects.push(
       `Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}${where}`,
     );
+  }
+
+  // Pioneers — the Adventure. The card taken is the headline; the Upgrade board's Power
+  // change and the VP-token fallback are the state the player can't otherwise see.
+  const advBefore = pre.pioneers?.adventures ?? 0;
+  const advAfter = post.pioneers?.adventures ?? 0;
+  if (advAfter > advBefore) {
+    const taken = post.pioneers?.decks
+      ? [...post.pioneers.decks['5+'].discard, ...post.pioneers.decks['10+'].discard].slice(-1)[0]
+      : undefined;
+    const card = taken ? adventureCard(taken) : undefined;
+    effects.push(
+      card
+        ? `Adventure succeeded — took "${card.name}" (Power ${card.power})`
+        : 'Adventure succeeded',
+    );
+  }
+  if (pre.pioneers && post.pioneers) {
+    const upgraded = RESOURCE_KEYS.find(
+      (r) => !pre.pioneers!.upgraded[r] && post.pioneers!.upgraded[r],
+    );
+    if (upgraded) {
+      const gain = UPGRADE_SLOTS.find((sl) => sl.resource === upgraded)?.power ?? 0;
+      const line = `Power Upgrade: 1 ${upgraded} onto the Upgrade board (+${gain} Power)`;
+      // The shared summarizer sees the Resource leave and calls it "Discarded uranium" —
+      // it wasn't discarded, it was spent onto the board. Replace that line rather than
+      // printing both (the same trick the Operator line uses).
+      const i = effects.findIndex((e) => e === `Discarded ${upgraded}`);
+      if (i >= 0) effects[i] = line;
+      else effects.push(line);
+    }
+    const tokens = post.pioneers.vpTokens - pre.pioneers.vpTokens;
+    if (tokens > 0) {
+      effects.push(
+        `Power Upgrade: +${tokens} VP token on the Upgrade board (Power, not VP)`,
+      );
+    }
   }
 
   // Hypersync (HFA) — Solo Hypersync tiles placed on / retrieved from the Timeline.

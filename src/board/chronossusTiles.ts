@@ -182,25 +182,21 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C09A',
     name: 'Adventure',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade.',
-    future: true,
   },
   C09B: {
     code: 'C09B',
     name: 'Adventure and Score',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 VP.',
-    future: true,
   },
   C10A: {
     code: 'C10A',
     name: 'Adventure',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade.',
-    future: true,
   },
   C10B: {
     code: 'C10B',
     name: 'Adventure and Energy Pack',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 Energy Core.',
-    future: true,
   },
   C11A: {
     code: 'C11A',
@@ -266,6 +262,10 @@ export const TILE_ACTION_CODE = {
   'tile-power-pack': 'C06A',
   // Guardians of the Council
   'tile-acquire-guardian': 'C11A',
+  // Pioneers of New Earth. C09 sits in a tile slot and C10 covers the printed
+  // "Recruit Genius or Research" space; both are the same Adventure Action, so they
+  // share an action id and the live family is chosen per placement.
+  'tile-adventure': 'C09A',
 } as const;
 
 /** The side-agnostic tile family for each in-play modular tile action. */
@@ -277,6 +277,7 @@ export const TILE_ACTION_FAMILY = {
   'tile-extract': 'C05',
   'tile-power-pack': 'C06',
   'tile-acquire-guardian': 'C11',
+  'tile-adventure': 'C09',
 } as const;
 
 /** The live tile code (family + selected side) for an in-play tile action. */
@@ -312,6 +313,8 @@ export interface TileEffect {
   assimilate?: boolean;
   /** Guardians: the Acquire Guardian Action (its own World Council / Worker branch). */
   acquireGuardian?: boolean;
+  /** Pioneers: the Adventure Action (its own two-step flow, needs a die + 2 drawn cards). */
+  adventure?: boolean;
 }
 
 export const TILE_EFFECTS: Record<string, TileEffect> = {
@@ -343,6 +346,12 @@ export const TILE_EFFECTS: Record<string, TileEffect> = {
   // runs through `resolveAcquireGuardian`, not a flat effect.
   C11A: { acquireGuardian: true, autoleap: true },
   C11B: { acquireGuardian: true, autoleap: true, vp: 2 },
+  // Pioneers of New Earth. C10A is "same as C09A"; the B sides add a flat bonus on top
+  // of the Adventure itself, which runs through `resolveAdventure`, not a flat effect.
+  C09A: { adventure: true },
+  C09B: { adventure: true, vp: 1 },
+  C10A: { adventure: true },
+  C10B: { adventure: true, energyCores: 1 },
 };
 
 /** Effect lookup for a tile code, defaulting to "no effect". */

@@ -190,6 +190,32 @@ export interface ChronossusState {
    * Cleared in Clean Up when the Exosuits come back.
    */
   placedExosuits?: { action: string; space: 'action' | 'world-council'; hasCore: boolean }[];
+  /**
+   * Pioneers of New Earth only: the Chronossus Exosuit Upgrade board and the Adventure
+   * decks. `undefined` in every other mode.
+   *
+   * `boardSide` is the Upgrade board's A/B side (base Power 2 vs 3, and VP tokens worth
+   * +2 vs +3 each). `upgraded` records which Resource slots have been filled by the
+   * Power Upgrade step — each Resource has exactly ONE slot, so these are booleans, not
+   * counts. `vpTokens` is the no-valid-Resource fallback; they add Power and only count
+   * as VP under the `pioneers-vp-tokens-count` difficulty.
+   *
+   * `decks` is the bot's own copy of the two Adventure decks, used in `virtual` deck mode
+   * (the default): `draw` is the remaining pile in order, `discard` holds spent cards.
+   * In `shared` mode the player draws from the physical deck and names the card, so the
+   * piles stay empty and only `adventures` advances.
+   */
+  pioneers?: {
+    boardSide: 'A' | 'B';
+    upgraded: Partial<Record<Resource, boolean>>;
+    vpTokens: number;
+    /** Successful Adventures completed (the "Successful Adventures" Solo Objective). */
+    adventures: number;
+    decks: {
+      '5+': { draw: string[]; discard: string[] };
+      '10+': { draw: string[]; discard: string[] };
+    };
+  };
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */

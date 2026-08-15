@@ -72,6 +72,22 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
         'Guardian board slot at setup, and give it a Guardian.',
     },
   ],
+  pioneers: [
+    {
+      flag: Chronossus.DIFFICULTY_PIONEERS_BOARD_B,
+      label: 'Pioneers: flip its Exosuit Upgrade board to the B side',
+      detail:
+        'The Chronossus starts with a Power value of 3 instead of 2, and each VP token on ' +
+        'its Upgrade board is worth 3 Power instead of 2.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_PIONEERS_VP_TOKENS_COUNT,
+      label: 'Pioneers: VP tokens on the Upgrade board count as VP',
+      detail:
+        'By default the VP tokens it places when it cannot upgrade a Resource add Power ' +
+        'but are not worth VP. With this on, each one also scores 1 VP at the end.',
+    },
+  ],
   hypersync: [
     {
       flag: DIFFICULTY_HYPERSYNC_TARGETED,
@@ -104,13 +120,13 @@ const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'base', label: 'Base', available: true },
   { id: 'fractures', label: 'Fractures of Time', available: true },
   { id: 'doomsday', label: 'Doomsday', available: false },
-  { id: 'pioneers', label: 'Pioneers of New Earth', available: false },
+  { id: 'pioneers', label: 'Pioneers of New Earth', available: true },
   { id: 'guardians', label: 'Guardians of the Council', available: true },
   { id: 'hypersync', label: 'Hypersync Future Actions', available: true },
-  { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: false },
+  { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: true },
   { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: true },
   { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: true },
-  { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: false },
+  { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: true },
 ];
 
 /** Step 2 — the optional add-on modules (multi-select; combine with any base mode). */
@@ -252,6 +268,8 @@ export interface ChronossusSetupResult {
   difficultyValues: Record<string, number>;
   /** Selected extra/add-on module ids (multi-select). */
   extraModules: string[];
+  /** Pioneers: where the bot's Adventure cards come from (switchable later in ⚙). */
+  adventureDeckMode: 'virtual' | 'shared';
 }
 
 /** A collapsible "Coming soon" list of not-yet-available modules / options. */
@@ -280,6 +298,13 @@ export default function ChronossusSetupFlow({
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
   const [extraModules, setExtraModules] = useState<Set<string>>(new Set());
+  /**
+   * Pioneers: where the bot's Adventure cards come from. `virtual` (the default) keeps the
+   * bot on its own shuffled copy of both decks — the app draws and shows the card art, and
+   * your physical decks are never touched. `shared` has the bot draw from your decks, and
+   * you tell it which cards came up.
+   */
+  const [adventureDeckMode, setAdventureDeckMode] = useState<'virtual' | 'shared'>('virtual');
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
   // Per-tile side selection; only families set to 'B' are stored.
   const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
@@ -320,6 +345,7 @@ export default function ChronossusSetupFlow({
       tileSides: effectiveTileSides(),
       difficultyValues,
       extraModules: [...extraModules],
+      adventureDeckMode,
     });
 
   const eyebrow =
@@ -416,6 +442,53 @@ export default function ChronossusSetupFlow({
                   </label>
                 ))}
               </div>
+
+              {moduleId.includes('pioneers') && (
+                <>
+                  <p className="phase-note">
+                    <b>Pioneers — where the Chronossus’s Adventure cards come from.</b> You
+                    can change this later in the ⚙ menu.
+                  </p>
+                  <div className="difficulty-list">
+                    {(
+                      [
+                        {
+                          id: 'virtual' as const,
+                          label: 'Its own deck (recommended)',
+                          detail:
+                            'The app keeps its own shuffled copy of both Adventure decks, ' +
+                            'draws for the Chronossus and shows you the card. Your physical ' +
+                            'decks are never touched, so the bot can’t deplete or reorder them.',
+                        },
+                        {
+                          id: 'shared' as const,
+                          label: 'Your physical decks',
+                          detail:
+                            'The Chronossus draws from the same decks you do. The app tells ' +
+                            'you its Power and which deck to draw 2 cards from, and you tell ' +
+                            'it which cards came up.',
+                        },
+                      ]
+                    ).map((o) => (
+                      <label
+                        key={o.id}
+                        className={`difficulty-opt ${adventureDeckMode === o.id ? 'on' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="cx-adventure-deck"
+                          checked={adventureDeckMode === o.id}
+                          onChange={() => setAdventureDeckMode(o.id)}
+                        />
+                        <span className="difficulty-opt-text">
+                          <b>{o.label}</b>
+                          <span>{o.detail}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <p className="phase-note">
                 Optional add-on modules (combine with any base mode above):
@@ -645,6 +718,26 @@ export default function ChronossusSetupFlow({
                 </RulesBox>
               )}
 
+              {moduleId?.includes('pioneers') && (
+                <RulesBox label="Pioneers of New Earth — setup" showPreamble>
+                  <p>
+                    This requires the Classic Expansion Pack to play. All of the Pioneers of
+                    New Earth module and Chronossus base rules apply, unless noted below.
+                  </p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C03A to the (I) empty space, C09A
+                    to the (II) empty space, C02A to the (III) empty space. C10A replaces the
+                    printed “Recruit Genius or Research” Action space.
+                  </p>
+                  <p>
+                    Add the “Successful Adventures” Solo Objective card to the Solo Objective
+                    deck.
+                  </p>
+                  <p>Give it the Chronossus Exosuit Upgrade board with the “A” side up.</p>
+                </RulesBox>
+              )}
+
               {moduleId?.includes('hypersync') && (
                 <RulesBox label="Hypersync Future Actions — setup" showPreamble>
                   <p>
@@ -775,6 +868,44 @@ export default function ChronossusSetupFlow({
                     </li>
                     <li>Add the “Guardians” Solo Objective card to the Solo Objective deck.</li>
                     <li>Keep the Chronossus’s Path markers to hand for the Guardian board.</li>
+                  </ul>
+                </div>
+              )}
+
+              {moduleId?.includes('pioneers') && (
+                <div className="setup-modified">
+                  <h3>Pioneers of New Earth setup</h3>
+                  <ul>
+                    <li>Place the Adventure board next to the Main board.</li>
+                    <li>
+                      Give the Chronossus its Exosuit Upgrade board,{' '}
+                      <b>
+                        {difficulty.has(Chronossus.DIFFICULTY_PIONEERS_BOARD_B) ? 'B' : 'A'}
+                      </b>{' '}
+                      side up. Keep VP tokens to hand — it places one there whenever it
+                      cannot upgrade a Resource.
+                    </li>
+                    <li>
+                      Add the “Successful Adventures” Solo Objective card to the Solo
+                      Objective deck.
+                    </li>
+                    {adventureDeckMode === 'virtual' ? (
+                      <li>
+                        The app keeps the Chronossus’s <b>own copy</b> of both Adventure
+                        decks — shuffle your two decks and place them on the Adventure board
+                        for yourself only. The bot never draws from them.
+                      </li>
+                    ) : (
+                      <li>
+                        Shuffle the 5+ and 10+ Adventure decks onto the Adventure board. The
+                        Chronossus draws from these <b>same decks</b>, and you tell the app
+                        which cards it drew.
+                      </li>
+                    )}
+                    <li>
+                      Keep the Chronossus’s Path markers to hand for the Adventure board’s
+                      Power slots.
+                    </li>
                   </ul>
                 </div>
               )}

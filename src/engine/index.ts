@@ -94,6 +94,27 @@ export function drawEnergyPool(pool: EnergyPool): EnergyDraw {
   return { energized, exhausted };
 }
 
+/**
+ * Roll the Pioneers Adventure die — a plain d6 (its faces carry the Power icon, but the
+ * distribution is 1-6, confirmed off the physical die art).
+ */
+export function rollAdventureDie(): number {
+  return 1 + Math.floor(Math.random() * 6);
+}
+
+/**
+ * Shuffle a deck of Adventure card ids (Fisher-Yates). Randomness lives at the engine
+ * boundary, like the dice and the Energy Pool draw, so the Pioneers module stays pure.
+ */
+export function shuffleAdventureDeck(ids: string[]): string[] {
+  const out = [...ids];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 /** Roll the Breakthrough shape die. */
 export function rollShapeDie(): 'circle' | 'triangle' | 'square' {
   const faces: ('circle' | 'triangle' | 'square')[] = [

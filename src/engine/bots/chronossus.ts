@@ -21,6 +21,34 @@ import {
 } from '../rules/chronobotActions';
 import { CHRONOSSUS_TILES, TILE_ACTION_CODE, tileEffect } from '../../board/chronossusTiles';
 import {
+  DIFFICULTY_PIONEERS_BOARD_B,
+  isPioneersMode,
+  resolveAdventure,
+  upgradeTokenVp,
+  type AdventureInput,
+  type AdventureResult,
+} from './pioneers';
+import { adventureDeckIds } from '../../data/adventureCards';
+
+export {
+  DIFFICULTY_PIONEERS_BOARD_B,
+  DIFFICULTY_PIONEERS_VP_TOKENS_COUNT,
+  isPioneersMode,
+  boardPower,
+  powerBreakdown,
+  powerUpgradeChoice,
+  chooseAdventureCard,
+  deckFor,
+  POWER_SLOTS,
+  NO_SLOT_PENALTY,
+  UPGRADE_SLOTS,
+  BASE_POWER,
+  VP_TOKEN_POWER,
+  BIG_DECK_THRESHOLD,
+  type AdventureInput,
+  type AdventureResult,
+} from './pioneers';
+import {
   chooseRecruitWorker,
   chooseRemoveAnomalyDiscards,
   chooseBreakthroughDiscard,
@@ -169,7 +197,12 @@ export function canUseGuardianSpace(bot: ChronossusState, actionId: string): boo
  * `undefined`/not using it), Fractures seeding its Flux Pool, and Guardians seeding
  * its Guardian counter. Called once when a game begins, before Era 1.
  */
-export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): ChronossusState {
+export function applyDifficultySetup(
+  bot: ChronossusState,
+  config: GameConfig,
+  /** Shuffler for the Pioneers Adventure decks; identity keeps setup deterministic in tests. */
+  shuffle: (ids: string[]) => string[] = (ids) => ids,
+): ChronossusState {
   const extra = config.difficulty.includes(DIFFICULTY_EXTRA_ENERGY)
     ? (config.difficultyValues?.[DIFFICULTY_EXTRA_ENERGY] ?? 0)
     : 0;
@@ -187,7 +220,12 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
   // the player also places a Path marker on the Guardian board at setup).
   const guardians = isGuardiansMode(config.chronossusMode);
   const startingGuardians = config.difficulty.includes(DIFFICULTY_GUARDIANS_START_1) ? 1 : 0;
-  if (extra === 0 && !variableAnomalies && !fractures && !guardians) return bot;
+  // Pioneers seeds the Chronossus Exosuit Upgrade board (A side unless its difficulty
+  // option flips it) and, for `virtual` deck mode, the bot's own shuffled copy of both
+  // Adventure decks. The shuffle is app randomness, like the Energy Pool draw, so it is
+  // done by the caller and handed in via `shuffle`.
+  const pioneers = isPioneersMode(config.chronossusMode);
+  if (extra === 0 && !variableAnomalies && !fractures && !guardians && !pioneers) return bot;
   return {
     ...bot,
     energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra },
@@ -201,6 +239,22 @@ export function applyDifficultySetup(bot: ChronossusState, config: GameConfig): 
         }
       : {}),
     ...(guardians ? { guardians: { owned: startingGuardians, powered: 0 } } : {}),
+    ...(pioneers
+      ? {
+          pioneers: {
+            boardSide: config.difficulty.includes(DIFFICULTY_PIONEERS_BOARD_B)
+              ? ('B' as const)
+              : ('A' as const),
+            upgraded: {},
+            vpTokens: 0,
+            adventures: 0,
+            decks: {
+              '5+': { draw: shuffle(adventureDeckIds('5+')), discard: [] },
+              '10+': { draw: shuffle(adventureDeckIds('10+')), discard: [] },
+            },
+          },
+        }
+      : {}),
   };
 }
 
@@ -639,7 +693,9 @@ export type ChronossusTileActionId =
   | 'tile-extract'
   | 'tile-power-pack'
   // Guardians of the Council
-  | 'tile-acquire-guardian';
+  | 'tile-acquire-guardian'
+  // Pioneers of New Earth
+  | 'tile-adventure';
 
 /** Every action a Chronossus space can trigger (base actions + tile actions). */
 export type ChronossusActionId = ChronobotActionId | ChronossusTileActionId;
@@ -707,6 +763,12 @@ export interface ChronossusActionInput {
    * Only asked from Era 4 (`shouldAskGuardianAvailable`); defaults to true otherwise.
    */
   guardianAvailable?: boolean;
+  /**
+   * Pioneers (C09/C10): the Adventure Action's inputs — the strength-bonus slot the player
+   * put the bot's Path marker on, the Adventure die (the app rolls it), and the two cards
+   * drawn (the app draws them in `virtual` deck mode; the player names them in `shared`).
+   */
+  adventure?: AdventureInput;
 }
 
 export interface ChronossusActionResult {
@@ -732,6 +794,8 @@ export interface ChronossusActionResult {
   usedGuardianSpace?: boolean;
   /** Guardians (C11): which branch the Acquire Guardian Action resolved to. */
   acquireGuardian?: AcquireGuardianOutcome;
+  /** Pioneers (C09/C10): what the Adventure resolved to, for the dialog and History. */
+  adventure?: AdventureResult;
 }
 
 /**
@@ -747,6 +811,13 @@ export interface ChronossusActionResult {
 export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate', 'tile-extract'];
 
 /**
+ * Pioneers: Adventure places an Exosuit on the Adventure board's hex pool space — an
+ * Action space, but not on the Main board, so (like the Valley spaces) it is a Blink
+ * destination and never a Blink source.
+ */
+export const ADVENTURE_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-adventure'];
+
+/**
  * Whether an Action places an Exosuit — including the Valley board's tile Actions.
  *
  * Guardians' Acquire Guardian is deliberately NOT one: it only places an Exosuit when the
@@ -755,7 +826,8 @@ export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate',
  * Worker option it is still entitled to. `resolveAcquireGuardian` does its own placing.
  */
 export function placesExosuitFor(actionId: ChronossusActionId): boolean {
-  if (isTileAction(actionId)) return VALLEY_TILE_ACTIONS.includes(actionId);
+  if (isTileAction(actionId))
+    return VALLEY_TILE_ACTIONS.includes(actionId) || ADVENTURE_TILE_ACTIONS.includes(actionId);
   return actionDef(actionId).placesExosuit === true;
 }
 
@@ -769,7 +841,10 @@ export function placesExosuitFor(actionId: ChronossusActionId): boolean {
  * never Blink **sources**, so they are not recorded in `placedExosuits`. Add a new
  * module's off-board Actions here and the Blink rules follow automatically.
  */
-export const OFF_MAIN_BOARD_ACTIONS: ChronossusActionId[] = [...VALLEY_TILE_ACTIONS];
+export const OFF_MAIN_BOARD_ACTIONS: ChronossusActionId[] = [
+  ...VALLEY_TILE_ACTIONS,
+  ...ADVENTURE_TILE_ACTIONS,
+];
 
 /** Whether this Action's Exosuit lands on the Main board (so it could later Blink). */
 export function isMainBoardPlacement(actionId: ChronossusActionId): boolean {
@@ -784,6 +859,7 @@ const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-extract': { label: 'Extract' },
   'tile-power-pack': { label: 'Power Pack' },
   'tile-acquire-guardian': { label: 'Acquire Guardian' },
+  'tile-adventure': { label: 'Adventure' },
 };
 
 /** Human-facing label for any Chronossus action id. */
@@ -811,6 +887,28 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
     superprojectVps: [...bot.superprojectVps],
     energyPool: { ...bot.energyPool },
     hypersyncTiles: [...bot.hypersyncTiles],
+    // Pioneers: every nested piece has to be copied too. `resolveAdventure` mutates
+    // this slice in place, so a shallow copy would let it write through to the caller's
+    // pre-turn state — History diffs pre against post, and every Pioneers line silently
+    // vanished because both sides were the same object.
+    ...(bot.pioneers
+      ? {
+          pioneers: {
+            ...bot.pioneers,
+            upgraded: { ...bot.pioneers.upgraded },
+            decks: {
+              '5+': {
+                draw: [...bot.pioneers.decks['5+'].draw],
+                discard: [...bot.pioneers.decks['5+'].discard],
+              },
+              '10+': {
+                draw: [...bot.pioneers.decks['10+'].draw],
+                discard: [...bot.pioneers.decks['10+'].discard],
+              },
+            },
+          },
+        }
+      : {}),
   };
 }
 
@@ -911,9 +1009,14 @@ export function resolveAction(
     // Valley board Actions take an Exosuit. No free Valley space sends it to the Valley
     // Capital space (p.11, as with World Capital); neither available is a Failed Action,
     // handled by the shared no-space branch above.
-    if (VALLEY_TILE_ACTIONS.includes(input.actionId)) {
-      const where =
-        input.placementSpace === 'world-council'
+    const offBoardPlacement =
+      VALLEY_TILE_ACTIONS.includes(input.actionId) ||
+      ADVENTURE_TILE_ACTIONS.includes(input.actionId);
+    if (offBoardPlacement) {
+      const adventureSpace = ADVENTURE_TILE_ACTIONS.includes(input.actionId);
+      const where = adventureSpace
+        ? "the Adventure board's hex pool space"
+        : input.placementSpace === 'world-council'
           ? 'the Valley Capital Action space (no Valley Action space was free)'
           : 'that Valley Action space';
       if (input.blink && bot.fluxPool) {
@@ -932,12 +1035,15 @@ export function resolveAction(
         instr.push({
           id: `valley-place-${n}`,
           text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on ${where}.`,
-          detail:
-            'Put an Energy Core from the supply into it. It cannot Blink again from the Valley board.',
+          detail: adventureSpace
+            ? 'Put an Energy Core from the supply into it. Any number of figures can share ' +
+              'the Adventure hex pool, and it cannot Blink again from the Adventure board.'
+            : 'Put an Energy Core from the supply into it. It cannot Blink again from the Valley board.',
         });
       }
     }
     let acquired: ReturnType<typeof resolveAcquireGuardian> | null = null;
+    let adventured: AdventureResult | null = null;
     const autoleap = resolveTileAction(
       bot,
       instr,
@@ -959,8 +1065,17 @@ export function resolveAction(
           acquired = r;
         },
       },
+      input.adventure
+        ? {
+            input: input.adventure,
+            onResolved: (r) => {
+              adventured = r;
+            },
+          }
+        : undefined,
     );
     const res = acquired as ReturnType<typeof resolveAcquireGuardian> | null;
+    const adv = adventured as AdventureResult | null;
     const done = finishAction(state, bot, instr, {
       figurePlaced: res?.figurePlaced ?? tileFigure,
     });
@@ -972,6 +1087,7 @@ export function resolveAction(
         ? { state: { ...done.state, firstPlayer: 'bot' as const } }
         : {}),
       ...(res ? { acquireGuardian: res.outcome } : {}),
+      ...(adv ? { adventure: adv } : {}),
     };
   }
 
@@ -1173,6 +1289,10 @@ function resolveTileAction(
     postImpact2VP: boolean;
     onResolved: (r: ReturnType<typeof resolveAcquireGuardian>) => void;
   },
+  adventure?: {
+    input: AdventureInput;
+    onResolved: (r: AdventureResult) => void;
+  },
 ): boolean {
   const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
   // C14 replaces C04 (a Fractures difficulty option) and is resolved through the same
@@ -1202,6 +1322,25 @@ function resolveTileAction(
     // The B side's 2 VP are scored above, whatever the branch — the tile grants them for
     // resolving the Action, not for succeeding.
     const name = CHRONOSSUS_TILES[code]?.name ?? id;
+    if (eff.autoleap) {
+      instr.push({
+        id: `tile-${code}-autoleap-${n}`,
+        text: `${code} ${name}: advance its Command marker to the next position (Autoleap).`,
+      });
+    }
+    return eff.autoleap === true;
+  }
+  if (eff.adventure && adventure) {
+    const name = CHRONOSSUS_TILES[code]?.name ?? id;
+    if (gains.length > 0) {
+      instr.push({
+        id: `tile-${code}-${n}`,
+        text: `${code} ${name}: the Chronossus ${gains.join(' and ')}.`,
+        ...(vp ? { effect: { vp } } : {}),
+      });
+    }
+    const res = resolveAdventure(bot, instr, n, adventure.input);
+    adventure.onResolved(res);
     if (eff.autoleap) {
       instr.push({
         id: `tile-${code}-autoleap-${n}`,
@@ -1814,6 +1953,18 @@ export function resolveCleanUp(state: GameState): GameState {
       });
     }
   }
+  // Pioneers: the Path markers on the Adventure board's strength-bonus slots come back
+  // too, freeing those slots for next Era (Classic Expansion p.9). The app holds no slot
+  // state — the player is asked which slot is free on every Adventure — so this is purely
+  // an instruction, and only worth showing when the bot actually adventured.
+  if (bot.pioneers) {
+    instructions.push({
+      id: 'cleanup-adventure-markers',
+      text:
+        "Retrieve the Chronossus's Path markers from the Power slots next to the Adventure " +
+        'Action space, along with your own.',
+    });
+  }
   return {
     ...state,
     chronossus: bot,
@@ -1850,6 +2001,11 @@ export interface ChronossusScore {
   technologyVP: number;
   /** Fractures difficulty: 1 VP per Flux Core left in the Flux Pool. 0 otherwise. */
   leftoverFluxVP: number;
+  /**
+   * Pioneers difficulty (`chronossus-pioneers-vp-tokens-count`): 1 VP per VP token on the
+   * Exosuit Upgrade board. 0 otherwise — by default those tokens are Power, not VP.
+   */
+  upgradeTokenVP: number;
   total: number;
 }
 
@@ -1890,6 +2046,9 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
   const leftoverEnergyVP = difficulty?.includes(DIFFICULTY_LEFTOVER_ENERGY_VP)
     ? bot.energyPool.energized
     : 0;
+  // Pioneers: VP tokens on the Exosuit Upgrade board add Power all game but are NOT VP
+  // by default — only the module's third difficulty option makes them count.
+  const upgradeTokenVP = upgradeTokenVp(bot, difficulty ?? []);
   return {
     tokenVP,
     buildingVP,
@@ -1902,6 +2061,7 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
     leftoverEnergyVP,
     technologyVP,
     leftoverFluxVP,
+    upgradeTokenVP,
     total:
       bot.vp +
       timeTravelVP +
@@ -1910,7 +2070,8 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
       anomalyVP +
       leftoverEnergyVP +
       technologyVP +
-      leftoverFluxVP,
+      leftoverFluxVP +
+      upgradeTokenVP,
   };
 }
 

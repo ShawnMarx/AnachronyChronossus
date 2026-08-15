@@ -175,7 +175,12 @@ positions are **percentages** of the board image; `.board-wrap` has `aspect-rati
 
 ```bash
 node pw-validate.mjs shot.png   # Playwright: prints each badge's measured %, saves screenshot
+node pw-check.mjs "<Module label>" <slug>   # renders a mode; prints its board tiles + broken images
 ```
+
+`pw-check.mjs` drives a real browser through setup into a mode and reports which tile images
+are on the board plus any that failed to load — how Pioneers' missing C09/C10 art and its
+missing slot-IV overlay were both caught. Run it for every new module/combo.
 
 `pw-validate.mjs` uses the cached Chromium at
 `C:/Users/shawn/AppData/Local/ms-playwright/chromium_headless_shell-1217/...` — update
@@ -232,6 +237,19 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
   the Blink selection, the "take the bottom one" counting, and the pass rule all follow.
 
 `resolveHypersyncAction` already records nothing for the same reason.
+
+**A module's covering tile needs a board overlay too.** A mode can put a tile on slot IV/V,
+which COVERS a printed Action space (`CoveredAction`). Resolving it correctly is only half
+the job — without an overlay the board still shows the printed Action with no sign a tile
+replaced it. Hypersync's C13-over-Time-Travel had that overlay; Pioneers' C10 over "Recruit
+Genius or Research" had to add its own. Both live in `ChronossusGame.tsx`'s board layer next
+to the slot-tile art.
+
+**Deep-copy a new module's state slice in `cloneChronossus`.** The resolvers mutate the bot
+in place, so a slice that is only shallow-copied gets written through to the caller's
+pre-turn state. History diffs pre against post, so the symptom is silent: every one of that
+module's History lines diffs to nothing and simply never appears. Pioneers shipped this bug
+and it survived the unit tests — it only showed up when playing a turn in the browser.
 
 **A new module's tile needs BOTH action maps.** The engine has `TILE_ACTION_FAMILY` /
 `TILE_ACTION_CODE` (`chronossusTiles.ts`) and the view has its own `FAMILY_TO_TILE_ACTION`

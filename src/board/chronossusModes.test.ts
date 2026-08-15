@@ -270,3 +270,61 @@ describe('Guardians difficulty options', () => {
     );
   });
 });
+
+describe('Pioneers of New Earth modes', () => {
+  it('lays out the base pioneers mode per Solo Opponents p.15', () => {
+    const mode = getMode('pioneers');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C03');
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C09');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C02');
+  });
+
+  it('covers the printed "Recruit Genius or Research" space with C10 in all three modes', () => {
+    for (const id of ['pioneers', 'fractures+pioneers', 'guardians+pioneers']) {
+      const covering = slotCovering(getMode(id), 'recruit-genius-research');
+      expect(covering?.family, id).toBe('C10');
+      expect(covering?.slot, id).toBe('IV');
+      // A covering tile has no Command-track position — it resolves off the printed space.
+      expect(covering?.posKey, id).toBeUndefined();
+    }
+  });
+
+  it('is the first module to use slot IV — no other mode covers Genius/Research', () => {
+    for (const [id, mode] of Object.entries(CHRONOSSUS_MODES)) {
+      if (id.includes('pioneers')) continue;
+      expect(slotCovering(mode, 'recruit-genius-research'), id).toBeUndefined();
+    }
+  });
+
+  it('lays out fractures+pioneers with the fourth tile', () => {
+    const mode = getMode('fractures+pioneers');
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C05');
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C14');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C09');
+    expect(mode.slots).toHaveLength(4);
+  });
+
+  it('lays out guardians+pioneers keeping Acquire Guardian', () => {
+    const mode = getMode('guardians+pioneers');
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C03');
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C09');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C11');
+  });
+
+  it('resolves an Adventure tile from its Command-track position', () => {
+    const mode = getMode('pioneers');
+    const slot = slotAtPos(mode, 'm3s3');
+    expect(slot?.family).toBe('C09');
+    expect(tileCodeFor(slot!.family, undefined)).toBe('C09A');
+    expect(tileCodeFor(slot!.family, { C09: 'B' })).toBe('C09B');
+  });
+
+  it('keeps the I/III swap working with the covering tile in place', () => {
+    const swapped = getMode('pioneers', [DIFFICULTY_SWAP_TILES]);
+    expect(swapped.slots.find((s) => s.slot === 'I')?.family).toBe('C02');
+    expect(swapped.slots.find((s) => s.slot === 'III')?.family).toBe('C03');
+    // Slot IV is untouched by the I/III swap.
+    expect(slotCovering(swapped, 'recruit-genius-research')?.family).toBe('C10');
+  });
+});

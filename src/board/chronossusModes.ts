@@ -106,6 +106,47 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
       { slot: 'V', family: 'C13', covers: 'time-travel' },
     ],
   },
+  pioneers: {
+    id: 'pioneers',
+    label: 'Pioneers of New Earth',
+    available: true,
+    // Solo Opponents p.15: C03A/I, C09A/II, C02A/III, and C10A COVERS the printed
+    // "Recruit Genius or Research" space. Pioneers is the first module to use slot IV —
+    // every other mode leaves that printed Action showing.
+    slots: [
+      { slot: 'I', family: 'C03', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C09', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C02', posKey: SLOT_III_POS },
+      { slot: 'IV', family: 'C10', covers: 'recruit-genius-research' },
+    ],
+  },
+  'fractures+pioneers': {
+    id: 'fractures+pioneers',
+    label: 'Fractures of Time + Pioneers of New Earth',
+    available: true,
+    // Per the setup matrix: Fractures' Extract and C14 take I/II, C09 takes III, and
+    // C10 covers Genius/Research (the "fourth Action tile" the rulebook calls out for
+    // Pioneers combos, p.19).
+    slots: [
+      { slot: 'I', family: 'C05', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C14', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C09', posKey: SLOT_III_POS },
+      { slot: 'IV', family: 'C10', covers: 'recruit-genius-research' },
+    ],
+  },
+  'guardians+pioneers': {
+    id: 'guardians+pioneers',
+    label: 'Guardians of the Council + Pioneers of New Earth',
+    available: true,
+    // Per the setup matrix: C03/I, C09/II, C11 (Acquire Guardian)/III, C10 covers
+    // Genius/Research.
+    slots: [
+      { slot: 'I', family: 'C03', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C09', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C11', posKey: SLOT_III_POS },
+      { slot: 'IV', family: 'C10', covers: 'recruit-genius-research' },
+    ],
+  },
   hypersync: {
     id: 'hypersync',
     label: 'Hypersync Future Actions',

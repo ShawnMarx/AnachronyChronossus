@@ -23,6 +23,21 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       the CI deploy key was rotated (see above).
 
 ## App
+- [ ] **Show real die art on the existing Paradox / Research-shape rolls** (2026-08-15) —
+      `public/assets/solo/paradox-die-{0,1,2}.png` and `shape-die-{circle,triangle,square}.png`
+      are extracted and committed, but nothing renders them yet; both rolls still show text.
+      Both bots share these dice. Extracted alongside the Pioneers Adventure die — see the
+      die-art notes in `docs/plans/LOG_pioneers.md` for the TTS atlas geometry.
+      **Shape-die display rule:** the die face *replaces the rolled-shape readout only* —
+      it does not replace the outcome art beside it.
+      - **Research:** show the die face, and **keep the Breakthrough art next to it** (the
+        shape rolled vs. the Breakthrough actually taken are two different things).
+      - **Assimilate (Fractures, C04):** the **black die alone**, no shape art beside it —
+        that roll resolves to an Operator / Technology / fewer-of, never a Breakthrough, so
+        pairing it with Breakthrough art would state something false.
+      **The AI / Solo die is deliberately NOT extracted** (decided 2026-08-15). `.bot-die`
+      draws it in CSS — black face, red `tabular-nums` numeral — which stays sharp at any
+      size and retints per bot; a raster crop would be a downgrade. Leave it as is.
 - [ ] **`impact` flag** is reminder-only (Era-4 Clean Up note); no logic reads it.
       Wire it if Collapsing-Capital timing/automation is ever wanted.
 - [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
@@ -52,6 +67,17 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       both views default it now.
 - [ ] **Guardian board art/overlays** — the board stays player-managed (the app names the
       Path-marked slot in text). Only worth doing if the Valley board ever gets art too.
+
+## Pioneers follow-ups (from the 2026-08-15 module build)
+- [ ] **Manual pass on `fractures+pioneers`** — the mode renders correctly and the Blink
+      interaction is unit-tested, but the scripted playthrough never rolled onto its
+      Adventure (C09 sits at marker 5 step 4 there), so the **Blink-check → Adventure gate
+      was never exercised in a browser**. Also unverified on a device: Undo re-showing the
+      same roll and the same two drawn cards, and the Adventure dialog at tablet width.
+- [ ] **Adventure card follow-ups stay manual** — cards that construct a specific building
+      or grant Research/Recruit Actions emit a player instruction rather than driving the
+      existing Construct/Research flows. Wiring them through would let the app score the
+      building VP itself.
 
 ## Guided-phase UX (from the 2026-08-11 pass)
 - [ ] **Paradox roll log clears on Undo** — `ParadoxPhaseBody` keeps its roll log and
@@ -93,12 +119,13 @@ archived 2026-08-13 in
 **Guardians of the Council** + the `guardians+hypersync` combo shipped 2026-08-14 —
 archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 
+**Pioneers of New Earth** + the `fractures+pioneers` / `guardians+pioneers` combos shipped
+2026-08-15 (on `staging`) — see `docs/plans/PLAN_pioneers.md` and `LOG_pioneers.md`.
+
 Still backlog (not yet in a plan):
-- [ ] **More modules** — Doomsday, Pioneers (stubbed in the Module menu). Each becomes its
-      own `/plan`. Note the rulebook's limits (Solo Opponents p.18): Doomsday combines with
-      nothing, and Fractures + Guardians is not allowed. Pioneers also unlocks the
-      `guardians+pioneers` and `fractures+pioneers` combos (a 4th tile covers Recruit
-      Genius / Research).
+- [ ] **More modules** — Doomsday is the last one (stubbed in the Module menu); it becomes
+      its own `/plan`. Per the rulebook's limits (Solo Opponents p.18) Doomsday combines
+      with nothing, and Fractures + Guardians is not allowed.
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 

@@ -89,6 +89,14 @@ export interface GameConfig {
    * mode), keyed by id (e.g. 'alternate-timelines', 'variable-anomalies').
    */
   extraModules?: string[];
+  /**
+   * Pioneers of New Earth: where the bot's Adventure cards come from.
+   * `virtual` (the default) — the app keeps its own shuffled copy of both decks, draws
+   * for the bot and shows the card art, leaving the physical decks untouched.
+   * `shared` — the bot draws from the same physical decks and the player names the cards.
+   * Chosen at module selection, and switchable later from the settings menu.
+   */
+  adventureDeckMode?: 'virtual' | 'shared';
 }
 
 /** A resource bundle, e.g. gains or costs. */

@@ -5,9 +5,10 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-14): Chronobot, Chronossus base, all 10 difficulty options, Alternate
-> Timelines, Variable Anomalies, Fractures of Time and Guardians of the Council are complete
-> and live in production. No plan is active.**
+> **Status (2026-08-15): Chronobot, Chronossus base, all 10 difficulty options, Alternate
+> Timelines, Variable Anomalies, Fractures of Time, Guardians of the Council and Pioneers of
+> New Earth are complete. Pioneers is on `staging`; everything before it is live in
+> production. The active plan is `docs/plans/PLAN_pioneers.md`.**
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
@@ -40,9 +41,14 @@
 > the Guardian as a powered-first, placed-last Exosuit, its own reserved board space as a
 > no-space fallback, C11 Acquire Guardian, and two difficulty options. Four playtest rounds
 > fixed two real rules bugs and a lost-Autoleap bug. Archived to
-> `docs/complete/20260814_GUARDIANS_COMPLETED.md`; **no plan is active**. Remaining candidates
-> (Doomsday, Pioneers, Chronossus stats/history) stay in `TODO.md`; each becomes its own
-> `/plan`. The Chronossus knowledge, references, and design
+> `docs/complete/20260814_GUARDIANS_COMPLETED.md`.
+> **2026-08-15:** **Pioneers of New Earth** shipped to `staging` with both combos
+> (`fractures+pioneers`, `guardians+pioneers`) — the Adventure Action, the Chronossus Exosuit
+> Upgrade board, all 36 Adventure cards with the bot's four conversions, two deck modes
+> (its own shuffled copy by default, showing real card art), and the first use of the
+> slot-IV covering path (C10 over "Recruit Genius or Research"). See
+> `docs/plans/PLAN_pioneers.md` + `LOG_pioneers.md`. Remaining candidates (Doomsday,
+> Chronossus stats/history) stay in `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
 > decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)

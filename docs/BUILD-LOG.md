@@ -2,6 +2,37 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-15 — Pioneers of New Earth
+
+The Classic expansion's Pioneers module for the Chronossus, plus both combos it unlocks
+(`fractures+pioneers`, `guardians+pioneers`). The module adds one Action — **Adventure**
+(tiles C09/C10) — and one piece of state, the **Chronossus Exosuit Upgrade board**.
+
+An Adventure runs two ordered steps. **Perform Adventure**: the app asks which strength-bonus
+slot the player put the bot's Path marker on (that column is shared with the player's own
+markers, so it never assumes), adds it to the Upgrade board's Power, picks the 5+ or 10+ deck
+at the 9 threshold, rolls the Adventure die, and takes the card with the **highest Power
+requirement it meets** — or gains 1 VP if it meets neither. **Power Upgrade**: it moves the
+Resource it has most of onto its Upgrade board (ties Titanium > Gold > Uranium > Neutronium),
+or places a VP token when nothing fits. All 36 Adventure cards are transcribed with the four
+p.15 conversions applied (W → VP, Morale → 2 VP, choices → Research, purple/ongoing → discard
+for 3 VP + 1 Energy Core).
+
+**Two deck modes**, chosen at module selection and switchable in ⚙: the bot draws from its own
+shuffled copy and the app **shows the real card art** (default — your physical decks are never
+touched), or it draws from your decks and you name the cards.
+
+Pioneers is the first module to use **slot IV**, covering the printed "Recruit Genius or
+Research" space with C10 — which needed a board overlay of its own, since only Hypersync's
+C13-over-Time-Travel had that path.
+
+Playing it surfaced a bug tests had missed: `cloneChronossus` was shallow, so `resolveAdventure`
+wrote through to the pre-turn state and every Pioneers History line diffed to nothing. Fixed
+with a regression test. New art extracted from the TTS mod: the 36 Adventure cards, the C09/C10
+tiles (whose B-side art independently confirmed their coded effects), both Upgrade board sides,
+the Adventure die faces, and a Power fist icon. Also extracted, but not yet wired up, the
+shared Paradox and Research-shape die faces (see `TODO.md`).
+
 ## 2026-08-14 — Guardians of the Council
 
 The Classic expansion's Guardians module for the Chronossus, plus the `guardians+hypersync`

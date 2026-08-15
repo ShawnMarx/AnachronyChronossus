@@ -3128,6 +3128,11 @@ function StatsBar({
   onOpenRules: () => void;
   simpleView: boolean;
   onToggleSimpleView: () => void;
+  /**
+   * Pioneers only: where the bot's Adventure cards come from, switchable mid-game.
+   * Null (the Chronobot, and every non-Pioneers Chronossus game) hides the item.
+   */
+  adventureDeck?: { mode: 'virtual' | 'shared'; onToggle: () => void } | null;
 }) {
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
@@ -3374,6 +3379,7 @@ export function SettingsMenu({
   onToggleHistory,
   simpleView,
   onToggleSimpleView,
+  adventureDeck = null,
 }: {
   debug: boolean;
   onToggleDebug: () => void;
@@ -3386,6 +3392,11 @@ export function SettingsMenu({
   onToggleHistory: () => void;
   simpleView: boolean;
   onToggleSimpleView: () => void;
+  /**
+   * Pioneers only: where the bot's Adventure cards come from, switchable mid-game.
+   * Null (the Chronobot, and every non-Pioneers Chronossus game) hides the item.
+   */
+  adventureDeck?: { mode: 'virtual' | 'shared'; onToggle: () => void } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [showMyHistory, setShowMyHistory] = useState(false);
@@ -3442,6 +3453,24 @@ export function SettingsMenu({
             />
             Command View
           </button>
+          {adventureDeck && (
+            <button
+              className="settings-item toggle"
+              onClick={adventureDeck.onToggle}
+              role="menuitemcheckbox"
+              aria-checked={adventureDeck.mode === 'virtual'}
+              title={
+                adventureDeck.mode === 'virtual'
+                  ? 'The app draws the bot’s Adventure cards from its own shuffled deck'
+                  : 'The bot draws from your physical Adventure decks; you name the cards'
+              }
+            >
+              <span>Bot’s own Adventure deck</span>
+              <span className={`sw ${adventureDeck.mode === 'virtual' ? 'on' : ''}`}>
+                {adventureDeck.mode === 'virtual' ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          )}
           {/* Debug mode is admin-only to turn ON, but always offer to turn it OFF
               (so it can never get stuck on). Its dev sub-toggles are debug-only. */}
           {(user?.isAdmin || debug) && (
