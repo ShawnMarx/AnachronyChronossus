@@ -487,13 +487,13 @@ const ADVENTURE_DESTINATION = "the Adventure board's hex pool space";
  * left-to-right order, NOT the Power Upgrade tie-break order.
  */
 const UPGRADE_SLOT_POS = [
-  { resource: 'titanium' as const, x: 14.5, y: 59, power: 2 },
-  { resource: 'uranium' as const, x: 37.5, y: 59, power: 3 },
-  { resource: 'gold' as const, x: 60.5, y: 59, power: 3 },
-  { resource: 'neutronium' as const, x: 83.5, y: 59, power: 4 },
+  { resource: 'titanium' as const, x: 14.5, y: 57, power: 2 },
+  { resource: 'uranium' as const, x: 37.5, y: 57, power: 3 },
+  { resource: 'gold' as const, x: 60.5, y: 57, power: 3 },
+  { resource: 'neutronium' as const, x: 83.5, y: 57, power: 4 },
 ];
 /** The VP-token box on the same art. */
-const UPGRADE_VP_POS = { x: 50, y: 72 };
+const UPGRADE_VP_POS = { x: 79, y: 73 };
 
 /** Printed Action spaces a mode's tile can cover (slots IV/V). */
 const COVERED_ACTIONS: CoveredAction[] = ['time-travel', 'recruit-genius-research'];
