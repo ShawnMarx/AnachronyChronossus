@@ -15,6 +15,13 @@ import {
   chronossusDifficultyLabel,
 } from '../phases/ChronossusSetupFlow';
 import { emptyChronossusState, Chronossus } from '../engine';
+import { TILE_DESC, tileInstruction } from './tileText';
+import { TILE_ACTION_FAMILY } from './chronossusTiles';
+
+/** The tile actions a mode can actually put in play (keys of TILE_ACTION_FAMILY). */
+const FAMILY_TO_TILE_ACTION_FOR_TEST = Object.fromEntries(
+  Object.keys(TILE_ACTION_FAMILY).map((a) => [a, a]),
+) as Record<string, keyof typeof TILE_ACTION_FAMILY>;
 
 const { operatorWorkerSlot } = Chronossus;
 
@@ -326,5 +333,39 @@ describe('Pioneers of New Earth modes', () => {
     expect(swapped.slots.find((s) => s.slot === 'III')?.family).toBe('C03');
     // Slot IV is untouched by the I/III swap.
     expect(slotCovering(swapped, 'recruit-genius-research')?.family).toBe('C10');
+  });
+});
+
+describe('every implemented tile explains itself', () => {
+  // Pioneers shipped C09/C10 with no branch in `tileInstruction`, so tapping an Adventure
+  // tile said "The Chronossus does nothing this turn" — the fallback meant for Reboot.
+  // A tile that resolves to a real Action must never render that line.
+  const IMPLEMENTED = [
+    'C01A', 'C01B', 'C02A', 'C02B', 'C03A', 'C03B',
+    'C04A', 'C04B', 'C05A', 'C05B', 'C06A', 'C06B',
+    'C09A', 'C09B', 'C10A', 'C10B', 'C11A', 'C11B',
+    'C14A', 'C14B',
+  ];
+  const DOES_NOTHING = /does nothing this turn/;
+
+  it('only Reboot (C01A) describes itself as doing nothing', () => {
+    for (const code of IMPLEMENTED) {
+      const text = tileInstruction(code);
+      if (code === 'C01A') expect(text, code).toMatch(DOES_NOTHING);
+      else expect(text, code).not.toMatch(DOES_NOTHING);
+    }
+  });
+
+  it('names the Adventure on both C09/C10 sides, with the B-side bonus after it', () => {
+    for (const code of ['C09A', 'C09B', 'C10A', 'C10B']) {
+      expect(tileInstruction(code), code).toMatch(/performs an Adventure/);
+    }
+    expect(tileInstruction('C09B')).toMatch(/Adventure[\s\S]*\+1 VP/);
+    expect(tileInstruction('C10B')).toMatch(/Adventure[\s\S]*Energy Core/);
+  });
+
+  it('gives every in-play tile action a Command-view description', () => {
+    const actions = new Set(Object.values(FAMILY_TO_TILE_ACTION_FOR_TEST));
+    for (const a of actions) expect(TILE_DESC[a], a).toBeTruthy();
   });
 });

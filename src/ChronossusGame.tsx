@@ -111,6 +111,7 @@ import {
   liveTileCode,
   tileEffect,
 } from './board/chronossusTiles';
+import { TILE_DESC, tileInstruction } from './board/tileText';
 import {
   adventureCardArt,
   adventureDeckCards,
@@ -389,16 +390,6 @@ const CAL_KEYS: string[] = [
 ];
 
 /** Short effect text for the modular tile actions (for slot tooltips). */
-const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
-  'tile-reboot': 'Reboot: the Chronossus does nothing',
-  'tile-score': 'Score: +2 VP',
-  'tile-energy-pack': 'Energy Pack: +1 Energy Core',
-  'tile-assimilate': 'Assimilate: roll the shape die — Operator + Flux Core, or a Technology',
-  'tile-extract': 'Extract: +2 Flux Cores and +2 Energy Cores',
-  'tile-power-pack': 'Power Pack: +1 Energy Core and +1 Flux Core',
-  'tile-acquire-guardian':
-    'Acquire Guardian: World Council + the leftmost Guardian free, or spend a Worker',
-};
 
 const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
 const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
@@ -3852,38 +3843,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 // --------------------------------------------------------------------------
 
 /** Friendly, player-facing instruction derived from a tile code's effect. */
-function tileInstruction(code: string): string {
-  const eff = tileEffect(code);
-  const parts: string[] = [];
-  if (eff.assimilate)
-    parts.push(
-      'Assimilates — roll the Research shape die: Circle, it recruits an Operator and ' +
-        'gains 1 Flux Core; Triangle, it takes a Technology card (secondary stack); ' +
-        'Square, whichever it has fewer of (Operator if tied). An Operator is a wildcard ' +
-        'Worker — it fills the topmost empty space of the Worker collection (with none ' +
-        'left in the Valley it is a Failed Action for +1 VP)',
-    );
-  if (eff.vp) parts.push(`scores +${eff.vp} VP`);
-  if (eff.energyCores)
-    parts.push(
-      `adds ${eff.energyCores} non-exhausted Energy Core${eff.energyCores === 1 ? '' : 's'} to its Energy Pool`,
-    );
-  if (eff.fluxCores)
-    parts.push(
-      `adds ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} to its Flux Pool`,
-    );
-  if (eff.acquireGuardian)
-    parts.push(
-      'acquires a Guardian — an Exosuit onto the World Council space (becoming First ' +
-        'Player) and the leftmost available Guardian for free, or, if that space is taken, ' +
-        'a spent Worker instead',
-    );
-  let s = parts.length
-    ? `The Chronossus ${parts.join(' and ')}.`
-    : 'The Chronossus does nothing this turn — its Command marker still advances.';
-  if (eff.autoleap) s += ' Its Command marker then advances one EXTRA step (Autoleap).';
-  return s;
-}
 
 /**
  * Pioneers: what the Adventure produced — the Power sum with the rolled die, both drawn
