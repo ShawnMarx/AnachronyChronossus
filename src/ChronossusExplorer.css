@@ -1066,6 +1066,16 @@ button.eoa-flag.tap-flag {
   height: 1em;
   vertical-align: -0.12em;
   object-fit: contain;
+  /* The bare fist is dark red on transparent, which nearly disappears against the warm
+     dark panels. Outline it in the Chronossus teal wherever it stands ON ITS OWN — the
+     die faces and the VP-token chip carry their own backgrounds and are left alone. */
+  filter: drop-shadow(0.75px 0 0 var(--sp-accent-2)) drop-shadow(-0.75px 0 0 var(--sp-accent-2))
+    drop-shadow(0 0.75px 0 var(--sp-accent-2)) drop-shadow(0 -0.75px 0 var(--sp-accent-2));
+}
+.cx-power-icon.lg {
+  filter: drop-shadow(1px 0 0 var(--sp-accent-2)) drop-shadow(-1px 0 0 var(--sp-accent-2))
+    drop-shadow(0 1px 0 var(--sp-accent-2)) drop-shadow(0 -1px 0 var(--sp-accent-2))
+    drop-shadow(0 0 4px rgba(63, 177, 177, 0.45));
 }
 .cx-power-icon.lg {
   width: 1.6rem;
