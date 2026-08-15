@@ -125,6 +125,7 @@ import {
   slotAtPos,
   slotCovering,
   tileCodeFor,
+  type CoveredAction,
 } from './board/chronossusModes';
 import {
   DIFFICULTY_HYPERSYNC_TARGETED,
@@ -480,6 +481,22 @@ const FC_ICON = '/assets/solo/chronossus/flux-core.png';
 const POWER_ICON = '/assets/solo/chronossus/power-icon.png';
 /** Where an Adventure placement (or Blink) lands — the app never renders that board. */
 const ADVENTURE_DESTINATION = "the Adventure board's hex pool space";
+/**
+ * Where each Resource slot sits on the Upgrade board art, as a % of the image — measured
+ * off `upgrade-board-A.jpg` (565x800); both sides share the layout. This is the printed
+ * left-to-right order, NOT the Power Upgrade tie-break order.
+ */
+const UPGRADE_SLOT_POS = [
+  { resource: 'titanium' as const, x: 14.5, y: 59, power: 2 },
+  { resource: 'uranium' as const, x: 37.5, y: 59, power: 3 },
+  { resource: 'gold' as const, x: 60.5, y: 59, power: 3 },
+  { resource: 'neutronium' as const, x: 83.5, y: 59, power: 4 },
+];
+/** The VP-token box on the same art. */
+const UPGRADE_VP_POS = { x: 50, y: 72 };
+
+/** Printed Action spaces a mode's tile can cover (slots IV/V). */
+const COVERED_ACTIONS: CoveredAction[] = ['time-travel', 'recruit-genius-research'];
 const EFC_ICON = '/assets/solo/chronossus/exhausted-flux-core.png';
 const EXOSUIT_ICON = '/assets/solo/chronossus/exosuit.png';
 const PATH_ICON = '/assets/solo/chronossus/path-marker.png';
@@ -509,6 +526,130 @@ function CxExosuit({
         </span>
       )}
     </span>
+  );
+}
+
+/**
+ * Pioneers: the Chronossus Exosuit Upgrade board, shown as the real component with its
+ * current state marked on it — which Resource slots have been filled by Power Upgrades,
+ * how many VP tokens are on it, and the Power that adds up to.
+ *
+ * The board itself is player-managed (like the Valley and Guardian boards), so this is a
+ * read-only status view: it never asks for anything, it just shows what the app believes
+ * is sitting there, and the Power total is what decides which Adventure deck it draws from.
+ */
+function CxUpgradeBoardPopout({
+  bot,
+  onClose,
+}: {
+  bot: ChronossusState;
+  onClose: () => void;
+}) {
+  const [showTokenCount, setShowTokenCount] = useState(false);
+  const p = bot.pioneers;
+  if (!p) return null;
+  const breakdown = Chronossus.powerBreakdown(bot);
+  const total = Chronossus.boardPower(bot);
+  // The VP-token spot is a tracker: it reads as the Power those tokens add (which is what
+  // matters in play), and tapping it swaps to how many tokens are actually sitting there.
+  const tokenPower = p.vpTokens * Chronossus.VP_TOKEN_POWER[p.boardSide];
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div
+        className="cx-upgrade-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-label="Chronossus Exosuit Upgrade board"
+      >
+        <div className="dp-head">
+          <div className="dp-title">
+            <h2>Exosuit Upgrade board</h2>
+          </div>
+          <button className="dp-close" onClick={onClose} aria-label="Close">
+            &times;
+          </button>
+        </div>
+        <div className="cx-upgrade-body">
+          <div className="cx-upgrade-art">
+            <img
+              src={`/assets/solo/chronossus/upgrade-board-${p.boardSide}.jpg`}
+              alt={`Chronossus Exosuit Upgrade board, ${p.boardSide} side`}
+            />
+            {/* A filled slot gets its Resource cube laid over the printed placeholder, so
+                the pop-out reads like the physical board rather than a list. */}
+            {UPGRADE_SLOT_POS.map((slot) => (
+              <span
+                key={slot.resource}
+                className={`cx-upgrade-slot ${p.upgraded[slot.resource] ? 'filled' : ''}`}
+                style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
+                title={
+                  p.upgraded[slot.resource]
+                    ? `${slot.resource}: upgraded (+${slot.power} Power)`
+                    : `${slot.resource}: empty (+${slot.power} Power when filled)`
+                }
+              >
+                {p.upgraded[slot.resource] && (
+                  <img src={`/assets/solo/chronossus/resource-${slot.resource}.png`} alt="" />
+                )}
+              </span>
+            ))}
+            {p.vpTokens > 0 && (
+              <button
+                type="button"
+                className="cx-upgrade-tokens"
+                style={{ left: `${UPGRADE_VP_POS.x}%`, top: `${UPGRADE_VP_POS.y}%` }}
+                onClick={() => setShowTokenCount((v) => !v)}
+                title={
+                  showTokenCount
+                    ? `${p.vpTokens} VP token${p.vpTokens === 1 ? '' : 's'} on the board`
+                    : `+${tokenPower} Power from its VP tokens — tap for the token count`
+                }
+                aria-label={`VP tokens: ${p.vpTokens}, worth ${tokenPower} Power`}
+              >
+                {showTokenCount ? (
+                  <>
+                    {p.vpTokens} <span className="cx-upgrade-tokens-unit">VP</span>
+                  </>
+                ) : (
+                  <>
+                    +{tokenPower}
+                    <img src={POWER_ICON} alt="" aria-hidden="true" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+          <div className="cx-upgrade-side">
+            <p className="cx-upgrade-total">
+              <b>{total}</b>
+              <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
+            </p>
+            <ul className="cx-upgrade-rows">
+              {breakdown.map((b) => (
+                <li key={b.label}>
+                  <span>{b.label}</span>
+                  <b>+{b.power}</b>
+                </li>
+              ))}
+            </ul>
+            <p className="cx-upgrade-note">
+              At <b>{Chronossus.BIG_DECK_THRESHOLD}</b> or more Power — including the Path
+              marker&rsquo;s bonus, before the die — it draws from the <b>10+</b> Adventure
+              deck.
+            </p>
+            {p.vpTokens > 0 && (
+              <p className="cx-upgrade-note">
+                Its {p.vpTokens} VP token{p.vpTokens === 1 ? '' : 's'} add Power but are{' '}
+                <b>not</b> VP, unless that difficulty option is on.
+              </p>
+            )}
+            <p className="cx-upgrade-note">
+              Adventures completed: <b>{p.adventures}</b>.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -632,6 +773,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   >(null);
   /** Fractures: this Adventure is being taken by Blinking rather than placing. */
   const advBlinkedRef = useRef(false);
+  /** Pioneers: the Exosuit Upgrade board pop-out (opened from under the Exo tracker). */
+  const [showUpgradeBoard, setShowUpgradeBoard] = useState(false);
   /**
    * The Adventure's inputs, kept in a ref so Undo re-shows the SAME roll and the SAME two
    * cards rather than rolling again (the roll-persistence rule the other flows follow).
@@ -1691,10 +1834,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
     const [x, y] = positions[key] ?? [0, 0];
     const h = nearestHotspot(x, y);
-    // Hypersync mode covers the Time Travel space with C13.
-    if (h.action === 'time-travel') {
-      const hs = hypersyncCodeForTimeTravel();
-      if (hs) return { num, action: h.action, label: CHRONOSSUS_TILES[hs]?.name ?? 'Hypersync', tile: hs };
+    // A mode can COVER a printed Action space with a tile — Hypersync's C13 over Time
+    // Travel, Pioneers' C10 over "Recruit Genius or Research". The row has to name the
+    // tile actually sitting there; naming the printed Action tells the player to take an
+    // Action the tile replaced. Driven off `slotCovering` so a new module's covered space
+    // works without another special case here.
+    const covered = COVERED_ACTIONS.find((c) => c === h.action);
+    const coveringSlot = covered ? slotCovering(mode, covered) : undefined;
+    if (coveringSlot) {
+      const code = tileCodeFor(coveringSlot.family, tileSides);
+      return {
+        num,
+        action: h.action,
+        label: CHRONOSSUS_TILES[code]?.name ?? CHRONOBOT_ACTIONS[h.action].label,
+        tile: code,
+      };
     }
     return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: null };
   });
@@ -2696,6 +2850,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // The shared ⚙ settings menu (identical to the Chronobot; themed via the
   // Chronossus tokens). One element, rendered in both the top bar and the rules
   // frame — each gets its own open state.
+  const upgradeBoardModal = showUpgradeBoard && bot.pioneers && (
+    <CxUpgradeBoardPopout bot={bot} onClose={() => setShowUpgradeBoard(false)} />
+  );
+
   const settingsMenu = (
     <SettingsMenu
       debug={debug}
@@ -3295,6 +3453,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return (
       <div className="chronossus-harness">
         {rulesModal}
+      {upgradeBoardModal}
         {topBar}
         {debugBar}
         {boardStage}
@@ -3344,20 +3503,36 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               countLabel="Bot Turns"
               extraFlags={
                 <TapFlagRow>
-                  <TapFlag
-                    className="cx-exosuit-flag"
-                    hint={
-                      (bot.guardians?.powered ?? 0) > 0
-                        ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
-                        : 'Powered Exosuits available this Era'
-                    }
-                  >
-                    <CxExosuit
-                      count={bot.exosuitsAvailable}
-                      guardians={bot.guardians?.powered ?? 0}
-                      size={18}
-                    />
-                  </TapFlag>
+                  <span className="cx-exo-stack">
+                    <TapFlag
+                      className="cx-exosuit-flag"
+                      hint={
+                        (bot.guardians?.powered ?? 0) > 0
+                          ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
+                          : 'Powered Exosuits available this Era'
+                      }
+                    >
+                      <CxExosuit
+                        count={bot.exosuitsAvailable}
+                        guardians={bot.guardians?.powered ?? 0}
+                        size={18}
+                      />
+                    </TapFlag>
+                    {/* Pioneers: the Upgrade board is a component the app never renders on
+                        the main board, so its status gets a button right under the Exosuit
+                        tracker it belongs to. */}
+                    {bot.pioneers && (
+                      <button
+                        type="button"
+                        className="cx-upgrade-btn"
+                        onClick={() => setShowUpgradeBoard(true)}
+                        title="Show the Chronossus's Exosuit Upgrade board and its current Power"
+                      >
+                        <img src={POWER_ICON} alt="" aria-hidden="true" />
+                        {Chronossus.boardPower(bot)} Power
+                      </button>
+                    )}
+                  </span>
                   <TapFlag
                     className="cx-energy-flag"
                     hint="Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores"
@@ -3508,6 +3683,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return (
       <>
         {rulesModal}
+      {upgradeBoardModal}
         {debugBar}
         <ChronossusSetupFlow onHome={onHome} onBegin={beginGame} />
       </>
@@ -3519,6 +3695,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return (
       <div className="chronossus-harness">
         {rulesModal}
+      {upgradeBoardModal}
         {topBar}
         {debugBar}
         <CxScoreScreen
@@ -3817,6 +3994,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   return (
     <>
       {rulesModal}
+      {upgradeBoardModal}
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
       {showFirstPlayer && (

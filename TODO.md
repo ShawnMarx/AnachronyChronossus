@@ -69,6 +69,11 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       Path-marked slot in text). Only worth doing if the Valley board ever gets art too.
 
 ## Pioneers follow-ups (from the 2026-08-15 module build)
+- [ ] **Calibrate the Upgrade-board pop-out coordinates** — the four Resource-slot markers
+      and the VP-token tracker are positioned by eye off `upgrade-board-A.jpg` (565×800),
+      in `UPGRADE_SLOT_POS` / `UPGRADE_VP_POS` in `ChronossusGame.tsx`. They land correctly
+      but were never set in calibrate mode like the main board's overlays. The pop-out is a
+      modal, so calibrate mode doesn't currently reach it.
 - [ ] **Manual pass on `fractures+pioneers`** — the mode renders correctly and the Blink
       interaction is unit-tested, but the scripted playthrough never rolled onto its
       Adventure (C09 sits at marker 5 step 4 there), so the **Blink-check → Adventure gate

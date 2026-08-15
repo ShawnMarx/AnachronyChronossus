@@ -552,3 +552,11 @@
 .rules-box-text p:last-child {
   margin-bottom: 0;
 }
+
+/* The Paradox die shown as its real face (blank / 1 Paradox / 2 Paradoxes) in the
+   Paradox and Warp phases, replacing the old teal number chip. Both bots use it. */
+.paradox-die-face {
+  flex: 0 0 auto;
+  object-fit: contain;
+  border-radius: 8px;
+}

@@ -2108,6 +2108,30 @@ function CleanUpPhaseBody({
 }
 
 /**
+ * The Paradox die, shown as the real component face instead of a plain number chip.
+ *
+ * The physical die has 6 sides but only 3 distinct faces — blank (0), one Paradox (1) and
+ * a double Paradox (2) — which is exactly `rollParadoxDie`'s [0,1,1,1,1,2]. Used by both
+ * the Paradox phase and the Warp phase, for both bots.
+ *
+ * This replaces the ROLL READOUT only. Whatever the roll produced (a Paradox token, a Warp
+ * tile) still shows beside it, because the face rolled and the thing gained are two
+ * different statements.
+ */
+export function ParadoxDieFace({ n, size = 44 }: { n: number; size?: number }) {
+  const face = n === 0 ? 0 : n === 2 ? 2 : 1;
+  return (
+    <img
+      className="paradox-die-face"
+      src={`/assets/solo/paradox-die-${face}.png`}
+      alt={`Paradox die: ${n === 0 ? 'blank' : n === 2 ? 'double Paradox' : 'one Paradox'}`}
+      title={`Rolled ${n} Paradox${n === 1 ? '' : 'es'}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/**
  * Phase 4 (Warp) body: Warping happens in player order. You place your own 0–2
  * Warp tiles; the app rolls the Paradox die for the Chronobot and places that
  * many Warp tiles for it (0, 1, or 2 — it gains nothing and any tile will do).
@@ -2178,7 +2202,7 @@ export function WarpPhaseBody({
       ) : (
         <>
           <div className="warp-roll-result">
-            <span className="warp-roll-num">{rolled}</span>
+            <ParadoxDieFace n={rolled} />
             {rolled > 0 && (
               <img className="warp-roll-tile" src={warpTileSrc} alt={`${botName} Warp tile`} />
             )}
@@ -2330,7 +2354,7 @@ export function ParadoxPhaseBody({
         <div className="paradox-log">
           {rolls.map((r, i) => (
             <div key={i} className="warp-roll-result">
-              <span className="warp-roll-num">{r.n}</span>
+              <ParadoxDieFace n={r.n} />
               {/* Blank rolls show no symbol, same as a 0 Warp roll shows no tile. */}
               {r.n > 0 && (
                 <img className="warp-roll-tile" src={icons.paradox} alt="Paradox" />

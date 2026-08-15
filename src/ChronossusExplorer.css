@@ -1201,3 +1201,167 @@ button.eoa-flag.tap-flag {
   font-weight: 800;
   color: var(--sp-accent-2);
 }
+
+/* --- Pioneers: the Exosuit Upgrade board pop-out -------------------------- */
+
+/* The Exo tracker and its Upgrade-board button, stacked. */
+.cx-exo-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+}
+.cx-upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.12rem 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--sp-text-2);
+  background: rgba(var(--sp-accent-rgb), 0.16);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.cx-upgrade-btn:hover {
+  background: rgba(var(--sp-accent-rgb), 0.28);
+}
+.cx-upgrade-btn img {
+  width: 0.85em;
+  height: 0.85em;
+  object-fit: contain;
+}
+
+.cx-upgrade-modal {
+  background: var(--sp-panel);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
+  border-radius: 12px;
+  max-width: 640px;
+  width: min(94vw, 640px);
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+}
+.cx-upgrade-body {
+  display: flex;
+  gap: 1rem;
+  padding: 0.85rem 1rem 1.1rem;
+  align-items: flex-start;
+}
+@media (max-width: 560px) {
+  .cx-upgrade-body {
+    flex-direction: column;
+  }
+}
+
+/* The board art, with the current state marked on it. */
+.cx-upgrade-art {
+  position: relative;
+  flex: 0 0 auto;
+  width: 15rem;
+  max-width: 100%;
+}
+.cx-upgrade-art img {
+  display: block;
+  width: 100%;
+  border-radius: 7px;
+}
+/* One marker per Resource slot: an empty ring, or the Resource's own cube when filled. */
+.cx-upgrade-slot {
+  position: absolute;
+  width: 1.8rem;
+  height: 1.8rem;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
+}
+.cx-upgrade-slot.filled {
+  box-shadow:
+    inset 0 0 0 2px var(--sp-accent-2),
+    0 0 10px rgba(63, 177, 177, 0.55);
+  background: rgba(0, 0, 0, 0.35);
+}
+.cx-upgrade-slot img {
+  width: 88%;
+  height: 88%;
+  object-fit: contain;
+}
+.cx-upgrade-tokens {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  min-width: 1.9rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  gap: 0.12rem;
+  border: none;
+  cursor: pointer;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+  color: #241000;
+  background: var(--sp-accent-3);
+  box-shadow: 0 0 8px rgba(232, 146, 46, 0.6);
+}
+/* The Power fist inside the tracker chip — without a size it renders at its natural
+   256px and swamps the board art. */
+.cx-upgrade-tokens img {
+  width: 0.85em;
+  height: 0.85em;
+  object-fit: contain;
+}
+.cx-upgrade-tokens-unit {
+  font-size: 0.7em;
+  font-weight: 700;
+}
+
+.cx-upgrade-side {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cx-upgrade-total {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.5rem;
+}
+.cx-upgrade-total b {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--sp-accent-2);
+  font-variant-numeric: tabular-nums;
+}
+.cx-upgrade-rows {
+  list-style: none;
+  margin: 0 0 0.7rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-size: 0.82rem;
+}
+.cx-upgrade-rows li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.2);
+  padding-bottom: 0.12rem;
+}
+.cx-upgrade-rows b {
+  color: var(--sp-text-2);
+  font-variant-numeric: tabular-nums;
+}
+.cx-upgrade-note {
+  margin: 0 0 0.4rem;
+  font-size: 0.78rem;
+  color: var(--sp-text-mute);
+}
