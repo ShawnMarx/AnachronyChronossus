@@ -1215,9 +1215,9 @@ button.eoa-flag.tap-flag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.25rem;
-  padding: 0.12rem 0.4rem;
-  font-size: 0.72rem;
+  gap: 0.3rem;
+  padding: 0.18rem 0.6rem;
+  font-size: 1.08rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--sp-text-2);
@@ -1233,6 +1233,20 @@ button.eoa-flag.tap-flag {
   width: 0.85em;
   height: 0.85em;
   object-fit: contain;
+}
+/* The board copy sits under the Exosuit tracker badge, centred on it. */
+.cx-upgrade-btn.on-board {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 4;
+  background: rgba(10, 10, 10, 0.82);
+  border-color: var(--sp-accent-2);
+  color: var(--sp-text-2);
+  line-height: 1;
+  white-space: nowrap;
+}
+.cx-upgrade-btn.on-board:hover {
+  background: rgba(var(--sp-accent-rgb), 0.5);
 }
 
 .cx-upgrade-modal {

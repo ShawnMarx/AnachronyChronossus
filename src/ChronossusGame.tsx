@@ -3230,6 +3230,31 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
               {/* Count/track badges (buildings, resources, workers, etc.). Tap a
                   badge (outside calibrate) for a themed info popover. */}
+              {/* Pioneers: the same Upgrade-board button as the turn overview's, sitting
+                  under the main board's Exosuit tracker — the Upgrade board is the other
+                  half of "what can this bot do", and the tracker is where the player is
+                  already looking. Positioned off the mech counter so it follows any
+                  recalibration of that badge. */}
+              {bot.pioneers && !calibrate && (() => {
+                const mech = CHRONOSSUS_COUNTERS.find((c) => c.key === 'mech');
+                if (!mech) return null;
+                const [mx, my] = positions.mech ?? mech.pos;
+                return (
+                  <button
+                    type="button"
+                    className="cx-upgrade-btn on-board"
+                    style={{ left: `${mx}%`, top: `${my + 5.2}%` }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowUpgradeBoard(true);
+                    }}
+                    title="Show the Chronossus's Exosuit Upgrade board and its current Power"
+                  >
+                    <img src={POWER_ICON} alt="" aria-hidden="true" />
+                    {Chronossus.boardPower(bot)}
+                  </button>
+                );
+              })()}
               {CHRONOSSUS_COUNTERS.map((c) => {
                 const [x, y] = positions[c.key] ?? c.pos;
                 const sel = calibrate && selected === c.key;

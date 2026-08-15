@@ -231,3 +231,27 @@ Written (all raw crops, 300×300):
   rolled onto its Adventure (C09 sits at marker 5 step 4 there) so the **Blink-check →
   Adventure gate was not exercised in a browser**. Undo/roll-persistence and the tablet-width
   dialog layout are likewise untested on a device. All three want a manual pass.
+
+**2026-08-15 (later) — UI follow-ups from playing it.**
+
+- **The Adventure tile described a different tile.** `tileInstruction` had no `adventure`
+  branch, so C09A/C10A (whose only effect IS the Adventure) fell through to the Reboot
+  fallback — "The Chronossus does nothing this turn" — and the B sides announced just their
+  bonus. `TILE_DESC` had the same hole. Both moved to a pure `src/board/tileText.ts` so they
+  can be unit-tested (importing the view pulls in browser-only auth), with tests that no
+  implemented tile except Reboot may describe itself as doing nothing and that every in-play
+  tile action has a Command-view description.
+- **The SCV named the printed Action on a covered space** — Pioneers' C10 over "Recruit
+  Genius or Research" showed the Action the tile had replaced. Now driven off `slotCovering`
+  for any `CoveredAction`, so the next module's covered space works without a new special
+  case. That makes **three** places slot IV had to be taught about covering: resolution, the
+  board overlay, and the SCV.
+- **The Exosuit Upgrade board pop-out** — a button under the Exo tracker (both in the turn
+  overview and on the main board, under the `mech` badge) opens the real board art with its
+  state marked on it: a Resource cube over each filled slot, and a tracker on the VP-token
+  box that reads as the Power those tokens add and swaps to the token count when tapped.
+  Slot coordinates (`UPGRADE_SLOT_POS` / `UPGRADE_VP_POS`) are measured off the art by eye —
+  calibrating them properly is in `TODO.md`, since calibrate mode doesn't reach a modal.
+- **The Paradox die is now shown as its real face** in both the Paradox and Warp phases, for
+  both bots — the extracted blank / single / double art instead of a teal number chip. It
+  replaces the roll readout only; the Paradox token and Warp tile still show beside it.
