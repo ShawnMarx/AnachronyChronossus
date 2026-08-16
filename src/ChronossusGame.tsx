@@ -1986,7 +1986,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             pendingTile === 'tile-adventure' && !tileRuleView && adventureStep
               ? {
                   step: adventureStep,
-                  boardPower: Chronossus.boardPower(bot),
                   breakdown: Chronossus.powerBreakdown(bot),
                   result: advResult,
                   sharedDeck: Chronossus.deckFor(
@@ -4308,8 +4307,6 @@ function CxTileDialog({
    */
   adventureGate?: {
     step: 'slot' | 'blink' | 'casing' | 'shared-draw' | 'result';
-    /** The Upgrade board's Power, before the slot bonus and the die. */
-    boardPower: number;
     breakdown: { label: string; power: number }[];
     result: AdventureResult | null;
     /** Shared-deck mode: the deck to draw from, and the cards to pick between. */
@@ -4529,16 +4526,13 @@ function CxTileDialog({
                 The Chronossus performs an <b>Adventure</b> — put an Exosuit onto the
                 Adventure board’s <b>hex pool</b> and a <b>Path marker</b> on the topmost
                 free <b>Power slot</b>.
-              </p>
-              <p className="pp-sub">
-                Its Upgrade board is worth <b>{adventureGate.boardPower} Power</b> — the slot
-                adds to that, and <b>that sum decides which deck it draws from</b>. Only then
-                does it roll the Adventure die.
                 {adventureGate.blinkCheck
                   ? ' Don’t place the Exosuit yet — it Blink-checks first.'
                   : ''}
               </p>
-              <p className="pp-sub">Which Power slot did its Path marker go on?</p>
+              {/* Same weight as the instruction above it — this IS the question the step
+                  asks, not a footnote to it. */}
+              <p className="pp-instruct">Which Power slot did its Path marker go on?</p>
               <div className="pp-buttons cx-adv-slots">
                 {Chronossus.POWER_SLOTS.map((bonus) => (
                   <button
