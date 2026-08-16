@@ -4173,9 +4173,11 @@ function AdventureResultPanel({
       {/* 5. What it takes, what that gives it, and the rule that converted it. */}
       {result.taken ? (
         <>
+          {/* The card art already prints its Power, and the highlighted card beside the
+              rejected one shows the "highest requirement it meets" pick — no need to
+              restate either here. */}
           <p className="pp-instruct">
-            The Chronossus takes <b>{result.taken.name}</b> (Power {result.taken.power}) —
-            the highest requirement it meets.
+            The Chronossus takes <b>{result.taken.name}</b>.
             {did.length ? (
               <>
                 {' '}
