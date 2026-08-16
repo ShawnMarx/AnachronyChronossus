@@ -4164,7 +4164,7 @@ function AdventureResultPanel({
         />
         <span className="cx-adv-total">{result.totalPower}</span>
         <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-        <span className="cx-adv-label">total Power</span>
+        <span className="cx-adv-label">Total Power</span>
       </div>
       <p className="cx-adv-brk">
         {result.powerBeforeRoll} before the roll + {die} on the Adventure die
@@ -4574,7 +4574,7 @@ function CxTileDialog({
                 />
                 <span className="cx-adv-total">{adventureGate.totalPower}</span>
                 <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-                <span className="cx-adv-label">total Power</span>
+                <span className="cx-adv-label">Total Power</span>
               </div>
               <p className="cx-adv-brk">
                 {adventureGate.totalPower - adventureGate.die} before the roll +{' '}

@@ -1112,9 +1112,12 @@ button.eoa-flag.tap-flag {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+/* Reads as a step of the Action like ".pp-instruct" does, not as a caption. */
 .cx-adv-label {
-  font-size: 0.85rem;
-  color: var(--sp-text-mute);
+  font-size: clamp(0.8rem, 1.7vw, 0.98rem);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--sp-text-base);
   min-width: 0;
 }
 /* The sum is a plain block BELOW the number row, not a flex item inside it: as a flex
