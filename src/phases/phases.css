@@ -203,6 +203,14 @@
   width: auto;
   border-radius: 6px;
 }
+/* The tiles group tighter to each other than the row's 0.9rem gap, so two of them read
+   as "two Warp tiles" rather than as two separate things in the row. */
+.warp-roll-tiles {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
 .warp-roll-result .phase-note {
   margin: 0;
   color: var(--sp-text-1);

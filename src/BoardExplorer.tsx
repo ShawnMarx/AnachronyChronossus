@@ -2203,8 +2203,21 @@ export function WarpPhaseBody({
         <>
           <div className="warp-roll-result">
             <ParadoxDieFace n={rolled} />
+            {/* One tile per Paradox rolled. Here the die result TRANSLATES into a
+                different piece — Paradoxes rolled become Warp tiles placed — so the count
+                in tiles is what makes that conversion visible. The Paradox phase keeps a
+                single symbol: there the die already says plainly what it did. */}
             {rolled > 0 && (
-              <img className="warp-roll-tile" src={warpTileSrc} alt={`${botName} Warp tile`} />
+              <span className="warp-roll-tiles">
+                {Array.from({ length: rolled }, (_, i) => (
+                  <img
+                    key={i}
+                    className="warp-roll-tile"
+                    src={warpTileSrc}
+                    alt={i === 0 ? `${botName} Warp tile` : ''}
+                  />
+                ))}
+              </span>
             )}
             <p className="phase-note">
               {rolled === 0
