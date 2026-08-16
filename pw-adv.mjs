@@ -56,5 +56,12 @@ console.log('--- RESULT ---\n' + (await panel.count() ? await panel.innerText() 
 await panel.evaluate((e) => e.scrollTo(0, 0)).catch(() => {});
 await panel.screenshot({ path: `${SHOT}/adv-2-result-${W}.png` });
 await page.screenshot({ path: `${SHOT}/adv-2-full-${W}.png`, fullPage: true });
+const chip = panel.locator('.cx-upgrade-btn').first();
+if (await chip.count()) {
+  await chip.click(); await wait(500);
+  const pop = page.locator('.modal-overlay, .cx-upgrade-pop');
+  console.log('upgrade pop-out opened:', await pop.count() > 0);
+  await page.screenshot({ path: `${SHOT}/adv-3-popout-${W}.png` });
+} else console.log('no upgrade chip');
 console.log('ERRORS:', errors);
 await b.close();

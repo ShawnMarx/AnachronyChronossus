@@ -2013,6 +2013,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   onSlot: onAdventureSlot,
                   onSharedPick: onAdventureSharedPick,
                   onSharedConfirm: onAdventureSharedConfirm,
+                  onShowUpgradeBoard: () => setShowUpgradeBoard(true),
                   onCommit: commitAdventure,
                 }
               : null
@@ -4107,13 +4108,17 @@ function AdventureResultPanel({
   breakdown,
   startLabel,
   onCommit,
+  onShowUpgradeBoard,
 }: {
   result: AdventureResult;
   breakdown: { label: string; power: number }[];
   startLabel: string;
   onCommit: () => void;
+  /** Opens the Exosuit Upgrade board pop-out, as the turn overview's Power chip does. */
+  onShowUpgradeBoard: () => void;
 }) {
-  const slotBonus = result.powerBeforeRoll - breakdown.reduce((n, b) => n + b.power, 0);
+  const boardTotal = breakdown.reduce((n, b) => n + b.power, 0);
+  const slotBonus = result.powerBeforeRoll - boardTotal;
   const die = result.totalPower - result.powerBeforeRoll;
   const did = [
     ...(result.gains.length ? [`gains ${result.gains.join(', ')}`] : []),
@@ -4127,10 +4132,19 @@ function AdventureResultPanel({
         <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
         <span className="cx-adv-label">Power before the roll</span>
       </div>
-      {/* The sum is a plain block, never a flex item: beside the big number it can't
-          shrink, so it wrapped mid-sum on a narrow dialog. */}
+      {/* Two numbers, not the whole per-slot breakdown: the Upgrade board's own total —
+          as the same clickable Power chip the turn overview uses, so the board itself is
+          one tap away — plus the Path-marker bonus. */}
       <p className="cx-adv-brk">
-        {breakdown.map((b) => `${b.power} ${b.label}`).join(' + ')}
+        <button
+          type="button"
+          className="cx-upgrade-btn"
+          onClick={onShowUpgradeBoard}
+          title="Show the Chronossus's Exosuit Upgrade board and its current Power"
+        >
+          <img src={POWER_ICON} alt="" aria-hidden="true" />
+          {boardTotal} Power
+        </button>
         {` ${slotBonus >= 0 ? '+' : '−'} ${Math.abs(slotBonus)} Path marker`}
       </p>
 
@@ -4333,6 +4347,8 @@ function CxTileDialog({
     onSlot: (bonus: number) => void;
     onSharedPick: (id: string) => void;
     onSharedConfirm: () => void;
+    /** Opens the Exosuit Upgrade board pop-out from the Power chip. */
+    onShowUpgradeBoard: () => void;
     onCommit: () => void;
   } | null;
   /** Render in normal flow (mobile) rather than absolutely on the board — same as
@@ -4622,6 +4638,7 @@ function CxTileDialog({
               breakdown={adventureGate.breakdown}
               startLabel={startLabel}
               onCommit={adventureGate.onCommit}
+              onShowUpgradeBoard={adventureGate.onShowUpgradeBoard}
             />
           ) : valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
             <>
