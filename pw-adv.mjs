@@ -56,6 +56,17 @@ console.log('--- RESULT ---\n' + (await panel.count() ? await panel.innerText() 
 await panel.evaluate((e) => e.scrollTo(0, 0)).catch(() => {});
 await panel.screenshot({ path: `${SHOT}/adv-2-result-${W}.png` });
 await page.screenshot({ path: `${SHOT}/adv-2-full-${W}.png`, fullPage: true });
+// Commit the turn (the first Adventure usually banks a VP token), then reopen the
+// pop-out from the board so the VP-token chip is on the art.
+const start = page.getByRole('button', { name: /Start Your Turn|Advance to/i }).first();
+if (await start.count()) { await start.click(); await wait(700); }
+const onBoard = page.locator('.cx-upgrade-btn.on-board').first();
+if (await onBoard.count()) {
+  await onBoard.click({ force: true }); await wait(500);
+  await page.locator('.cx-upgrade-art').first().screenshot({ path: `${SHOT}/adv-4-vptoken-${W}.png` }).catch(() => {});
+  console.log('VP chip on art:', await page.locator('.cx-upgrade-tokens').count());
+  await page.keyboard.press('Escape'); await wait(300);
+}
 const chip = panel.locator('.cx-upgrade-btn').first();
 if (await chip.count()) {
   await chip.click(); await wait(500);

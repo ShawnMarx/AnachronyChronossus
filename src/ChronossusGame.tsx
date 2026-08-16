@@ -492,8 +492,12 @@ const UPGRADE_SLOT_POS = [
   { resource: 'gold' as const, x: 60.5, y: 57, power: 3 },
   { resource: 'neutronium' as const, x: 83.5, y: 57, power: 4 },
 ];
-/** The VP-token box on the same art. */
-const UPGRADE_VP_POS = { x: 79, y: 73 };
+/**
+ * The VP-token space on the same art: the ▼ inside the ringed circle at the bottom, where
+ * the tokens physically stack. Measured off upgrade-board-A.jpg (565x800) at (283, 749);
+ * the chip is centre-anchored.
+ */
+const UPGRADE_VP_POS = { x: 50, y: 93.6 };
 
 /** Printed Action spaces a mode's tile can cover (slots IV/V). */
 const COVERED_ACTIONS: CoveredAction[] = ['time-travel', 'recruit-genius-research'];
