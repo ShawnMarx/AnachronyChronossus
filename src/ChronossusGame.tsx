@@ -746,6 +746,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // (the marker landed on a tile slot). Its dialog waits like every other action.
   const [pendingTile, setPendingTile] = useState<ChronossusTileActionId | null>(null);
   /**
+   * Which tile FAMILY the open dialog is for. Two families can share one action id —
+   * Pioneers puts C09 in a tile slot and C10 over "Recruit Genius or Research", and both
+   * are `tile-adventure` — so the action id alone cannot say which tile was activated.
+   * `liveTileFamily` would just return whichever comes first in the mode's slots, which
+   * rendered C10 as C09 and applied C09's side effects.
+   */
+  const [pendingTileFamily, setPendingTileFamily] = useState<string | null>(null);
+  /**
    * Guardians (C11): which step of the Acquire Guardian flow is on screen. It asks before
    * it instructs — availability (Era 4 only) → the World Council space (only when it has a
    * figure to place) → then the step that says what to physically do.
@@ -783,6 +791,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [advResult, setAdvResult] = useState<AdventureResult | null>(null);
   const [advSharedPicked, setAdvSharedPicked] = useState<string[]>([]);
   const advSlotRef = useRef<number>(0);
+  /** Shared-deck mode: the rolled die, held so a re-render (or Undo) can't reroll it. */
+  const advDieRef = useRef<number | null>(null);
   // The current pendingTile was reached by an Autoleap (marker moved onto it): its
   // dialog shows the Autoleap note and its resolution is logged "Autoleap — …".
   const [tileAutoleap, setTileAutoleap] = useState(false);
@@ -1115,6 +1125,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRolledShape(null);
     setRuleView(false);
     setPendingTile(null);
+    setPendingTileFamily(null);
     setTileRuleView(false);
     // A cancelled turn must not leave the Guardian-board flag set for the next one.
     guardianSpaceRef.current = false;
@@ -1307,6 +1318,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       chainOpenRef.current = true;
       setPendingHypersync({ code: leap.code, readOnly: false, viaChain: true });
       setPendingTile(null);
+    setPendingTileFamily(null);
       setTileAutoleap(false);
     } else if (leap && leap.actionId) {
       // Marker moved onto a simple Autoleap tile (C01B/C03B…) → open its dialog stating
@@ -1394,6 +1406,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setRuleView(false);
     setPending(null);
     setPendingTile(null);
+    setPendingTileFamily(null);
     setTileRuleView(false);
     setPendingHypersync(null);
     setResult([]);
@@ -1456,6 +1469,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (h.action === 'recruit-genius-research' && adventureCoversGeniusResearch()) {
       // C10 sits on this printed space: it is an Adventure, not Recruit Genius/Research.
       setPending(null);
+      setPendingTileFamily(slotCovering(mode, 'recruit-genius-research')?.family ?? null);
       setPendingTile('tile-adventure');
       return;
     }
@@ -1769,6 +1783,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     botDieRef.current = null;
     activeMarkerRef.current = null;
     closeDialogs();
+    // AFTER closeDialogs — it clears pendingTile, and with it the family.
+    setPendingTileFamily(tileCode.slice(0, -1));
     if (tileEffect(tileCode).hypersync) {
       setResult([]);
       setPendingHypersync({ code: tileCode, readOnly: true });
@@ -1940,6 +1956,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {pendingTile && (
         <CxTileDialog
           action={pendingTile}
+          family={pendingTileFamily}
           tileSides={state.config.tileSides}
           panel={CHRONOSSUS_PANEL}
           flow={flow}
@@ -1975,10 +1992,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   sharedDeck: Chronossus.deckFor(
                     Chronossus.boardPower(bot) + advSlotRef.current,
                   ),
+                  // Alphabetical, and minus anything the Chronossus has already taken —
+                  // a card it holds cannot come out of the deck again.
                   sharedChoices: adventureDeckCards(
                     Chronossus.deckFor(Chronossus.boardPower(bot) + advSlotRef.current),
-                  ),
+                  )
+                    .filter(
+                      (c) => !(bot.pioneers?.decks[c.deck].discard ?? []).includes(c.id),
+                    )
+                    .sort((a, b) => a.name.localeCompare(b.name)),
                   sharedPicked: advSharedPicked,
+                  die: advDieRef.current ?? 0,
+                  totalPower:
+                    Chronossus.boardPower(bot) + advSlotRef.current + (advDieRef.current ?? 0),
                   blink,
                   fluxDrawSrc:
                     fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
@@ -2344,6 +2370,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         return;
       }
       setResult([]);
+      setPendingTileFamily(slotAtPos(mode, key)?.family ?? null);
       setPendingTile(tileAction);
       return;
     }
@@ -2352,6 +2379,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // Pioneers covers "Recruit Genius or Research" with C10 → the Adventure flow.
     if (h.action === 'recruit-genius-research' && adventureCoversGeniusResearch()) {
       setResult([]);
+      setPendingTileFamily(slotCovering(mode, 'recruit-genius-research')?.family ?? null);
       setPendingTile('tile-adventure');
       return;
     }
@@ -2388,7 +2416,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     operatorsAvailable = true,
     adventure?: AdventureInput,
   ) => {
-    const family = liveTileFamily(actionId);
+    const family = pendingTileFamily ?? liveTileFamily(actionId);
     const tileSide = family ? (state.config.tileSides?.[family] ?? 'A') : 'A';
     // Fractures' Assimilate rolls the Research shape die first (Solo Opponents p.13);
     // the app rolls it, as it does for Research. The gate below may have rolled it already.
@@ -2452,12 +2480,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Open the Adventure by asking which Power slot the marker went on. */
   const openAdventureFlow = () => {
     advInputRef.current = null;
+    advDieRef.current = null;
     setAdvResult(null);
     setAdvSharedPicked([]);
     setAdventureStep('slot');
   };
 
-  /** Draw two card ids off the bot's own deck without mutating state (virtual mode). */
+// The Adventure's first screen IS its first step: opening the tile dialog puts the slot
+  // question up rather than a summary of the whole Action behind a ▶ Start Your Turn.
+  useEffect(() => {
+    if (pendingTile === 'tile-adventure' && !tileRuleView) {
+      if (adventureStep === null) openAdventureFlow();
+    } else if (adventureStep !== null) {
+      setAdventureStep(null);
+      setAdvResult(null);
+      advInputRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTile, tileRuleView]);
+
+    /** Draw two card ids off the bot's own deck without mutating state (virtual mode). */
   const drawTwoVirtual = (deck: AdventureDeck): string[] => {
     const pile = bot.pioneers?.decks[deck];
     if (!pile) return [];
@@ -2512,10 +2554,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     beginAdventureDraw(bonus);
   };
 
-  /** Roll and draw for the Adventure (or ask which cards in shared-deck mode). */
+  /** Roll and draw for the Adventure (or ask which card, in shared-deck mode). */
   const beginAdventureDraw = (bonus: number) => {
     const deck = Chronossus.deckFor(Chronossus.boardPower(bot) + bonus);
     if (adventureDeckMode === 'shared') {
+      // The player needs the total Power before they can say which card it takes, so the
+      // die is rolled here rather than after the pick.
+      advDieRef.current = advDieRef.current ?? rollAdventureDie();
       setAdvSharedPicked([]);
       setAdventureStep('shared-draw');
       return;
@@ -2530,19 +2575,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setAdventureStep('result');
   };
 
-  /** Shared-deck mode: toggle one of the two cards the player says they drew. */
+  /** Shared-deck mode: which card the Chronossus takes ('none' = it met neither). */
   const onAdventureSharedPick = (id: string) => {
-    setAdvSharedPicked((picked) =>
-      picked.includes(id) ? picked.filter((p) => p !== id) : [...picked, id].slice(-2),
-    );
+    setAdvSharedPicked(id ? [id] : []);
   };
 
-  /** Shared-deck mode: both cards named — roll and show the result. */
+  /** Shared-deck mode: the card is named — resolve and show the result. */
   const onAdventureSharedConfirm = () => {
+    const picked = advSharedPicked[0];
     const input: AdventureInput = {
       powerSlot: advSlotRef.current,
-      die: rollAdventureDie(),
-      drawn: advSharedPicked,
+      die: advDieRef.current ?? rollAdventureDie(),
+      // 'none' means it met neither of the two the player drew — the engine's
+      // "meets nothing" branch (+1 VP) is exactly an empty draw.
+      drawn: !picked || picked === 'none' ? [] : [picked],
     };
     advInputRef.current = input;
     setAdvResult(previewAdventure(input));
@@ -2705,6 +2751,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // not advance (a cancelled turn).
   const closeTile = () => {
     setPendingTile(null);
+    setPendingTileFamily(null);
     setTileAutoleap(false);
     setTileRuleView(false);
     setGuardianStep(null);
@@ -3189,6 +3236,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       closeDialogs();
                       if (debug) {
                         setResult([]);
+                        setPendingTileFamily(slot.family);
                         setPendingTile('tile-adventure');
                       } else {
                         showTileRulesByCode(code);
@@ -4140,6 +4188,7 @@ function AdventureResultPanel({
 
 function CxTileDialog({
   action,
+  family,
   tileSides,
   panel,
   readOnly = false,
@@ -4153,6 +4202,13 @@ function CxTileDialog({
   flow = false,
 }: {
   action: ChronossusTileActionId;
+  /**
+   * The tile family actually on screen. Required whenever two families share one action
+   * id (Pioneers' C09 and C10 are both `tile-adventure`) — without it the dialog falls
+   * back to whichever family the action maps to first, and renders the wrong tile's art,
+   * name and verbatim rule box.
+   */
+  family?: string | null;
   tileSides?: Record<string, 'A' | 'B'>;
   panel: [number, number, number, number];
   readOnly?: boolean;
@@ -4222,6 +4278,9 @@ function CxTileDialog({
     sharedDeck: AdventureDeck | null;
     sharedChoices: AdventureCard[];
     sharedPicked: string[];
+    /** Shared-deck mode: the die the app rolled, and the resulting total Power. */
+    die: number;
+    totalPower: number;
     /** Fractures (fractures+pioneers): the Blink check that follows the slot answer. */
     blink: {
       spaceLabel: string;
@@ -4243,7 +4302,9 @@ function CxTileDialog({
    *  DetailPanel, so a module dialog opens exactly where a board Action's does. */
   flow?: boolean;
 }) {
-  const code = liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
+  const code = family
+    ? `${family}${tileSides?.[family] ?? 'A'}`
+    : liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
   const tile = CHRONOSSUS_TILES[code];
   // The Valley board's printed Action spaces are always Assimilate and Extract, whichever
   // tile side (or C14) sits on the Chronossus board — so the player is pointed at the
@@ -4427,18 +4488,18 @@ function CxTileDialog({
           adventureGate && !readOnly && adventureGate.step === 'slot' ? (
             <>
               <p className="pp-instruct">
-                Put one of the Chronossus’s <b>Path markers</b> on the <b>topmost free
-                Power slot</b> next to the Adventure space. Which one was it?
+                The Chronossus performs an <b>Adventure</b> — put an Exosuit onto the
+                Adventure board’s <b>hex pool</b> and a <b>Path marker</b> on the topmost
+                free <b>Power slot</b>.
               </p>
               <p className="pp-sub">
-                Its Upgrade board is worth <b>{adventureGate.boardPower} Power</b> right now
-                — this slot is added to that, then the Adventure die.
-                {adventureGate.blinkCheck && (
-                  <>
-                    {' '}Don’t place the Exosuit yet — the Chronossus Blink-checks first.
-                  </>
-                )}
+                Its Upgrade board is worth <b>{adventureGate.boardPower} Power</b> — the slot
+                adds to that, then <b>the Chronossus rolls the Adventure die</b>.
+                {adventureGate.blinkCheck
+                  ? ' Don’t place the Exosuit yet — it Blink-checks first.'
+                  : ''}
               </p>
+              <p className="pp-sub">Which Power slot did its Path marker go on?</p>
               <div className="pp-buttons cx-adv-slots">
                 {Chronossus.POWER_SLOTS.map((bonus) => (
                   <button
@@ -4460,35 +4521,53 @@ function CxTileDialog({
           ) : adventureGate && !readOnly && adventureGate.step === 'shared-draw' ? (
             <>
               <p className="pp-instruct">
-                Draw <b>2 cards</b> from the <b>{adventureGate.sharedDeck}</b> deck and tap
-                which ones you drew.
+                Draw <b>2 cards</b> from the <b>{adventureGate.sharedDeck}</b> deck for the
+                Chronossus to evaluate.
               </p>
-              <p className="pp-sub">
-                The Chronossus takes whichever of them has the <b>highest Power
-                requirement it meets</b>; the other goes to the bottom of the deck.
-              </p>
-              <div className="cx-adv-picklist">
-                {adventureGate.sharedChoices.map((c) => (
-                  <button
-                    key={c.id}
-                    className={`cx-adv-pick ${adventureGate.sharedPicked.includes(c.id) ? 'on' : ''}`}
-                    onClick={() => adventureGate.onSharedPick(c.id)}
-                  >
-                    <span className="cx-adv-pick-name">{c.name}</span>
-                    <span className="cx-adv-pick-power">
-                      {c.power}
-                      <img src={POWER_ICON} alt="Power" className="cx-power-icon" />
-                    </span>
-                  </button>
-                ))}
+              <div className="cx-adv-power">
+                <span className="cx-adv-total">{adventureGate.totalPower}</span>
+                <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
+                <span className="cx-adv-brk">
+                  total Power — with the Adventure die
+                  {' '}
+                  <img
+                    src={`/assets/solo/chronossus/adventure-die-${adventureGate.die}.png`}
+                    alt={`Adventure die: ${adventureGate.die}`}
+                    className="cx-adv-die"
+                  />
+                </span>
               </div>
+              <p className="pp-sub">
+                It takes the one with the <b>highest Power requirement it meets</b> — pick
+                that card below. The other goes to the bottom of the deck.
+              </p>
+              <select
+                className="cx-adv-select"
+                value={adventureGate.sharedPicked[0] ?? ''}
+                onChange={(e) => adventureGate.onSharedPick(e.target.value)}
+              >
+                <option value="">Which card does it take?</option>
+                <option value="none">
+                  Neither — it meets no requirement (+1 VP)
+                </option>
+                {adventureGate.sharedChoices.map((c) => (
+                  <option
+                    key={c.id}
+                    value={c.id}
+                    disabled={adventureGate.totalPower < c.power}
+                  >
+                    {c.name} — {c.power} Power
+                    {adventureGate.totalPower < c.power ? ' (not met)' : ''}
+                  </option>
+                ))}
+              </select>
               <div className="pp-buttons">
                 <button
                   className="pp-confirm"
-                  disabled={adventureGate.sharedPicked.length !== 2}
+                  disabled={adventureGate.sharedPicked.length === 0}
                   onClick={adventureGate.onSharedConfirm}
                 >
-                  ✓ These two
+                  ✓ Confirm
                 </button>
               </div>
             </>

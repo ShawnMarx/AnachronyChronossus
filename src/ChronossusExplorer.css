@@ -1389,3 +1389,17 @@ button.eoa-flag.tap-flag {
   font-size: 0.78rem;
   color: var(--sp-text-mute);
 }
+
+/* Shared-deck mode: the "which card does it take?" picker. */
+.cx-adv-select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  border-radius: 7px;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
+  background: var(--sp-panel-2);
+  color: var(--sp-text-base);
+  font-size: 0.9rem;
+}
+.cx-adv-select option:disabled {
+  color: var(--sp-text-mute);
+}

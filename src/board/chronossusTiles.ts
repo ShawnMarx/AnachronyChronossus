@@ -61,7 +61,6 @@ const VALLEY_PLACEMENT_DETAIL =
   'Just like with the World Capital Action spaces, if there are no available spaces on a Valley Action, the Chronossus places on the Valley Capital Action space instead.\n' +
   'When the Chronossus places an Exosuit on the Main board, take an Energy Core directly from supply and place it in the Exosuit.';
 
-/** Every modular Action tile, keyed by its printed code. */
 /** "NEW ACTION: ACQUIRE GUARDIAN" + the module's gameplay changes (Solo Opponents p.16). */
 const ACQUIRE_GUARDIAN_DETAIL =
   'NEW ACTION: ACQUIRE GUARDIAN\n' +
@@ -87,6 +86,47 @@ const ACQUIRE_GUARDIAN_DETAIL =
   'Exosuits (e.g. if it needs to power up 4 Exosuits and has 2 Guardians, it will power up ' +
   'both of them and 2 of its own).';
 
+/**
+ * The Adventure Action's own rulebook section (Solo Opponents p.15), verbatim. Shared by
+ * ALL FOUR Pioneers tiles — C09A/B and C10A/B are the same Action, so the 📖 box shows the
+ * same generic Adventure rules whichever one is on screen. The tile's OWN bonus is not
+ * repeated here: it already leads the box as that tile's Appendix line ("…It also gains 1
+ * Energy Core"), which is obvious enough not to need a section of its own.
+ *
+ * The rulebook's SPECIAL CASES bullets (W → VP, Morale → VP, always-Research, ongoing →
+ * 3 VP + Energy Core) are deliberately not here — they are shown per card, at the moment
+ * they apply, as the result panel's conversion line.
+ */
+const ADVENTURE_DETAIL =
+  'When taking an Adventure Action, it places an Exosuit on the Adventure hex pool space ' +
+  'and one of its Path markers on the highest available strength bonus. Then, it performs ' +
+  'two steps, in this order:\n' +
+  '\n' +
+  'STEP 1: PERFORM ADVENTURE\n' +
+  'Sum up the power on the Chronossus\u2019s Exosuit Upgrade board (including the strength ' +
+  'bonus from the Path marker): If 9 or higher, it draws 2 cards from 10+ deck; otherwise, ' +
+  'it draws 2 cards from the 5+ deck. Then, it rolls the Adventure die and calculates total ' +
+  'power the same way as you would.\n' +
+  '\n' +
+  'It takes the card with the highest power requirement it meets. The unselected card(s) ' +
+  'are placed on the bottom of their respective deck(s). If it met neither card\u2019s ' +
+  'requirement, it gains 1 VP (and returns both cards to the bottom).\n' +
+  'If a card was selected, it receives the card\u2019s benefit then discards the card.\n' +
+  '\n' +
+  'STEP 2: POWER UPGRADE\n' +
+  'It takes a Resource from the Chronossus\u2019s board and moves it to its Exosuit Upgrade ' +
+  'board.\n' +
+  '\u2022 It must be a Resource that has an available slot on the board.\n' +
+  '\u2022 If there are multiple options, it will pick whichever Resource it has the most of.\n' +
+  '\u2022 If tied, use this order: Titanium > Gold > Uranium > Neutronium.\n' +
+  'If it does not have any Resources that can be placed, or there are no slots available, ' +
+  'place 1 VP token straight from the supply on the Exosuit upgrade board instead. These VP ' +
+  'tokens add further strength to the Chronossus\u2019s power, but they do not count as VP ' +
+  'for the Chronossus by default.\n' +
+  '\n' +
+  'NOTE: It is possible for one of these steps to fail. If this happens, ignore that step.';
+
+/** Every modular Action tile, keyed by its printed code. */
 export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   // --- Base-game default setup (A sides of C01/C02/C03) --------------------
   C01A: { code: 'C01A', name: 'Reboot', rule: 'The Chronossus does nothing.' },
@@ -182,21 +222,25 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C09A',
     name: 'Adventure',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade.',
+    detail: ADVENTURE_DETAIL,
   },
   C09B: {
     code: 'C09B',
     name: 'Adventure and Score',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 VP.',
+    detail: ADVENTURE_DETAIL,
   },
   C10A: {
     code: 'C10A',
     name: 'Adventure',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade.',
+    detail: ADVENTURE_DETAIL,
   },
   C10B: {
     code: 'C10B',
     name: 'Adventure and Energy Pack',
     rule: 'The Chronossus performs an Adventure, then fulfills a Power Upgrade. It also gains 1 Energy Core.',
+    detail: ADVENTURE_DETAIL,
   },
   C11A: {
     code: 'C11A',
