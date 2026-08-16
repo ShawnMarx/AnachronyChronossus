@@ -1162,8 +1162,10 @@ export default function BoardExplorer({
       setPending('removeAnomaly'); // outcome fully determined by bot state
     } else if (h.action === 'reboot') {
       setPending('reboot'); // Chronobot does nothing
-    } else if (h.action === 'time-travel' && bot.warpTilesOnTimeline > 0) {
-      setPending('timeTravel'); // player removes a Warp tile & advances the marker
+    } else if (h.action === 'time-travel') {
+      // Always opens: with a Warp tile it instructs the removal, without one it states
+      // the Failed Action (+VP). Resolving it silently hid that from the player.
+      setPending('timeTravel');
     } else if (CHRONOBOT_ACTIONS[h.action].placesExosuit) {
       setPending('mech'); // ask before spending a mech
     } else {
@@ -1504,6 +1506,7 @@ export default function BoardExplorer({
         selectedWorker={selectedWorker}
         rolledShape={rolledShape}
         breakthroughs={bot.breakthroughs}
+        timeTravel={{ canTravel: bot.warpTilesOnTimeline > 0 }}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
           return {
@@ -3617,6 +3620,8 @@ export function DetailPanel({
   rolledShape,
   breakthroughs,
   removeAnomaly,
+  timeTravel = { canTravel: true },
+  failVP = 1,
   mineOrder,
   workerOrder,
   onConfirmPlace,
@@ -3657,6 +3662,10 @@ export function DetailPanel({
   rolledShape: BreakthroughShape | null;
   breakthroughs: Record<BreakthroughShape, number>;
   removeAnomaly: { canRemove: boolean; discards: string; reason: string };
+  /** Whether a Time Travel can actually happen (it needs a Warp tile on the Timeline). */
+  timeTravel?: { canTravel: boolean };
+  /** VP a Failed Action scores — 1, or 2 under the Chronossus difficulty option. */
+  failVP?: number;
   mineOrder: Resource[];
   workerOrder: Worker[];
   onConfirmPlace: () => void;
@@ -4087,18 +4096,33 @@ export function DetailPanel({
           </div>
         )}
 
-        {/* Time Travel — the player physically removes a Warp tile & advances the marker. */}
-        {pending === 'timeTravel' && (
-          <div className="place-prompt">
-            <p className="pp-instruct">
-              Remove one of the {botName}’s <b>Warp tiles</b> from the past
-              Timeline tile where it has the most (oldest if tied).
-            </p>
-            <button className="start-turn" onClick={onStartTurn}>
-              {startLabel}
-            </button>
-          </div>
-        )}
+        {/* Time Travel — the player physically removes a Warp tile & advances the marker.
+            With no Warp tile on the Timeline it is a Failed Action instead, and the dialog
+            has to SAY so: it used to resolve silently, leaving the +VP visible only in
+            History. */}
+        {pending === 'timeTravel' &&
+          (timeTravel.canTravel ? (
+            <div className="place-prompt">
+              <p className="pp-instruct">
+                Remove one of the {botName}’s <b>Warp tiles</b> from the past
+                Timeline tile where it has the most (oldest if tied).
+              </p>
+              <button className="start-turn" onClick={onStartTurn}>
+                {startLabel}
+              </button>
+            </div>
+          ) : (
+            <div className="place-prompt failed-note">
+              <p className="pp-instruct">
+                Failed Action: the {botName} has <b>no Warp tiles</b> on the Timeline, so
+                it cannot Time Travel — it takes <b>+{failVP} VP</b> instead (no Exosuit
+                placed).
+              </p>
+              <button className="start-turn" onClick={onStartTurn}>
+                {startLabel}
+              </button>
+            </div>
+          ))}
 
         {/* Remove Anomaly — outcome is fully determined by the bot's state. */}
         {pending === 'removeAnomaly' &&
@@ -4115,7 +4139,7 @@ export function DetailPanel({
           ) : (
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
-                Failed Action: {removeAnomaly.reason} — the {botName} takes +1 VP
+                Failed Action: {removeAnomaly.reason} — the {botName} takes +{failVP} VP
                 instead (no Exosuit placed).
               </p>
               <button className="start-turn" onClick={onStartTurn}>

@@ -65,6 +65,79 @@ const patch = () =>
     { blink: BLINK, marker: ADV_MARKER, step: ADV_STEP },
   );
 
+// TAP=1: instead of rolling, tap the Adventure tiles in Debug mode — a debug tap
+// activates an Action for real, so the passing rule has to apply there too.
+// TT=1: no Warp tiles on the Timeline, figures in hand -> tapping Time Travel must SAY
+// it is a Failed Action worth +VP rather than resolving silently.
+if (process.env.TT) {
+  await page.evaluate(() => {
+    const key = 'anachrony:chronossus';
+    const data = JSON.parse(localStorage.getItem(key));
+    data.state.chronossus.warpTilesOnTimeline = 0;
+    data.state.chronossus.exosuitsAvailable = 4;
+    data.debug = true;
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.reload({ waitUntil: 'networkidle' }); await wait(700);
+  await page.evaluate(() =>
+    document.querySelectorAll('.modal-overlay').forEach((e) => {
+      e.style.display = 'none';
+    }),
+  );
+  const hide = page.getByRole('button', { name: /Hide/i }).first();
+  if (await hide.count()) { await hide.click().catch(() => {}); await wait(300); }
+  await page.getByRole('button', { name: 'Time Travel' }).first().click({ force: true });
+  await wait(650);
+  const panel = page.locator('.detail-panel').first();
+  console.log((await panel.count()) ? await panel.innerText() : '(no dialog)');
+  await page.screenshot({ path: `${SHOT}/tt-failed.png`, fullPage: true });
+  console.log('ERRORS:', errors);
+  await b.close();
+  process.exit(0);
+}
+
+if (process.env.TAP) {
+  await patch();
+  await page.reload({ waitUntil: 'networkidle' }); await wait(700);
+  const clear = async () => {
+    // The "Ready to begin" modal has only a Take Bot Action button (which would spend a
+    // turn), so for a tap probe it is hidden — a test-only style tweak, no app state
+    // involved. The Command view is collapsed so it can't swallow the tap.
+    // Hidden, not removed — ripping it out makes React's next reconcile throw.
+    await page.evaluate(() =>
+      document.querySelectorAll('.modal-overlay').forEach((e) => {
+        e.style.display = 'none';
+      }),
+    );
+    const hide = page.getByRole('button', { name: /Hide/i }).first();
+    if (await hide.count()) { await hide.click().catch(() => {}); }
+    await wait(350);
+  };
+  await clear();
+  for (const [label, code] of [['C09-tile', 'C09'], ['C10-covering', 'C10']]) {
+    // Pick the copy ON THE BOARD, not the thumbnail in the Command view.
+    const imgs = page.locator(`.board-wrap img[src*="${code}"]`);
+    let target = null;
+    for (let i = 0; i < (await imgs.count()); i++) {
+      const box = await imgs.nth(i).boundingBox();
+      if (box && box.width > 20) target = imgs.nth(i);
+    }
+    if (!target) { console.log(`${label}: not on this board`); continue; }
+    await target.click({ force: true }); await wait(650);
+    const panel = page.locator('.detail-panel').first();
+    const dialog = (await panel.count()) ? (await panel.innerText()).split('\n')[0] : '(no dialog)';
+    const passed = /Out of Exosuits/i.test(await page.locator('body').innerText());
+    console.log(`${label}: passed=${passed} dialog="${dialog}"`);
+    await page.screenshot({ path: `${SHOT}/tap-${label}.png`, fullPage: true });
+    await patch();
+    await page.reload({ waitUntil: 'networkidle' }); await wait(650);
+    await clear();
+  }
+  console.log('ERRORS:', errors);
+  await b.close();
+  process.exit(0);
+}
+
 let reached = false;
 for (let attempt = 0; attempt < 20 && !reached; attempt++) {
   await patch();

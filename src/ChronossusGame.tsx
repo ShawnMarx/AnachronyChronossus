@@ -1504,7 +1504,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setPending('removeAnomaly');
     } else if (h.action === 'reboot') {
       setPending('reboot');
-    } else if (h.action === 'time-travel' && bot.warpTilesOnTimeline > 0) {
+    } else if (h.action === 'time-travel') {
+      // Always opens — without a Warp tile the dialog states the Failed Action (+VP)
+      // rather than resolving silently.
       setPending('timeTravel');
     } else if (CHRONOBOT_ACTIONS[h.action].placesExosuit) {
       setPending('mech');
@@ -1852,6 +1854,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     activeMarkerRef.current = null;
     closeDialogs();
     setResult([]);
+    // A debug tap activates the Action for real, exactly as a tap on a printed Action
+    // space does — so the passing rule applies here too.
+    if (passIfOutOfFigures(tileAction)) return;
     setTileRuleView(false);
     setPendingTile(tileAction);
   };
@@ -1920,6 +1925,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         rolledShape={rolledShape}
         researchNewShape={state.config.difficulty?.includes(Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE) ?? false}
         breakthroughs={bot.breakthroughs}
+        timeTravel={{ canTravel: bot.warpTilesOnTimeline > 0 }}
+        failVP={Chronossus.failedActionVP(state.config.difficulty)}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
           const anomalyCount = bot.anomalyVps?.length ?? bot.anomalies;
@@ -3252,6 +3259,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       closeDialogs();
                       if (debug) {
                         setResult([]);
+                        // Same as any other debug activation: out of figures → it passes.
+                        if (passIfOutOfFigures('tile-adventure')) return;
                         setPendingTileFamily(slot.family);
                         setPendingTile('tile-adventure');
                       } else {

@@ -1269,6 +1269,11 @@ p.cx-adv-brk {
   position: absolute;
   transform: translate(-50%, -50%);
   z-index: 4;
+  /* 50% larger than the chip's base size — it sits on the board art, under the Exosuit
+     tracker, where the base 0.72rem was hard to read. */
+  font-size: 1.08rem;
+  padding: 0.18rem 0.6rem;
+  border-radius: 8px;
   background: rgba(10, 10, 10, 0.82);
   border-color: var(--sp-accent-2);
   color: var(--sp-text-2);
@@ -1316,8 +1321,9 @@ p.cx-adv-brk {
 /* One marker per Resource slot: an empty ring, or the Resource's own cube when filled. */
 .cx-upgrade-slot {
   position: absolute;
-  width: 2.7rem;
-  height: 2.7rem;
+  /* 50% larger than the original 2.7rem — the cubes read at a glance on the pop-out. */
+  width: 4.05rem;
+  height: 4.05rem;
   transform: translate(-50%, -50%);
   border-radius: 50%;
   display: flex;
