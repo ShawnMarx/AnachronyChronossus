@@ -81,6 +81,12 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       was never exercised in a browser**. Also unverified on a device: Undo re-showing the
       same roll (and, in shared-deck mode, the same rolled die before the card is picked),
       and the Adventure dialog at tablet width.
+- [ ] **Autoleap onto an Exosuit-placing tile doesn't run the passing rule** (2026-08-16) —
+      `passIfOutOfFigures` now guards every rolled Action (printed space, tile slot, covered
+      space), but the Autoleap chain in `ChronossusGame.tsx` opens `leap.actionId` /
+      `owed.actionId` directly. Only reachable in a combo where an Autoleap tile can send a
+      marker onto a Valley/Adventure tile, and it needs a rules call first: does the bot
+      pass mid-turn on the second Action of an Autoleap, or is the leap simply skipped?
 - [ ] **Adventure card follow-ups stay manual** — cards that construct a specific building
       or grant Research/Recruit Actions emit a player instruction rather than driving the
       existing Construct/Research flows. Wiring them through would let the app score the

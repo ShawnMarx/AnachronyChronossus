@@ -387,6 +387,39 @@ describe('Adventure as an Exosuit placement (Fractures + Guardians interplay)', 
     expect(Chronossus.shouldCheckBlink(dry, 'tile-adventure')).toBe(false);
   });
 
+  it('passes rather than Adventure when it is out of figures', () => {
+    // The Adventure takes an Exosuit like any Capital Action, so the passing rule covers
+    // it — on the C09/C10 tile slot AND on the printed space C10 covers.
+    const empty = bot({ exosuitsAvailable: 0 });
+    expect(Chronossus.wouldPassOn(empty, 'tile-adventure')).toBe(true);
+    expect(Chronossus.passesInsteadOfAction(empty, 'tile-adventure')).toBe(true);
+    expect(Chronossus.passesInsteadOfAction(bot(), 'tile-adventure')).toBe(false);
+  });
+
+  it('Blinks onto the Adventure board instead of passing (Fractures)', () => {
+    // A Blink moves an Exosuit already on the Main board, so an empty supply doesn't stop
+    // it — and the Adventure hex pool is a legal destination.
+    const b = bot({
+      exosuitsAvailable: 0,
+      fluxPool: { cores: 1, casings: 3, setAside: 0 },
+      placedExosuits: [{ action: 'mine-resource', space: 'action', hasCore: true }],
+    });
+    expect(Chronossus.wouldPassOn(b, 'tile-adventure')).toBe(true);
+    expect(Chronossus.passesInsteadOfAction(b, 'tile-adventure', { fractures: true })).toBe(
+      false,
+    );
+    // Same bot without Fractures, or with nothing left to Blink, still passes.
+    expect(Chronossus.passesInsteadOfAction(b, 'tile-adventure')).toBe(true);
+    const noSource = bot({
+      exosuitsAvailable: 0,
+      fluxPool: { cores: 1, casings: 3, setAside: 0 },
+      placedExosuits: [{ action: 'tile-adventure', space: 'action', hasCore: true }],
+    });
+    expect(
+      Chronossus.passesInsteadOfAction(noSource, 'tile-adventure', { fractures: true }),
+    ).toBe(true);
+  });
+
   it('is not a Blink source once the Exosuit sits on the Adventure board', () => {
     const b = bot({
       fluxPool: { cores: 1, casings: 3, setAside: 0 },

@@ -177,7 +177,15 @@ positions are **percentages** of the board image; `.board-wrap` has `aspect-rati
 node pw-validate.mjs shot.png   # Playwright: prints each badge's measured %, saves screenshot
 node pw-check.mjs "<Module label>" <slug>   # renders a mode; prints its board tiles + broken images
 SHOT_DIR=/tmp node pw-adv.mjs http://localhost:5173/ 1000   # opens Pioneers' Adventure dialog
+SHOT_DIR=/tmp node pw-warp.mjs http://localhost:5173/ 6      # Warp roll vs. tiles shown
+SHOT_DIR=/tmp node pw-pass.mjs http://localhost:5173/ "<mode label>"   # pass-at-0-figures
 ```
+
+`pw-pass.mjs` reaches a state the UI has no control for: it edits the persisted save
+(`localStorage['anachrony:chronossus']`) to zero the bot's figures and park a Command marker
+on the Action under test, then rolls for real. Use that trick for any rule that only fires
+deep into a game. Note a debug board **tap** is the free-tap path (it moves no marker), so it
+cannot stand in for a rolled turn.
 
 `pw-adv.mjs` shoots the **dialog element** at a given viewport width, so a dialog docked on
 a narrow board is seen at its real width — dialog-only layout bugs (a title running under

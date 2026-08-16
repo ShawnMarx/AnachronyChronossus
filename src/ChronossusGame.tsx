@@ -1416,6 +1416,39 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setResult([]);
   };
 
+  /**
+   * The passing rule, for whichever Action a rolled marker landed on: out of figures and
+   * this Action would place one → the Chronossus passes instead of taking it (its token
+   * does NOT advance), unless Fractures makes a Blink possible.
+   *
+   * Every path that activates an Action calls this — the printed space, a modular tile
+   * slot, and a tile COVERING a printed space (Pioneers' C10). Returns true when it
+   * passed, meaning the caller must stop.
+   */
+  const passIfOutOfFigures = (actionId: ChronossusActionId): boolean => {
+    if (
+      !Chronossus.passesInsteadOfAction(bot, actionId, {
+        fractures: fracturesMode,
+        hypersync: { era: state.era, active: hypersyncMode },
+      })
+    ) {
+      return false;
+    }
+    const { state: next, instructions } = Chronossus.passChronossus(state);
+    // The token does NOT advance on a pass → keep ui.markerSteps as-is. The rolled die
+    // and the Action it hit go into the entry, so History shows why it passed.
+    commit(
+      next,
+      { ...ui, botDie: botDieRef.current },
+      `Era ${state.era} · Chronossus passed`,
+      passEffects(actionId),
+      botDieRef.current,
+    );
+    closePanel();
+    setLastResult(instructions); // shown in the turn-status aside
+    return true;
+  };
+
   const onTileClick = (h: Hotspot, force = false) => {
     if (calibrate) {
       setSelected(hsKey(h.id)); // select instead of activating
@@ -1437,28 +1470,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (bot.passed) return; // the Chronossus has passed for this Era
-    // Passing rule: out of Exosuits + this action would place one → the Chronossus
-    // passes instead of taking the action (its token doesn't advance). In Fractures it
-    // can still act if a Blink is possible, since that moves an Exosuit already on the
-    // board rather than taking one from the supply.
-    if (
-      Chronossus.wouldPassOn(bot, h.action, { era: state.era, active: hypersyncMode }) &&
-      !(fracturesMode && Chronossus.shouldCheckBlink(bot, h.action))
-    ) {
-      const { state: next, instructions } = Chronossus.passChronossus(state);
-      // The token does NOT advance on a pass → keep ui.markerSteps as-is. The rolled die
-      // and the Action it hit go into the entry, so History shows why it passed.
-      commit(
-        next,
-        { ...ui, botDie: botDieRef.current },
-        `Era ${state.era} · Chronossus passed`,
-        passEffects(h.action),
-        botDieRef.current,
-      );
-      closePanel();
-      setLastResult(instructions); // shown in the turn-status aside
-      return;
-    }
+    // What this space actually resolves as: with Pioneers' C10 on it, "Recruit Genius or
+    // Research" IS the Adventure, and the passing rule has to judge that Action (its
+    // Exosuit lands on the Adventure board, which is a Blink destination).
+    const acted: ChronossusActionId =
+      h.action === 'recruit-genius-research' && adventureCoversGeniusResearch()
+        ? 'tile-adventure'
+        : (h.action as ChronossusActionId);
+    if (passIfOutOfFigures(acted)) return;
     // HFA: out of figures, but a Solo Hypersync tile can stand in for the Exosuit — so
     // there is nothing to place and no space question to ask. Go straight to the tile.
     if (
@@ -2359,20 +2378,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // TrackPos.action on a tile slot is always a modular tile action — but which one
       // depends on the mode's slot, not the base tile printed in the path data.
       const tileAction = tileActionAt(key) ?? (tp.action as ChronossusTileActionId);
-      // Fractures' Valley Actions take an Exosuit, so the passing rule applies to them.
-      if (Chronossus.wouldPassOn(bot, tileAction, { era: state.era, active: hypersyncMode })) {
-        const { state: next, instructions } = Chronossus.passChronossus(state);
-        commit(
-          next,
-          { ...ui, botDie: botDieRef.current },
-          `Era ${state.era} · Chronossus passed`,
-          passEffects(tileAction),
-          botDieRef.current,
-        );
-        closePanel();
-        setLastResult(instructions);
-        return;
-      }
+      // Fractures' Valley Actions and Pioneers' Adventure take an Exosuit, so the passing
+      // rule applies to them — including its Blink exemption, since both of those boards
+      // are legal Blink destinations.
+      if (passIfOutOfFigures(tileAction)) return;
       setResult([]);
       setPendingTileFamily(slotAtPos(mode, key)?.family ?? null);
       setPendingTile(tileAction);
@@ -2380,8 +2389,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     }
     const [x, y] = positions[key] ?? [0, 0];
     const h = nearestHotspot(x, y);
-    // Pioneers covers "Recruit Genius or Research" with C10 → the Adventure flow.
+    // Pioneers covers "Recruit Genius or Research" with C10 → the Adventure flow. This
+    // path skips onTileClick, so it has to run the passing rule itself — against the
+    // ADVENTURE, not the printed Action the tile replaced.
     if (h.action === 'recruit-genius-research' && adventureCoversGeniusResearch()) {
+      if (passIfOutOfFigures('tile-adventure')) return;
       setResult([]);
       setPendingTileFamily(slotCovering(mode, 'recruit-genius-research')?.family ?? null);
       setPendingTile('tile-adventure');

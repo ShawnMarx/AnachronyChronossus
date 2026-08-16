@@ -9,6 +9,7 @@ import {
   resolvePowerUp,
   resolveAction,
   wouldPassOn,
+  passesInsteadOfAction,
   passChronossus,
   actionRoundsEnded,
   startNextEra,
@@ -1094,6 +1095,20 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
     // The Chronossus-board tiles still resolve with no Exosuits left.
     expect(wouldPassOn(bot, 'tile-power-pack')).toBe(false);
     expect(wouldPassOn(bot, 'tile-reboot')).toBe(false);
+  });
+
+  it('Blinks onto the Valley board instead of passing when out of Exosuits', () => {
+    // The Blink exemption applies to a Valley Action exactly as it does to a printed
+    // Capital Action — a Blink moves an Exosuit that is already on the Main board.
+    const bot = fracturesState(0).chronossus!;
+    bot.placedExosuits = [{ action: 'mine-resource', space: 'action', hasCore: true }];
+    for (const id of ['tile-assimilate', 'tile-extract'] as const) {
+      expect(passesInsteadOfAction(bot, id, { fractures: true })).toBe(false);
+      expect(passesInsteadOfAction(bot, id)).toBe(true); // no Fractures -> no Blink
+    }
+    // Nothing on the Main board to move -> it passes even in Fractures.
+    bot.placedExosuits = [];
+    expect(passesInsteadOfAction(bot, 'tile-assimilate', { fractures: true })).toBe(true);
   });
 
   it('names the Valley Capital space when no Valley Action space was free', () => {

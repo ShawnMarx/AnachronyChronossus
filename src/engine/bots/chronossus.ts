@@ -1711,6 +1711,33 @@ export function wouldPassOn(
   return true;
 }
 
+/**
+ * The whole passing decision for one attempted Action — `wouldPassOn` plus the Fractures
+ * exemption. A Blink moves an Exosuit that is ALREADY on the Main board, so an empty
+ * supply does not stop it: while a Blink is possible the Chronossus acts instead of
+ * passing, and every off-Main-board space (a Valley Action, the Adventure hex pool) is a
+ * legal Blink destination.
+ *
+ * Every path that resolves a rolled Action — printed space, modular tile slot, or a tile
+ * COVERING a printed space — must go through this one function. Pioneers shipped with the
+ * covered-space path (C10 over "Recruit Genius or Research") running no pass check at all,
+ * and the tile-slot path missing the Blink exemption.
+ */
+export function passesInsteadOfAction(
+  bot: ChronossusState,
+  actionId: ChronossusActionId,
+  opts?: {
+    /** Fractures in play — a Blink can stand in for a placement. */
+    fractures?: boolean;
+    /** HFA only, as `wouldPassOn`. */
+    hypersync?: { era: number; active: boolean };
+  },
+): boolean {
+  if (!wouldPassOn(bot, actionId, opts?.hypersync)) return false;
+  if (opts?.fractures && shouldCheckBlink(bot, actionId)) return false;
+  return true;
+}
+
 /** The Capital Actions (the ones a Solo Hypersync tile or a Guardian space can serve). */
 export const CAPITAL_ACTION_IDS: ChronossusActionId[] = [
   'research',
