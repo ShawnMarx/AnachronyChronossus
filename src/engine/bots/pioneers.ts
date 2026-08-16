@@ -173,6 +173,17 @@ export interface AdventureResult {
   taken: AdventureCard | null;
   /** Step 2: the Resource moved onto the Upgrade board, or null if a VP token went on. */
   upgraded: Resource | null;
+  /**
+   * What the taken card gives the CHRONOSSUS, already converted ("2 VP", "1 gold").
+   * The card's printed Success box is the player's rule and is never shown — the bot's
+   * four conversions (W, Morale, Research/Recruit/Construct choice, ongoing) mean the
+   * printed text routinely describes something else entirely.
+   */
+  gains: string[];
+  /** Things it does rather than gains ("removes 1 Anomaly") — each a full clause. */
+  actions: string[];
+  /** Follow-ups the app can't apply on the physical board (Research/Recruit/Construct). */
+  followUps: string[];
 }
 
 /**
@@ -194,12 +205,15 @@ export function resolveAdventure(
   const totalPower = powerBeforeRoll + input.die;
   const drawn = input.drawn.map((id) => adventureCard(id)).filter((c): c is AdventureCard => !!c);
 
+  // The deck is picked BEFORE the die: "sum up the power on the Upgrade board (including
+  // the strength bonus from the Path marker) ... THEN, it rolls the Adventure die" (p.15).
   instr.push({
     id: `adv-power-${n}`,
     text:
-      `The Chronossus's Power is ${totalPower} — ${base} on its Upgrade board, ` +
-      `${input.powerSlot >= 0 ? '+' : ''}${input.powerSlot} from the Path marker, ` +
-      `and ${input.die} from the Adventure die.`,
+      `Power ${powerBeforeRoll} before the roll — ${base} on its Upgrade board, ` +
+      `${input.powerSlot >= 0 ? '+' : ''}${input.powerSlot} from the Path marker — ` +
+      `so it draws 2 cards from the ${deck} deck. The Adventure die adds ${input.die}, ` +
+      `for a total Power of ${totalPower}.`,
     detail:
       input.powerSlot === NO_SLOT_PENALTY
         ? 'No free Power slot was left on the Adventure board, so it takes -3 instead.'
@@ -207,6 +221,9 @@ export function resolveAdventure(
   });
 
   const taken = chooseAdventureCard(drawn, totalPower);
+  let gains: string[] = [];
+  let actions: string[] = [];
+  let followUps: string[] = [];
 
   if (!taken) {
     bot.vp += 1;
@@ -219,7 +236,7 @@ export function resolveAdventure(
     });
   } else {
     p.adventures += 1;
-    applyCardToBot(bot, instr, n, taken);
+    ({ gains, actions, followUps } = applyCardToBot(bot, instr, n, taken));
     // Unselected cards go to the bottom of their deck; the taken card is discarded.
     for (const c of drawn) {
       const pile = p.decks[c.deck];
@@ -229,18 +246,35 @@ export function resolveAdventure(
   }
 
   const upgraded = resolvePowerUpgrade(bot, instr, n);
-  return { powerBeforeRoll, totalPower, deck, drawn, taken, upgraded };
+  return {
+    powerBeforeRoll,
+    totalPower,
+    deck,
+    drawn,
+    taken,
+    upgraded,
+    gains,
+    actions,
+    followUps,
+  };
 }
 
-/** Apply a taken card's (already converted) benefit to the bot. */
+/**
+ * Apply a taken card's (already converted) benefit to the bot, and report what it got —
+ * the dialog shows THAT, never the card's printed Success box, which is the player's rule.
+ */
 function applyCardToBot(
   bot: ChronossusState,
   instr: Instruction[],
   n: number,
   card: AdventureCard,
-): void {
+): { gains: string[]; actions: string[]; followUps: string[] } {
   const b = card.bot;
+  /** Things it GAINS ("2 VP") — read as one list after "it gains …". */
   const gains: string[] = [];
+  /** Things it DOES ("removes 1 Anomaly") — each already a full clause. */
+  const actions: string[] = [];
+  const followUps: string[] = [];
 
   if (b.vp) {
     bot.vp += b.vp;
@@ -265,51 +299,60 @@ function applyCardToBot(
   }
   if (b.timeTravel) {
     bot.timeTravelTrack += b.timeTravel;
-    gains.push(`${b.timeTravel} steps on the Time Travel track`);
+    actions.push(
+      `advances ${b.timeTravel} step${b.timeTravel === 1 ? '' : 's'} on the Time Travel track`,
+    );
   }
   if (b.removeAnomaly && bot.anomalies > 0) {
     bot.anomalies -= 1;
     if (bot.anomalyVps && bot.anomalyVps.length > 0) bot.anomalyVps = bot.anomalyVps.slice(1);
-    gains.push('removes 1 Anomaly');
+    actions.push('removes 1 Anomaly');
   }
   if (b.returnWarpTile && bot.warpTilesOnTimeline > 0) {
     bot.warpTilesOnTimeline -= 1;
-    gains.push('returns 1 Warp tile from the Timeline to its supply');
+    actions.push('returns 1 Warp tile from the Timeline to its supply');
   }
 
+  const did = [...(gains.length ? [`gains ${gains.join(', ')}`] : []), ...actions];
   instr.push({
     id: `adv-card-${n}`,
-    text: `It takes "${card.name}" (Power ${card.power})${gains.length ? ` — it ${gains.join(', ')}.` : '.'}`,
+    text: `It takes "${card.name}" (Power ${card.power})${did.length ? ` — it ${did.join(', ')}.` : '.'}`,
     detail: [card.bot.conversion, card.bot.note].filter(Boolean).join(' '),
     effect: b.vp ? { vp: b.vp } : undefined,
   });
 
   // Follow-ups the app cannot apply on the player's physical board.
   if (b.research) {
+    followUps.push(`Then it takes ${b.research} Research Action${b.research === 1 ? '' : 's'}.`);
     instr.push({
       id: `adv-research-${n}`,
-      text: `Then it takes ${b.research} Research Action${b.research === 1 ? '' : 's'}.`,
+      text: followUps[followUps.length - 1],
       requiresInput: true,
     });
   }
   if (b.recruit) {
+    followUps.push(`Then it takes ${b.recruit} Recruit Action${b.recruit === 1 ? '' : 's'}.`);
     instr.push({
       id: `adv-recruit-${n}`,
-      text: `Then it takes ${b.recruit} Recruit Action${b.recruit === 1 ? '' : 's'}.`,
+      text: followUps[followUps.length - 1],
       requiresInput: true,
     });
   }
   if (b.construct) {
+    followUps.push(
+      b.construct === 'superproject'
+        ? 'Then it constructs 1 Superproject from the Timeline for free.'
+        : `Then it constructs 1 ${b.construct} for free.`,
+    );
     instr.push({
       id: `adv-construct-${n}`,
-      text:
-        b.construct === 'superproject'
-          ? 'Then it constructs 1 Superproject from the Timeline for free.'
-          : `Then it constructs 1 ${b.construct} for free.`,
+      text: followUps[followUps.length - 1],
       detail: 'Tap the printed VP on the tile it took so the Chronossus scores it.',
       requiresInput: true,
     });
   }
+
+  return { gains, actions, followUps };
 }
 
 /** Step 2 — Power Upgrade, on its own so the "ignore a failed step" rule is visible. */

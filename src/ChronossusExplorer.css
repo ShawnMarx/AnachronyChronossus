@@ -1105,10 +1105,18 @@ button.eoa-flag.tap-flag {
   font-variant-numeric: tabular-nums;
   line-height: 1;
 }
+.cx-adv-label {
+  font-size: 0.85rem;
+  color: var(--sp-text-mute);
+}
+/* The sum goes on its own line: as a flex item beside the big total it can't shrink
+   below its longest run, so it wrapped mid-sum (or overflowed) on narrow dialogs. */
 .cx-adv-brk {
+  flex: 1 1 100%;
+  min-width: 0;
   font-size: 0.78rem;
   color: var(--sp-text-mute);
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.25rem;
   flex-wrap: wrap;

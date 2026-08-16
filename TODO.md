@@ -78,7 +78,8 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
       interaction is unit-tested, but the scripted playthrough never rolled onto its
       Adventure (C09 sits at marker 5 step 4 there), so the **Blink-check → Adventure gate
       was never exercised in a browser**. Also unverified on a device: Undo re-showing the
-      same roll and the same two drawn cards, and the Adventure dialog at tablet width.
+      same roll (and, in shared-deck mode, the same rolled die before the card is picked),
+      and the Adventure dialog at tablet width.
 - [ ] **Adventure card follow-ups stay manual** — cards that construct a specific building
       or grant Research/Recruit Actions emit a player instruction rather than driving the
       existing Construct/Research flows. Wiring them through would let the app score the

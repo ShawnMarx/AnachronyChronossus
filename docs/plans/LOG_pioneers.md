@@ -255,3 +255,39 @@ Written (all raw crops, 300×300):
 - **The Paradox die is now shown as its real face** in both the Paradox and Warp phases, for
   both bots — the extracted blank / single / double art instead of a teal number chip. It
   replaces the roll readout only; the Paradox token and Warp tile still show beside it.
+
+**2026-08-16 — the Adventure dialog reworked off playtest feedback.**
+
+- **C10 rendered and resolved as C09 — a rules bug, not just cosmetics.** Both families map
+  to the one `tile-adventure` action, and `liveTileFamily` returns whichever the mode lists
+  first, so C10's dialog showed C09's art, name and verbatim rule box **and C10B's +1 Energy
+  Core could never have applied**. The activated family is now carried in
+  `pendingTileFamily` and threaded to both `CxTileDialog` (via a new `family` prop) and
+  `resolveTileSlot`. Watch the ordering: it must be set *after* `closeDialogs()`, which
+  clears `pendingTile` and the family with it — that caught me once already.
+- **The dialog opened on a summary, not a step.** It led with the whole Action described
+  behind a ▶ Start Your Turn, so the player dismissed a paragraph before being asked
+  anything. It now opens directly on step 1 — place the Exosuit and Path marker, answer
+  which Power slot — with the board's Power and "then it rolls the Adventure die" as
+  context. Driven by an effect on `pendingTile`, so every route into the tile (marker,
+  covering space, Autoleap) lands on the same first screen.
+- **One generic Adventure rule box.** All four tiles now carry the p.15 Adventure section
+  verbatim in `ModularTile.detail`, so the 📖 box reads the same whichever tile is on
+  screen, with that tile's own Appendix line above it carrying its bonus — the mod-specific
+  rule is shown without needing a box of its own. **The rulebook's SPECIAL CASES bullets are
+  deliberately NOT in the box** (user's call): they surface per card, at the moment they
+  apply, as the result panel's conversion line.
+- **Shared-deck mode reshaped to how it is actually played.** Instead of naming both drawn
+  cards, the app rolls, shows the total Power, and asks which single card the Chronossus
+  takes — a dropdown of that deck's 18 cards, alphabetical, minus any it already holds, with
+  cards above its Power disabled and a "Neither (+1 VP)" option that maps onto the engine's
+  empty-draw branch. **Deviation from the request:** the "Draw 2 cards from the X deck" line
+  sits on the *second* step, not the first, because X depends on the slot bonus and cannot
+  be named until the slot is answered.
+- **Layout trap worth remembering:** `.place-prompt` is a height-constrained flex column, so
+  a `<p>` added after the button row collapses to height 0 and its text overprints the
+  buttons. `flex: 0 0 auto` did **not** fix it; the line had to move above the buttons.
+- Also: the pop-out's board art went up 50% (with the overlay markers scaled to match, the
+  Resource cubes nudged inside their cards, and the VP tracker moved beside the printed
+  "1 token → +2 Power" box rather than over it), and the standalone Power fist is outlined
+  in teal — it is dark red on transparent and was vanishing against the warm dark panels.

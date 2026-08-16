@@ -263,6 +263,35 @@ describe('resolveAdventure', () => {
     expect(res.totalPower).toBe(BASE_POWER.A - 3 + 6);
   });
 
+  it('reports what the CHRONOSSUS got, so the dialog never needs the card’s Success box', () => {
+    const b = bot();
+    b.pioneers!.upgraded = { titanium: true, uranium: true, gold: true, neutronium: true };
+    // Giant Sandworm is purple — its printed Success box grants ongoing Power, which the
+    // bot never takes; it gets 3 VP + 1 Energy Core instead.
+    const res = resolveAdventure(b, [], 0, { powerSlot: 0, die: 1, drawn: ['5+/15'] });
+    expect(res.gains).toEqual(['3 VP', '1 Energy Core']);
+    expect(res.actions).toEqual([]);
+    expect(res.followUps).toEqual([]);
+  });
+
+  it('lists a card’s player-board follow-ups separately from its gains', () => {
+    const b = bot();
+    b.pioneers!.upgraded = { titanium: true, uranium: true, gold: true, neutronium: true };
+    // Secret Tunnels: the Research/Recruit/Construct choice always resolves to Research.
+    const res = resolveAdventure(b, [], 0, { powerSlot: 4, die: 6, drawn: ['5+/13'] });
+    expect(res.taken?.name).toBe('Secret Tunnels');
+    expect(res.followUps).toEqual(['Then it takes 2 Research Actions.']);
+  });
+
+  it('leaves gains and follow-ups empty when it meets neither card', () => {
+    const b = bot();
+    const res = resolveAdventure(b, [], 0, { powerSlot: -1, die: 1, drawn: ['5+/17'] });
+    expect(res.taken).toBeNull();
+    expect(res.gains).toEqual([]);
+    expect(res.actions).toEqual([]);
+    expect(res.followUps).toEqual([]);
+  });
+
   it('discards the taken card and bottoms the rejected one', () => {
     const b = bot();
     const before = b.pioneers!.decks['5+'].draw.length;

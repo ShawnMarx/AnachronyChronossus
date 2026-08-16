@@ -2,6 +2,26 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-16 — Pioneers UI pass (playtest feedback)
+
+Follow-ups on the module shipped the day before, all from playing it rather than from
+tests. Two were real bugs behind accurate-looking surfaces: **C10 rendered and resolved as
+C09** (both families share the one `tile-adventure` action, so the first-listed family won —
+meaning C10B's +1 Energy Core could never have applied), and an Adventure tile **described
+itself as "the Chronossus does nothing this turn"**, the fallback meant for Reboot. The SCV
+also named the printed Action on the space C10 covers.
+
+The Adventure dialog now opens on its first step rather than a summary behind a ▶ button,
+carries one generic Adventure rule box across all four tiles, and — in shared-deck mode —
+rolls first, then asks which single card the bot takes from a filtered dropdown.
+
+Added the **Exosuit Upgrade board pop-out**: the real component art with its state marked
+on it, reachable from the Exo tracker on the board and in the turn overview. The **Paradox
+die** now shows its real face in the Warp and Paradox phases, for both bots.
+
+Still open, and deliberately not claimed as done: the `fractures+pioneers` Blink-check →
+Adventure gate has never run in a browser, and nothing has been checked on a device.
+
 ## 2026-08-15 — Pioneers of New Earth
 
 The Classic expansion's Pioneers module for the Chronossus, plus both combos it unlocks

@@ -245,6 +245,20 @@ replaced it. Hypersync's C13-over-Time-Travel had that overlay; Pioneers' C10 ov
 Genius or Research" had to add its own. Both live in `ChronossusGame.tsx`'s board layer next
 to the slot-tile art.
 
+**Two tile families can share one Action id — carry which one is live.** Pioneers puts C09
+in a tile slot and C10 over a printed Action space, and both are `tile-adventure`.
+`liveTileFamily` returns whichever family the mode lists FIRST, so C10 rendered C09's art,
+name and rule box, and C10B's bonus could never fire. The activated family is tracked in
+`pendingTileFamily` and passed to `CxTileDialog` (`family` prop) and `resolveTileSlot`. Set
+it **after** `closeDialogs()`, which clears `pendingTile` and the family with it.
+
+**A tile's app-voice text lives in `src/board/tileText.ts`** (`TILE_DESC` for the one-line
+Command-view label, `tileInstruction` for the expanded line in its dialog) — pure, so it is
+unit-tested. A tile with no branch there falls through to Reboot's "the Chronossus does
+nothing this turn", which is what an Adventure tile said on release. Tests assert that no
+implemented tile except Reboot describes itself that way and that every in-play tile action
+has a Command-view description; a new module must add both entries.
+
 **Deep-copy a new module's state slice in `cloneChronossus`.** The resolvers mutate the bot
 in place, so a slice that is only shallow-copied gets written through to the caller's
 pre-turn state. History diffs pre against post, so the symptom is silent: every one of that

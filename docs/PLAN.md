@@ -5,7 +5,7 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-15): Chronobot, Chronossus base, all 10 difficulty options, Alternate
+> **Status (2026-08-16): Chronobot, Chronossus base, all 10 difficulty options, Alternate
 > Timelines, Variable Anomalies, Fractures of Time, Guardians of the Council and Pioneers of
 > New Earth are complete. Pioneers is on `staging`; everything before it is live in
 > production. The active plan is `docs/plans/PLAN_pioneers.md`.**
@@ -47,7 +47,12 @@
 > Upgrade board, all 36 Adventure cards with the bot's four conversions, two deck modes
 > (its own shuffled copy by default, showing real card art), and the first use of the
 > slot-IV covering path (C10 over "Recruit Genius or Research"). See
-> `docs/plans/PLAN_pioneers.md` + `LOG_pioneers.md`. Remaining candidates (Doomsday,
+> `docs/plans/PLAN_pioneers.md` + `LOG_pioneers.md`.
+> **2026-08-16:** a playtest UI pass on it — the Adventure dialog opens on its first step
+> with one generic rule box, C10 stopped resolving as C09, the Exosuit Upgrade board got a
+> pop-out, and the Paradox die shows its real face in the Warp/Paradox phases (both bots).
+> The module has still had **no on-device pass**, and `fractures+pioneers`'s Blink-check →
+> Adventure gate has never run in a browser. Remaining candidates (Doomsday,
 > Chronossus stats/history) stay in `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
 > decisions here remain the source material behind those efforts.
 
