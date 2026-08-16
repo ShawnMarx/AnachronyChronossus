@@ -176,7 +176,12 @@ positions are **percentages** of the board image; `.board-wrap` has `aspect-rati
 ```bash
 node pw-validate.mjs shot.png   # Playwright: prints each badge's measured %, saves screenshot
 node pw-check.mjs "<Module label>" <slug>   # renders a mode; prints its board tiles + broken images
+SHOT_DIR=/tmp node pw-adv.mjs http://localhost:5173/ 1000   # opens Pioneers' Adventure dialog
 ```
+
+`pw-adv.mjs` shoots the **dialog element** at a given viewport width, so a dialog docked on
+a narrow board is seen at its real width — dialog-only layout bugs (a title running under
+the ✕, a Power line wrapping mid-sum) are invisible in a full-page screenshot.
 
 `pw-check.mjs` drives a real browser through setup into a mode and reports which tile images
 are on the board plus any that failed to load — how Pioneers' missing C09/C10 art and its

@@ -370,7 +370,7 @@ export function resolvePowerUpgrade(
     p.upgraded = { ...p.upgraded, [pick]: true };
     instr.push({
       id: `adv-upgrade-${n}`,
-      text: `Power Upgrade: move 1 ${pick} from the Chronossus's board onto its Exosuit Upgrade board.`,
+      text: `Power Upgrade: the Chronossus moves 1 ${pick} from its board onto its Exosuit Upgrade board.`,
       detail:
         'It takes whichever placeable Resource it has the most of; ties go ' +
         'Titanium > Gold > Uranium > Neutronium. That Resource is now spent, and its slot ' +
@@ -383,7 +383,7 @@ export function resolvePowerUpgrade(
   instr.push({
     id: `adv-upgrade-vp-${n}`,
     text:
-      'Power Upgrade: it has no Resource with a free slot, so place 1 VP token from the ' +
+      'Power Upgrade: the Chronossus has no Resource with a free slot, so it places 1 VP token from the ' +
       'supply on its Exosuit Upgrade board instead.',
     detail:
       'These VP tokens add Power but do NOT count as VP for the Chronossus, unless that ' +

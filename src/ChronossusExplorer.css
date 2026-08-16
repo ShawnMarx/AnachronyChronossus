@@ -756,6 +756,13 @@ button.eoa-flag.tap-flag {
   width: auto;
   border-radius: 6px;
 }
+/* A dialog docked on a narrow board: the tile art gives the title room rather than
+   squeezing it into the ✕. */
+@container (max-width: 330px) {
+  .cx-tile-dialog-art {
+    height: 62px;
+  }
+}
 
 /* ---- Chronossus action dialog ----
    Recolor the shared DetailPanel (BoardExplorer.css defaults to Chronobot
@@ -1108,24 +1115,26 @@ button.eoa-flag.tap-flag {
 .cx-adv-label {
   font-size: 0.85rem;
   color: var(--sp-text-mute);
-}
-/* The sum goes on its own line: as a flex item beside the big total it can't shrink
-   below its longest run, so it wrapped mid-sum (or overflowed) on narrow dialogs. */
-.cx-adv-brk {
-  flex: 1 1 100%;
   min-width: 0;
+}
+/* The sum is a plain block BELOW the number row, not a flex item inside it: as a flex
+   item it can't shrink past its longest run, so it wrapped mid-sum on a narrow dialog. */
+p.cx-adv-brk {
+  margin: 0.15rem 0 0.5rem;
   font-size: 0.78rem;
+  line-height: 1.35;
   color: var(--sp-text-mute);
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  flex-wrap: wrap;
 }
 .cx-adv-die {
   width: 1.5rem;
   height: 1.5rem;
   border-radius: 4px;
   vertical-align: middle;
+}
+.cx-adv-die.lg {
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 5px;
 }
 
 /* Both drawn cards, the taken one highlighted — so "the highest requirement it

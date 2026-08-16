@@ -4096,9 +4096,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 /** Friendly, player-facing instruction derived from a tile code's effect. */
 
 /**
- * Pioneers: what the Adventure produced — the Power sum with the rolled die, both drawn
- * cards (the taken one highlighted, so "highest requirement it meets" is visible rather
- * than asserted), and the converted outcome.
+ * Pioneers: what the Adventure produced, in the order the rulebook resolves it (p.15) —
+ * the Power BEFORE the die (which is what picks the deck), the draw, both cards with the
+ * taken one highlighted, only then the die and the total, and finally the outcome.
+ *
+ * Nothing here shows the card's printed Success box: that is the PLAYER's rule, and after
+ * the four p.15 conversions it routinely describes something the Chronossus never does.
  */
 function AdventureResultPanel({
   result,
@@ -4112,29 +4115,32 @@ function AdventureResultPanel({
   onCommit: () => void;
 }) {
   const slotBonus = result.powerBeforeRoll - breakdown.reduce((n, b) => n + b.power, 0);
+  const die = result.totalPower - result.powerBeforeRoll;
+  const did = [
+    ...(result.gains.length ? [`gains ${result.gains.join(', ')}`] : []),
+    ...result.actions,
+  ];
   return (
     <>
+      {/* 1. Power before the roll. */}
       <div className="cx-adv-power">
-        <span className="cx-adv-total">{result.totalPower}</span>
+        <span className="cx-adv-total">{result.powerBeforeRoll}</span>
         <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-        <span className="cx-adv-label">total Power</span>
-        {/* The breakdown takes its own line (flex-basis 100%) — inline it wraps mid-sum
-            against the big total and reads as if the numbers belonged to it. */}
-        <span className="cx-adv-brk">
-          {breakdown.map((b) => `${b.power} ${b.label}`).join(' + ')}
-          {` ${slotBonus >= 0 ? '+' : '−'} ${Math.abs(slotBonus)} Path marker`}
-          {' + '}
-          <img
-            src={`/assets/solo/chronossus/adventure-die-${result.totalPower - result.powerBeforeRoll}.png`}
-            alt={`Adventure die: ${result.totalPower - result.powerBeforeRoll}`}
-            className="cx-adv-die"
-          />
-        </span>
+        <span className="cx-adv-label">Power before the roll</span>
       </div>
-      <p className="pp-sub">
-        Power was <b>{result.powerBeforeRoll}</b> before the roll — that is what picked the
-        deck, so it drew 2 cards from the <b>{result.deck}</b> deck.
+      {/* The sum is a plain block, never a flex item: beside the big number it can't
+          shrink, so it wrapped mid-sum on a narrow dialog. */}
+      <p className="cx-adv-brk">
+        {breakdown.map((b) => `${b.power} ${b.label}`).join(' + ')}
+        {` ${slotBonus >= 0 ? '+' : '−'} ${Math.abs(slotBonus)} Path marker`}
       </p>
+
+      {/* 2. Which deck that Power picked. */}
+      <p className="pp-instruct">
+        It draws <b>2 cards</b> from the <b>{result.deck}</b> deck.
+      </p>
+
+      {/* 3. The two cards, the taken one highlighted. */}
       <div className="cx-adv-cards">
         {result.drawn.map((c) => (
           <figure
@@ -4149,28 +4155,34 @@ function AdventureResultPanel({
           </figure>
         ))}
       </div>
+
+      {/* 4. Only now the die, and the total it is measured against. */}
+      <div className="cx-adv-power">
+        <img
+          src={`/assets/solo/chronossus/adventure-die-${die}.png`}
+          alt={`Adventure die: ${die}`}
+          className="cx-adv-die lg"
+        />
+        <span className="cx-adv-total">{result.totalPower}</span>
+        <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
+        <span className="cx-adv-label">total Power</span>
+      </div>
+      <p className="cx-adv-brk">
+        {result.powerBeforeRoll} before the roll + {die} on the Adventure die
+      </p>
+
+      {/* 5. What it takes, what that gives it, and the rule that converted it. */}
       {result.taken ? (
         <>
-          {/* Only the CHRONOSSUS's rule is shown — the card's printed Success box is the
-              player's rule, and after the p.15 conversions it routinely describes
-              something the bot never does. */}
           <p className="pp-instruct">
-            It takes <b>{result.taken.name}</b> (Power {result.taken.power}) — the highest
-            requirement it meets
-            {(() => {
-              const did = [
-                ...(result.gains.length ? [`gains ${result.gains.join(', ')}`] : []),
-                ...result.actions,
-              ];
-              return did.length ? (
-                <>
-                  {' '}
-                  — it <b>{did.join(', ')}</b>.
-                </>
-              ) : (
-                '.'
-              );
-            })()}
+            The Chronossus takes <b>{result.taken.name}</b> (Power {result.taken.power}) —
+            the highest requirement it meets.
+            {did.length ? (
+              <>
+                {' '}
+                It <b>{did.join(', ')}</b>.
+              </>
+            ) : null}
           </p>
           {result.followUps.map((f) => (
             <p className="pp-instruct" key={f}>
@@ -4179,27 +4191,29 @@ function AdventureResultPanel({
           ))}
           {result.taken.bot.conversion && (
             <p className="pp-sub">
-              <b>For the Chronossus:</b> {result.taken.bot.conversion}
+              <b>Rule used:</b> {result.taken.bot.conversion}
             </p>
           )}
           {result.taken.bot.note && <p className="pp-sub">{result.taken.bot.note}</p>}
         </>
       ) : (
         <p className="pp-instruct">
-          It meets <b>neither</b> card’s Power requirement — it gains <b>1 VP</b> and both
-          cards go to the bottom of their decks.
+          The Chronossus meets <b>neither</b> card’s Power requirement — it gains{' '}
+          <b>1 VP</b> and both cards go to the bottom of their decks.
         </p>
       )}
+
+      {/* 6. Step 2 of the Action. */}
       <p className="pp-instruct">
         {result.upgraded ? (
           <>
-            <b>Power Upgrade:</b> move 1 <b>{result.upgraded}</b> from the Chronossus’s
+            <b>Power Upgrade:</b> the Chronossus moves 1 <b>{result.upgraded}</b> from its
             board onto its Exosuit Upgrade board.
           </>
         ) : (
           <>
-            <b>Power Upgrade:</b> it has no Resource with a free slot — place 1{' '}
-            <b>VP token</b> from the supply on its Exosuit Upgrade board instead.
+            <b>Power Upgrade:</b> the Chronossus has no Resource with a free slot, so it
+            places 1 <b>VP token</b> from the supply on its Exosuit Upgrade board instead.
           </>
         )}
       </p>
@@ -4546,26 +4560,32 @@ function CxTileDialog({
           ) : adventureGate && !readOnly && adventureGate.step === 'shared-draw' ? (
             <>
               {/* Rules order (p.15): the Power BEFORE the die picks the deck, and only
-                  then is the die rolled — so the draw instruction comes first and the
-                  die + total follow it. */}
+                  then is the die rolled — so the draw comes first, the die after it. */}
+              <div className="cx-adv-power">
+                <span className="cx-adv-total">
+                  {adventureGate.totalPower - adventureGate.die}
+                </span>
+                <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
+                <span className="cx-adv-label">Power before the roll</span>
+              </div>
               <p className="pp-instruct">
-                Its Power is <b>{adventureGate.totalPower - adventureGate.die}</b> before the
-                roll, so draw <b>2 cards</b> from the <b>{adventureGate.sharedDeck}</b> deck
-                for the Chronossus to evaluate.
+                Draw <b>2 cards</b> from the <b>{adventureGate.sharedDeck}</b> deck for the
+                Chronossus to evaluate.
               </p>
               <div className="cx-adv-power">
+                <img
+                  src={`/assets/solo/chronossus/adventure-die-${adventureGate.die}.png`}
+                  alt={`Adventure die: ${adventureGate.die}`}
+                  className="cx-adv-die lg"
+                />
                 <span className="cx-adv-total">{adventureGate.totalPower}</span>
                 <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
                 <span className="cx-adv-label">total Power</span>
-                <span className="cx-adv-brk">
-                  {adventureGate.totalPower - adventureGate.die} before the roll +{' '}
-                  <img
-                    src={`/assets/solo/chronossus/adventure-die-${adventureGate.die}.png`}
-                    alt={`Adventure die: ${adventureGate.die}`}
-                    className="cx-adv-die"
-                  />
-                </span>
               </div>
+              <p className="cx-adv-brk">
+                {adventureGate.totalPower - adventureGate.die} before the roll +{' '}
+                {adventureGate.die} on the Adventure die
+              </p>
               <p className="pp-sub">
                 It takes the one with the <b>highest Power requirement it meets</b> — pick
                 that card below. The other goes to the bottom of the deck.

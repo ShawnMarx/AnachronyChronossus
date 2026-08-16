@@ -702,6 +702,8 @@
 /* ---- Detail panel overlaid on the board (dark, purple Chronobot border) ---- */
 .detail-panel {
   position: absolute;
+  /* Lets the head size itself off the dialog's own width (cqi units below). */
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   background: var(--sp-panel-2);
@@ -736,10 +738,17 @@
 }
 .dp-head h2 {
   margin: 0;
-  font-size: clamp(0.95rem, 2.2vw, 1.25rem);
+  /* Sized off the PANEL (cqi), not the viewport: a dialog docked on a narrow board is
+     small while the viewport is wide, and a vw-sized title ran under the ✕. */
+  font-size: clamp(0.85rem, 6cqi, 1.25rem);
   line-height: 1.15;
+  min-width: 0;
+  /* Break inside the word only as a last resort — the container query below shrinks the
+     title first, so a docked narrow dialog keeps "Adventure" on one line. */
+  overflow-wrap: break-word;
 }
 .dp-close {
+  flex: 0 0 auto;
   background: none;
   border: none;
   color: inherit;
