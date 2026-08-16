@@ -497,7 +497,7 @@ const UPGRADE_SLOT_POS = [
  * the tokens physically stack. Measured off upgrade-board-A.jpg (565x800) at (283, 749);
  * the chip is centre-anchored.
  */
-const UPGRADE_VP_POS = { x: 50, y: 93.6 };
+const UPGRADE_VP_POS = { x: 50, y: 95.9 };
 
 /** Printed Action spaces a mode's tile can cover (slots IV/V). */
 const COVERED_ACTIONS: CoveredAction[] = ['time-travel', 'recruit-genius-research'];
