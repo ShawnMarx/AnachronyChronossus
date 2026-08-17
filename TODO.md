@@ -138,7 +138,10 @@ archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 Still backlog (not yet in a plan):
 - [ ] **More modules** — Doomsday is the last one (stubbed in the Module menu); it becomes
       its own `/plan`. Per the rulebook's limits (Solo Opponents p.18) Doomsday combines
-      with nothing, and Fractures + Guardians is not allowed.
+      with nothing, and Fractures + Guardians is not allowed. It adds **one Solo Objective
+      card** (the last module that does — Fractures adds 2, Guardians and Pioneers 1 each,
+      Hypersync none), so setup only needs its name added to `MODULE_OBJECTIVE_CARDS` in
+      `ChronossusSetupFlow.tsx`.
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 
