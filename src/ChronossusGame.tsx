@@ -5916,8 +5916,10 @@ const CX_SCORE_ROWS = (
   { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
   { label: 'Time Travel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
-  { label: 'Breakthroughs (×1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
-  { label: 'Breakthrough sets (set of shapes ×2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
+  // Rate hints read the same on every line ("3 each", "−2 each") — no "×", since these
+  // fields take a total, not a count to be multiplied.
+  { label: 'Breakthroughs (1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
+  { label: 'Breakthrough sets (set of shapes 2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
   { label: 'Anomalies (−3 each)', playerKey: 'anomalies', botValue: score.anomalyVP },
   { label: 'Victory Point tokens', playerKey: 'vpTokens', botValue: score.tokenVP },
   { label: 'Morale', playerKey: 'morale' },
