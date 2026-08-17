@@ -68,19 +68,19 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 - [ ] **Guardian board art/overlays** — the board stays player-managed (the app names the
       Path-marked slot in text). Only worth doing if the Valley board ever gets art too.
 
-## Pioneers follow-ups (from the 2026-08-15 module build)
+## Pioneers follow-ups (from the 2026-08-15 build; module shipped 2026-08-17)
 - [ ] **Calibrate the Upgrade-board pop-out coordinates** — the four Resource-slot markers
       (`UPGRADE_SLOT_POS` in `ChronossusGame.tsx`) are still positioned by eye off
       `upgrade-board-A.jpg` (565×800); they land correctly but were never set in calibrate
       mode like the main board's overlays. The pop-out is a modal, so calibrate mode doesn't
       currently reach it. (`UPGRADE_VP_POS` was measured off the art 2026-08-16 — the ▼ in
       the ringed circle at (283, 749), same on both board sides.)
-- [ ] **Manual pass on `fractures+pioneers`** — the mode renders correctly and the Blink
-      interaction is unit-tested, but the scripted playthrough never rolled onto its
-      Adventure (C09 sits at marker 5 step 4 there), so the **Blink-check → Adventure gate
-      was never exercised in a browser**. Also unverified on a device: Undo re-showing the
-      same roll (and, in shared-deck mode, the same rolled die before the card is picked),
-      and the Adventure dialog at tablet width.
+- [ ] **On-device pass on Pioneers** (updated 2026-08-17) — the Blink-check → Adventure gate
+      is now exercised in a browser (`pw-pass.mjs` drives `fractures+pioneers` at 0
+      Exosuits), and the dialog was checked at 760/1000/1280px. Still unverified on a real
+      device: Undo re-showing the same roll (and, in shared-deck mode, the same rolled die
+      before the card is picked), and the Adventure dialog at tablet width. Now playable
+      from production.
 - [ ] **Autoleap onto an Exosuit-placing tile doesn't run the passing rule** (2026-08-16) —
       `passIfOutOfFigures` now guards every rolled Action (printed space, tile slot, covered
       space), but the Autoleap chain in `ChronossusGame.tsx` opens `leap.actionId` /
@@ -133,7 +133,8 @@ archived 2026-08-13 in
 archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 
 **Pioneers of New Earth** + the `fractures+pioneers` / `guardians+pioneers` combos shipped
-2026-08-15 (on `staging`) — see `docs/plans/PLAN_pioneers.md` and `LOG_pioneers.md`.
+to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLETED.md`.
+No plan is active.
 
 Still backlog (not yet in a plan):
 - [ ] **More modules** — Doomsday is the last one (stubbed in the Module menu); it becomes

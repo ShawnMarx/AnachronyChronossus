@@ -5,10 +5,10 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-16): Chronobot, Chronossus base, all 10 difficulty options, Alternate
+> **Status (2026-08-17): Chronobot, Chronossus base, all 10 difficulty options, Alternate
 > Timelines, Variable Anomalies, Fractures of Time, Guardians of the Council and Pioneers of
-> New Earth are complete. Pioneers is on `staging`; everything before it is live in
-> production. The active plan is `docs/plans/PLAN_pioneers.md`.**
+> New Earth are complete and live in production. No plan is active — **Doomsday** is the
+> only module left, and it becomes its own `/plan` when picked up.**
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
@@ -47,13 +47,16 @@
 > Upgrade board, all 36 Adventure cards with the bot's four conversions, two deck modes
 > (its own shuffled copy by default, showing real card art), and the first use of the
 > slot-IV covering path (C10 over "Recruit Genius or Research"). See
-> `docs/plans/PLAN_pioneers.md` + `LOG_pioneers.md`.
-> **2026-08-16:** a playtest UI pass on it — the Adventure dialog opens on its first step
-> with one generic rule box, C10 stopped resolving as C09, the Exosuit Upgrade board got a
-> pop-out, and the Paradox die shows its real face in the Warp/Paradox phases (both bots).
-> The module has still had **no on-device pass**, and `fractures+pioneers`'s Blink-check →
-> Adventure gate has never run in a browser. Remaining candidates (Doomsday,
-> Chronossus stats/history) stay in `TODO.md`; each becomes its own `/plan`. The Chronossus knowledge, references, and design
+> `docs/complete/20260817_PIONEERS_COMPLETED.md`.
+> **2026-08-16 → 08-17:** two playtest passes reworked it and **shipped it to production**
+> (landing page 80%): the Adventure dialog now resolves in the rulebook's own order
+> (pre-roll Power → deck → the two cards → the die → the outcome) and shows only the
+> Chronossus's rule for a card; the passing rule was missing on the covered-space path and
+> on debug taps, and skipped Fractures' Blink exemption on tile slots; a failed Time Travel
+> now says it scores +VP instead of resolving silently; the End Game tally gained the
+> Fractures/Hypersync lines; and Warp shows one Warp tile per Paradox rolled. Remaining
+> candidates (Doomsday, Chronossus stats/history) stay in `TODO.md`; each becomes its own
+> `/plan`. The Chronossus knowledge, references, and design
 > decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
@@ -211,8 +214,9 @@ Per-Era phases:
 - **Phase 4 — Modules/expansions. ← IN PROGRESS.** Shipped: **Hypersync Future Actions**
   (2026-08-09), **Alternate Timelines** + **Variable Anomalies** (2026-08-10), **Fractures
   of Time** and the `fractures+hypersync` combo (2026-08-13), **Guardians of the Council**
-  and `guardians+hypersync` (2026-08-14). Remaining: Doomsday, Pioneers — each its own
-  `/plan`, via the C04–C14 tile table + per-module deltas.
+  and `guardians+hypersync` (2026-08-14), **Pioneers of New Earth** with
+  `fractures+pioneers` and `guardians+pioneers` (2026-08-17). Remaining: **Doomsday** — its
+  own `/plan`, via the C04–C14 tile table + per-module deltas.
 - **Phase 5 — Optional login + stats.** Shared-auth (staging) integration; persist
   results only when logged in. (Chronobot already deploys to Digital Ocean.)
 - **Cross-cutting — Asset pipeline.** Script to extract TTS images, render thumbnails,

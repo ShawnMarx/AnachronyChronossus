@@ -2,6 +2,40 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-17 — Pioneers to production, and the playtest pass that got it there
+
+Pioneers of New Earth (with `fractures+pioneers` and `guardians+pioneers`) is **live in
+production**; the landing page moves to 80%, the module is archived in
+`docs/complete/20260817_PIONEERS_COMPLETED.md`, and no plan is active. Doomsday is the one
+module left.
+
+The day's work was playtest feedback, and two items were rules bugs rather than copy:
+
+- **The passing rule was missing on paths that could reach the Adventure.** The
+  covered-space path (a rolled marker landing on the printed Action C10 covers) ran no
+  check at all, so the bot adventured with no Exosuits left; the tile-slot path checked but
+  skipped Fractures' Blink exemption, so it passed when it should have Blinked onto the
+  Adventure board. Debug taps on a tile had the same hole while taps on a printed space did
+  not. The whole decision is now `Chronossus.passesInsteadOfAction` behind one view helper
+  that every path calls.
+- **A failed Time Travel resolved silently** — with no Warp tiles on the Timeline the +VP
+  showed only in History. It now opens its dialog and says so, for both bots, using the
+  difficulty-adjusted VP (which also fixed a hardcoded "+1 VP" on Remove Anomaly's failure).
+
+The rest was the Adventure dialog reworked into the rulebook's own order — pre-roll Power
+(the Upgrade-board chip + the Path marker) → the deck that Power picked → both drawn cards
+→ only then the die and the total → what the Chronossus takes. A card's printed Success box
+is the *player's* rule and is never shown; `resolveAdventure` returns what the bot actually
+got. Also: the End Game tally gained its missing module lines (Technologies shared,
+Fracture Device, Glitches −2, Hypersync tiles −4), setup names every module's Solo Objective
+card in one step, Fractures got its own setup section, off-board placements no longer ask
+for an Energy Core, Warp shows one tile per Paradox rolled, and History drops the bare
+"→ Phase" row when that phase reports its own result.
+
+Three browser harnesses were kept and documented: `pw-adv.mjs`, `pw-warp.mjs`, and
+`pw-pass.mjs` — the last edits the persisted save to reach states the UI has no control
+for (out of Exosuits), which is how both passing bugs were confirmed fixed.
+
 ## 2026-08-16 — Pioneers UI pass (playtest feedback)
 
 Follow-ups on the module shipped the day before, all from playing it rather than from
