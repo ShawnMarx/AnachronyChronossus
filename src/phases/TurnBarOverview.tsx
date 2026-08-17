@@ -42,6 +42,53 @@ export interface TurnBarOverviewProps {
   onClose: () => void;
 }
 
+/**
+ * The selected difficulty options, exactly as the turn overview lists them — a title and
+ * a list, collapsing behind a "(N selected)" toggle past three so a heavily-modded game
+ * doesn't push everything below it off screen. Exported because the End Game screen shows
+ * the same thing, and two hand-written versions drifted.
+ */
+export function DifficultyList({ difficulty }: { difficulty: string[] }) {
+  const [showDifficulty, setShowDifficulty] = useState(false);
+  return (
+    <div className="eoa-difficulty">
+      {difficulty.length === 0 ? (
+        <>
+          <span className="eoa-diff-title">Difficulty options</span>
+          <span className="eoa-diff-none">Standard game — none selected</span>
+        </>
+      ) : difficulty.length > 3 ? (
+        <>
+          <button
+            type="button"
+            className="eoa-diff-toggle"
+            onClick={() => setShowDifficulty((s) => !s)}
+            aria-expanded={showDifficulty}
+          >
+            Difficulty options ({difficulty.length} selected) {showDifficulty ? '▾' : '▸'}
+          </button>
+          {showDifficulty && (
+            <ul className="eoa-diff-list">
+              {difficulty.map((d) => (
+                <li key={d}>{d}</li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : (
+        <>
+          <span className="eoa-diff-title">Difficulty options</span>
+          <ul className="eoa-diff-list">
+            {difficulty.map((d) => (
+              <li key={d}>{d}</li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function TurnBarOverview({
   botName,
   era,
@@ -59,10 +106,6 @@ export default function TurnBarOverview({
   passingRule,
   onClose,
 }: TurnBarOverviewProps) {
-  // Past this many selected options, collapse the list behind a "(N selected)" toggle
-  // so a heavily-modded game doesn't push the recent-turns section far down.
-  const [showDifficulty, setShowDifficulty] = useState(false);
-
   return (
     <div className="eoa-popover">
       <div className="eoa-pop-head">
@@ -86,43 +129,7 @@ export default function TurnBarOverview({
         </div>
       )}
 
-      {difficulty && (
-        <div className="eoa-difficulty">
-          {difficulty.length === 0 ? (
-            <>
-              <span className="eoa-diff-title">Difficulty options</span>
-              <span className="eoa-diff-none">Standard game — none selected</span>
-            </>
-          ) : difficulty.length > 3 ? (
-            <>
-              <button
-                type="button"
-                className="eoa-diff-toggle"
-                onClick={() => setShowDifficulty((s) => !s)}
-                aria-expanded={showDifficulty}
-              >
-                Difficulty options ({difficulty.length} selected) {showDifficulty ? '▾' : '▸'}
-              </button>
-              {showDifficulty && (
-                <ul className="eoa-diff-list">
-                  {difficulty.map((d) => (
-                    <li key={d}>{d}</li>
-                  ))}
-                </ul>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="eoa-diff-title">Difficulty options</span>
-              <ul className="eoa-diff-list">
-                {difficulty.map((d) => (
-                  <li key={d}>{d}</li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
+      {difficulty && <DifficultyList difficulty={difficulty} />}
 
       {entries.length > 0 && (
         <div className="eoa-turns">

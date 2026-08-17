@@ -39,7 +39,7 @@ import {
 import HistoryPane from './history/HistoryPane';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
-import TurnBarOverview from './phases/TurnBarOverview';
+import TurnBarOverview, { DifficultyList } from './phases/TurnBarOverview';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
@@ -6136,15 +6136,6 @@ function CxScoreScreen({
           </div>
         </div>
 
-        {state.config.difficulty.length > 0 && (
-          <p className="score-setup-note">
-            Difficulty:{' '}
-            {state.config.difficulty
-              .map((f) => chronossusDifficultyLabel(f, state.config.difficultyValues))
-              .join(', ')}
-          </p>
-        )}
-
         <div className="score-mode">
           <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
             Number
@@ -6221,6 +6212,14 @@ function CxScoreScreen({
             )}
           </>
         )}
+
+        {/* What the game was played at, under the tally rather than above it — it is
+            reference, not something to fill in. Same block as the turn overview's. */}
+        <DifficultyList
+          difficulty={state.config.difficulty.map((f) =>
+            chronossusDifficultyLabel(f, state.config.difficultyValues),
+          )}
+        />
 
         <ul className="score-breakdown score-meta">
           <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
