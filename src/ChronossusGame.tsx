@@ -617,6 +617,8 @@ function CxUpgradeBoardPopout({
                 ) : (
                   <>
                     +{tokenPower}
+                    {/* No teal outline here: this chip sits on its own amber background,
+                        where the fist already reads (same call as the die faces). */}
                     <img src={POWER_ICON} alt="" aria-hidden="true" />
                   </>
                 )}
@@ -3323,7 +3325,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     }}
                     title="Show the Chronossus's Exosuit Upgrade board and its current Power"
                   >
-                    <img src={POWER_ICON} alt="" aria-hidden="true" />
+                    <img src={POWER_ICON} alt="" aria-hidden="true" className="cx-power-icon" />
                     {Chronossus.boardPower(bot)}
                   </button>
                 );
@@ -3616,20 +3618,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         size={18}
                       />
                     </TapFlag>
-                    {/* Pioneers: the Upgrade board is a component the app never renders on
-                        the main board, so its status gets a button right under the Exosuit
-                        tracker it belongs to. */}
-                    {bot.pioneers && (
-                      <button
-                        type="button"
-                        className="cx-upgrade-btn"
-                        onClick={() => setShowUpgradeBoard(true)}
-                        title="Show the Chronossus's Exosuit Upgrade board and its current Power"
-                      >
-                        <img src={POWER_ICON} alt="" aria-hidden="true" />
-                        {Chronossus.boardPower(bot)} Power
-                      </button>
-                    )}
+                    {/* No Power chip here: the overview already carries one further right,
+                        and that one opens the Upgrade board. Two said the same thing. */}
                   </span>
                   <TapFlag
                     className="cx-energy-flag"
@@ -3651,13 +3641,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {bot.pioneers && (
                     <TapFlag
                       className="cx-energy-flag"
+                      onClick={() => setShowUpgradeBoard(true)}
                       hint={
                         `Exosuit Upgrade board (${bot.pioneers.boardSide} side) — ` +
                         Chronossus.powerBreakdown(bot)
                           .map((b) => `${b.power} ${b.label}`)
                           .join(' + ') +
                         `. At ${Chronossus.BIG_DECK_THRESHOLD}+ Power (with the Path-marker ` +
-                        'bonus) it draws from the 10+ Adventure deck.'
+                        'bonus) it draws from the 10+ Adventure deck. Tap to open the board.'
                       }
                     >
                       <span className="cx-tech-ops">
@@ -4167,7 +4158,7 @@ function AdventureResultPanel({
           onClick={onShowUpgradeBoard}
           title="Show the Chronossus's Exosuit Upgrade board and its current Power"
         >
-          <img src={POWER_ICON} alt="" aria-hidden="true" />
+          <img src={POWER_ICON} alt="" aria-hidden="true" className="cx-power-icon" />
           {boardTotal} Power
         </button>
         {` ${slotBonus >= 0 ? '+' : '−'} ${Math.abs(slotBonus)} Path marker`}
@@ -5365,10 +5356,16 @@ function TapFlag({
   className,
   hint,
   children,
+  onClick,
 }: {
   className: string;
   hint: string;
   children: React.ReactNode;
+  /**
+   * Makes the chip DO something instead of toggling its own tooltip popover (the Power
+   * chip opens the Exosuit Upgrade board). The hover tooltip stays either way.
+   */
+  onClick?: () => void;
 }) {
   const ctx = useContext(TapFlagCtx);
   const id = useId();
@@ -5387,8 +5384,8 @@ function TapFlag({
         className={`eoa-flag tap-flag ${className}`}
         title={hint}
         aria-label={hint}
-        aria-expanded={open}
-        onClick={toggle}
+        aria-expanded={onClick ? undefined : open}
+        onClick={onClick ?? toggle}
       >
         {children}
       </button>

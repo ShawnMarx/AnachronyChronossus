@@ -1260,6 +1260,8 @@ p.cx-adv-brk {
   background: rgba(var(--sp-accent-rgb), 0.28);
 }
 .cx-upgrade-btn img {
+  /* Sized here, but the teal outline comes from .cx-power-icon — the dark-red fist
+     disappears against the board art and the panel without it. */
   width: 0.85em;
   height: 0.85em;
   object-fit: contain;
