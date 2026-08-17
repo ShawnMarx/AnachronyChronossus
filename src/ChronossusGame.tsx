@@ -486,11 +486,13 @@ const ADVENTURE_DESTINATION = "the Adventure board's hex pool space";
  * off `upgrade-board-A.jpg` (565x800); both sides share the layout. This is the printed
  * left-to-right order, NOT the Power Upgrade tie-break order.
  */
+// Measured off upgrade-board-A.jpg (565x800): the printed cube centres are at x = 89,
+// 221, 350, 477 px and y = 457 — the overlay used to sit about 1% left of each.
 const UPGRADE_SLOT_POS = [
-  { resource: 'titanium' as const, x: 14.5, y: 57, power: 2 },
-  { resource: 'uranium' as const, x: 37.5, y: 57, power: 3 },
-  { resource: 'gold' as const, x: 60.5, y: 57, power: 3 },
-  { resource: 'neutronium' as const, x: 83.5, y: 57, power: 4 },
+  { resource: 'titanium' as const, x: 15.8, y: 57.2, power: 2 },
+  { resource: 'uranium' as const, x: 39.2, y: 57.2, power: 3 },
+  { resource: 'gold' as const, x: 61.9, y: 57.2, power: 3 },
+  { resource: 'neutronium' as const, x: 84.5, y: 57.2, power: 4 },
 ];
 /**
  * The VP-token space on the same art: the ▼ inside the ringed circle at the bottom, where

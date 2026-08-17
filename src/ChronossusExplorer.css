@@ -1321,28 +1321,25 @@ p.cx-adv-brk {
   border-radius: 7px;
 }
 /* One marker per Resource slot: an empty ring, or the Resource's own cube when filled. */
+/* An empty slot draws NOTHING — the board already prints the Resource it wants; the
+   overlay only exists to lay a real cube on a filled one (and to carry the tooltip).
+   The old ring read as circles printed on the art. */
 .cx-upgrade-slot {
   position: absolute;
   /* 50% larger than the original 2.7rem — the cubes read at a glance on the pop-out. */
   width: 4.05rem;
   height: 4.05rem;
   transform: translate(-50%, -50%);
-  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.28);
-}
-.cx-upgrade-slot.filled {
-  box-shadow:
-    inset 0 0 0 2px var(--sp-accent-2),
-    0 0 10px rgba(63, 177, 177, 0.55);
-  background: rgba(0, 0, 0, 0.35);
 }
 .cx-upgrade-slot img {
   width: 88%;
   height: 88%;
   object-fit: contain;
+  /* Reads as a piece sitting ON the board rather than part of the printing. */
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
 }
 .cx-upgrade-tokens {
   position: absolute;
