@@ -776,34 +776,8 @@ export default function ChronossusSetupFlow({
                     rest to the box.
                   </li>
                   <li>The Chronossus does not use a Focus marker.</li>
-                  {moduleId?.includes('fractures') && (
-                    <>
-                      <li>
-                        Set up the <b>Valley board</b> as for a 2-player game. The app names
-                        the Valley Action the Chronossus takes; you place its Exosuit there
-                        (or on the Valley Capital space if no Valley Action space is free).
-                      </li>
-                      <li>
-                        No need for the physical <b>Flux Pool</b> container — the app holds
-                        its 1 Flux Core + 3 Empty Flux Casings and draws from it for you
-                        {extraFlux > 0 ? ` (+${extraFlux} extra Flux Core${extraFlux === 1 ? '' : 's'}, difficulty option selected)` : ''}.
-                      </li>
-                      <li>
-                        The Chronossus does not use a Fracture Device, never rolls the Flux
-                        or Glitch dice, and never receives Glitches.
-                      </li>
-                      <li>
-                        Whenever it places an Exosuit on the Main board, put an Energy Core
-                        from the supply into that Exosuit.
-                      </li>
-                      {playerGlitch && (
-                        <li>
-                          <b>Roll the Glitch die and place that Glitch for yourself</b>, on
-                          top of your two starting Glitches (difficulty option selected).
-                        </li>
-                      )}
-                    </>
-                  )}
+                  {/* Fractures' own steps live in its module section below, like every
+                      other module's — this list is the base setup. */}
                   {moduleId?.includes('guardians') && (
                     <>
                       <li>
@@ -857,6 +831,45 @@ export default function ChronossusSetupFlow({
 
               {/* Visible per-mode setup steps (below the app rules) — the verbatim
                   Hypersync setup MINUS the tile-layout line the app handles for you. */}
+              {moduleId?.includes('fractures') && (
+                <div className="setup-modified">
+                  <h3>Fractures of Time setup</h3>
+                  <ul>
+                    <li>
+                      Set up the <b>Valley board</b> as if it was a 2-player game. The app
+                      names the Valley Action the Chronossus takes; you place its Exosuit
+                      there (or on the Valley Capital space if no Valley Action space is
+                      free).
+                    </li>
+                    <li>
+                      Add the “Technology Cards” and “Flux on Track” Solo Objective cards
+                      to the deck before drawing.
+                    </li>
+                    <li>
+                      Keep <b>cardboard energized cores</b> to hand — or any alternative
+                      marker — to show which of the Chronossus’s Exosuits are ready to
+                      Blink: whenever it places an Exosuit on the Main board, put an Energy
+                      Core from the supply into that Exosuit.
+                    </li>
+                    <li>
+                      No need for the physical <b>Flux Pool</b> container — the app holds
+                      its 1 Flux Core + 3 Empty Flux Casings and draws from it for you
+                      {extraFlux > 0 ? ` (+${extraFlux} extra Flux Core${extraFlux === 1 ? '' : 's'}, difficulty option selected)` : ''}.
+                    </li>
+                    <li>
+                      The Chronossus does not use a Fracture Device, never rolls the Flux
+                      or Glitch dice, and never receives Glitches.
+                    </li>
+                    {playerGlitch && (
+                      <li>
+                        <b>Roll the Glitch die and place that Glitch for yourself</b>, on
+                        top of your two starting Glitches (difficulty option selected).
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              )}
+
               {moduleId?.includes('guardians') && (
                 <div className="setup-modified">
                   <h3>Guardians of the Council setup</h3>
