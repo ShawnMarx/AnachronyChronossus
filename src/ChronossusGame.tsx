@@ -5889,6 +5889,12 @@ const CX_TALLY_FIELDS: CxTallyField[] = [
   { key: 'breakthroughs', label: 'Breakthroughs' },
   { key: 'breakthroughSets', label: 'Breakthrough sets' },
   { key: 'timelinePenalties', label: 'Timeline penalties', neg: true },
+  // Module lines. Only rendered for the modes that use them, but they stay in this list
+  // so a value already typed still counts if the rows re-render.
+  { key: 'technologies', label: 'Technology cards' },
+  { key: 'fractureDevice', label: 'Fracture Device' },
+  { key: 'glitches', label: 'Glitches', neg: true },
+  { key: 'hypersyncTiles', label: 'Hypersync tiles remaining', neg: true },
 ];
 const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
   CX_TALLY_FIELDS.map((f) => [f.key, f]),
@@ -5897,10 +5903,15 @@ const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
 // Side-by-side score rows: shared rows carry both a player tally key and the bot's
 // pre-filled value; player-only rows omit botValue. The bot's "Token / Action VP" is
 // shown on the "Victory Point tokens" line next to the player's own tally.
-// `hypersync` adds the Hypersync-tile note to the Timeline-penalties row (player-only).
+//
+// A module's rows appear whenever that module is in play — not only when the bot scored
+// something for it — because most of them are the PLAYER's alone (the Fracture Device,
+// Glitches, leftover Hypersync tiles). Negative lines show the per-piece rate as a hint
+// but take the total, and the field forces the sign.
 const CX_SCORE_ROWS = (
   score: ReturnType<typeof Chronossus.scoreChronossus>,
   hypersync: boolean,
+  fractures: boolean,
 ): { label: string; playerKey?: string; botValue?: number }[] => [
   { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
@@ -5911,21 +5922,25 @@ const CX_SCORE_ROWS = (
   { label: 'Victory Point tokens', playerKey: 'vpTokens', botValue: score.tokenVP },
   { label: 'Morale', playerKey: 'morale' },
   { label: 'Solo Objectives (highest levels)', playerKey: 'soloObjectives' },
-  {
-    label: hypersync
-      ? 'Timeline penalties (Hypersync tiles −4 each)'
-      : 'Timeline penalties',
-    playerKey: 'timelinePenalties',
-  },
+  { label: 'Timeline penalties', playerKey: 'timelinePenalties' },
+  // Fractures: Technologies score for both sides (3 VP each); the Fracture Device and
+  // Glitches are the player's alone — the Chronossus has neither.
+  ...(fractures
+    ? [
+        { label: 'Technology cards (3 each)', playerKey: 'technologies', botValue: score.technologyVP },
+        { label: 'Fracture Device', playerKey: 'fractureDevice' },
+        { label: 'Glitches (−2 each)', playerKey: 'glitches' },
+      ]
+    : []),
+  // Hypersync: the player loses 4 VP per tile still in the future; the bot never does.
+  ...(hypersync
+    ? [{ label: 'Hypersync tiles remaining (−4 each)', playerKey: 'hypersyncTiles' }]
+    : []),
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
     ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]
     : []),
-  // Fractures (bot-only): Technologies always score, leftover Flux Cores only with that
-  // module's difficulty option.
-  ...(score.technologyVP
-    ? [{ label: 'Technologies (3 each)', botValue: score.technologyVP }]
-    : []),
+  // Fractures' leftover Flux Cores are bot-only, and only with that difficulty option.
   ...(score.upgradeTokenVP
     ? [
         {
@@ -5958,6 +5973,9 @@ function CxScoreScreen({
   const hypersyncMode = getMode(state.config.chronossusMode).slots.some(
     (s) => tileEffect(`${s.family}A`).hypersync === true,
   );
+  // Fractures adds three tally lines (Technologies, Fracture Device, Glitches), two of
+  // them the player's alone.
+  const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
   const [mode, setMode] = useState<'number' | 'tally'>('tally');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -6014,7 +6032,7 @@ function CxScoreScreen({
   // on desktop). Includes the top line, the breakdown, and the modes + difficulty (#7).
   const [shareMsg, setShareMsg] = useState<string>('');
   const handleShare = async () => {
-    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode).map((r) => ({
+    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => ({
       // Strip the parenthetical rule hints for the compact share card (they don't wrap).
       label: r.label.replace(/\s*\([^)]*\)/g, ''),
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
@@ -6177,7 +6195,7 @@ function CxScoreScreen({
                 <span className="cx-tyou">You</span>
                 <span className="cx-tbot">Chronossus</span>
               </div>
-              {CX_SCORE_ROWS(score, hypersyncMode).map((r) => (
+              {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => (
                 <div key={r.label} className="cx-trow">
                   <span className="cx-tlabel">{r.label}</span>
                   <span className="cx-tyou">
