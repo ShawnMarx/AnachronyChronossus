@@ -116,6 +116,17 @@ interface ModuleConfig {
   label: string;
   available: boolean;
 }
+/**
+ * Solo Objective cards each module adds to the deck. They are collected into the single
+ * base "shuffle and reveal" step rather than one bullet per module — the player searches
+ * the Solo Objective deck once.
+ */
+const MODULE_OBJECTIVE_CARDS: [string, string[]][] = [
+  ['fractures', ['Technology Cards', 'Flux on Track']],
+  ['guardians', ['Guardians']],
+  ['pioneers', ['Successful Adventures']],
+];
+
 const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'base', label: 'Base', available: true },
   { id: 'fractures', label: 'Fractures of Time', available: true },
@@ -326,6 +337,11 @@ export default function ChronossusSetupFlow({
   const objectiveCount = fewerObjectives
     ? (difficultyValues[Chronossus.DIFFICULTY_FEWER_OBJECTIVES] ?? 0)
     : 3;
+  // Every module that adds Solo Objective cards names them in ONE step with the base
+  // "shuffle and reveal" rule — you dig through the deck once, not once per module.
+  const objectiveCards = MODULE_OBJECTIVE_CARDS.filter(([id]) => moduleId?.includes(id)).flatMap(
+    ([, cards]) => cards,
+  );
   const modeSlots = getMode(moduleId, [...difficulty]).slots;
 
   const toggleTileSide = (family: string) =>
@@ -770,8 +786,22 @@ export default function ChronossusSetupFlow({
                     receive any Starting Assets or Workers.
                   </li>
                   <li>
-                    Leave all Endgame Condition cards in the box and shuffle all Solo
-                    Objective cards, revealing {objectiveCount}
+                    Leave all Endgame Condition cards in the box.{' '}
+                    {objectiveCards.length > 0 && (
+                      <>
+                        Add the{' '}
+                        {objectiveCards.map((card, i) => (
+                          <span key={card}>
+                            {i > 0 && (i === objectiveCards.length - 1 ? ' and ' : ', ')}
+                            <b>“{card}”</b>
+                          </span>
+                        ))}{' '}
+                        Solo Objective card{objectiveCards.length === 1 ? '' : 's'} from your
+                        module{objectiveCards.length === 1 ? '' : 's'} to the deck, then{' '}
+                      </>
+                    )}
+                    {objectiveCards.length > 0 ? 'shuffle' : 'Shuffle'} all Solo Objective
+                    cards, revealing {objectiveCount}
                     {fewerObjectives ? ' (difficulty option selected)' : ''}. Return the
                     rest to the box.
                   </li>
@@ -842,10 +872,6 @@ export default function ChronossusSetupFlow({
                       free).
                     </li>
                     <li>
-                      Add the “Technology Cards” and “Flux on Track” Solo Objective cards
-                      to the deck before drawing.
-                    </li>
-                    <li>
                       Keep <b>cardboard energized cores</b> to hand — or any alternative
                       marker — to show which of the Chronossus’s Exosuits are ready to
                       Blink: whenever it places an Exosuit on the Main board, put an Energy
@@ -879,7 +905,6 @@ export default function ChronossusSetupFlow({
                       World Council Action space with a Hex Unavailable tile (as noted in the
                       Guardians of the Council rules for 2 players).
                     </li>
-                    <li>Add the “Guardians” Solo Objective card to the Solo Objective deck.</li>
                     <li>Keep the Chronossus’s Path markers to hand for the Guardian board.</li>
                   </ul>
                 </div>
@@ -896,10 +921,6 @@ export default function ChronossusSetupFlow({
                         {difficulty.has(Chronossus.DIFFICULTY_PIONEERS_BOARD_B) ? 'B' : 'A'}
                       </b>{' '}
                       side up.
-                    </li>
-                    <li>
-                      Add the “Successful Adventures” Solo Objective card to the Solo
-                      Objective deck.
                     </li>
                     {adventureDeckMode === 'virtual' ? (
                       <li>
