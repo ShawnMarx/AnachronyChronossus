@@ -251,6 +251,19 @@ Blink rules (Fractures) hinge on that distinction, so it lives in one place:
 
 `resolveHypersyncAction` already records nothing for the same reason.
 
+**An off-board placement takes no Energy Core.** The core is only the marker for "this
+Exosuit could Blink", and nothing off the Main board ever can — so the Valley, Adventure and
+Hypersync placements never instruct one (and never say "it can never Blink", which only
+raises a question the player didn't have). `PlaceExosuitPanel` takes `offBoard` for this.
+
+**Every path that resolves a rolled Action must run `passesInsteadOfAction`.** That one
+engine function is `wouldPassOn` plus the Fractures exemption (a Blink moves an Exosuit
+already on the Main board, so an empty supply doesn't stop it, and every off-board space is a
+legal destination). The view funnels all of them through one `passIfOutOfFigures(actionId)`:
+the printed space, a modular tile slot, a tile COVERING a printed space, and the debug
+free-taps. Pioneers shipped with the covered-space path running no check at all and the
+tile-slot path missing the exemption — both invisible to the unit tests.
+
 **A module's covering tile needs a board overlay too.** A mode can put a tile on slot IV/V,
 which COVERS a printed Action space (`CoveredAction`). Resolving it correctly is only half
 the job — without an overlay the board still shows the printed Action with no sign a tile
