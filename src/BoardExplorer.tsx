@@ -2159,10 +2159,13 @@ export function WarpPhaseBody({
   followUp,
   intro,
   extraRules,
+  tileLabel = 'the current Timeline tile',
 }: {
   state: GameState;
   meta: PhaseMeta;
   onCommit: (paradoxes: number) => void;
+  /** Where the bot's tiles go — Fractures' Era Zero Warp places on the Era Zero tile. */
+  tileLabel?: string;
   /** Bot name shown in the copy (defaults to the Chronobot). */
   botName?: string;
   /** The bot's Warp-tile art (placed on the Main board), shown next to the roll. */
@@ -2233,7 +2236,7 @@ export function WarpPhaseBody({
             <p className="phase-note">
               {rolled === 0
                 ? `The ${botName} rolled no Paradoxes — it places no Warp tiles this phase.`
-                : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on the current Timeline tile. Any tiles will do; the ${botName} gains nothing from them.`}
+                : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on ${tileLabel}. Any tiles will do; the ${botName} gains nothing from them.`}
             </p>
           </div>
           {followUp ?? (
@@ -2282,6 +2285,7 @@ export function ParadoxPhaseBody({
   pendingRoll,
   followUp,
   icons = PARADOX_ICONS,
+  pastTiles,
 }: {
   state: GameState;
   /** The active bot's slice fields the Paradox phase reads (shared shape). */
@@ -2313,6 +2317,12 @@ export function ParadoxPhaseBody({
   followUp?: ReactNode;
   /** Per-bot art for the tracker chips (the Chronossus has its own Warp-tile face). */
   icons?: typeof PARADOX_ICONS;
+  /**
+   * How many past Timeline tiles exist this Era — the cap on the bot's rolls. Defaults
+   * to Era − 1; Fractures of Time passes one more, since its Era Zero tile is in the
+   * past from Era 1 on (see `pastTimelineTiles` in game/flow).
+   */
+  pastTiles?: number;
 }) {
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
@@ -2324,7 +2334,10 @@ export function ParadoxPhaseBody({
 
   // Possible rolls are capped at the smaller of (Era − 1) and the bot's Warp tiles on
   // the Timeline: it can only lead/tie a tile that has a Warp tile on it (#8).
-  const maxChecks = Math.max(0, Math.min(state.era - 1, bot.warpTilesOnTimeline));
+  const maxChecks = Math.max(
+    0,
+    Math.min(pastTiles ?? state.era - 1, bot.warpTilesOnTimeline),
+  );
   const noWarp = bot.warpTilesOnTimeline === 0;
   const done = stopped || noWarp || finished || asked >= maxChecks;
 

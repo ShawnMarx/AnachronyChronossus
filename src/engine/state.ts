@@ -28,6 +28,9 @@ export interface Instruction {
 /** The ordered phases of a solo Era. */
 export type Phase =
   | 'setup'
+  // Fractures of Time only: the one-off Warp Phase played before Era 1's regular
+  // round sequence, placing Warp tiles on the Era Zero tile (Fractures rulebook p.6).
+  | 'era0warp'
   | 'preparation'
   | 'paradox'
   | 'powerup'
@@ -47,6 +50,8 @@ export const PHASE_ORDER: Phase[] = [
 
 /** Rulebook phase numbers (Solo Opponents): Action Rounds is Phase 5. */
 export const PHASE_NUMBER: Partial<Record<Phase, number>> = {
+  // The Era Zero Warp is the Warp Phase (4) — just played on its own, before Era 1.
+  era0warp: 4,
   preparation: 1,
   paradox: 2,
   powerup: 3,

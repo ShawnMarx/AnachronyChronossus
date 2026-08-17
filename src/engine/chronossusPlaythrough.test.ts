@@ -269,6 +269,27 @@ describe('Chronossus full-game playthrough — Fractures of Time', () => {
     );
   });
 
+  // Fractures rulebook p.6: a Warp Phase (and nothing else) before Era 1's round
+  // sequence, then Era 1 including a Paradox phase.
+  it('opens with the Era Zero Warp Phase, then Era 1 Preparation → Paradox', () => {
+    const seen: { phase: string; era: number; warpTiles: number }[] = [];
+    playChronossus({
+      config: FRACTURES_CONFIG,
+      // 2 Warp tiles in Era Zero, so Era 1's Paradox phase has a tile to check.
+      warpRollForEra: (era) => (era === 0 ? 2 : era % 3),
+      onPhase: (phase, s) =>
+        seen.push({ phase, era: s.era, warpTiles: s.chronossus!.warpTilesOnTimeline }),
+    });
+    const first = seen[0];
+    expect(first.phase).toBe('era0warp');
+    expect(first.era).toBe(1); // Era Zero is a Timeline tile, not an Era of the loop
+    expect(first.warpTiles).toBe(2);
+    // The next phase resolved is Era 1's Power Up — i.e. the Era Zero Warp handed off
+    // into the normal sequence rather than replacing Era 1's own Warp phase.
+    expect(seen[1].phase).toBe('powerup');
+    expect(seen[1].era).toBe(1);
+  });
+
   it('scores leftover Flux Cores with that difficulty option', () => {
     const opts = {
       config: {

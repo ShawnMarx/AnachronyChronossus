@@ -866,6 +866,13 @@ export default function ChronossusSetupFlow({
                   <h3>Fractures of Time setup</h3>
                   <ul>
                     <li>
+                      Set up the Timeline with the <b>Era Zero</b> tile and its own
+                      face-up Superproject. Straight after setup the app runs a one-off{' '}
+                      <b>Era Zero Warp Phase</b> — no other phases — with the Warp tiles
+                      going on that tile. Era 1 then runs as usual, including its Paradox
+                      phase (normally skipped in the first Era).
+                    </li>
+                    <li>
                       Set up the <b>Valley board</b> as if it was a 2-player game. The app
                       names the Valley Action the Chronossus takes; you place its Exosuit
                       there (or on the Valley Capital space if no Valley Action space is

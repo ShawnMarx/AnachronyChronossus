@@ -2268,8 +2268,17 @@ export const DIFFICULTY_ALT_TIMELINES_3VP = 'chronossus-alt-timelines-3vp';
  * each of its newly-placed Warp tiles that landed on a positive-effect space —
  * `positiveSpaces`, reported by the player (the app doesn't track Timeline-tile
  * slot colors). 0 when the module is off, which is a no-op VP-wise.
+ *
+ * `eraZero` marks Fractures' one-off Warp Phase played before Era 1 (rulebook p.6):
+ * the tiles go on the Era Zero tile and the next phase is Era 1's Preparation, not
+ * Action Rounds — nothing else about the Warp differs.
  */
-export function resolveWarp(state: GameState, paradoxes: number, positiveSpaces = 0): GameState {
+export function resolveWarp(
+  state: GameState,
+  paradoxes: number,
+  positiveSpaces = 0,
+  eraZero = false,
+): GameState {
   if (!state.chronossus) throw new Error('resolveWarp: no Chronossus state');
   const place = Math.max(0, paradoxes);
   const perSpace = state.config.difficulty.includes(DIFFICULTY_ALT_TIMELINES_3VP) ? 3 : 2;
@@ -2279,16 +2288,18 @@ export function resolveWarp(state: GameState, paradoxes: number, positiveSpaces 
     warpTilesOnTimeline: state.chronossus.warpTilesOnTimeline + place,
     vp: state.chronossus.vp + bonusVP,
   };
+  const where = eraZero ? 'on the Era Zero tile' : 'on the Timeline';
   const instructions: Instruction[] = [
     {
       id: 'warp',
       text:
         place > 0
-          ? `Place ${place} Warp tile${place === 1 ? '' : 's'} for the Chronossus on the Timeline.`
-          : 'The Chronossus places no Warp tiles this Era.',
+          ? `Place ${place} Warp tile${place === 1 ? '' : 's'} for the Chronossus ${where}.`
+          : `The Chronossus places no Warp tiles ${eraZero ? 'in the Era Zero Warp Phase' : 'this Era'}.`,
       detail:
         'Warping happens in player order. The Chronossus gains nothing for its Warp tiles ' +
         'and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)' +
+        (eraZero ? ' You may not warp an Exosuit during the Era Zero Warp Phase.' : '') +
         (bonusVP
           ? ` Alternate Timelines: ${positiveSpaces} landed on a positive-effect space — ` +
             `+${bonusVP} VP (${perSpace} each). It ignores negative-space penalties entirely.`
@@ -2299,11 +2310,15 @@ export function resolveWarp(state: GameState, paradoxes: number, positiveSpaces 
   return {
     ...state,
     chronossus: bot,
-    phase: 'actions',
+    // The Era Zero Warp is followed by Era 1's regular round sequence, starting with
+    // its Preparation phase; a normal Warp phase runs straight into Action Rounds.
+    phase: eraZero ? 'preparation' : 'actions',
     currentInstructions: instructions,
     log: [
       ...state.log,
-      `Warp phase (placed ${place}${bonusVP ? `, +${bonusVP} VP Alternate Timelines` : ''}).`,
+      `${eraZero ? 'Era Zero Warp phase' : 'Warp phase'} (placed ${place}${
+        bonusVP ? `, +${bonusVP} VP Alternate Timelines` : ''
+      }).`,
     ],
   };
 }

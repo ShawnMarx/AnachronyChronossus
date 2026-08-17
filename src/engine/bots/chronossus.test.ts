@@ -517,6 +517,18 @@ describe('resolveWarp — places the rolled Warp tiles', () => {
     const next = resolveWarp(chronossusState({ era: 3, phase: 'warp' }), 2);
     expect(next.chronossus!.vp).toBe(0);
   });
+
+  // Fractures of Time p.6 — the Era Zero Warp: same placement, on the Era Zero tile,
+  // followed by Era 1's Preparation phase rather than Action Rounds.
+  it('Era Zero: places on the Era Zero tile and hands off to Preparation', () => {
+    const s = chronossusState({ era: 1, phase: 'era0warp' });
+    const next = resolveWarp(s, 2, 0, true);
+    expect(next.chronossus!.warpTilesOnTimeline).toBe(2);
+    expect(next.phase).toBe('preparation');
+    expect(next.era).toBe(1);
+    expect(next.currentInstructions[0].text).toContain('Era Zero tile');
+    expect(next.currentInstructions[0].detail).toContain('may not warp an Exosuit');
+  });
 });
 
 describe('rollParadox — same rules as the Chronobot, on the Chronossus slice', () => {

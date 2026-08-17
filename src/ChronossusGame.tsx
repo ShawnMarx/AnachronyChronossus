@@ -76,7 +76,12 @@ import {
   type Instruction,
   type EnergyPool,
 } from './engine';
-import { finishEra, advanceFromPreparation, startFirstEra } from './game/flow';
+import {
+  finishEra,
+  advanceFromPreparation,
+  startFirstEra,
+  pastTimelineTiles,
+} from './game/flow';
 import ChronossusSetupFlow, { type ChronossusSetupResult } from './phases/ChronossusSetupFlow';
 import type {
   ChronossusActionInput,
@@ -2240,15 +2245,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     finishWarp(place, 0);
   };
   const finishWarp = (place: number, positiveSpaces: number) => {
-    const next = Chronossus.resolveWarp(state, place, positiveSpaces);
+    // Fractures' one-off Era Zero Warp runs the same resolver; it just places on the
+    // Era Zero tile and hands off to Era 1's Preparation instead of Action Rounds.
+    const eraZero = state.phase === 'era0warp';
+    const next = Chronossus.resolveWarp(state, place, positiveSpaces, eraZero);
     const bonusVP = positiveSpaces * altTimelinesPerSpace;
     commit(
       next,
       { ...ui, warpRoll: null },
-      `Era ${state.era} · Warp: placed ${place}`,
+      `Era ${eraZero ? 0 : state.era} · Warp: placed ${place}`,
       [
         place > 0
-          ? `Placed ${place} Warp tile${place === 1 ? '' : 's'} on the Timeline`
+          ? `Placed ${place} Warp tile${place === 1 ? '' : 's'} on the ${eraZero ? 'Era Zero tile' : 'Timeline'}`
           : 'Placed no Warp tiles',
         ...(bonusVP ? [`Alternate Timelines: +${bonusVP} VP (${positiveSpaces} positive space${positiveSpaces === 1 ? '' : 's'})`] : []),
       ],
@@ -3803,10 +3811,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // ---- Non-Phase-5 phases: shared PhaseScreen shell ----------------------
   const meta = CHRONOSSUS_PHASE_META[state.phase];
   const phaseProps = {
-    era: state.era,
+    // The Era Zero Warp is played before Era 1 (state.era is already 1) — the header
+    // says Era 0, which is the tile the player is actually placing on.
+    era: state.phase === 'era0warp' ? 0 : state.era,
     phaseNumber: meta?.number ?? 0,
     phaseName: meta?.name ?? state.phase,
-    overview: meta?.overview,
+    // With Fractures the Era-1 Paradox phase is played, not skipped (the Era Zero tile
+    // is already in the past), so the stock "Skipped in the first Era" line would lie.
+    overview:
+      state.phase === 'paradox' && fracturesMode
+        ? 'Paradox phase – Players who strained the Timeline with Warping roll for ' +
+          'Paradoxes. With Fractures of Time it is played in Era 1 as well, since the ' +
+          'Era Zero tile is already in the past.'
+        : meta?.overview,
     onHome,
     hero: HERO,
     statusLabel: 'Chronossus Status',
@@ -3910,7 +3927,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         </>
       );
       break;
-    case 'warp':
+    case 'era0warp':
+    case 'warp': {
+      // Fractures' Era Zero Warp is the same phase, played once before Era 1 — same
+      // roll, same placement, only the tile it lands on and what follows differ.
+      const eraZero = state.phase === 'era0warp';
       // Alternate Timelines' positive-space question renders under the roll result
       // rather than on its own screen, so the player still sees what was rolled and
       // placed while answering it.
@@ -3923,10 +3944,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
           roll={ui.warpRoll}
           onRoll={rollWarp}
+          tileLabel={eraZero ? 'the Era Zero tile' : undefined}
           // Alternate Timelines replaces the base turn-order instruction: the decision
           // has to be made BEFORE the roll, whoever is First Player (p.18).
           intro={
-            altTimelines ? (
+            eraZero ? (
+              <p className="phase-note">
+                <b>Era Zero:</b> before Era 1's round sequence begins, a single Warp
+                phase is played — its tiles go on the <b>Era Zero</b> Timeline tile, not
+                the Era 1 one. Warping happens in player order and you place your own
+                0–2 Warp tiles as normal, but <b>you may not warp an Exosuit</b> in this
+                phase.
+                {altTimelines ? (
+                  <>
+                    {' '}
+                    <b>Alternate Timelines:</b> decide your own Warp <b>before</b> rolling
+                    for the Chronossus.
+                  </>
+                ) : null}
+              </p>
+            ) : altTimelines ? (
               <p className="phase-note">
                 <b>Alternate Timelines:</b> decide how many Resources and/or Workers{' '}
                 <b>you</b> are warping <b>before</b> rolling for the Chronossus. Once
@@ -3935,27 +3972,37 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             ) : undefined
           }
           extraRules={
-            altTimelines ? (
-              <RulesBox label="Alternate Timelines">
-                <p>
-                  <b>WARP PHASE:</b> In the Warp Phase, you must decide how many Resources
-                  and/or Workers to warp first, then roll for the Chronossus. Place the
-                  tiles in turn order, as usual.
-                </p>
-                <p>
-                  It ignores penalties (red spaces), and it receives 2 VPs instead of any
-                  positive rewards. You resolve both positive and negative effects as
-                  normal.
-                </p>
-                {altTimelinesPerSpace === 3 && (
+            <>
+              {/* Era Zero's own box carries the Fractures rule; the Chronossus's normal
+                  Warp rule still applies to it, so show that one too. */}
+              {eraZero && (
+                <RulesBox label="Warp">
+                  <p>{CHRONOSSUS_PHASE_META.warp!.rules}</p>
+                  <p className="rules-cite">Solo Opponents rulebook, p. 9</p>
+                </RulesBox>
+              )}
+              {altTimelines && (
+                <RulesBox label="Alternate Timelines">
                   <p>
-                    <b>INCREASING THE DIFFICULTY:</b> The Chronossus scores 3 VPs per
-                    positive effect.
+                    <b>WARP PHASE:</b> In the Warp Phase, you must decide how many
+                    Resources and/or Workers to warp first, then roll for the Chronossus.
+                    Place the tiles in turn order, as usual.
                   </p>
-                )}
-                <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
-              </RulesBox>
-            ) : undefined
+                  <p>
+                    It ignores penalties (red spaces), and it receives 2 VPs instead of
+                    any positive rewards. You resolve both positive and negative effects
+                    as normal.
+                  </p>
+                  {altTimelinesPerSpace === 3 && (
+                    <p>
+                      <b>INCREASING THE DIFFICULTY:</b> The Chronossus scores 3 VPs per
+                      positive effect.
+                    </p>
+                  )}
+                  <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+                </RulesBox>
+              )}
+            </>
           }
           followUp={
             altTimelinesPending != null ? (
@@ -3987,6 +4034,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         />
       );
       break;
+    }
     case 'cleanup': {
       // Impact + game-end flow, identical to the Chronobot: the Impact resolves at
       // the end of Era 4; in the post-Impact Eras 5–6 flipping the Collapsing
@@ -4057,6 +4105,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           onAdvance={advanceParadox}
           botName="Chronossus"
           hypersyncTiles={hypersyncMode ? bot.hypersyncTiles.length : undefined}
+          // Fractures: the Era Zero tile is a past Timeline tile too, so Era 1 already
+          // has one tile to check (and its Paradox phase is not skipped).
+          pastTiles={pastTimelineTiles(state)}
           pendingRoll={ui.paradoxRoll}
           icons={{ ...PARADOX_ICONS, warp: '/assets/solo/chronossus/warp-tile.png' }}
           followUp={

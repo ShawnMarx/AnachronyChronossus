@@ -101,7 +101,10 @@ export interface PlaythroughOptions {
    * assert on MID-game state that the end of the run would have cleared — e.g. Guardians'
    * per-Era power-up split, which Clean Up resets to 0.
    */
-  onPhase?: (phase: 'powerup' | 'warp' | 'actions' | 'cleanup', state: GameState) => void;
+  onPhase?: (
+    phase: 'era0warp' | 'powerup' | 'warp' | 'actions' | 'cleanup',
+    state: GameState,
+  ) => void;
 }
 
 export interface PlaythroughResult {
@@ -179,6 +182,16 @@ export function playChronossus(opts: PlaythroughOptions): PlaythroughResult {
   let state = setupChronossus(config);
   state = startFirstEra(state);
   assertInvariants(state);
+
+  // Fractures of Time: a single Warp phase before Era 1's round sequence, placed on
+  // the Era Zero tile (Fractures rulebook p.6). `startFirstEra` lands here instead of
+  // Preparation; resolving it enters Era 1's Preparation.
+  if (state.phase === 'era0warp') {
+    const place = Math.max(0, warpRollForEra(0));
+    state = Chronossus.resolveWarp(state, place, positiveSpacesForEra(0, place), true);
+    assertInvariants(state);
+    onPhase?.('era0warp', state);
+  }
 
   let guard = 0;
   while (!state.finished) {

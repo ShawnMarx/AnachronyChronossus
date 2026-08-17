@@ -7,6 +7,10 @@
 //   Preparation(1) → Paradox(2) → Power Up(3) → Warp(4) → Action Rounds(5) →
 //   Clean Up(6) → (next Era Preparation | End Game)
 //
+// Fractures of Time prefixes the whole game with a one-off Era Zero Warp Phase
+// (setup → era0warp → Era 1 Preparation) and, because of it, does NOT skip Era 1's
+// Paradox phase.
+//
 // The engine resolvers already advance the phases they own:
 //   resolvePowerUp → warp, resolveWarp → actions, endParadoxPhase → powerup,
 //   resolveCleanUp → cleanup. This module fills the connective transitions:
@@ -15,6 +19,7 @@
 
 import { engineFor } from '../engine';
 import type { GameState, Phase } from '../engine';
+import { isFracturesMode } from '../engine/bots/chronossus';
 
 /** The ordered phases of a normal Era (rulebook Phase numbers 1–6). */
 export const ERA_PHASE_SEQUENCE: Phase[] = [
@@ -26,8 +31,31 @@ export const ERA_PHASE_SEQUENCE: Phase[] = [
   'cleanup',
 ];
 
-/** Enter the first Era: from Setup to Preparation (Phase 1) of Era 1. */
+/**
+ * Whether this game plays the Era Zero Warp Phase — Fractures of Time only:
+ * "At the beginning of the game, before starting the regular round sequence for
+ * Era 1, perform a Warp Phase (but no other Phases), placing the Warp tiles on the
+ * Era Zero tile." (Fractures rulebook p.6)
+ */
+export function hasEraZeroWarp(state: GameState): boolean {
+  return isFracturesMode(state.config.chronossusMode);
+}
+
+/**
+ * Enter the first Era: from Setup to Preparation (Phase 1) of Era 1 — or, with
+ * Fractures of Time, to the one-off Era Zero Warp Phase that precedes it. `era`
+ * stays 1 throughout: Era Zero has a Timeline tile but is not an Era of the round
+ * sequence, so only the screen calls itself Era 0.
+ */
 export function startFirstEra(state: GameState): GameState {
+  if (hasEraZeroWarp(state)) {
+    return {
+      ...state,
+      phase: 'era0warp',
+      currentInstructions: [],
+      log: [...state.log, '— Era Zero Warp Phase —'],
+    };
+  }
   return {
     ...state,
     phase: 'preparation',
@@ -36,9 +64,21 @@ export function startFirstEra(state: GameState): GameState {
   };
 }
 
-/** Whether the Paradox phase (Phase 2) is skipped this Era (always in Era 1). */
+/**
+ * Whether the Paradox phase (Phase 2) is skipped this Era (normally always in Era 1).
+ * With Fractures of Time, Era 1 DOES perform a Paradox phase — the Era Zero tile is
+ * already in the past by then, with Warp tiles on it (Fractures rulebook p.6).
+ */
 export function paradoxSkipped(state: GameState): boolean {
-  return state.era === 1;
+  return state.era === 1 && !hasEraZeroWarp(state);
+}
+
+/**
+ * How many past Timeline tiles the bot can be checked against in the Paradox phase —
+ * the cap on its rolls. Normally Era − 1; with Fractures the Era Zero tile adds one.
+ */
+export function pastTimelineTiles(state: GameState): number {
+  return Math.max(0, state.era - 1 + (hasEraZeroWarp(state) ? 1 : 0));
 }
 
 /**

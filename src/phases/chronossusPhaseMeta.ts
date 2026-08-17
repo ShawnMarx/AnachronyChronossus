@@ -6,6 +6,21 @@ import type { Phase } from '../engine';
 import type { PhaseMeta } from './phaseMeta';
 
 export const CHRONOSSUS_PHASE_META: Partial<Record<Phase, PhaseMeta>> = {
+  // Fractures of Time only — the one-off Warp Phase before Era 1 (rulebook p.6).
+  era0warp: {
+    number: 4,
+    name: 'Era Zero Warp',
+    overview:
+      'Era Zero – Before the regular round sequence for Era 1, a single Warp phase ' +
+      'is played, placing Warp tiles on the Era Zero tile. No other phases happen ' +
+      'first.',
+    rules:
+      'At the beginning of the game, before starting the regular round sequence for ' +
+      'Era 1, perform a Warp Phase (but no other Phases), placing the Warp tiles on ' +
+      'the Era Zero tile. Then, proceed with Era 1 as usual, including performing a ' +
+      'Preparation Phase and a Paradox Phase (which would usually be skipped in the ' +
+      'first Era). You may not warp an Exosuit during the Era Zero Warp Phase.',
+  },
   preparation: {
     number: 1,
     name: 'Preparation',
