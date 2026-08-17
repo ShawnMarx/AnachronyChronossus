@@ -2,6 +2,35 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-17 — Fractures of Time: the Era Zero Warp, and a game two Eras shorter
+
+Two rules from the Fractures rulebook had never been implemented, both of them about the
+*shape of the game* rather than any one Action — which is exactly why nothing caught them:
+every unit test and the full-game playthrough agreed with each other on a Timeline that was
+wrong.
+
+- **The Era Zero Warp Phase** (Fractures p.6). "At the beginning of the game, before
+  starting the regular round sequence for Era 1, perform a Warp Phase (but no other
+  Phases), placing the Warp tiles on the Era Zero tile." A new `era0warp` phase sits
+  between Setup and Era 1's Preparation for every Fractures mode; the header reads
+  **Era 0 · Phase 4** while `state.era` stays 1, since Era Zero has a Timeline tile but is
+  not an Era of the round sequence. The screen is the normal Warp body with Era-Zero copy
+  and the "you may not warp an Exosuit" rule. Its consequence had been missed too: Era 1's
+  **Paradox phase is no longer skipped** in a Fractures game, and `pastTimelineTiles`
+  counts the Era Zero tile, so Era 1 offers the roll it always should have.
+- **Fractures is a 5-Era game** (Fractures p.4) — "only three Eras pre-Impact and two Eras
+  post-Impact, plus an Era Zero" — where the app was still playing all 7 with the Impact
+  after Era 4. Era counts are now per-config (`maxEraFor` / `postImpactEraFor` /
+  `isPostImpact(era, config)`), reached through a new `SoloEngine.maxEraFor` seam. The real
+  bug was in the Clean Up screen, where the three branches were literals: `era === 4` for
+  the Impact note and `era === 5 || era === 6` for the Collapsing-Capital choice. All three
+  are derived now, and verified in the browser at each Era.
+
+The seam is written up in `CLAUDE.md`: a module may re-cut the Timeline, so no rule may
+hard-code an Era number. Still open (`TODO.md`): Fractures + Pioneers grants a Power Upgrade
+right after the Era Zero Warp (p.15), and the Solo Opponents book doesn't say whether the
+Chronossus takes it.
+
 ## 2026-08-17 — Pioneers to production, and the playtest pass that got it there
 
 Pioneers of New Earth (with `fractures+pioneers` and `guardians+pioneers`) is **live in
