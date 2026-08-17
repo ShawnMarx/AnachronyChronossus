@@ -4717,8 +4717,9 @@ function CxTileDialog({
                 Is an <b>{valleySpaceName}</b> Action space — or the{' '}
                 <b>Valley Capital Action space</b> — open on the <b>Valley board</b>?
                 {!valleyGate.blinkCheck && (
-                  <> Place the Chronossus’s Exosuit on the {valleySpaceName} space, or on
-                    the Valley Capital space if no {valleySpaceName} space is open.</>
+                  <> Place the Chronossus’s Exosuit on the <b>topmost</b> available{' '}
+                    {valleySpaceName} space, or on the Valley Capital space if no{' '}
+                    {valleySpaceName} space is open.</>
                 )}
               </p>
               {/* No Energy Core line: the core marks an Exosuit that could Blink, and one

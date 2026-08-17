@@ -1018,7 +1018,9 @@ export function resolveAction(
         ? "the Adventure board's hex pool space"
         : input.placementSpace === 'world-council'
           ? 'the Valley Capital Action space (no Valley Action space was free)'
-          : 'that Valley Action space';
+          : // The topmost rule applies on the Valley board exactly as it does on the
+            // Main board's Capital Actions.
+            'the topmost available Valley Action space';
       if (input.blink && bot.fluxPool) {
         // Blinked in from the Main board: the Exosuit moves onto the Valley board and
         // leaves the Blink-from list — nothing on the Valley board can Blink again.
