@@ -882,8 +882,7 @@ export default function ChronossusSetupFlow({
                       <b>
                         {difficulty.has(Chronossus.DIFFICULTY_PIONEERS_BOARD_B) ? 'B' : 'A'}
                       </b>{' '}
-                      side up. Keep VP tokens to hand — it places one there whenever it
-                      cannot upgrade a Resource.
+                      side up.
                     </li>
                     <li>
                       Add the “Successful Adventures” Solo Objective card to the Solo
