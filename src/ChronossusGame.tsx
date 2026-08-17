@@ -2091,13 +2091,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   blink,
                   fluxDrawSrc:
                     fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
-                  blinkCheck: fracturesMode && Chronossus.shouldCheckBlink(bot, 'tile-adventure'),
                   noFigures: blinkFailedPass('tile-adventure'),
-                  onConfirmBlink: () => beginAdventureDraw(advSlotRef.current),
+                  placementHandled: fracturesMode && fluxDraw != null,
+                  // Both outcomes of the check hand off to the Path-marker question — the
+                  // figure is on the hex pool (moved or placed) before the marker is asked for.
+                  onConfirmBlink: () => setAdventureStep('slot'),
                   onCasingContinue: () => {
-                    // No Blink and no figure → it passes, exactly as on a printed space.
+                    // No Blink and no figure → it passes, exactly as on a printed space,
+                    // and no Path marker is ever placed.
                     if (passIfOutOfFigures('tile-adventure', { blinkFailed: true })) return;
-                    beginAdventureDraw(advSlotRef.current);
+                    setAdventureStep('slot');
                   },
                   onSlot: onAdventureSlot,
                   onSharedPick: onAdventureSharedPick,
@@ -2566,13 +2569,57 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
   };
 
-  /** Open the Adventure by asking which Power slot the marker went on. */
+  /**
+   * Open the Adventure. With Fractures the Blink check comes FIRST: the whole Action
+   * hangs on whether a figure reaches the hex pool at all, and if the draw is an Empty
+   * Flux Casing with nothing left to place the Chronossus passes — so asking for the Path
+   * marker before that would have the player place a marker for a turn that never
+   * happened. Only once the figure is settled does the slot question go up.
+   */
   const openAdventureFlow = () => {
     advInputRef.current = null;
     advDieRef.current = null;
     setAdvResult(null);
     setAdvSharedPicked([]);
+    if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'tile-adventure')) {
+      runAdventureBlinkCheck();
+      return;
+    }
+    advBlinkedRef.current = false;
     setAdventureStep('slot');
+  };
+
+  /** The Adventure's Blink check: draw one Flux token and show what it means. */
+  const runAdventureBlinkCheck = () => {
+    const { drawn, pool: nextPool } = Chronossus.drawFlux(bot.fluxPool!, Math.random());
+    setState((cur) => ({ ...cur, chronossus: { ...cur.chronossus!, fluxPool: nextPool } }));
+    setFluxDraw(drawn);
+    if (drawn === 'casing') {
+      advBlinkedRef.current = false;
+      blinkFromRef.current = null;
+      setBlink(null);
+      setAdventureStep('casing');
+      return;
+    }
+    const sel = Chronossus.selectBlinkExosuit(bot, 'tile-adventure', otherTokenActions());
+    if (!sel) {
+      // Shouldn't happen (shouldCheckBlink gates on a ready Exosuit) — place as usual.
+      advBlinkedRef.current = false;
+      setAdventureStep('slot');
+      return;
+    }
+    advBlinkedRef.current = true;
+    blinkFromRef.current = {
+      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      toLabel: 'Adventure (Adventure board)',
+    };
+    setBlink({
+      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      sameSpaceCount: sel.sameSpaceCount,
+      rule: sel.rule,
+      token: sel.token,
+    });
+    setAdventureStep('blink');
   };
 
 // The Adventure's first screen IS its first step: opening the tile dialog puts the slot
@@ -2606,40 +2653,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     return resolveAdventure(clone, [], 0, input);
   };
 
-  /** The player answered which strength-bonus slot the bot's Path marker went on. */
+  /**
+   * The player answered which strength-bonus slot the bot's Path marker went on. With
+   * Fractures the figure is already settled by then (the Blink check runs when the
+   * Adventure opens), so this only feeds the Power total and the draw.
+   */
   const onAdventureSlot = (bonus: number) => {
     advSlotRef.current = bonus;
-    // Fractures (fractures+pioneers): the slot answer is what identifies the placement,
-    // so the Blink check goes right after it — before anything is placed or drawn.
-    if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'tile-adventure')) {
-      const { drawn, pool: nextPool } = Chronossus.drawFlux(bot.fluxPool!, Math.random());
-      setState((cur) => ({ ...cur, chronossus: { ...cur.chronossus!, fluxPool: nextPool } }));
-      setFluxDraw(drawn);
-      if (drawn === 'casing') {
-        advBlinkedRef.current = false;
-        blinkFromRef.current = null;
-        setBlink(null);
-        setAdventureStep('casing');
-        return;
-      }
-      const sel = Chronossus.selectBlinkExosuit(bot, 'tile-adventure', otherTokenActions());
-      if (sel) {
-        advBlinkedRef.current = true;
-        blinkFromRef.current = {
-          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
-          toLabel: 'Adventure (Adventure board)',
-        };
-        setBlink({
-          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
-          sameSpaceCount: sel.sameSpaceCount,
-          rule: sel.rule,
-          token: sel.token,
-        });
-        setAdventureStep('blink');
-        return;
-      }
-    }
-    advBlinkedRef.current = false;
     beginAdventureDraw(bonus);
   };
 
@@ -4455,10 +4475,14 @@ function CxTileDialog({
       token?: number;
     } | null;
     fluxDrawSrc: string | null;
-    /** True when a Blink check will run after the slot answer — so the gate ASKS first. */
-    blinkCheck: boolean;
     /** The Casing came out and there is no figure left — the Action ends in a pass. */
     noFigures: boolean;
+    /**
+     * Fractures: the Blink check already ran (it opens the Adventure), so the Blink /
+     * Casing panel has said what to move or place — the slot step drops that clause and
+     * asks only for the Path marker.
+     */
+    placementHandled: boolean;
     onConfirmBlink: () => void;
     onCasingContinue: () => void;
     onSlot: (bonus: number) => void;
@@ -4662,12 +4686,19 @@ function CxTileDialog({
           adventureGate && !readOnly && adventureGate.step === 'slot' ? (
             <>
               <p className="pp-instruct">
-                The Chronossus performs an <b>Adventure</b> — put an Exosuit onto the
-                Adventure board’s <b>hex pool</b> and a <b>Path marker</b> on the topmost
-                free <b>Power slot</b>.
-                {adventureGate.blinkCheck
-                  ? ' Don’t place the Exosuit yet — it Blink-checks first.'
-                  : ''}
+                {adventureGate.placementHandled ? (
+                  <>
+                    The Chronossus performs an <b>Adventure</b> — put a <b>Path marker</b> on
+                    the topmost free <b>Power slot</b>. (Its figure is already on the hex
+                    pool.)
+                  </>
+                ) : (
+                  <>
+                    The Chronossus performs an <b>Adventure</b> — put an Exosuit onto the
+                    Adventure board’s <b>hex pool</b> and a <b>Path marker</b> on the topmost
+                    free <b>Power slot</b>.
+                  </>
+                )}
               </p>
               {/* Same weight as the instruction above it — this IS the question the step
                   asks, not a footnote to it. */}

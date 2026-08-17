@@ -371,7 +371,9 @@ does *not* skip the Era 1 Paradox phase; `flow.pastTimelineTiles` counts the Era
   through `runBlinkCheck` with a `postBlinkRef` continuation (their resume point can't be
   derived from the Action id), and the check goes immediately after **that gate** — Mine's
   "is a Mining space open?", Genius's "is a Genius available?" — never after a later input
-  step. The Blink is settled at the Action's granularity ("a Mine Action space"); *which*
+  step. An Action with no gate of its own runs it FIRST: the Adventure opens on the check,
+  because a Casing with no figure left means it passes, and asking for the Path marker
+  before that has the player place a marker for a turn that never happened. The Blink is settled at the Action's granularity ("a Mine Action space"); *which*
   space it is comes from the input that follows, and the step after the check drops its own
   "place the Exosuit" clause (`placementHandled`).
 - **The passing rule runs TWICE per Blink-checked Action.** The Fractures exemption only
