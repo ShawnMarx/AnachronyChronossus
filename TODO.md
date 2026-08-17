@@ -137,6 +137,18 @@ to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLE
 No plan is active.
 
 Still backlog (not yet in a plan):
+- [ ] **Fractures changes the length of the game** — "There are now only three Eras
+      pre-Impact and two Eras post-Impact, plus an Era Zero" (Fractures rulebook p.4). We
+      still run `MAX_ERA = 7` with the Impact after Era 4 in Fractures modes. Fixing it
+      means per-mode `MAX_ERA`/`POST_IMPACT_ERA` (the `isPostImpact` comment in
+      `bots/chronossus.ts` already anticipates this) plus the Clean Up game-end branches,
+      which currently hard-code Eras 5–6 / 7.
+- [ ] **Fractures + Pioneers: the post-Era-Zero Power Upgrade** — "after the Era Zero Warp
+      Phase, each player may choose to spend one of their Titanium, Uranium, or Gold to
+      upgrade the Power of their Exosuit as though they had taken a Power Upgrade Action"
+      (Fractures rulebook p.15). The Solo Opponents book doesn't say whether the Chronossus
+      takes it; if it does, it's Pioneers' Step 2 `powerUpgradeChoice` restricted to
+      Ti/U/Gold, run once after the Era Zero Warp screen.
 - [ ] **More modules** — Doomsday is the last one (stubbed in the Module menu); it becomes
       its own `/plan`. Per the rulebook's limits (Solo Opponents p.18) Doomsday combines
       with nothing, and Fractures + Guardians is not allowed. It adds **one Solo Objective
