@@ -190,12 +190,20 @@ export function PlaceExosuitPanel({
   destination,
   fluxDrawSrc,
   drewCasing = false,
+  offBoard = false,
   onContinue,
 }: {
   /** Where it places — the confirmed space ("Construct", "World Council", …). */
   destination: string;
   fluxDrawSrc?: string | null;
   drewCasing?: boolean;
+  /**
+   * The destination is NOT on the Main board (a Valley Action space, the Adventure hex
+   * pool, a Hypersync hex). The Energy Core is only the marker for "this Exosuit could
+   * Blink", and nothing off the Main board ever can — so it is not placed there and the
+   * instruction is left off.
+   */
+  offBoard?: boolean;
   onContinue: () => void;
 }) {
   return (
@@ -207,8 +215,8 @@ export function PlaceExosuitPanel({
         </div>
       )}
       <p className="pp-instruct">
-        Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>, and put
-        an Energy Core from the supply into it.
+        Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>
+        {offBoard ? '.' : ', and put an Energy Core from the supply into it.'}
       </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onContinue}>

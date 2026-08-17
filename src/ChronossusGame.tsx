@@ -4425,6 +4425,7 @@ function CxTileDialog({
             destination={valleyDestination}
             fluxDrawSrc={valleyGate.fluxDrawSrc}
             drewCasing
+            offBoard
             onContinue={valleyGate.onCasingContinue}
           />
         )}
@@ -4441,6 +4442,7 @@ function CxTileDialog({
             destination={ADVENTURE_DESTINATION}
             fluxDrawSrc={adventureGate.fluxDrawSrc}
             drewCasing
+            offBoard
             onContinue={adventureGate.onCasingContinue}
           />
         )}
@@ -4719,11 +4721,15 @@ function CxTileDialog({
                     the Valley Capital space if no {valleySpaceName} space is open.</>
                 )}
               </p>
-              <p className="pp-sub">
-                {valleyGate.blinkCheck
-                  ? 'Don’t place anything yet — the Chronossus Blink-checks first, and a Blink moves an Exosuit it already has on the Main board onto the Valley space instead.'
-                  : 'Put an Energy Core from the supply into that Exosuit. It sits on the Valley board, so it can never Blink.'}
-              </p>
+              {/* No Energy Core line: the core marks an Exosuit that could Blink, and one
+                  on the Valley board never can. */}
+              {valleyGate.blinkCheck && (
+                <p className="pp-sub">
+                  Don’t place anything yet — the Chronossus Blink-checks first, and a Blink
+                  moves an Exosuit it already has on the Main board onto the Valley space
+                  instead.
+                </p>
+              )}
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
                   {valleyGate.blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed there'}
@@ -5036,6 +5042,7 @@ function HypersyncDialog({
             }
             fluxDrawSrc={fluxDrawSrc}
             drewCasing
+            offBoard
             onContinue={onCasingContinue}
           />
         ) : step === 'targeted' ? (

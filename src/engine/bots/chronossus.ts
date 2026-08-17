@@ -1035,10 +1035,12 @@ export function resolveAction(
         instr.push({
           id: `valley-place-${n}`,
           text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on ${where}.`,
+          // No Energy Core here: the core is only the marker for "this Exosuit could
+          // Blink", and nothing off the Main board ever can — so saying it can't just
+          // raises a question the player never had.
           detail: adventureSpace
-            ? 'Put an Energy Core from the supply into it. Any number of figures can share ' +
-              'the Adventure hex pool, and it cannot Blink again from the Adventure board.'
-            : 'Put an Energy Core from the supply into it. It cannot Blink again from the Valley board.',
+            ? 'Any number of figures can share the Adventure hex pool.'
+            : undefined,
         });
       }
     }
