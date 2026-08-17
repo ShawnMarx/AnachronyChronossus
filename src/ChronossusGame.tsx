@@ -3952,22 +3952,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           // Alternate Timelines replaces the base turn-order instruction: the decision
           // has to be made BEFORE the roll, whoever is First Player (p.18).
           intro={
-            eraZero ? (
-              <p className="phase-note">
-                <b>Era Zero:</b> before Era 1's round sequence begins, a single Warp
-                phase is played — its tiles go on the <b>Era Zero</b> Timeline tile, not
-                the Era 1 one. Warping happens in player order and you place your own
-                0–2 Warp tiles as normal, but <b>you may not warp an Exosuit</b> in this
-                phase.
-                {altTimelines ? (
-                  <>
-                    {' '}
-                    <b>Alternate Timelines:</b> decide your own Warp <b>before</b> rolling
-                    for the Chronossus.
-                  </>
-                ) : null}
-              </p>
-            ) : altTimelines ? (
+            // Era Zero: no note — the phase's own overview line and the verbatim rules
+            // box below already say all of it. Alternate Timelines still gets its note,
+            // since it changes the ORDER you act in and that is nowhere else on screen.
+            eraZero && !altTimelines ? null : altTimelines ? (
               <p className="phase-note">
                 <b>Alternate Timelines:</b> decide how many Resources and/or Workers{' '}
                 <b>you</b> are warping <b>before</b> rolling for the Chronossus. Once
