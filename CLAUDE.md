@@ -307,9 +307,20 @@ the Guardian board fallback fires when Action **spaces** run out, not figures, s
 Guardian specifically even while plain Exosuits remain.
 
 **Post-Impact is derived from the Era.** `state.impact` is stored, but `startNextEra` and the
-debug Era stepper both set it from `isPostImpact(era)`, and rules that branch on it read
-`state.impact || isPostImpact(state.era)`. A stored flag that lags (a debug jump, an old
-save) must never change a rule.
+debug Era stepper both set it from `isPostImpact(era, config)`, and rules that branch on it read
+`state.impact || isPostImpact(state.era, state.config)`. A stored flag that lags (a debug jump,
+an old save) must never change a rule.
+
+**A module can re-cut the Timeline — never hard-code an Era number.** Fractures of Time runs
+**Era Zero + Eras 1–5** with the Impact in Era 3's Clean Up ("three Eras pre-Impact and two
+post-Impact", Fractures p.4); every other mode is the base 7 Eras / Impact after Era 4. So
+`MAX_ERA` / `POST_IMPACT_ERA` are the *defaults*: real code calls `maxEraFor(config)` /
+`postImpactEraFor(config)` / `isPostImpact(era, config)` (`bots/chronossus.ts`), and
+`flow.isFinalEra` goes through the `SoloEngine.maxEraFor(config)` seam. The Clean Up screen
+derives its three branches (Impact note / Collapsing-Capital choice / final Era) from those
+too — the old literal `era === 4` and `era === 5 || era === 6` were the bug. Fractures also
+adds the one-off **`era0warp`** phase before Era 1 (`flow.hasEraZeroWarp`) and, because of it,
+does *not* skip the Era 1 Paradox phase; `flow.pastTimelineTiles` counts the Era Zero tile.
 
 ## Conventions
 

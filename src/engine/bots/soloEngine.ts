@@ -8,13 +8,19 @@
 // seams; anything bot-specific stays in the bot module and is dispatched by the
 // view that owns that bot.
 
-import type { BotModeId } from '../types';
+import type { BotModeId, GameConfig } from '../types';
 import type { GameState } from '../state';
 
 export interface SoloEngine {
   readonly id: BotModeId;
   /** Highest Era number before the game always ends (7 in the base game). */
   readonly MAX_ERA: number;
+  /**
+   * The last Era for a specific game's config. A module can re-cut the Timeline —
+   * Fractures of Time runs Eras 1–5 (plus its Era Zero tile) — so the flow asks per
+   * game rather than reading the bot-wide `MAX_ERA`.
+   */
+  maxEraFor(config: GameConfig): number;
   /**
    * Reset per-Era state and advance from Clean Up (Phase 6) into the next Era's
    * Preparation (Phase 1). Each bot resets its own state slice, so this differs

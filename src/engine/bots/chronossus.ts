@@ -63,14 +63,39 @@ export const MAX_ERA = 7;
 /**
  * The first post-Impact Era. The Impact happens during the Clean Up of Era 4, so
  * Eras 1–4 are pre-Impact and Eras 5+ are post-Impact — identical to the Chronobot,
- * and the default for every mode. (Fractures of Time is the planned exception; when
- * it lands it will override this per its own Impact timing.)
+ * and the default for every mode.
  */
 export const POST_IMPACT_ERA = 5;
 
-/** Whether a given Era is post-Impact (2+X / max-4 power-up, Collapsing Capital). */
-export function isPostImpact(era: number): boolean {
-  return era >= POST_IMPACT_ERA;
+/**
+ * Fractures of Time re-cuts the Timeline: "There are now only three Eras pre-Impact
+ * and two Eras post-Impact, plus an Era Zero" (Fractures rulebook p.4). So a Fractures
+ * game runs Eras 1–5 (plus the Era Zero tile, which is not an Era of the round
+ * sequence) with the Impact during Era 3's Clean Up.
+ */
+export const FRACTURES_MAX_ERA = 5;
+export const FRACTURES_POST_IMPACT_ERA = 4;
+
+/** The last Era of the game for this config (Fractures shortens it to 5). */
+export function maxEraFor(config: Pick<GameConfig, 'chronossusMode'>): number {
+  return isFracturesMode(config.chronossusMode) ? FRACTURES_MAX_ERA : MAX_ERA;
+}
+
+/** The first post-Impact Era for this config (Era 4 with Fractures, else Era 5). */
+export function postImpactEraFor(config: Pick<GameConfig, 'chronossusMode'>): number {
+  return isFracturesMode(config.chronossusMode) ? FRACTURES_POST_IMPACT_ERA : POST_IMPACT_ERA;
+}
+
+/**
+ * Whether a given Era is post-Impact (2+X / max-4 power-up, Collapsing Capital).
+ * `config` is optional only so a caller with nothing but an Era number still reads
+ * the base-game timing; every real call site passes it, since Fractures moves it.
+ */
+export function isPostImpact(
+  era: number,
+  config?: Pick<GameConfig, 'chronossusMode'>,
+): boolean {
+  return era >= (config ? postImpactEraFor(config) : POST_IMPACT_ERA);
 }
 
 /** D3 — "Extra starting Energy Cores": +1/2/3 energized cores in the starting pool
@@ -604,7 +629,10 @@ export const DIFFICULTY_EXTRA_POWERUP = 'chronossus-extra-powerup';
  */
 export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   if (!state.chronossus) throw new Error('resolvePowerUp: no Chronossus state');
-  const capped = poweredExosuits(state.impact, draw.energized);
+  // The Era decides, not just the stored flag: it can lag a debug jump or an old save,
+  // and Fractures moves the Impact an Era earlier (see `isPostImpact`).
+  const impact = state.impact || isPostImpact(state.era, state.config);
+  const capped = poweredExosuits(impact, draw.energized);
   const extraPowerup = state.config.difficulty?.includes(DIFFICULTY_EXTRA_POWERUP) ?? false;
   const attempted = extraPowerup ? capped + 1 : capped;
   // Guardians p.16: "The Chronossus first powers up as many Guardians as it can, then it
@@ -639,9 +667,9 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
         : `Power up ${exosuitsAvailable} of the Chronossus's Exosuits.`,
       detail:
         `Drew ${drawnTotal} token${drawnTotal === 1 ? '' : 's'} from the Energy Pool: ` +
-        `${draw.energized} Energy + ${draw.exhausted} Exhausted. ${state.impact ? '2' : '3'}+${draw.energized} ` +
+        `${draw.energized} Energy + ${draw.exhausted} Exhausted. ${impact ? '2' : '3'}+${draw.energized} ` +
         `= ${capped} Exosuit${capped === 1 ? '' : 's'} ` +
-        `(max ${powerUpCap(state.impact)} ${state.impact ? 'after' : 'before'} the Impact). ` +
+        `(max ${powerUpCap(impact)} ${impact ? 'after' : 'before'} the Impact). ` +
         (guardiansPowered
           ? `It powers up its ${guardiansPowered} Guardian${guardiansPowered === 1 ? '' : 's'} first, then its own Exosuits. `
           : '') +
@@ -1058,9 +1086,10 @@ export function resolveAction(
       input.tileFamily,
       input.operatorsAvailable ?? true,
       {
-        // Era 5+ is post-Impact by rule; `state.impact` is the stored flag and can lag
-        // (a debug Era jump, an older save), so the Era decides.
-        impact: state.impact || isPostImpact(state.era),
+        // The post-Impact Eras are decided by the rules (5+ normally, 4+ with
+        // Fractures); `state.impact` is the stored flag and can lag (a debug Era jump,
+        // an older save), so the Era decides.
+        impact: state.impact || isPostImpact(state.era, state.config),
         failVP,
         worldCouncilFree: input.worldCouncilFree ?? false,
         guardianAvailable: input.guardianAvailable ?? true,
@@ -2334,10 +2363,11 @@ export function startNextEra(state: GameState): GameState {
   return {
     ...state,
     era,
-    // The Impact occurs during Era 4's Clean Up, so it is in effect from Era 5 on
-    // (same threshold as the Chronobot). Deriving it here keeps the flag correct
-    // for the next Era's Power Up without a manual toggle.
-    impact: isPostImpact(era),
+    // The Impact occurs during the Clean Up of the last pre-Impact Era — Era 4 normally
+    // (same threshold as the Chronobot), Era 3 with Fractures' shorter Timeline.
+    // Deriving it here keeps the flag correct for the next Era's Power Up without a
+    // manual toggle.
+    impact: isPostImpact(era, state.config),
     phase: 'preparation',
     playerPassed: false,
     extraTurnAfterPassUsed: false,

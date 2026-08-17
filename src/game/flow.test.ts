@@ -107,6 +107,14 @@ describe('flow: the Era Zero Warp Phase (Fractures of Time)', () => {
     expect(advanceFromPreparation(s).phase).toBe('paradox');
   });
 
+  // Fractures rulebook p.4 — three pre-Impact + two post-Impact Eras: the game ends
+  // after Era 5, where a base game would still have two Eras to play.
+  it('makes Era 5 the final Era', () => {
+    expect(isFinalEra(fractures('fractures', (g) => (g.era = 4)))).toBe(false);
+    expect(isFinalEra(fractures('fractures', (g) => (g.era = 5)))).toBe(true);
+    expect(isFinalEra(fractures('base', (g) => (g.era = 5)))).toBe(false);
+  });
+
   it('counts the Era Zero tile as a past Timeline tile', () => {
     expect(pastTimelineTiles(game((g) => (g.era = 1)))).toBe(0);
     expect(pastTimelineTiles(game((g) => (g.era = 3)))).toBe(2);

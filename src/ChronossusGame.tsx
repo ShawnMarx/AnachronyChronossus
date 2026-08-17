@@ -988,8 +988,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Fractures of Time: splits the placement gate, runs the Blink check, tracks the Flux Pool. */
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
   const guardiansMode = Chronossus.isGuardiansMode(state.config.chronossusMode);
-  /** Post-Impact from Era 5 on, whatever the stored flag says (it can lag a debug jump). */
-  const postImpactNow = state.impact || Chronossus.isPostImpact(state.era);
+  /** The last Era of this game — 5 with Fractures' shorter Timeline, else 7. */
+  const maxEra = Chronossus.maxEraFor(state.config);
+  /** The first post-Impact Era — 4 with Fractures, else 5. */
+  const postImpactEra = Chronossus.postImpactEraFor(state.config);
+  /** Post-Impact from that Era on, whatever the stored flag says (it can lag a debug jump). */
+  const postImpactNow = state.impact || Chronossus.isPostImpact(state.era, state.config);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
   // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
   // every pre-commit "Failed Action" button label agrees with what actually resolves.
@@ -2266,27 +2270,27 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   // On the last Era there is no next Era, so skip the prompt and go to Clean Up.
   // End of Action Rounds → Clean Up. Only ask who leads next Era when a next Era is
-  // guaranteed: the final Era (7) ends in Clean Up (no prompt); post-Impact Eras
-  // (5–6) might end when flipping Collapsing Capital, so defer the prompt to the
-  // "Game continues" choice; Eras 1–4 ask now.
+  // guaranteed: the final Era (7, or 5 with Fractures) ends in Clean Up (no prompt);
+  // the post-Impact Eras before it might end when flipping Collapsing Capital, so defer
+  // the prompt to the "Game continues" choice; the pre-Impact Eras ask now.
   const endActions = () => {
     closePanel();
     const era = state.era;
-    if (era >= Chronossus.MAX_ERA) {
+    if (era >= maxEra) {
       // Last Era: no Clean Up step — go straight to scoring.
       endGameNow();
       return;
     }
-    if (era === 5 || era === 6) {
+    if (era >= postImpactEra) {
       const next = Chronossus.resolveCleanUp(state);
       commitPhase(next, enteredLabel(next));
       return;
     }
     setShowFirstPlayer(true);
   };
-  // Answer the First-Player question. Asked at the end of Action Rounds (Eras 1–4)
-  // it flows into Clean Up; deferred past the Clean Up game-end check (Eras 5–6) it
-  // starts the next Era.
+  // Answer the First-Player question. Asked at the end of Action Rounds (the pre-Impact
+  // Eras) it flows into Clean Up; deferred past the Clean Up game-end check (the
+  // post-Impact Eras before the last) it starts the next Era.
   const answerFirstPlayer = (playerFirst: boolean) => {
     setShowFirstPlayer(false);
     const withFp: GameState = { ...state, firstPlayer: playerFirst ? 'player' : 'bot' };
@@ -2859,11 +2863,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   const changeEra = (d: number) =>
     setState((s) => {
-      const era = Math.max(1, Math.min(Chronossus.MAX_ERA, s.era + d));
+      const era = Math.max(1, Math.min(maxEra, s.era + d));
       // Keep the Impact flag with the Era, as `startNextEra` does. Without this a debug
       // jump to Era 5 left `impact` false, so every post-Impact rule (the 2+X Power Up,
       // Acquire Guardian's post-Impact branch) silently kept its pre-Impact behaviour.
-      return { ...s, era, impact: Chronossus.isPostImpact(era) };
+      return { ...s, era, impact: Chronossus.isPostImpact(era, s.config) };
     });
   const playerPass = () => {
     closePanel();
@@ -3050,7 +3054,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       currentPhase={state.phase}
       onGoPhase={goPhase}
       era={state.era}
-      maxEra={Chronossus.MAX_ERA}
+      maxEra={maxEra}
       onEra={changeEra}
       paradoxes={paradoxes}
       onParadox={(d) => setParadoxes((n) => Math.max(0, Math.min(3, n + d)))}
@@ -4036,22 +4040,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       break;
     }
     case 'cleanup': {
-      // Impact + game-end flow, identical to the Chronobot: the Impact resolves at
-      // the end of Era 4; in the post-Impact Eras 5–6 flipping the Collapsing
-      // Capital tiles decides whether the game continues; Era 7 always ends.
+      // Impact + game-end flow, identical to the Chronobot: the Impact resolves at the
+      // end of the last pre-Impact Era; in the post-Impact Eras before the last,
+      // flipping the Collapsing Capital tiles decides whether the game continues; the
+      // final Era always ends. Fractures shifts all three (Impact after Era 3, check in
+      // Era 4, game ends after Era 5) — hence the derived Eras rather than 4/5–6/7.
       const era = state.era;
-      const postImpact = era === 5 || era === 6;
-      const finalEra = era >= Chronossus.MAX_ERA;
+      const finalEra = era >= maxEra;
+      const postImpact = era >= postImpactEra && !finalEra;
       body = (
         <>
           <p className="phase-note">
             Retrieve the Chronossus’s Exosuits along with your own.
           </p>
-          {era === 4 && (
+          {era === postImpactEra - 1 && (
             <p className="phase-note">
               <b>The Impact occurs now</b> — resolve it using the usual procedure at
-              the end of Era 4. From Era 5 on, the Chronossus powers up 2+X Exosuits
-              (max 4) instead of 3+X (max 6).
+              the end of Era {era}. From Era {postImpactEra} on, the Chronossus powers
+              up 2+X Exosuits (max 4) instead of 3+X (max 6).
             </p>
           )}
           {postImpact && (

@@ -15,11 +15,14 @@ registerBot(chronossusMeta);
 registerEngine({
   id: 'chronobot',
   MAX_ERA: ChronobotEngine.MAX_ERA,
+  maxEraFor: () => ChronobotEngine.MAX_ERA,
   startNextEra: ChronobotEngine.startNextEra,
 });
 registerEngine({
   id: 'chronossus',
   MAX_ERA: ChronossusEngine.MAX_ERA,
+  // Fractures of Time shortens the game to 5 Eras (rulebook p.4).
+  maxEraFor: ChronossusEngine.maxEraFor,
   startNextEra: ChronossusEngine.startNextEra,
 });
 

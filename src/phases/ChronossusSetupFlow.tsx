@@ -873,6 +873,11 @@ export default function ChronossusSetupFlow({
                       phase (normally skipped in the first Era).
                     </li>
                     <li>
+                      The Timeline is <b>shorter</b>: three Eras pre-Impact and two
+                      post-Impact. The Impact happens in <b>Era 3</b>’s Clean Up and the
+                      game ends after <b>Era 5</b>.
+                    </li>
+                    <li>
                       Set up the <b>Valley board</b> as if it was a 2-player game. The app
                       names the Valley Action the Chronossus takes; you place its Exosuit
                       there (or on the Valley Capital space if no Valley Action space is

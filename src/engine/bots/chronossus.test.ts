@@ -15,6 +15,8 @@ import {
   startNextEra,
   isPostImpact,
   POST_IMPACT_ERA,
+  maxEraFor,
+  postImpactEraFor,
   rollParadox,
   endParadoxPhase,
   resolveWarp,
@@ -478,8 +480,38 @@ describe('startNextEra', () => {
 describe('isPostImpact — same Impact Era as the Chronobot', () => {
   it('is false for Eras 1–4, true for Era 5+', () => {
     expect(POST_IMPACT_ERA).toBe(5);
-    expect([1, 2, 3, 4].map(isPostImpact)).toEqual([false, false, false, false]);
-    expect([5, 6, 7].map(isPostImpact)).toEqual([true, true, true]);
+    expect([1, 2, 3, 4].map((e) => isPostImpact(e))).toEqual([false, false, false, false]);
+    expect([5, 6, 7].map((e) => isPostImpact(e))).toEqual([true, true, true]);
+  });
+});
+
+// Fractures rulebook p.4: "There are now only three Eras pre-Impact and two Eras
+// post-Impact, plus an Era Zero" — Eras 1–5, Impact during Era 3's Clean Up.
+describe('Fractures of Time re-cuts the Timeline', () => {
+  const FRACTURES = { chronossusMode: 'fractures' };
+  const BASE = { chronossusMode: 'base' };
+
+  it('runs 5 Eras instead of 7', () => {
+    expect(maxEraFor(FRACTURES)).toBe(5);
+    expect(maxEraFor({ chronossusMode: 'fractures+pioneers' })).toBe(5);
+    expect(maxEraFor(BASE)).toBe(7);
+    expect(maxEraFor({ chronossusMode: undefined })).toBe(7);
+  });
+
+  it('moves the Impact a full Era earlier', () => {
+    expect(postImpactEraFor(FRACTURES)).toBe(4);
+    expect(postImpactEraFor(BASE)).toBe(5);
+    expect([1, 2, 3].map((e) => isPostImpact(e, FRACTURES))).toEqual([false, false, false]);
+    expect([4, 5].map((e) => isPostImpact(e, FRACTURES))).toEqual([true, true]);
+    // Era 4 is still pre-Impact in every other mode.
+    expect(isPostImpact(4, BASE)).toBe(false);
+  });
+
+  it('startNextEra flips the Impact flag after Era 3', () => {
+    const s = (era: number) =>
+      chronossusState({ era, phase: 'cleanup', config: { ...CONFIG, ...FRACTURES } });
+    expect(startNextEra(s(2)).impact).toBe(false);
+    expect(startNextEra(s(3)).impact).toBe(true);
   });
 });
 

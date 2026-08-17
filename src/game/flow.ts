@@ -101,7 +101,7 @@ export function advanceFromPreparation(state: GameState): GameState {
  * Game (Era 5–6) or we have finished the final Era.
  */
 export function isFinalEra(state: GameState): boolean {
-  return state.endgameTriggered || state.era >= engineFor(state.config.bot).MAX_ERA;
+  return state.endgameTriggered || state.era >= engineFor(state.config.bot).maxEraFor(state.config);
 }
 
 /**

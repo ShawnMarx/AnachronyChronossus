@@ -269,6 +269,23 @@ describe('Chronossus full-game playthrough — Fractures of Time', () => {
     );
   });
 
+  // Fractures rulebook p.4: "only three Eras pre-Impact and two Eras post-Impact, plus
+  // an Era Zero" — the game ends after Era 5, with the Impact during Era 3's Clean Up.
+  it('ends after Era 5, post-Impact from Era 4', () => {
+    const impactByEra = new Map<number, boolean>();
+    const { state } = playChronossus({
+      config: FRACTURES_CONFIG,
+      onPhase: (phase, s) => {
+        if (phase === 'powerup') impactByEra.set(s.era, s.impact);
+      },
+    });
+    expect(state.era).toBe(5);
+    expect(state.finished).toBe(true);
+    expect([...impactByEra.keys()]).toEqual([1, 2, 3, 4, 5]);
+    expect([1, 2, 3].map((e) => impactByEra.get(e))).toEqual([false, false, false]);
+    expect([4, 5].map((e) => impactByEra.get(e))).toEqual([true, true]);
+  });
+
   // Fractures rulebook p.6: a Warp Phase (and nothing else) before Era 1's round
   // sequence, then Era 1 including a Paradox phase.
   it('opens with the Era Zero Warp Phase, then Era 1 Preparation → Paradox', () => {

@@ -137,12 +137,6 @@ to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLE
 No plan is active.
 
 Still backlog (not yet in a plan):
-- [ ] **Fractures changes the length of the game** — "There are now only three Eras
-      pre-Impact and two Eras post-Impact, plus an Era Zero" (Fractures rulebook p.4). We
-      still run `MAX_ERA = 7` with the Impact after Era 4 in Fractures modes. Fixing it
-      means per-mode `MAX_ERA`/`POST_IMPACT_ERA` (the `isPostImpact` comment in
-      `bots/chronossus.ts` already anticipates this) plus the Clean Up game-end branches,
-      which currently hard-code Eras 5–6 / 7.
 - [ ] **Fractures + Pioneers: the post-Era-Zero Power Upgrade** — "after the Era Zero Warp
       Phase, each player may choose to spend one of their Titanium, Uranium, or Gold to
       upgrade the Power of their Exosuit as though they had taken a Power Upgrade Action"
