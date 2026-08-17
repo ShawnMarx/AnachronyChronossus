@@ -191,12 +191,20 @@ export function PlaceExosuitPanel({
   fluxDrawSrc,
   drewCasing = false,
   offBoard = false,
+  noFigures = false,
   onContinue,
 }: {
   /** Where it places — the confirmed space ("Construct", "World Council", …). */
   destination: string;
   fluxDrawSrc?: string | null;
   drewCasing?: boolean;
+  /**
+   * Fractures: the Blink check drew an Empty Flux Casing, so there is no Blink — and the
+   * bot has no figure to place instead. "Places an Exosuit or passes, as usual" (Solo
+   * Opponents p.12) then resolves to the pass, so this panel says so rather than asking
+   * for an Exosuit that does not exist.
+   */
+  noFigures?: boolean;
   /**
    * The destination is NOT on the Main board (a Valley Action space, the Adventure hex
    * pool, a Hypersync hex). The Energy Core is only the marker for "this Exosuit could
@@ -214,13 +222,21 @@ export function PlaceExosuitPanel({
           <span>Drawn from the Flux Pool — no Blink.</span>
         </div>
       )}
-      <p className="pp-instruct">
-        Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>
-        {offBoard ? '.' : ', and put an Energy Core from the supply into it.'}
-      </p>
+      {noFigures ? (
+        <p className="pp-instruct">
+          No Blink, and the bot has <b>no Exosuit left to place</b> — so it{' '}
+          <b>passes</b> for the Era. Nothing goes on <b>{destination}</b>, and its Command
+          token does not advance.
+        </p>
+      ) : (
+        <p className="pp-instruct">
+          Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>
+          {offBoard ? '.' : ', and put an Energy Core from the supply into it.'}
+        </p>
+      )}
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onContinue}>
-          ✓ Confirm placed
+          {noFigures ? '✓ Continue — it passes' : '✓ Confirm placed'}
         </button>
       </div>
     </div>
@@ -3654,6 +3670,7 @@ export function DetailPanel({
   fractures = false,
   blinkCheck = false,
   placementHandled = false,
+  outOfFigures = false,
   blink,
   fluxDrawSrc = null,
   placeDestination = null,
@@ -3711,6 +3728,11 @@ export function DetailPanel({
    * repeat "place the Exosuit …" drops that clause.
    */
   placementHandled?: boolean;
+  /**
+   * Fractures: the Casing came out of the Flux Pool AND the bot has no figure left, so
+   * the Action ends in a pass rather than a placement (see `PlaceExosuitPanel`).
+   */
+  outOfFigures?: boolean;
   /**
    * Fractures: the space the placement/Blink actually settled on — the printed Action
    * space or World Council. Named by the caller because only it knows which gate answer
@@ -3908,6 +3930,7 @@ export function DetailPanel({
             destination={placeDestination ?? spaceLabel(hotspot.action)}
             fluxDrawSrc={fluxDrawSrc}
             drewCasing
+            noFigures={outOfFigures}
             onContinue={onFluxCasingContinue}
           />
         )}
@@ -3954,9 +3977,15 @@ export function DetailPanel({
             <p className="pp-instruct">
               <b>Is there one or more Mining Action space available?</b>
             </p>
+            {blinkCheck && (
+              <p className="pp-sub">
+                Nothing to place yet — the Blink check comes first, and a Blink moves an
+                Exosuit the {botName} already has on the board into that space instead.
+              </p>
+            )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onMineHasSpace}>
-                ✓ Yes — a Mining space is open
+                {blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — a Mining space is open'}
               </button>
               <button className="pp-cannot" onClick={onMineNoSpace}>
                 ✗ No open Mining space
@@ -3969,20 +3998,15 @@ export function DetailPanel({
         {pending === 'mineResources' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              {blinkCheck ? 'Find the' : `Place the ${botName}’s Exosuit in an`} open{' '}
+              {/* With Fractures the Blink check has already run (it belongs to the
+                  "is a Mining space open?" gate), so the Exosuit is on its way there —
+                  this step only names WHICH Mine space it lands in. */}
+              {placementHandled ? 'Find the' : `Place the ${botName}’s Exosuit in an`} open{' '}
               <b>Mine</b> space granting the best 2 Resources by priority order below, based
               on lacking-first. Give it those <b>2 Resources</b> (pre-selected; adjust to
               match the space — click a cube twice for <b>×2</b>), then{' '}
               <b>discard those 2 Resource cubes from the board</b>.
             </p>
-            {/* A Mine space is a Blink destination too, and which Mine space it is depends
-                on the Resources — so the check runs after they're picked, not before. */}
-            {blinkCheck && (
-              <p className="pp-sub">
-                Don’t place anything yet — the {botName} Blink-checks first, and a Blink
-                moves an Exosuit it already has on the board into that space instead.
-              </p>
-            )}
             <div className="resource-picks">
               {mineOrder.map((r, i) => (
                 <Fragment key={r}>
@@ -3997,7 +4021,7 @@ export function DetailPanel({
             </div>
             {selectedResources.length === 2 && (
               <button className="start-turn" onClick={onStartTurn}>
-                {blinkCheck ? '✓ Check for Blink' : startLabel}
+                {startLabel}
               </button>
             )}
           </div>

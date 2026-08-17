@@ -1155,6 +1155,21 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
     expect(passesInsteadOfAction(bot, 'tile-assimilate', { fractures: true })).toBe(true);
   });
 
+  // Solo Opponents p.12: on an Empty Flux Casing "the Chronossus places an Exosuit or
+  // passes, as usual" — with nothing to place that IS the pass. The exemption only ever
+  // stood in for a Blink that has now failed, so the decision has to be taken twice: once
+  // to start the Action (Blink possible), once after the draw (Blink gone).
+  it('a failed Blink check leaves it passing after all, on every placing Action', () => {
+    const bot = fracturesState(0).chronossus!;
+    bot.placedExosuits = [{ action: 'construct-lab', space: 'action', hasCore: true }];
+    for (const id of ['mine-resource', 'recruit', 'tile-assimilate', 'tile-extract'] as const) {
+      // Before the draw: a Blink is possible, so it does NOT pass — the check runs.
+      expect(passesInsteadOfAction(bot, id, { fractures: true })).toBe(false);
+      // After an Empty Flux Casing: no Blink, no figure — judged as a plain placement.
+      expect(passesInsteadOfAction(bot, id, { fractures: false })).toBe(true);
+    }
+  });
+
   it('names the Valley Capital space when no Valley Action space was free', () => {
     const { instructions } = resolveAction(fracturesState(), {
       actionId: 'tile-extract',

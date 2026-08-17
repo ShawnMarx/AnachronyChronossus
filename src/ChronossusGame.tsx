@@ -1438,10 +1438,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * slot, and a tile COVERING a printed space (Pioneers' C10). Returns true when it
    * passed, meaning the caller must stop.
    */
-  const passIfOutOfFigures = (actionId: ChronossusActionId): boolean => {
+  const passIfOutOfFigures = (
+    actionId: ChronossusActionId,
+    opts?: {
+      /**
+       * The Blink check has already run and drew an Empty Flux Casing, so there is no
+       * Blink to stand in for the placement — judge this one as a plain placement. The
+       * exemption is what let the Action get this far with an empty supply, so leaving it
+       * on here would place an Exosuit the bot does not have.
+       */
+      blinkFailed?: boolean;
+    },
+  ): boolean => {
     if (
       !Chronossus.passesInsteadOfAction(bot, actionId, {
-        fractures: fracturesMode,
+        fractures: fracturesMode && !opts?.blinkFailed,
         hypersync: { era: state.era, active: hypersyncMode },
       })
     ) {
@@ -1461,6 +1472,28 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setLastResult(instructions); // shown in the turn-status aside
     return true;
   };
+
+  /**
+   * What a printed Action space actually resolves as: with Pioneers' C10 on it, "Recruit
+   * Genius or Research" IS the Adventure, and every rule that keys off the Action id (the
+   * passing rule above, the Blink check) has to judge that one.
+   */
+  const actedActionId = (action: string): ChronossusActionId =>
+    action === 'recruit-genius-research' && adventureCoversGeniusResearch()
+      ? 'tile-adventure'
+      : (action as ChronossusActionId);
+
+  /**
+   * Fractures: the Blink check drew an Empty Flux Casing and the bot has no figure left,
+   * so this Action ends in a pass, not a placement — the panels say so instead of asking
+   * for an Exosuit that does not exist.
+   */
+  const blinkFailedPass = (actionId: ChronossusActionId | null | undefined): boolean =>
+    !!actionId &&
+    fluxDraw === 'casing' &&
+    Chronossus.passesInsteadOfAction(bot, actionId, {
+      hypersync: { era: state.era, active: hypersyncMode },
+    });
 
   const onTileClick = (h: Hotspot, force = false) => {
     if (calibrate) {
@@ -1483,13 +1516,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return;
     }
     if (bot.passed) return; // the Chronossus has passed for this Era
-    // What this space actually resolves as: with Pioneers' C10 on it, "Recruit Genius or
-    // Research" IS the Adventure, and the passing rule has to judge that Action (its
-    // Exosuit lands on the Adventure board, which is a Blink destination).
-    const acted: ChronossusActionId =
-      h.action === 'recruit-genius-research' && adventureCoversGeniusResearch()
-        ? 'tile-adventure'
-        : (h.action as ChronossusActionId);
+    // The Action this space actually resolves as (Pioneers' C10 makes it the Adventure).
+    const acted = actedActionId(h.action);
     if (passIfOutOfFigures(acted)) return;
     // HFA: out of figures, but a Solo Hypersync tile can stand in for the Exosuit — so
     // there is nothing to place and no space question to ask. Go straight to the tile.
@@ -1672,8 +1700,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // The Exosuit has been moved into the confirmed space — carry on with the Action.
   const onConfirmBlink = () => beginPlacementSubflow();
-  // The Casing is set aside: it places a new Exosuit in that space, as usual.
-  const onFluxCasingContinue = () => beginPlacementSubflow();
+  // The Casing is set aside: "The Chronossus places an Exosuit or passes, as usual"
+  // (Solo Opponents p.12). With no figure left that resolves to the PASS — the Blink
+  // exemption is what let this Action start, and the Blink just failed.
+  const onFluxCasingContinue = () => {
+    if (active && passIfOutOfFigures(actedActionId(active.action), { blinkFailed: true })) {
+      return;
+    }
+    beginPlacementSubflow();
+  };
 
   const onCannotPlace = () => {
     if (!active) return;
@@ -1715,9 +1750,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     onConfirmPlace();
   };
   const cancelHypersyncTile = () => setShowHypersyncTilePrompt(false);
+  // "Is a Mining space open?" IS this Action's placement gate — so the Blink check belongs
+  // right after it, before anything is placed, exactly like the Genius question. Which
+  // Mine space it is comes from the Resources picked next; the Blink/placement itself is
+  // settled at the Action's granularity ("Mine"), which is all the panels name.
   const onMineHasSpace = () => {
-    setSelectedResources(Chronobot.mineResourceOrder(bot).slice(0, 2));
-    setPending('mineResources');
+    const resources = () => {
+      setSelectedResources(Chronobot.mineResourceOrder(bot).slice(0, 2));
+      setPending('mineResources');
+    };
+    if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'mine-resource')) {
+      placementSpaceRef.current = 'action';
+      postBlinkRef.current = resources;
+      runBlinkCheck('mine-resource');
+      return;
+    }
+    resources();
   };
   const onMineNoSpace = () => {
     if (active) resolve(active, { cannotPlace: true });
@@ -1759,18 +1807,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (pending === 'buildingVP' && selectedVP != null && active) {
       resolve(active, { buildingVP: selectedVP });
     } else if (pending === 'mineResources' && selectedResources.length === 2 && active) {
-      // A Mine space is a Main-board Capital Action space: it is a Blink destination as
-      // much as a Blink source. The check waits until the Resources are picked, because
-      // that choice is what identifies WHICH Mine space the Exosuit is heading for —
-      // only then can the app say "move this one" instead of "place a new one".
-      const mine = () => resolve(active, { minedResources: selectedResources });
-      if (fracturesMode && Chronossus.shouldCheckBlink(bot, 'mine-resource')) {
-        placementSpaceRef.current = 'action';
-        postBlinkRef.current = mine;
-        runBlinkCheck('mine-resource');
-        return;
-      }
-      mine();
+      // The Blink check already ran, back at the "is a Mining space open?" gate.
+      resolve(active, { minedResources: selectedResources });
     } else if (pending === 'recruitWorker' && selectedWorker && active) {
       resolve(active, { recruitedWorker: selectedWorker });
     } else if (pending === 'research' && rolledShape && active) {
@@ -1962,12 +2000,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         fractures={fracturesMode}
         blinkCheck={fracturesMode && Chronossus.shouldCheckBlink(bot, active.action)}
         placementHandled={fracturesMode && fluxDraw != null}
+        outOfFigures={blinkFailedPass(actedActionId(active.action))}
         placeDestination={(() => {
           const space = Chronossus.blinkSpaceOf(active.action, placementSpaceRef.current);
           if (!space) return null; // not a Capital Action space — the panel names the Action
           if (space === 'world-council') return 'the World Council space';
-          // Mine picks its space by the Resources it grants, not by reading down the column.
-          if (space === 'mine') return 'that Mine Action space (the one granting those 2 Resources)';
+          // Mine picks its space by the Resources it grants, not by reading down the
+          // column — and the Blink check runs at its space gate, before the Resources are
+          // named, so this points forward to that step rather than back at a choice made.
+          if (space === 'mine') return 'a Mine Action space (which one comes next, with the Resources)';
           return `the topmost open ${Chronossus.BLINK_SPACE_LABEL[space]} Action space`;
         })()}
         blink={blink}
@@ -2051,8 +2092,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   fluxDrawSrc:
                     fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
                   blinkCheck: fracturesMode && Chronossus.shouldCheckBlink(bot, 'tile-adventure'),
+                  noFigures: blinkFailedPass('tile-adventure'),
                   onConfirmBlink: () => beginAdventureDraw(advSlotRef.current),
-                  onCasingContinue: () => beginAdventureDraw(advSlotRef.current),
+                  onCasingContinue: () => {
+                    // No Blink and no figure → it passes, exactly as on a printed space.
+                    if (passIfOutOfFigures('tile-adventure', { blinkFailed: true })) return;
+                    beginAdventureDraw(advSlotRef.current);
+                  },
                   onSlot: onAdventureSlot,
                   onSharedPick: onAdventureSharedPick,
                   onSharedConfirm: onAdventureSharedConfirm,
@@ -2067,8 +2113,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             !tileRuleView
               ? { onPlace: onValleyPlace, step: tileBlinkStep, blink, fluxDrawSrc:
                   fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null,
+                  noFigures: blinkFailedPass(pendingTile),
                   onConfirmBlink: () => startTileTurn(valleySpaceRef.current, true),
-                  onCasingContinue: () => startTileTurn(valleySpaceRef.current, false),
+                  onCasingContinue: () => {
+                    if (passIfOutOfFigures(pendingTile, { blinkFailed: true })) return;
+                    startTileTurn(valleySpaceRef.current, false);
+                  },
                   onOperatorsAnswer: onOperatorsAnswer,
                   onNoSpace: onValleyNoSpace,
                   onAssimilateContinue,
@@ -4366,6 +4416,8 @@ function CxTileDialog({
       token?: number;
     } | null;
     fluxDrawSrc: string | null;
+    /** The Casing came out and there is no figure left — the Action ends in a pass. */
+    noFigures: boolean;
     onConfirmBlink: () => void;
     onCasingContinue: () => void;
     /** Assimilate only: the player's answer to "are there Operators left in the Valley?" */
@@ -4405,6 +4457,8 @@ function CxTileDialog({
     fluxDrawSrc: string | null;
     /** True when a Blink check will run after the slot answer — so the gate ASKS first. */
     blinkCheck: boolean;
+    /** The Casing came out and there is no figure left — the Action ends in a pass. */
+    noFigures: boolean;
     onConfirmBlink: () => void;
     onCasingContinue: () => void;
     onSlot: (bonus: number) => void;
@@ -4471,6 +4525,7 @@ function CxTileDialog({
             fluxDrawSrc={valleyGate.fluxDrawSrc}
             drewCasing
             offBoard
+            noFigures={valleyGate.noFigures}
             onContinue={valleyGate.onCasingContinue}
           />
         )}
@@ -4488,6 +4543,7 @@ function CxTileDialog({
             fluxDrawSrc={adventureGate.fluxDrawSrc}
             drewCasing
             offBoard
+            noFigures={adventureGate.noFigures}
             onContinue={adventureGate.onCasingContinue}
           />
         )}

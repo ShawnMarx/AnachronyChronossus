@@ -365,11 +365,23 @@ does *not* skip the Era 1 Paradox phase; `flow.pastTimelineTiles` counts the Era
   Flux Cores in the pool, or no Blink-ready Exosuit — it instructs the placement inline,
   exactly like a base-game Action. Non-Fractures games keep the plain one-step gate. A new
   module that adds Exosuit-placing spaces must follow the same shape.
-- **Every Exosuit-placing path has to run the Blink check.** Mine and Recruit Genius shipped
-  broken because they ask their own question instead of using the shared `mech` gate — the
-  only place the check ran. Actions with their own gate route through `runBlinkCheck` with a
-  `postBlinkRef` continuation (their resume point can't be derived from the Action id), and
-  the check goes *after* whatever input identifies the target space (Mine: the Resources).
+- **Every Exosuit-placing path has to run the Blink check, right after its placement gate.**
+  Mine and Recruit Genius shipped broken because they ask their own question instead of using
+  the shared `mech` gate — the only place the check ran. Actions with their own gate route
+  through `runBlinkCheck` with a `postBlinkRef` continuation (their resume point can't be
+  derived from the Action id), and the check goes immediately after **that gate** — Mine's
+  "is a Mining space open?", Genius's "is a Genius available?" — never after a later input
+  step. The Blink is settled at the Action's granularity ("a Mine Action space"); *which*
+  space it is comes from the input that follows, and the step after the check drops its own
+  "place the Exosuit" clause (`placementHandled`).
+- **The passing rule runs TWICE per Blink-checked Action.** The Fractures exemption only
+  stands in for a Blink that might happen: once the check draws an Empty Flux Casing there is
+  no Blink, and "the Chronossus places an Exosuit or passes, as usual" (Solo Opponents p.12)
+  resolves to the **pass** when no figure is left. So every Casing continuation re-runs
+  `passIfOutOfFigures(actionId, { blinkFailed: true })` (which drops the exemption) before
+  falling through to the placement, and the panel says it passes rather than asking for an
+  Exosuit that does not exist. Shipping only the first check told the player to place a
+  figure the bot did not have.
 - **Rule boxes live in the dialog footer, never inside a step box.** Every Action / tile /
   module dialog renders its verbatim 📖 collapsibles below `.dp-body`'s step content, in a
   fixed order — the Action's own rule first, then whatever the current step adds (Blink,
