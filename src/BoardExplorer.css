@@ -2421,6 +2421,10 @@
 }
 .score-mode {
   display: inline-flex;
+  /* The screen is a stretch flex column, so an inline-flex child still fills the row and
+     its border read as a divider under the score box. Size it to its two buttons. */
+  align-self: flex-start;
+  width: max-content;
   border: 1px solid rgba(var(--sp-accent-rgb), 0.5);
   border-radius: 8px;
   overflow: hidden;
