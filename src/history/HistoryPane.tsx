@@ -6,6 +6,22 @@
 import type { HistoryEntry } from '../game/undo';
 import HistoryText from './HistoryText';
 
+/**
+ * Entering a phase commits "Era 1 · → Warp", and the phase's own result then commits
+ * "Era 1 · Warp: placed 1" — so Power Up and Warp each showed twice, once with nothing on
+ * it. The bare arrow row is dropped when the very next entry reports what that same phase
+ * did; a phase where nothing happened keeps its arrow row, since that is its only trace.
+ *
+ * This is display only: both entries stay on the undo stack, so every phase move is still
+ * a separate ↶ Undo step.
+ */
+export function isSupersededPhaseEntry(entry: HistoryEntry, next: HistoryEntry | undefined): boolean {
+  if (entry.effects.length > 0 || entry.die != null) return false;
+  const arrow = /^(Era \d+) · → (.+)$/.exec(entry.label);
+  if (!arrow || !next) return false;
+  return next.label.startsWith(`${arrow[1]} · ${arrow[2]}:`);
+}
+
 export default function HistoryPane({
   entries,
   onClose,
@@ -13,7 +29,9 @@ export default function HistoryPane({
   entries: HistoryEntry[];
   onClose: () => void;
 }) {
-  const rows = [...entries].reverse(); // newest first
+  const rows = entries
+    .filter((e, i) => !isSupersededPhaseEntry(e, entries[i + 1]))
+    .reverse(); // newest first
   return (
     <div className="history-pane">
       <div className="history-head">
@@ -26,9 +44,11 @@ export default function HistoryPane({
         <p className="history-empty">No turns taken yet.</p>
       ) : (
         <ol className="history-list">
+          {/* Numbered over the ROWS shown, not the raw stack — a filtered-out arrow
+              entry would otherwise leave a gap that reads as a missing turn. */}
           {rows.map((e, i) => (
-            <li key={entries.length - i} className="history-row">
-              <span className="history-num">{entries.length - i}</span>
+            <li key={`${rows.length - i}-${e.label}`} className="history-row">
+              <span className="history-num">{rows.length - i}</span>
               <span className="history-main">
                 <span className="history-label">
                   {e.die != null && (
