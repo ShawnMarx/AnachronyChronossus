@@ -31,10 +31,14 @@ Chronossus moves "Seal Fate"; Salvation and Progress say the reverse.
   1. Set up the Doomsday board / Experiment cards / Impact tile as for a 2-player game,
      naming the **face-up** Level 2 stack with the Planned Experiments variant on and the
      **face-down** one with it off.
-  2. Which tracker you move and which the Chronossus moves (always the opposing one), plus
-     keeping its Path markers to hand.
-  3. The pre-seeded markers line, with your chosen count (only if that option is on).
-  4. That **you** run Check for Impact each Clean Up — the app never rolls the Trajectory
+  2. Which track **your Path** puts you on, and that the Chronossus scores on the opposing
+     one.
+  3. That **you move both physical tokens** — the app only tracks where the bot's marker
+     sits (so it knows its VP) and tells you when to advance it — and that you need both
+     positions each Clean Up to read the (+)/(−) symbols for the Trajectory roll.
+  4. Keeping the Chronossus's Path markers to hand.
+  5. The pre-seeded markers line, with your chosen count (only if that option is on).
+  6. That **you** run Check for Impact each Clean Up — the app never rolls the Trajectory
      dice or tracks the Impact tile.
 
   It should NOT re-teach where the Impact tile goes, how the Experiment cards are dealt, or

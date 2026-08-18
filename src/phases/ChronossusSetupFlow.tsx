@@ -141,6 +141,14 @@ interface ModuleConfig {
  * base "shuffle and reveal" step rather than one bullet per module — the player searches
  * the Solo Objective deck once.
  */
+/** Doomsday: the Path names, for the setup text. */
+const PATH_LABEL: Record<Chronossus.PlayerPath, string> = {
+  harmony: 'Harmony',
+  dominance: 'Dominance',
+  salvation: 'Salvation',
+  progress: 'Progress',
+};
+
 const MODULE_OBJECTIVE_CARDS: [string, string[]][] = [
   ['fractures', ['Technology Cards', 'Flux on Track']],
   ['guardians', ['Guardians']],
@@ -368,6 +376,11 @@ export default function ChronossusSetupFlow({
     ([, cards]) => cards,
   );
   const modeSlots = getMode(moduleId, [...difficulty]).slots;
+  // Doomsday: Harmony and Dominance interact with "Save Earth", Salvation and Progress with
+  // "Seal Fate" — and the Chronossus always takes the opposing one (Solo Opponents p.14).
+  const playerTrackerName =
+    Chronossus.botTrackerFor(doomsdayPlayerPath) === 'seal-fate' ? 'Save Earth' : 'Seal Fate';
+  const botTrackerName = playerTrackerName === 'Save Earth' ? 'Seal Fate' : 'Save Earth';
 
   const toggleTileSide = (family: string) =>
     setTileSides((s) => {
@@ -1065,20 +1078,20 @@ export default function ChronossusSetupFlow({
                       .
                     </li>
                     <li>
-                      You move the{' '}
-                      <b>
-                        {doomsdayPlayerPath === 'harmony' || doomsdayPlayerPath === 'dominance'
-                          ? 'Save Earth'
-                          : 'Seal Fate'}
-                      </b>{' '}
-                      tracker; the Chronossus moves the{' '}
-                      <b>
-                        {doomsdayPlayerPath === 'harmony' || doomsdayPlayerPath === 'dominance'
-                          ? 'Seal Fate'
-                          : 'Save Earth'}
-                      </b>{' '}
-                      tracker — always the one opposing yours. Keep its Path markers to hand
-                      for the Experiments, and move its tracker when the app tells you to.
+                      Your Path (<b>{PATH_LABEL[doomsdayPlayerPath]}</b>) puts you on the{' '}
+                      <b>{playerTrackerName}</b> track — that is the tracker{' '}
+                      <b>you</b> advance for your own Experiments. The Chronossus scores on
+                      the <b>{botTrackerName}</b> track, always the opposing one.
+                    </li>
+                    <li>
+                      <b>You move both physical tokens.</b> The app tracks where the
+                      Chronossus’s marker sits — that is how it knows the VP each of its
+                      Experiments earns — and tells you when to advance it. You will need
+                      both trackers’ positions yourself each Clean Up, to read the (+) and
+                      (−) symbols for the Trajectory roll.
+                    </li>
+                    <li>
+                      Keep the Chronossus’s <b>Path markers</b> to hand for the Experiments.
                     </li>
                     {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS) && (
                       <li>

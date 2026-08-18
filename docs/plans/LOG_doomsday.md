@@ -207,9 +207,15 @@ Note deviations and decisions inline under each step.
   Compare Guardians' "Set up the Guardian board as for a 2-player game" and Fractures' "Set
   up the Valley board as if it was a 2-player game".
 - What survives: the 2-player deferral (naming the face-up/face-down Level 2 stack, since a
-  difficulty option flips it), which tracker each side moves, the pre-seeded Path markers
+  difficulty option flips it), the tracker division of labour, the pre-seeded Path markers
   line with its count, and that **you run Check for Impact yourself** — the one part of a
   Doomsday game the app does not do, so setup is where to say so.
+- **"The Chronossus moves the Seal Fate tracker" was wrong** (corrected 2026-08-18). The
+  player moves every physical token; the app only *owns* the bot's tracker position, and only
+  so it knows the VP each of its Experiments earns. The setup text now states which track the
+  player's Path puts them on, that the Chronossus scores on the opposing one, and that the
+  player moves both tokens — and it links that to the Trajectory roll, which needs the (+)/(−)
+  symbols beside **both** trackers' current slots each Clean Up.
 - The verbatim `RulesBox` is unchanged: it is p.14's "CHANGES AT SETUP", which IS the
   Chronossus setup rules, and matches the Pioneers/Guardians boxes.
 - **Feature 6 complete.**

@@ -52,7 +52,7 @@ await page.getByRole('button', { name: /Continue/i }).first().click(); await wai
 await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
 if (SETUP) {
   const txt = await bodyText();
-  const i = txt.indexOf('Doomsday — setup');
+  const i = txt.indexOf('Doomsday setup');
   console.log('--- DOOMSDAY SETUP BLOCK ---');
   console.log(txt.slice(i, i + 1200));
   await page.screenshot({ path: `${SHOT}/doomsday-setup.png`, fullPage: true });
