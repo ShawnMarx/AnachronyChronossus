@@ -787,6 +787,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     guardianAvailable: true,
   });
   /**
+   * Doomsday (C07/C08): which step of the Experiment flow is on screen. The Timeline's
+   * Experiment cards are not modelled, so the dialog states the rulebook's selection rule
+   * and asks what is actually on the table: is one of this level carrying a Path marker,
+   * what VP is printed on it, and can a marker be placed for next time.
+   */
+  const [experimentStep, setExperimentStep] = useState<'marked' | 'vp' | 'prepare' | null>(null);
+  /** The answers gathered so far this Experiment, replayed into the resolver. */
+  const experimentAnswersRef = useRef<Chronossus.ExperimentInput>({
+    markedAvailable: false,
+    canPrepare: true,
+  });
+  /**
    * Pioneers (C09/C10): which step of the Adventure flow is on screen. It asks which
    * strength-bonus slot the marker went on (that column is shared with the player's own
    * markers), then — in shared-deck mode — which two cards were drawn, then shows the
@@ -2072,6 +2084,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 }
               : null
           }
+          experimentGate={
+            (pendingTile === 'tile-experiment-1' || pendingTile === 'tile-experiment-2') &&
+            !tileRuleView &&
+            experimentStep
+              ? {
+                  step: experimentStep,
+                  level: pendingTile === 'tile-experiment-1' ? 1 : 2,
+                  locked: Chronossus.tracksLocked({
+                    impactOccurred: bot.doomsday?.impactEra != null,
+                    botTracker: bot.doomsday?.botTracker ?? 'seal-fate',
+                    botSlot: bot.doomsday?.botSlot ?? Chronossus.DOOMSDAY_START_SLOT,
+                    playerTrackerFinal: bot.doomsday?.playerTrackerFinal ?? false,
+                  }),
+                  trackerLabel:
+                    bot.doomsday?.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate',
+                  nextSlotVp: Chronossus.botVpAt(
+                    Chronossus.nextSlot(
+                      bot.doomsday?.botTracker ?? 'seal-fate',
+                      bot.doomsday?.botSlot ?? Chronossus.DOOMSDAY_START_SLOT,
+                    ),
+                  ),
+                  onMarked: onExperimentMarked,
+                  onVp: onExperimentVp,
+                  onPrepare: onExperimentPrepare,
+                }
+              : null
+          }
           adventureGate={
             pendingTile === 'tile-adventure' && !tileRuleView && adventureStep
               ? {
@@ -2206,6 +2245,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         tileSides: result.tileSides,
         extraModules: result.extraModules,
         adventureDeckMode: result.adventureDeckMode,
+        doomsdayPlayerPath: result.doomsdayPlayerPath,
       };
       return startFirstEra({
         ...s,
@@ -2560,6 +2600,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       ...(blinked ? { blink: true, tokenActions: otherTokenActions() } : {}),
       ...(assimilates ? { shape, operatorsAvailable } : {}),
       ...(actionId === 'tile-acquire-guardian' ? guardianAnswersRef.current : {}),
+      ...(actionId === 'tile-experiment-1' || actionId === 'tile-experiment-2'
+        ? { experiment: experimentAnswersRef.current }
+        : {}),
       ...(adventure ? { adventure } : {}),
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
@@ -2776,6 +2819,41 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (free) return setGuardianStep('place');
     return setGuardianStep(Chronossus.guardianWorkerToSpend(bot) ? 'worker' : 'failed');
   };
+  /**
+   * Doomsday (C07/C08): open an Experiment.
+   *
+   * Step 1's question is skipped on the FIRST Experiment Action of a game — no Path markers
+   * can be out yet, so the answer is known. The "pre-seed Path markers" difficulty puts some
+   * out at setup, and then it must be asked from the very first turn.
+   */
+  const openExperimentFlow = () => {
+    const seeded = state.config.difficulty.includes(
+      Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS,
+    );
+    const askable = seeded || bot.doomsday?.experimentActionRun === true;
+    experimentAnswersRef.current = { markedAvailable: false, canPrepare: true };
+    setExperimentStep(askable ? 'marked' : 'prepare');
+  };
+  /** Step 1's answer — is an Experiment of this level carrying one of its Path markers? */
+  const onExperimentMarked = (available: boolean) => {
+    experimentAnswersRef.current = { ...experimentAnswersRef.current, markedAvailable: available };
+    setExperimentStep(available ? 'vp' : 'prepare');
+  };
+  /** Step 1's follow-up — the VP printed on the Experiment it took. */
+  const onExperimentVp = (vp: number) => {
+    experimentAnswersRef.current = { ...experimentAnswersRef.current, experimentVp: vp };
+    setExperimentStep('prepare');
+  };
+  /** Step 2's answer, which also commits the turn. */
+  const onExperimentPrepare = (can: boolean) => {
+    experimentAnswersRef.current = { ...experimentAnswersRef.current, canPrepare: can };
+    if (!pendingTile) return;
+    chainOpenRef.current = false;
+    resolveTileSlot(pendingTile);
+    setExperimentStep(null);
+    if (!chainOpenRef.current) closeTile();
+  };
+
   /** Commit the Acquire Guardian once the player has been told what to do. */
   const commitGuardian = () => {
     if (!pendingTile) return;
@@ -2794,6 +2872,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       setGuardianStep(null);
     }
     // openGuardianFlow reads the live bot/era; re-running on those would restart the flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingTile, tileRuleView]);
+
+  // The Experiment opens on its first question the same way.
+  useEffect(() => {
+    const isExperiment =
+      pendingTile === 'tile-experiment-1' || pendingTile === 'tile-experiment-2';
+    if (isExperiment && !tileRuleView) {
+      if (experimentStep === null) openExperimentFlow();
+    } else if (experimentStep !== null) {
+      setExperimentStep(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingTile, tileRuleView]);
 
@@ -3804,6 +3894,40 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       </span>
                     </TapFlag>
                   )}
+                  {/* Doomsday: its tracker's slot, and the Experiments it has completed. The
+                      slot is the one piece of the Doomsday board the app owns — the VP every
+                      future Experiment earns depends on it, and the player moves the physical
+                      token when told, so a readout is how they check the two agree. */}
+                  {doomsdayMode && bot.doomsday && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint={
+                        `The Chronossus moves the ${
+                          bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'
+                        } tracker (the one opposing yours), now on slot ${
+                          bot.doomsday.botSlot
+                        } of 10. Landing there is worth ${Chronossus.botVpAt(
+                          bot.doomsday.botSlot,
+                        )} VP — it takes BOTH Paths' printed values, unlike you. ` +
+                        `Experiments completed: ${bot.doomsday.experimentsCompleted}` +
+                        (Chronossus.tracksLocked({
+                          impactOccurred: bot.doomsday.impactEra != null,
+                          botTracker: bot.doomsday.botTracker,
+                          botSlot: bot.doomsday.botSlot,
+                          playerTrackerFinal: bot.doomsday.playerTrackerFinal,
+                        })
+                          ? '. The tracks are locked — Experiments still score, but nothing moves.'
+                          : '.')
+                      }
+                    >
+                      <span className="cx-tech-ops">
+                        <b>
+                          {bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'}
+                        </b>{' '}
+                        {bot.doomsday.botSlot}/10 · {bot.doomsday.experimentsCompleted} Exp
+                      </span>
+                    </TapFlag>
+                  )}
                   {hypersyncMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
@@ -4480,6 +4604,7 @@ function CxTileDialog({
   guardianGate = null,
   valleyGate = null,
   adventureGate = null,
+  experimentGate = null,
   flow = false,
 }: {
   action: ChronossusTileActionId;
@@ -4586,6 +4711,24 @@ function CxTileDialog({
     /** Opens the Exosuit Upgrade board pop-out from the Power chip. */
     onShowUpgradeBoard: () => void;
     onCommit: () => void;
+  } | null;
+  /**
+   * Doomsday (C07/C08): the Experiment flow. There is no model of the Timeline's Experiment
+   * cards — the player can remove one of the bot's Path markers on their own turn — so each
+   * step states the rulebook's selection rule and asks what is on the table.
+   */
+  experimentGate?: {
+    step: 'marked' | 'vp' | 'prepare';
+    /** Which level this tile executes (C07 = 1, C08 = 2). */
+    level: 1 | 2;
+    /** Whether the tracks are locked, so a successful Experiment moves nothing. */
+    locked: boolean;
+    /** The tracker the Chronossus moves, and where it would land. */
+    trackerLabel: string;
+    nextSlotVp: number;
+    onMarked: (available: boolean) => void;
+    onVp: (vp: number) => void;
+    onPrepare: (can: boolean) => void;
   } | null;
   /** Render in normal flow (mobile) rather than absolutely on the board — same as
    *  DetailPanel, so a module dialog opens exactly where a board Action's does. */
@@ -4969,10 +5112,76 @@ function CxTileDialog({
               {/* No effect blurb here: the gate is only asking about the space. What the
                   Action does comes with the steps that resolve it (and the 📖 box below). */}
             </>
+          ) : experimentGate && !readOnly && experimentGate.step === 'marked' ? (
+            <>
+              <p className="pp-instruct">
+                <b>Step 1 — Execute Experiment.</b> Is there a{' '}
+                <b>Level {experimentGate.level} Experiment</b> on the Timeline with one of the
+                Chronossus’s <b>Path markers</b> on it?
+              </p>
+              <p className="pp-sub">
+                If more than one, it takes the <b>leftmost</b> — and discards the Path marker.
+              </p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={() => experimentGate.onMarked(true)}>
+                  ✓ Yes — it takes one
+                </button>
+                <button className="pp-cannot" onClick={() => experimentGate.onMarked(false)}>
+                  ✗ None — skip this step
+                </button>
+              </div>
+            </>
+          ) : experimentGate && !readOnly && experimentGate.step === 'vp' ? (
+            <>
+              <p className="pp-instruct">
+                What is the <b>Victory Point value</b> printed on that Experiment?
+              </p>
+              <div className="pp-buttons">
+                {[2, 3].map((v) => (
+                  <button key={v} className="pp-confirm" onClick={() => experimentGate.onVp(v)}>
+                    {v} VP
+                  </button>
+                ))}
+              </div>
+              {experimentGate.locked ? (
+                <p className="pp-sub">
+                  The Doomsday tracks are locked, so its <b>{experimentGate.trackerLabel}</b>{' '}
+                  marker will not move — the Experiment still scores.
+                </p>
+              ) : (
+                <p className="pp-sub">
+                  It will then move its <b>{experimentGate.trackerLabel}</b> marker one step
+                  {experimentGate.nextSlotVp > 0
+                    ? `, scoring the ${experimentGate.nextSlotVp} VP printed there.`
+                    : ' (no VP printed there).'}
+                </p>
+              )}
+            </>
+          ) : experimentGate && !readOnly ? (
+            <>
+              <p className="pp-instruct">
+                <b>Step 2 — Prepare for Experimentation.</b> Place one of the Chronossus’s{' '}
+                <b>Path markers</b> on a face-up Experiment that does not already have one —
+                a <b>Level 1 before a Level 2</b>, and the <b>furthest in the past</b> to
+                break a tie.
+              </p>
+              <p className="pp-sub">
+                Never the Experiment under the next Era. Your Focus marker has no effect on
+                this choice.
+              </p>
+              <div className="pp-buttons">
+                <button className="pp-confirm" onClick={() => experimentGate.onPrepare(true)}>
+                  {startLabel}
+                </button>
+                <button className="pp-cannot" onClick={() => experimentGate.onPrepare(false)}>
+                  ✗ All of them already have one
+                </button>
+              </div>
+            </>
           ) : (
             <p className="pp-instruct">{tileInstruction(code)}</p>
           )}
-          {!readOnly && !valleyGate && !guardianGate && !adventureGate && (
+          {!readOnly && !valleyGate && !guardianGate && !adventureGate && !experimentGate && (
             <button className="start-turn" onClick={onStart}>
               {startLabel}
             </button>

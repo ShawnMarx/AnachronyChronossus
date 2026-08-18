@@ -10,6 +10,11 @@
 import type { ChronossusState } from '../engine';
 import { adventureCard } from '../data/adventureCards';
 import { UPGRADE_SLOTS } from '../engine/bots/pioneers';
+import {
+  botVpAt as doomsdaySlotVp,
+  DOOMSDAY_BOTTOM_SLOT,
+  DOOMSDAY_TOP_SLOT,
+} from '../engine/bots/doomsday';
 
 const WORKER_KEYS = ['genius', 'administrator', 'engineer', 'scientist'] as const;
 const RESOURCE_KEYS = ['titanium', 'uranium', 'gold', 'neutronium'] as const;
@@ -103,6 +108,27 @@ export function summarizeChronossusExtras(
       effects.push(
         `Power Upgrade: +${tokens} VP token on the Upgrade board (Power, not VP)`,
       );
+    }
+  }
+
+  // Doomsday — the Experiment. Its two steps are the state the player cannot otherwise
+  // see: the Experiment count feeds the "Completed Experiments" Solo Objective, and the
+  // tracker's slot decides the VP every future Experiment earns.
+  const expBefore = pre.doomsday?.experimentsCompleted ?? 0;
+  const expAfter = post.doomsday?.experimentsCompleted ?? 0;
+  if (expAfter > expBefore) {
+    effects.push(`Executed an Experiment (${expAfter} completed)`);
+  }
+  if (pre.doomsday && post.doomsday && post.doomsday.botSlot !== pre.doomsday.botSlot) {
+    const name = post.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate';
+    const vp = doomsdaySlotVp(post.doomsday.botSlot);
+    effects.push(
+      `Moved the ${name} tracker one step` + (vp > 0 ? ` (+${vp} VP printed there)` : ''),
+    );
+    if (post.doomsday.botSlot === DOOMSDAY_TOP_SLOT) {
+      effects.push('Save Earth is topmost — the Impact is mitigated and the game ends');
+    } else if (post.doomsday.botSlot === DOOMSDAY_BOTTOM_SLOT) {
+      effects.push('Seal Fate is bottommost — the Impact resolves immediately');
     }
   }
 

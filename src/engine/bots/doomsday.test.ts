@@ -475,3 +475,43 @@ describe('Check for Impact', () => {
     expect(b.doomsday).toEqual(before);
   });
 });
+
+// --- setup ---------------------------------------------------------------------------------
+
+describe('Setup — the bot takes the tracker opposing the player’s Path', () => {
+  const seed = (path?: 'harmony' | 'dominance' | 'salvation' | 'progress') =>
+    Chronossus.applyDifficultySetup(emptyChronossusState(), {
+      ...DEFAULT_CONFIG,
+      chronossusMode: 'doomsday',
+      ...(path ? { doomsdayPlayerPath: path } : {}),
+    }).doomsday!;
+
+  it('seeds the slice at the middle of the ladder with nothing answered', () => {
+    const d = seed('harmony');
+    expect(d.botSlot).toBe(DOOMSDAY_START_SLOT);
+    expect(d.experimentsCompleted).toBe(0);
+    expect(d.experimentActionRun).toBe(false);
+    expect(d.impactEra).toBeNull();
+    expect(d.checkedEra).toBeNull();
+    expect(d.earthSaved).toBe(false);
+  });
+
+  it('gives the bot Seal Fate against Harmony/Dominance and Save Earth against the rest', () => {
+    expect(seed('harmony').botTracker).toBe('seal-fate');
+    expect(seed('dominance').botTracker).toBe('seal-fate');
+    expect(seed('salvation').botTracker).toBe('save-earth');
+    expect(seed('progress').botTracker).toBe('save-earth');
+  });
+
+  it('defaults to the player on Harmony when no Path was chosen', () => {
+    expect(seed().botTracker).toBe('seal-fate');
+  });
+
+  it('seeds nothing at all in a non-Doomsday game', () => {
+    const bot = Chronossus.applyDifficultySetup(emptyChronossusState(), {
+      ...DEFAULT_CONFIG,
+      chronossusMode: 'base',
+    });
+    expect(bot.doomsday).toBeUndefined();
+  });
+});

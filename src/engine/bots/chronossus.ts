@@ -46,6 +46,8 @@ export {
   answerCheckForImpact,
   botTrackerLocked,
   earthSaved,
+  nextSlot,
+  tracksLocked,
   botVpAt,
   botTrackerFor,
   DOOMSDAY_TRACK,

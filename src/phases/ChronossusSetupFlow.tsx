@@ -88,6 +88,26 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
         'but are not worth VP. With this on, each one also scores 1 VP at the end.',
     },
   ],
+  doomsday: [
+    {
+      flag: Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED,
+      label: 'Doomsday: play without the Planned Experiments variant',
+      detail:
+        'By default the Level 2 Experiment stack sits face up and a claimed Experiment is ' +
+        'replaced from it immediately. Without the variant the stack is face down and Level 2 ' +
+        'Experiments are dealt under the Timeline in the Preparation phase instead — the ' +
+        'rulebook suggests keeping the variant on for your first few games.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS,
+      label: 'Doomsday: it starts with Path markers on future Experiments',
+      detail:
+        'Place 1/2/3 of the Chronossus’s Path markers on future Experiments during setup. ' +
+        'They become available to it once they are in the present, so it can execute an ' +
+        'Experiment on its very first Experiment Action.',
+      values: [1, 2, 3],
+    },
+  ],
   hypersync: [
     {
       flag: DIFFICULTY_HYPERSYNC_TARGETED,
@@ -125,6 +145,7 @@ const MODULE_OBJECTIVE_CARDS: [string, string[]][] = [
   ['fractures', ['Technology Cards', 'Flux on Track']],
   ['guardians', ['Guardians']],
   ['pioneers', ['Successful Adventures']],
+  ['doomsday', ['Completed Experiments']],
 ];
 
 const MODULE_CONFIGS: ModuleConfig[] = [
@@ -281,6 +302,8 @@ export interface ChronossusSetupResult {
   extraModules: string[];
   /** Pioneers: where the bot's Adventure cards come from (switchable later in ⚙). */
   adventureDeckMode: 'virtual' | 'shared';
+  /** Doomsday: the Path the human is playing — it fixes which tracker the bot moves. */
+  doomsdayPlayerPath: Chronossus.PlayerPath;
 }
 
 /** A collapsible "Coming soon" list of not-yet-available modules / options. */
@@ -316,6 +339,8 @@ export default function ChronossusSetupFlow({
    * you tell it which cards came up.
    */
   const [adventureDeckMode, setAdventureDeckMode] = useState<'virtual' | 'shared'>('virtual');
+  const [doomsdayPlayerPath, setDoomsdayPlayerPath] =
+    useState<Chronossus.PlayerPath>('harmony');
   const [difficulty, setDifficulty] = useState<Set<string>>(new Set());
   // Per-tile side selection; only families set to 'B' are stored.
   const [tileSides, setTileSides] = useState<Record<string, 'B'>>({});
@@ -362,6 +387,7 @@ export default function ChronossusSetupFlow({
       difficultyValues,
       extraModules: [...extraModules],
       adventureDeckMode,
+      doomsdayPlayerPath,
     });
 
   const eyebrow =
@@ -495,6 +521,57 @@ export default function ChronossusSetupFlow({
                           name="cx-adventure-deck"
                           checked={adventureDeckMode === o.id}
                           onChange={() => setAdventureDeckMode(o.id)}
+                        />
+                        <span className="difficulty-opt-text">
+                          <b>{o.label}</b>
+                          <span>{o.detail}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {moduleId.includes('doomsday') && (
+                <>
+                  <p className="phase-note">
+                    <b>Doomsday — which Path are you playing?</b> The Chronossus always moves
+                    the opposing tracker, for the whole game.
+                  </p>
+                  <div className="difficulty-list">
+                    {(
+                      [
+                        {
+                          id: 'harmony' as const,
+                          label: 'Path of Harmony',
+                          detail: 'You move “Save Earth” up, so the Chronossus moves “Seal Fate” down.',
+                        },
+                        {
+                          id: 'dominance' as const,
+                          label: 'Path of Dominance',
+                          detail: 'You move “Save Earth” up, so the Chronossus moves “Seal Fate” down.',
+                        },
+                        {
+                          id: 'salvation' as const,
+                          label: 'Path of Salvation',
+                          detail: 'You move “Seal Fate” down, so the Chronossus moves “Save Earth” up.',
+                        },
+                        {
+                          id: 'progress' as const,
+                          label: 'Path of Progress',
+                          detail: 'You move “Seal Fate” down, so the Chronossus moves “Save Earth” up.',
+                        },
+                      ]
+                    ).map((o) => (
+                      <label
+                        key={o.id}
+                        className={`difficulty-opt ${doomsdayPlayerPath === o.id ? 'on' : ''}`}
+                      >
+                        <input
+                          type="radio"
+                          name="cx-doomsday-path"
+                          checked={doomsdayPlayerPath === o.id}
+                          onChange={() => setDoomsdayPlayerPath(o.id)}
                         />
                         <span className="difficulty-opt-text">
                           <b>{o.label}</b>
@@ -754,6 +831,26 @@ export default function ChronossusSetupFlow({
                 </RulesBox>
               )}
 
+              {moduleId?.includes('doomsday') && (
+                <RulesBox label="Doomsday — setup" showPreamble>
+                  <p>
+                    This requires the Classic Expansion Pack to play. All of the Doomsday
+                    module and the Chronossus base rules apply, unless noted below. We suggest
+                    using the “Planned Experiments” variant the first few times you play this
+                    against the Chronossus.
+                  </p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C07A to the (I) empty space, C08A to
+                    the (II) empty space. Leave C03A in play.
+                  </p>
+                  <p>
+                    Add the “Completed Experiments” Solo Objective card to the Solo Objective
+                    deck.
+                  </p>
+                </RulesBox>
+              )}
+
               {moduleId?.includes('hypersync') && (
                 <RulesBox label="Hypersync Future Actions — setup" showPreamble>
                   <p>
@@ -950,6 +1047,71 @@ export default function ChronossusSetupFlow({
                     <li>
                       Keep the Chronossus’s Path markers to hand for the Adventure board’s
                       Power slots.
+                    </li>
+                  </ul>
+                </div>
+              )}
+
+              {moduleId?.includes('doomsday') && (
+                <div className="setup-modified">
+                  <h3>Doomsday setup</h3>
+                  <ul>
+                    <li>
+                      Place the <b>Doomsday board</b> next to the Main board and treat it as
+                      part of it. Put the two Trajectory dice on their slots, and both tracker
+                      tokens on their starting spots.
+                    </li>
+                    <li>
+                      Place the <b>Impact tile between the fifth and sixth Timeline tile</b> —
+                      one later than usual.
+                    </li>
+                    <li>
+                      Deal a face-up Level 1 Experiment under the first Timeline tile and a
+                      face-down one under each other tile; return the leftovers to the box
+                      unseen.
+                    </li>
+                    {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED) ? (
+                      <li>
+                        Shuffle the Level 2 Experiments into a <b>face-down</b> stack beside
+                        the Doomsday board (playing without the Planned Experiments variant).
+                      </li>
+                    ) : (
+                      <li>
+                        Place the Level 2 Experiment stack <b>face up</b> beside the Doomsday
+                        board (the Planned Experiments variant): a claimed Experiment is
+                        replaced from it at once, and none are dealt under the Timeline during
+                        Preparation.
+                      </li>
+                    )}
+                    <li>
+                      You move the{' '}
+                      <b>
+                        {doomsdayPlayerPath === 'harmony' || doomsdayPlayerPath === 'dominance'
+                          ? 'Save Earth'
+                          : 'Seal Fate'}
+                      </b>{' '}
+                      tracker; the Chronossus moves the{' '}
+                      <b>
+                        {doomsdayPlayerPath === 'harmony' || doomsdayPlayerPath === 'dominance'
+                          ? 'Seal Fate'
+                          : 'Save Earth'}
+                      </b>{' '}
+                      tracker. Keep its Path markers to hand for the Experiments.
+                    </li>
+                    {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS) && (
+                      <li>
+                        Place{' '}
+                        <b>
+                          {difficultyValues[Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS] ?? 1}
+                        </b>{' '}
+                        of the Chronossus’s Path markers on future Experiments now
+                        (difficulty option selected).
+                      </li>
+                    )}
+                    <li>
+                      <b>You run Check for Impact yourself</b> each Clean Up — roll the
+                      Trajectory dice and move the Impact tile. The app will prompt you and
+                      ask what happened.
                     </li>
                   </ul>
                 </div>

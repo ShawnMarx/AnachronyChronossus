@@ -32,6 +32,83 @@ const extrasFor = (state: GameState, input: Parameters<typeof Chronossus.resolve
   return summarizeChronossusExtras(pre, next.chronossus!, []);
 };
 
+const doomsdayState = (over: Record<string, unknown> = {}): GameState => {
+  const st = createInitialState({ ...DEFAULT_CONFIG, chronossusMode: 'doomsday' });
+  st.phase = 'actions';
+  st.chronossus = {
+    ...emptyChronossusState(),
+    exosuitsAvailable: 3,
+    doomsday: {
+      botTracker: 'seal-fate',
+      botSlot: 6,
+      experimentsCompleted: 0,
+      experimentActionRun: false,
+      impactEra: null,
+      playerTrackerFinal: false,
+      checkedEra: null,
+      earthSaved: false,
+      ...over,
+    },
+  };
+  return st;
+};
+
+describe('Chronossus History extras — Doomsday', () => {
+  const took = { markedAvailable: true, experimentVp: 2, canPrepare: true };
+
+  it('logs the Experiment and the tracker move together', () => {
+    expect(
+      extrasFor(doomsdayState(), { actionId: 'tile-experiment-1', experiment: took }),
+    ).toEqual([
+      'Executed an Experiment (1 completed)',
+      'Moved the Seal Fate tracker one step (+1 VP printed there)',
+    ]);
+  });
+
+  it('names the combined VP on a slot that prints one for each Path', () => {
+    expect(
+      extrasFor(doomsdayState({ botSlot: 8 }), {
+        actionId: 'tile-experiment-2',
+        experiment: took,
+      }),
+    ).toEqual([
+      'Executed an Experiment (1 completed)',
+      'Moved the Seal Fate tracker one step (+4 VP printed there)',
+    ]);
+  });
+
+  it('calls out the hard stop when the tracker reaches the end of the ladder', () => {
+    expect(
+      extrasFor(doomsdayState({ botSlot: 9 }), {
+        actionId: 'tile-experiment-1',
+        experiment: took,
+      }),
+    ).toEqual([
+      'Executed an Experiment (1 completed)',
+      'Moved the Seal Fate tracker one step (+2 VP printed there)',
+      'Seal Fate is bottommost — the Impact resolves immediately',
+    ]);
+  });
+
+  it('logs the Experiment but no move once the tracks are locked', () => {
+    expect(
+      extrasFor(doomsdayState({ impactEra: 4 }), {
+        actionId: 'tile-experiment-1',
+        experiment: took,
+      }),
+    ).toEqual(['Executed an Experiment (1 completed)']);
+  });
+
+  it('logs nothing when both steps failed', () => {
+    expect(
+      extrasFor(doomsdayState(), {
+        actionId: 'tile-experiment-1',
+        experiment: { markedAvailable: false, canPrepare: false },
+      }),
+    ).toEqual([]);
+  });
+});
+
 describe('Chronossus History extras — Fractures tiles', () => {
   it('Power Pack logs its Flux Core (the Energy Core is logged by the shared summarizer)', () => {
     expect(extrasFor(fracturesState(), { actionId: 'tile-power-pack' })).toEqual([

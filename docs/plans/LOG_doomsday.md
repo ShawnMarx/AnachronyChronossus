@@ -183,43 +183,87 @@ Note deviations and decisions inline under each step.
 
 ## Feature 6 — Setup flow
 
-- [ ] 6.1 Path question → assign the Chronossus the opposing tracker for the whole game.
-- [ ] 6.2 "Requires the Classic Expansion Pack" on the module card.
-- [ ] 6.3 Setup instructions (tiles, Doomsday board, Trajectory dice, tracker starts, Impact
+- [x] 6.1 Path question → assign the Chronossus the opposing tracker for the whole game.
+- [x] 6.2 "Requires the Classic Expansion Pack" on the module card.
+- [x] 6.3 Setup instructions (tiles, Doomsday board, Trajectory dice, tracker starts, Impact
       tile between the 5th and 6th Timeline tile, Experiment card layout, Planned Experiments).
-- [ ] 6.4 `MODULE_OBJECTIVE_CARDS` — `['doomsday', ['Completed Experiments']]`.
-- [ ] 6.5 Difficulty bullet 1 — C07/C08 B-side flips via the shared `chronossus-tiles-b-side`.
-- [ ] 6.6 Difficulty bullet 2 — `DIFFICULTY_DOOMSDAY_NO_PLANNED`.
-- [ ] 6.7 Difficulty bullet 3 — `DIFFICULTY_DOOMSDAY_SEED_MARKERS` (+ count sub-selector, and
+- [x] 6.4 `MODULE_OBJECTIVE_CARDS` — `['doomsday', ['Completed Experiments']]`.
+- [x] 6.5 Difficulty bullet 1 — C07/C08 B-side flips via the shared `chronossus-tiles-b-side`.
+- [x] 6.6 Difficulty bullet 2 — `DIFFICULTY_DOOMSDAY_NO_PLANNED`.
+- [x] 6.7 Difficulty bullet 3 — `DIFFICULTY_DOOMSDAY_SEED_MARKERS` (+ count sub-selector, and
       it disables the first-run Step 1 skip).
 
 **Deviations / decisions:**
 
+- The Path question is a **radio group beside the module choice**, modelled on Pioneers'
+  deck-mode selector — not a difficulty option, since it is not a difficulty at all. Each
+  Path spells out which tracker you move and which the Chronossus takes, so the answer is
+  self-checking.
+- The app-voice setup list **reacts to the two difficulty options**: the Level 2 stack is
+  described face up or face down depending on the Planned Experiments toggle, and the
+  pre-seeded Path markers get their own line with the chosen count.
+- It also states plainly that **you run Check for Impact yourself** — the one part of a
+  Doomsday game the app does not do, so setup is where to say so.
+- **Feature 6 complete.**
+
 ## Feature 7 — UI, History and scoring
 
-- [ ] 7.1 Experiment flow in `CxTileDialog` (Step 1 question → VP entry → Step 2 gate).
-- [ ] 7.2 Render it through `renderModDialogs(flow)` so it matches base Action dialogs.
-- [ ] 7.3 Rule boxes in the dialog footer, never inside a `.place-prompt` box.
-- [ ] 7.4 Confirm C07 vs C08 each render their own art, name and rule box.
-- [ ] 7.5 Extend `summarizeChronossusExtras` for the Doomsday deltas; check both tile sides.
-- [ ] 7.6 Fold Experiment VP + track VP into the VP pill breakdown.
-- [ ] 7.7 Board overlay for the bot's tracker slot (the player's is not tracked).
+- [x] 7.1 Experiment flow in `CxTileDialog` (Step 1 question → VP entry → Step 2 gate).
+- [x] 7.2 Render it through `renderModDialogs(flow)` so it matches base Action dialogs.
+- [x] 7.3 Rule boxes in the dialog footer, never inside a `.place-prompt` box.
+- [x] 7.4 Confirm C07 vs C08 each render their own art, name and rule box.
+- [x] 7.5 Extend `summarizeChronossusExtras` for the Doomsday deltas; check both tile sides.
+- [x] 7.6 Fold Experiment VP + track VP into the VP pill breakdown.
+- [x] 7.7 Board overlay for the bot's tracker slot (the player's is not tracked).
 
 **Deviations / decisions:**
+
+- **7.6 needed no change, and that is the right answer.** Experiment VP and track VP are
+  added to `bot.vp` as they are earned, so they already land in the pill's **Token VP** line
+  — exactly like Guardians' and the Adventure's VP. The pill only breaks out module VP that
+  is *derived at scoring time* (Technologies, leftover Flux). Same for the player's tally:
+  Experiment cards pay VP **tokens** (Classic p.4 step 4), which the existing "Victory Point
+  tokens" field already covers.
+- **7.7 shipped as a status chip, not a board overlay.** The Doomsday board is a separate
+  physical board that the app never renders, so there is no board art to position an overlay
+  against — a `%`-anchored marker would have nothing to sit on. The chip beside the Guardians
+  / Hypersync ones shows the tracker's name, its slot (`n/10`) and the Experiment count, with
+  a tooltip giving the VP for its current slot and whether the tracks are locked.
+- **Feature 7 complete.**
 
 ## Feature 8 — Tests and browser verification
 
-- [ ] 8.1 Unit tests — Experiment resolver: both levels, both sides, each step failing alone,
+- [x] 8.1 Unit tests — Experiment resolver: both levels, both sides, each step failing alone,
       tracks-locked suppression.
-- [ ] 8.2 Unit tests — slot→combined-VP lookup, incl. slots 2 and 9 paying 4.
-- [ ] 8.3 Unit tests — `postImpactEraFor` driven by the stored answer; each hard stop firing
+- [x] 8.2 Unit tests — slot→combined-VP lookup, incl. slots 2 and 9 paying 4.
+- [x] 8.3 Unit tests — `postImpactEraFor` driven by the stored answer; each hard stop firing
       when the bot's marker reaches a final slot.
-- [ ] 8.4 Unit tests — pass rule on the new action ids; `tileText` coverage assertions.
-- [ ] 8.5 Unit test — `cloneChronossus` deep-copies the Doomsday slice.
-- [ ] 8.6 `node pw-check.mjs "Doomsday" doomsday` — tile art present, no broken images.
-- [ ] 8.7 `pw-adv.mjs` at 1000px — the Experiment dialog's real width.
-- [ ] 8.8 `pw-pass.mjs`-style save editing — zero-figure Experiment turn, and each hard stop.
-- [ ] 8.9 Play a real turn in the browser; confirm Doomsday History lines appear.
-- [ ] 8.10 `npm run build` + `npm test` clean.
+- [x] 8.4 Unit tests — pass rule on the new action ids; `tileText` coverage assertions.
+- [x] 8.5 Unit test — `cloneChronossus` deep-copies the Doomsday slice.
+- [x] 8.6 `node pw-check.mjs "Doomsday" doomsday` — tile art present, no broken images.
+- [x] 8.7 `pw-adv.mjs` at 1000px — the Experiment dialog's real width.
+- [x] 8.8 `pw-pass.mjs`-style save editing — zero-figure Experiment turn, and each hard stop.
+- [x] 8.9 Play a real turn in the browser; confirm Doomsday History lines appear.
+- [x] 8.10 `npm run build` + `npm test` clean.
 
 **Deviations / decisions:**
+
+- The browser sweep runs from a new **`pw-doomsday.mjs`**, which drives a real rolled turn
+  (patching the save to park a Command marker on the C07 slot and re-rolling until the AI die
+  picks marker 2). Its modes:
+
+  | Env | What it proves | Result |
+  |---|---|---|
+  | *(none)* | All three dialog steps render; History shows both Doomsday lines | **OK** |
+  | `FIRST=1` | The first Experiment of a game SKIPS Step 1's question | **OK** |
+  | `STOP=1` | Tracker one step from the end fires the hard stop | **OK** |
+  | `PASS=1` | 0 figures + a rolled Experiment passes instead of resolving | **OK** |
+  | `NARROW=1` | At a 1000px viewport the dialog is 279px, not full-screen | **OK** |
+  | `CLEANUP=1` | Both Check-for-Impact questions ask in order; `impactEra` recorded | **OK** |
+  | `CLEANUP=1 EARTH=1` | "Earth is saved" ends the game, sets `earthSaved`, records no Impact Era | **OK** |
+
+  No page errors in any run. `pw-check.mjs "Doomsday" doomsday` re-run at the end: C03A /
+  C07A / C08A on the board, no broken images.
+- The History check is the one that mattered most — it is the only way to see that the
+  `cloneChronossus` deep-copy is genuinely working, since the failure mode is silence.
+- **Feature 8 complete. 447 tests, build and lint clean.**
