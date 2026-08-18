@@ -136,6 +136,10 @@ archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLETED.md`.
 No plan is active.
 
+**Doomsday** — the last module — is **implemented and on staging** (2026-08-18). Its plan,
+log and review walkthrough are in `docs/plans/`; run the review, then `/plan cleanup` to
+archive it. With it, every module in the Solo Opponents matrix is done.
+
 Still backlog (not yet in a plan):
 - [ ] **Blink check: a pool of only Empty Flux Casings never draws** (2026-08-17) —
       `shouldCheckBlink` short-circuits on `cores === 0`, but the rulebook asks "at least 1
@@ -148,12 +152,11 @@ Still backlog (not yet in a plan):
       (Fractures rulebook p.15). The Solo Opponents book doesn't say whether the Chronossus
       takes it; if it does, it's Pioneers' Step 2 `powerUpgradeChoice` restricted to
       Ti/U/Gold, run once after the Era Zero Warp screen.
-- [ ] **More modules** — Doomsday is the last one (stubbed in the Module menu); it becomes
-      its own `/plan`. Per the rulebook's limits (Solo Opponents p.18) Doomsday combines
-      with nothing, and Fractures + Guardians is not allowed. It adds **one Solo Objective
-      card** (the last module that does — Fractures adds 2, Guardians and Pioneers 1 each,
-      Hypersync none), so setup only needs its name added to `MODULE_OBJECTIVE_CARDS` in
-      `ChronossusSetupFlow.tsx`.
+- [ ] **Doomsday: the review walkthrough** — `docs/plans/REVIEW_doomsday.md` is written but
+      not yet walked. Needs the Classic Expansion Pack on the table for the Experiment steps.
+- [ ] **Doomsday: Experiment / Doomsday-board iconography** — deliberately out of scope for
+      the module itself (Guardians and Pioneers shipped without their equivalents). Revisit
+      as its own pass across all the modules rather than one at a time.
 - [ ] **Chronossus-specific stats/history in `AdminStats`** — likely revisits **stats + BG
       Stats import/export**.
 

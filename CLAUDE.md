@@ -322,6 +322,42 @@ too — the old literal `era === 4` and `era === 5 || era === 6` were the bug. F
 adds the one-off **`era0warp`** phase before Era 1 (`flow.hasEraZeroWarp`) and, because of it,
 does *not* skip the Era 1 Paradox phase; `flow.pastTimelineTiles` counts the Era Zero tile.
 
+**Doomsday is the one place post-Impact is NOT derived from the Era.** Everywhere else the
+rule above holds absolutely. Doomsday starts the Impact tile a slot later (between the fifth
+and sixth Timeline tile) AND lets the Trajectory dice move it every Clean Up — and the app
+deliberately does not track any of that: **Check for Impact is the player's job**, and the
+app only prompts and records the answer. So `postImpactEraFor(config, bot)` takes an optional
+bot and, under `isDoomsdayMode` only, reads `bot.doomsday.impactEra` (falling back to
+`DOOMSDAY_DEFAULT_IMPACT_ERA`). `earthSaved` is a **separate flag** from "no Impact Era yet":
+with Earth saved the Impact never resolves, so NO Era is post-Impact and `postImpactEraFor`
+returns `MAX_ERA + 1`. Conflating the two silently left a saved-Earth game running the 2+X
+Power Up from Era 6.
+
+**Decide what NOT to model before building a module.** Doomsday's plan initially had the app
+roll the Trajectory dice, track both trackers' `+`/`−` symbols and own the Impact tile's
+position; asking first deleted a two-mode setting, a settings toggle and a column of board
+data that would never have earned its keep. The same logic drops the Timeline's Experiment
+cards: the player can remove one of the bot's Path markers on their own turn, so any model
+would drift silently — the dialog states the rulebook's selection rule and asks instead.
+
+**The Main-board / off-board split only matters where Fractures does.** `OFF_MAIN_BOARD_ACTIONS`
+and the Energy Core exist to serve the **Blink**. A module that cannot combine with Fractures
+(Doomsday) gets neither: no Core on the placement, nothing recorded in `placedExosuits`.
+Instructing a Core there has the player reach for a component their game does not use — the
+engine mentions one nowhere else, because it lives in Fractures' own gate.
+
+**Modular tile art is already cropped.** All 28 Cnn tiles sit at the shipped 167×114 in
+`~/OneDrive/Program Development/Anachrony Chronossus/temp/Mod Tiles/` — copy from there
+rather than cropping the rulebook Appendix (the shipped `C06A.png` is byte-identical to it).
+The TTS mod does **not** contain the Doomsday board, so its track was transcribed from the
+Classic Expansion rulebook and confirmed with the user.
+
+**Two tiles that are genuinely different Actions get separate action ids.** Pioneers' C09/C10
+share `tile-adventure` because they *are* the same Action, which is why `liveTileFamily` had to
+exist. Doomsday's C07/C08 execute different Experiment levels, so they take
+`tile-experiment-1` / `tile-experiment-2` and the ambiguity never arises. Prefer this when the
+rules allow it.
+
 ## Conventions
 
 - Keep the engine pure and tested; add unit tests for new decision logic.

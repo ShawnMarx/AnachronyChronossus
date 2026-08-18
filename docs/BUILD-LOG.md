@@ -2,6 +2,53 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-18 — Doomsday: the last module, and an Impact that will not stay put
+
+Doomsday completes the module roadmap. It is the only one that combines with **nothing**
+(Solo Opponents p.19), so it ships as a single mode — C07 in slot I, C08 in slot II, C03 left
+in play — with no combos to reconcile. The new Action is the **Experiment**, two steps that
+can each fail on their own: execute an Experiment already carrying one of the bot's Path
+markers, then mark another one for a later turn.
+
+The interesting part is what the app *doesn't* do. Doomsday moves the Impact tile: it starts
+a slot later than usual and the Trajectory dice can push it earlier or later every Clean Up.
+Tracking that would have meant modelling the dice, the `+`/`−` symbols beside both trackers,
+and the tile's position on the Timeline. Instead **Check for Impact is the player's job** —
+the app says when to do it and asks two questions: is either tracker locked in, and if not,
+did the Impact occur. That deleted a two-mode setting, a settings toggle and a whole column
+of board data before any of it was written.
+
+Which forced the one deliberate departure from a rule this codebase otherwise holds
+absolutely. Post-Impact is always *derived* from the Era, never stored — but under Doomsday
+the Era genuinely cannot decide it. So `postImpactEraFor` grew an optional bot parameter and,
+for Doomsday alone, reads the Era the player reported. `earthSaved` is a separate flag from
+"no Impact Era yet", and the test suite is why: conflating them left a saved-Earth game still
+treating Era 6 as post-Impact, with the 2+X Power Up that implies.
+
+Two smaller calls worth recording, both of them *not* building something the plan asked for:
+
+- **No Energy Core on the Experiment placement.** The first pass reasoned from "treat the
+  Doomsday board as part of the Main board" to a Core and a `placedExosuits` record. Both
+  serve Fractures' Blink, which Doomsday can never coexist with — and the Core line was
+  invented outright, since the engine mentions one nowhere else. It would have had players
+  reaching for a component their game does not use.
+- **No board overlay for the tracker.** The Doomsday board is a separate physical board the
+  app never renders, so a `%`-anchored marker would have nothing to sit on. It became a status
+  chip instead: tracker name, slot `n/10`, Experiment count, with the slot's VP in the tooltip.
+
+The Chronossus takes **both** Path columns' printed VP on a track slot ("regardless of which
+Path that VP belongs to", p.14), so slots 2 and 9 pay it 4 where a human takes 2. The ladder
+itself is transcribed from the Classic rulebook and confirmed against the physical board — the
+TTS mod turned out not to contain the Doomsday board at all.
+
+Verified the way the Pioneers bugs finally were: a new `pw-doomsday.mjs` parks a Command
+marker on the C07 slot and re-rolls until the die picks it, then checks the dialog steps, the
+first-run skip, the hard stops, the pass rule, the dialog's width on a tablet, both Clean Up
+questions, and — the one that matters most — that the module's History lines actually appear,
+since a shallow-copied state slice fails silently.
+
+Archive: `docs/complete/` once the review walkthrough is done (`docs/plans/REVIEW_doomsday.md`).
+
 ## 2026-08-17 — Fractures of Time: the Era Zero Warp, a game two Eras shorter, and the Blink check's missing second half
 
 Two rules from the Fractures rulebook had never been implemented, both of them about the

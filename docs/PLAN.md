@@ -5,10 +5,13 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-17): Chronobot, Chronossus base, all 10 difficulty options, Alternate
-> Timelines, Variable Anomalies, Fractures of Time, Guardians of the Council and Pioneers of
-> New Earth are complete and live in production. No plan is active — **Doomsday** is the
-> only module left, and it becomes its own `/plan` when picked up.**
+> **Status (2026-08-18): every module in the Solo Opponents matrix is implemented.**
+> Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
+> Anomalies, Fractures of Time, Guardians of the Council and Pioneers of New Earth are live in
+> production; **Doomsday** — the last one — is implemented and **on staging**, awaiting its
+> review walkthrough (`docs/plans/REVIEW_doomsday.md`) before it archives and promotes.
+> With Doomsday done, Phase 4 (Modules/expansions) is complete and the next efforts are
+> **Phase 5 (login + stats)** and the Chronossus-specific stats/history in `TODO.md`.
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real
@@ -218,12 +221,15 @@ Per-Era phases:
 - **Phase 2 — Chronossus base engine. ✅ done (2026-08-09).** Energy Pool bag draws,
   phases, Action tiles C01A–C03A, Autoleap, failed-action penalty, Solo Objective scoring,
   plus (2026-08-10) the playthrough test harness and all 10 difficulty options.
-- **Phase 4 — Modules/expansions. ← IN PROGRESS.** Shipped: **Hypersync Future Actions**
+- **Phase 4 — Modules/expansions. ✅ done (2026-08-18)** — Doomsday, the last one, closed it.
+  Shipped: **Hypersync Future Actions**
   (2026-08-09), **Alternate Timelines** + **Variable Anomalies** (2026-08-10), **Fractures
   of Time** and the `fractures+hypersync` combo (2026-08-13), **Guardians of the Council**
   and `guardians+hypersync` (2026-08-14), **Pioneers of New Earth** with
-  `fractures+pioneers` and `guardians+pioneers` (2026-08-17). Remaining: **Doomsday** — its
-  own `/plan`, via the C04–C14 tile table + per-module deltas.
+  `fractures+pioneers` and `guardians+pioneers` (2026-08-17), and **Doomsday** (2026-08-18,
+  on staging pending review). Doomsday combines with nothing, so it needed no combo modes —
+  but it is the one module that makes the Impact tile move, which is why post-Impact stopped
+  being derivable from the Era and became a player-reported answer.
 - **Phase 5 — Optional login + stats.** Shared-auth (staging) integration; persist
   results only when logged in. (Chronobot already deploys to Digital Ocean.)
 - **Cross-cutting — Asset pipeline.** Script to extract TTS images, render thumbnails,
