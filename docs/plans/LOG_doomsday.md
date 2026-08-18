@@ -60,15 +60,33 @@ Note deviations and decisions inline under each step.
 
 ## Feature 2 — Mode, tiles and art
 
-- [ ] 2.1 Add the `doomsday` mode to `chronossusModes.ts` (`I→C07`, `II→C08`, `III→C03`).
-- [ ] 2.2 Update the `chronossusModes.ts` header comment (no longer a stub) + its tests.
-- [ ] 2.3 Flip `{ id: 'doomsday', available: true }` in `ChronossusSetupFlow.tsx`.
-- [ ] 2.4 Extract `C07A/B` + `C08A/B` art into `public/assets/solo/chronossus/tiles/`.
-- [ ] 2.5 Add `tile-experiment-1` / `tile-experiment-2` to `TILE_ACTION_FAMILY` +
+- [x] 2.1 Add the `doomsday` mode to `chronossusModes.ts` (`I→C07`, `II→C08`, `III→C03`).
+- [x] 2.2 Update the `chronossusModes.ts` header comment (no longer a stub) + its tests.
+- [x] 2.3 Flip `{ id: 'doomsday', available: true }` in `ChronossusSetupFlow.tsx`.
+- [x] 2.4 Extract `C07A/B` + `C08A/B` art into `public/assets/solo/chronossus/tiles/`.
+- [x] 2.5 Add `tile-experiment-1` / `tile-experiment-2` to `TILE_ACTION_FAMILY` +
       `TILE_ACTION_CODE` (engine) **and** `FAMILY_TO_TILE_ACTION` (view). Both maps.
-- [ ] 2.6 Add `TILE_DESC` + `tileInstruction` entries for both families, both sides.
+- [x] 2.6 Add `TILE_DESC` + `tileInstruction` entries for both families, both sides.
+- [x] 2.7 Browser check: `pw-check.mjs "Doomsday" doomsday` — the board lays out **C03A,
+      C07A, C08A**, no broken images, no page errors.
 
 **Deviations / decisions:**
+
+- **The tile art already existed, pre-cropped.** `~/OneDrive/Program Development/Anachrony
+  Chronossus/temp/Mod Tiles/` holds all 28 tiles at the shipped 167×114; `C06A.png` there is
+  byte-identical to the repo's copy, confirming it as the canonical source. Crops generated
+  from the rulebook Appendix were discarded in favour of it. **Use that folder for any future
+  module's tile art** — no cropping needed.
+- **C07 and C08 get separate action ids** (`tile-experiment-1` / `tile-experiment-2`), not one
+  shared id. They are genuinely different Actions (Level 1 vs Level 2), so Pioneers'
+  C09/C10 `liveTileFamily` ambiguity cannot arise here.
+- `TileEffect` gained `experiment?: 1 | 2` — the level, rather than a boolean plus a second
+  field, since the level is the only thing that differs between the two tiles.
+- The four tiles dropped `future: true`; `tileInstruction` describes the Experiment before the
+  flat gains so the B sides read "executes a Level 2 Experiment … and scores +1 VP".
+- `pw-check.mjs` had another session's scratchpad path hard-coded for its screenshot; it now
+  honours `SHOT_DIR` like `pw-adv.mjs` / `pw-warp.mjs` / `pw-pass.mjs` do.
+- **Feature 2 complete.** 409 tests, build and lint clean.
 
 ## Feature 3 — Engine: state slice and the Experiment Action
 

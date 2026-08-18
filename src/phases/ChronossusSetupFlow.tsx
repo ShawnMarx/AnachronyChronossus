@@ -130,7 +130,7 @@ const MODULE_OBJECTIVE_CARDS: [string, string[]][] = [
 const MODULE_CONFIGS: ModuleConfig[] = [
   { id: 'base', label: 'Base', available: true },
   { id: 'fractures', label: 'Fractures of Time', available: true },
-  { id: 'doomsday', label: 'Doomsday', available: false },
+  { id: 'doomsday', label: 'Doomsday', available: true },
   { id: 'pioneers', label: 'Pioneers of New Earth', available: true },
   { id: 'guardians', label: 'Guardians of the Council', available: true },
   { id: 'hypersync', label: 'Hypersync Future Actions', available: true },

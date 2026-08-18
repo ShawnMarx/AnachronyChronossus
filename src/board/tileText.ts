@@ -23,6 +23,10 @@ export const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
     'Acquire Guardian: World Council + the leftmost Guardian free, or spend a Worker',
   'tile-adventure':
     'Adventure: draw 2 cards (10+ deck at 9 Power), take the highest it meets, then Power Upgrade',
+  'tile-experiment-1':
+    'Level 1 Experiment: execute a marked Level 1 Experiment, then mark another for later',
+  'tile-experiment-2':
+    'Level 2 Experiment: execute a marked Level 2 Experiment, then mark another for later',
 };
 
 /** The expanded description shown in a tile's dialog. */
@@ -47,6 +51,18 @@ export function tileInstruction(code: string): string {
         '10+ deck at 9 or more Power, otherwise the 5+ deck), rolls the Adventure die, and ' +
         'takes the card with the highest Power requirement it meets (just +1 VP if it meets ' +
         'neither). Then it fulfils a Power Upgrade',
+    );
+  // Doomsday: like the Adventure, listed BEFORE the flat gains so the B sides read
+  // "executes a Level 2 Experiment ... and scores +1 VP" rather than leading with the bonus.
+  if (eff.experiment)
+    parts.push(
+      `executes a Level ${eff.experiment} Experiment — it takes the leftmost one carrying ` +
+        'one of its Path markers and discards that marker, then, unless the Doomsday tracks ' +
+        'are locked, moves its own tracker one step and takes the VP printed there. Then it ' +
+        'prepares for Experimentation, putting a Path marker on an unmarked face-up ' +
+        'Experiment (Level 1 before Level 2, furthest in the past to break a tie, never the ' +
+        'one under the next Era). Either step can fail on its own, and a failed step is ' +
+        'simply skipped',
     );
   if (eff.vp) parts.push(`scores +${eff.vp} VP`);
   if (eff.energyCores)

@@ -723,7 +723,10 @@ export type ChronossusTileActionId =
   // Guardians of the Council
   | 'tile-acquire-guardian'
   // Pioneers of New Earth
-  | 'tile-adventure';
+  | 'tile-adventure'
+  // Doomsday. Two ids, not one: the tile decides WHICH level of Experiment it executes.
+  | 'tile-experiment-1'
+  | 'tile-experiment-2';
 
 /** Every action a Chronossus space can trigger (base actions + tile actions). */
 export type ChronossusActionId = ChronobotActionId | ChronossusTileActionId;
@@ -888,6 +891,8 @@ const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-power-pack': { label: 'Power Pack' },
   'tile-acquire-guardian': { label: 'Acquire Guardian' },
   'tile-adventure': { label: 'Adventure' },
+  'tile-experiment-1': { label: 'Level 1 Experiment' },
+  'tile-experiment-2': { label: 'Level 2 Experiment' },
 };
 
 /** Human-facing label for any Chronossus action id. */

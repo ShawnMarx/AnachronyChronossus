@@ -336,6 +336,37 @@ describe('Pioneers of New Earth modes', () => {
   });
 });
 
+describe('Doomsday mode', () => {
+  it('lays out the module per Solo Opponents p.14 (C07/I, C08/II, C03 stays in III)', () => {
+    const mode = getMode('doomsday');
+    expect(mode.available).toBe(true);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C07');
+    expect(mode.slots.find((s) => s.slot === 'II')?.family).toBe('C08');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C03');
+  });
+
+  it('covers no printed Action space — it is the only module with nothing on IV/V', () => {
+    const mode = getMode('doomsday');
+    expect(mode.slots).toHaveLength(3);
+    expect(mode.slots.some((s) => s.covers)).toBe(false);
+    expect(slotCovering(mode, 'recruit-genius-research')).toBeUndefined();
+    expect(slotCovering(mode, 'time-travel')).toBeUndefined();
+  });
+
+  it('has no combo modes — Doomsday combines with nothing (p.19)', () => {
+    const combos = Object.keys(CHRONOSSUS_MODES).filter(
+      (id) => id.includes('doomsday') && id !== 'doomsday',
+    );
+    expect(combos).toEqual([]);
+  });
+
+  it('still honours the shared I/III swap difficulty', () => {
+    const mode = getMode('doomsday', [DIFFICULTY_SWAP_TILES]);
+    expect(mode.slots.find((s) => s.slot === 'I')?.family).toBe('C03');
+    expect(mode.slots.find((s) => s.slot === 'III')?.family).toBe('C07');
+  });
+});
+
 describe('every implemented tile explains itself', () => {
   // Pioneers shipped C09/C10 with no branch in `tileInstruction`, so tapping an Adventure
   // tile said "The Chronossus does nothing this turn" — the fallback meant for Reboot.
@@ -343,6 +374,7 @@ describe('every implemented tile explains itself', () => {
   const IMPLEMENTED = [
     'C01A', 'C01B', 'C02A', 'C02B', 'C03A', 'C03B',
     'C04A', 'C04B', 'C05A', 'C05B', 'C06A', 'C06B',
+    'C07A', 'C07B', 'C08A', 'C08B',
     'C09A', 'C09B', 'C10A', 'C10B', 'C11A', 'C11B',
     'C14A', 'C14B',
   ];
@@ -362,6 +394,16 @@ describe('every implemented tile explains itself', () => {
     }
     expect(tileInstruction('C09B')).toMatch(/Adventure[\s\S]*\+1 VP/);
     expect(tileInstruction('C10B')).toMatch(/Adventure[\s\S]*Energy Core/);
+  });
+
+  it('names the Experiment on both C07/C08 sides, with the B-side bonus after it', () => {
+    expect(tileInstruction('C07A')).toMatch(/executes a Level 1 Experiment/);
+    expect(tileInstruction('C07B')).toMatch(/executes a Level 1 Experiment/);
+    expect(tileInstruction('C08A')).toMatch(/executes a Level 2 Experiment/);
+    expect(tileInstruction('C08B')).toMatch(/executes a Level 2 Experiment/);
+    // The B sides' printed bonus reads after the Action, not before it.
+    expect(tileInstruction('C07B')).toMatch(/Experiment[\s\S]*Energy Core/);
+    expect(tileInstruction('C08B')).toMatch(/Experiment[\s\S]*\+1 VP/);
   });
 
   it('gives every in-play tile action a Command-view description', () => {

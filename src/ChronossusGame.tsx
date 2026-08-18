@@ -315,6 +315,9 @@ const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
   // Genius or Research" space. Both are the same Adventure Action.
   C09: 'tile-adventure',
   C10: 'tile-adventure',
+  // Doomsday. Separate Actions, so no shared id and no `liveTileFamily` ambiguity.
+  C07: 'tile-experiment-1',
+  C08: 'tile-experiment-2',
 };
 
 /** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since

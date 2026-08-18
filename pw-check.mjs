@@ -1,7 +1,7 @@
 // Render check: does a mode lay out its tiles (and its covering tile) on the board?
 import { chromium } from 'playwright';
 
-const SHOT = '/private/tmp/claude-501/-Users-shawnmarx-repos-AnachronyChronossus/354def5a-7518-4e2a-88cf-36b6e5553373/scratchpad';
+const SHOT = process.env.SHOT_DIR ?? '/tmp';
 const MODE = process.argv[2];
 const SLUG = process.argv[3] ?? 'mode';
 const b = await chromium.launch();

@@ -233,28 +233,24 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     name: 'Level 1 Experiment',
     rule: 'The Chronossus executes a Level 1 Experiment then prepares for Experimentation. (See page 14 for details).',
     detail: EXPERIMENT_DETAIL,
-    future: true,
   },
   C07B: {
     code: 'C07B',
     name: 'Level 1 Experiment',
     rule: 'The Chronossus executes a Level 1 Experiment and prepares for Experimentation. Then gains 1 Energy Core.',
     detail: EXPERIMENT_DETAIL,
-    future: true,
   },
   C08A: {
     code: 'C08A',
     name: 'Level 2 Experiment',
     rule: 'The Chronossus executes a Level 2 Experiment then prepares for Experimentation. (See page 14 for details).',
     detail: EXPERIMENT_DETAIL,
-    future: true,
   },
   C08B: {
     code: 'C08B',
     name: 'Level 2 Experiment',
     rule: 'The Chronossus executes a Level 2 Experiment and prepares for Experimentation. Then, gains 1 VP and 1 Energy Core.',
     detail: EXPERIMENT_DETAIL,
-    future: true,
   },
   C09A: {
     code: 'C09A',
@@ -342,6 +338,10 @@ export const TILE_ACTION_CODE = {
   'tile-assimilate': 'C04A',
   'tile-extract': 'C05A',
   'tile-power-pack': 'C06A',
+  // Doomsday. The two tiles are separate Actions (different Experiment levels), so unlike
+  // Pioneers' C09/C10 they never share an action id.
+  'tile-experiment-1': 'C07A',
+  'tile-experiment-2': 'C08A',
   // Guardians of the Council
   'tile-acquire-guardian': 'C11A',
   // Pioneers of New Earth. C09 sits in a tile slot and C10 covers the printed
@@ -358,6 +358,9 @@ export const TILE_ACTION_FAMILY = {
   'tile-assimilate': 'C04',
   'tile-extract': 'C05',
   'tile-power-pack': 'C06',
+  // Doomsday
+  'tile-experiment-1': 'C07',
+  'tile-experiment-2': 'C08',
   'tile-acquire-guardian': 'C11',
   'tile-adventure': 'C09',
 } as const;
@@ -397,6 +400,12 @@ export interface TileEffect {
   acquireGuardian?: boolean;
   /** Pioneers: the Adventure Action (its own two-step flow, needs a die + 2 drawn cards). */
   adventure?: boolean;
+  /**
+   * Doomsday: the Experiment Action. The value is WHICH level of Experiment the tile
+   * executes (C07 = 1, C08 = 2) — the only thing that differs between the two tiles, so
+   * it is carried here rather than as a second boolean.
+   */
+  experiment?: 1 | 2;
 }
 
 export const TILE_EFFECTS: Record<string, TileEffect> = {
@@ -428,6 +437,13 @@ export const TILE_EFFECTS: Record<string, TileEffect> = {
   // runs through `resolveAcquireGuardian`, not a flat effect.
   C11A: { acquireGuardian: true, autoleap: true },
   C11B: { acquireGuardian: true, autoleap: true, vp: 2 },
+  // Doomsday (C07 / C08 fill slots I and II; C03A stays in III). The two steps run through
+  // `resolveDoomsdayAction`, not a flat effect — the `vp`/`energyCores` here are only the
+  // B sides' printed bonus on top of it.
+  C07A: { experiment: 1 },
+  C07B: { experiment: 1, energyCores: 1 },
+  C08A: { experiment: 2 },
+  C08B: { experiment: 2, vp: 1, energyCores: 1 },
   // Pioneers of New Earth. C10A is "same as C09A"; the B sides add a flat bonus on top
   // of the Adventure itself, which runs through `resolveAdventure`, not a flat effect.
   C09A: { adventure: true },

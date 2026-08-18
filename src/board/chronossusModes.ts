@@ -6,10 +6,9 @@
 // the same system rather than as one-off special-casing.
 //
 // See the mode → tile matrix transcribed from the setup reference table
-// (Solo Opponents p.18). Implemented: Base, Hypersync, Fractures, Guardians and the
-// Fractures+Hypersync / Guardians+Hypersync combos. Doomsday and Pioneers are still
-// stubs — and per that page, Doomsday combines with nothing and Fractures+Guardians
-// is not a legal pairing.
+// (Solo Opponents p.18). Every mode in the matrix is now implemented. Per that page,
+// Doomsday combines with NOTHING (hence its single entry, with no combo ids), and
+// Fractures+Guardians is not a legal pairing.
 
 /** A modular-tile slot on the board (roman numerals I–III are the native tile
  *  spaces; IV/V mark tiles that COVER a printed Action space). */
@@ -118,6 +117,18 @@ export const CHRONOSSUS_MODES: Record<string, ChronossusMode> = {
       { slot: 'II', family: 'C09', posKey: SLOT_II_POS },
       { slot: 'III', family: 'C02', posKey: SLOT_III_POS },
       { slot: 'IV', family: 'C10', covers: 'recruit-genius-research' },
+    ],
+  },
+  doomsday: {
+    id: 'doomsday',
+    label: 'Doomsday',
+    available: true,
+    // Solo Opponents p.14: C07A to slot I, C08A to slot II, "Leave C03A in play" (slot III).
+    // No covering tile — Doomsday is the only module with nothing on slot IV/V.
+    slots: [
+      { slot: 'I', family: 'C07', posKey: SLOT_I_POS },
+      { slot: 'II', family: 'C08', posKey: SLOT_II_POS },
+      { slot: 'III', family: 'C03', posKey: SLOT_III_POS },
     ],
   },
   'fractures+pioneers': {
