@@ -199,11 +199,19 @@ Note deviations and decisions inline under each step.
   deck-mode selector — not a difficulty option, since it is not a difficulty at all. Each
   Path spells out which tracker you move and which the Chronossus takes, so the answer is
   self-checking.
-- The app-voice setup list **reacts to the two difficulty options**: the Level 2 stack is
-  described face up or face down depending on the Planned Experiments toggle, and the
-  pre-seeded Path markers get their own line with the chosen count.
-- It also states plainly that **you run Check for Impact yourself** — the one part of a
+- The app-voice setup list shows **only the Chronossus-specific parts** (corrected
+  2026-08-18). The first draft restated the base module's setup — where the Impact tile
+  goes, how the Experiment cards are dealt, what the Planned Experiments variant does — but
+  the established pattern is to defer that with "as for a 2-player game" (the shared "Setup
+  for this app" block already says to set one up) and list only what the Chronossus changes.
+  Compare Guardians' "Set up the Guardian board as for a 2-player game" and Fractures' "Set
+  up the Valley board as if it was a 2-player game".
+- What survives: the 2-player deferral (naming the face-up/face-down Level 2 stack, since a
+  difficulty option flips it), which tracker each side moves, the pre-seeded Path markers
+  line with its count, and that **you run Check for Impact yourself** — the one part of a
   Doomsday game the app does not do, so setup is where to say so.
+- The verbatim `RulesBox` is unchanged: it is p.14's "CHANGES AT SETUP", which IS the
+  Chronossus setup rules, and matches the Pioneers/Guardians boxes.
 - **Feature 6 complete.**
 
 ## Feature 7 — UI, History and scoring

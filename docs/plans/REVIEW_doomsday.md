@@ -26,11 +26,20 @@ Chronossus moves "Seal Fate"; Salvation and Progress say the reverse.
 **Expect:**
 - A verbatim **"Doomsday — setup"** box: requires the Classic Expansion Pack, C07A to (I),
   C08A to (II), leave C03A, add the **"Completed Experiments"** Solo Objective card.
-- An app-voice **"Doomsday setup"** list: the Doomsday board, the **Impact tile between the
-  5th and 6th Timeline tile**, the Experiment card layout, which tracker each side moves,
-  the pre-seeded markers line (with your count), and a line saying **you** run Check for
-  Impact each Clean Up.
-- The Level 2 stack line should say **face up** with the variant on, **face down** with it off.
+- An app-voice **"Doomsday setup"** list of only the Chronossus-specific parts — it should
+  **defer the base module's setup** to "as for a 2-player game" rather than restating it:
+  1. Set up the Doomsday board / Experiment cards / Impact tile as for a 2-player game,
+     naming the **face-up** Level 2 stack with the Planned Experiments variant on and the
+     **face-down** one with it off.
+  2. Which tracker you move and which the Chronossus moves (always the opposing one), plus
+     keeping its Path markers to hand.
+  3. The pre-seeded markers line, with your chosen count (only if that option is on).
+  4. That **you** run Check for Impact each Clean Up — the app never rolls the Trajectory
+     dice or tracks the Impact tile.
+
+  It should NOT re-teach where the Impact tile goes, how the Experiment cards are dealt, or
+  what the Planned Experiments variant does — that is base-module setup the player does as
+  normal for two players.
 
 **Verdict:**
 

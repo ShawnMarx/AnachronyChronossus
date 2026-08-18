@@ -24,6 +24,9 @@ const STOP = !!process.env.STOP;
 const NARROW = !!process.env.NARROW;
 // CLEANUP=1 — jump to Clean Up and walk Doomsday's Check for Impact prompt.
 const CLEANUP = !!process.env.CLEANUP;
+// SETUP=1 — stop on the setup instructions and print them, to check the module block
+// defers to the shared "set up a 2-player game" text instead of restating the base rules.
+const SETUP = !!process.env.SETUP;
 
 const b = await chromium.launch();
 const page = await b.newPage({ viewport: { width: NARROW ? 1000 : 1280, height: 1000 } });
@@ -47,6 +50,16 @@ await page.getByRole('button', { name: /Continue/i }).first().click(); await wai
 await page.getByText('Doomsday', { exact: true }).first().click(); await wait(300);
 await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
 await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
+if (SETUP) {
+  const txt = await bodyText();
+  const i = txt.indexOf('Doomsday — setup');
+  console.log('--- DOOMSDAY SETUP BLOCK ---');
+  console.log(txt.slice(i, i + 1200));
+  await page.screenshot({ path: `${SHOT}/doomsday-setup.png`, fullPage: true });
+  console.log('ERRORS:', errors);
+  await b.close();
+  process.exit(0);
+}
 await page.getByRole('button', { name: /Begin Era 1/i }).first().click(); await wait(450);
 for (let i = 0; i < 12; i++) {
   if (/Take Bot Action/i.test(await bodyText())) break;

@@ -333,6 +333,14 @@ with Earth saved the Impact never resolves, so NO Era is post-Impact and `postIm
 returns `MAX_ERA + 1`. Conflating the two silently left a saved-Earth game running the 2+X
 Power Up from Era 6.
 
+**A module's setup block lists only what the Chronossus changes.** The shared "Setup for this
+app" text already says to set up a 2-player game, so each module's block defers the base
+module's own setup to that ("Set up the Guardian board as for a 2-player game", "as if it was
+a 2-player game" for the Valley) and adds only the Chronossus-specific deltas + anything the
+app does differently. Doomsday's first draft restated where the Impact tile goes and how the
+Experiment cards are dealt — all base-module setup the player does as normal. The verbatim
+`RulesBox` beside it is the rulebook's own "CHANGES AT SETUP", which is already Chronossus-only.
+
 **Decide what NOT to model before building a module.** Doomsday's plan initially had the app
 roll the Trajectory dice, track both trackers' `+`/`−` symbols and own the Impact tile's
 position; asking first deleted a two-mode setting, a settings toggle and a column of board

@@ -1057,32 +1057,13 @@ export default function ChronossusSetupFlow({
                   <h3>Doomsday setup</h3>
                   <ul>
                     <li>
-                      Place the <b>Doomsday board</b> next to the Main board and treat it as
-                      part of it. Put the two Trajectory dice on their slots, and both tracker
-                      tokens on their starting spots.
+                      Set up the <b>Doomsday board</b>, the Experiment cards and the Impact
+                      tile as for a 2-player game — including the{' '}
+                      {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED)
+                        ? 'face-down Level 2 stack (you chose to play without the Planned Experiments variant)'
+                        : 'face-up Level 2 stack of the Planned Experiments variant'}
+                      .
                     </li>
-                    <li>
-                      Place the <b>Impact tile between the fifth and sixth Timeline tile</b> —
-                      one later than usual.
-                    </li>
-                    <li>
-                      Deal a face-up Level 1 Experiment under the first Timeline tile and a
-                      face-down one under each other tile; return the leftovers to the box
-                      unseen.
-                    </li>
-                    {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED) ? (
-                      <li>
-                        Shuffle the Level 2 Experiments into a <b>face-down</b> stack beside
-                        the Doomsday board (playing without the Planned Experiments variant).
-                      </li>
-                    ) : (
-                      <li>
-                        Place the Level 2 Experiment stack <b>face up</b> beside the Doomsday
-                        board (the Planned Experiments variant): a claimed Experiment is
-                        replaced from it at once, and none are dealt under the Timeline during
-                        Preparation.
-                      </li>
-                    )}
                     <li>
                       You move the{' '}
                       <b>
@@ -1096,7 +1077,8 @@ export default function ChronossusSetupFlow({
                           ? 'Seal Fate'
                           : 'Save Earth'}
                       </b>{' '}
-                      tracker. Keep its Path markers to hand for the Experiments.
+                      tracker — always the one opposing yours. Keep its Path markers to hand
+                      for the Experiments, and move its tracker when the app tells you to.
                     </li>
                     {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS) && (
                       <li>
@@ -1109,9 +1091,9 @@ export default function ChronossusSetupFlow({
                       </li>
                     )}
                     <li>
-                      <b>You run Check for Impact yourself</b> each Clean Up — roll the
-                      Trajectory dice and move the Impact tile. The app will prompt you and
-                      ask what happened.
+                      <b>You run Check for Impact yourself</b> each Clean Up — the app never
+                      rolls the Trajectory dice or tracks the Impact tile. It prompts you at
+                      the right moment and asks what happened.
                     </li>
                   </ul>
                 </div>
