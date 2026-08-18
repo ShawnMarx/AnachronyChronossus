@@ -239,6 +239,14 @@ export interface ChronossusState {
     botSlot: number;
     /** Experiments the Chronossus has executed (the "Completed Experiments" Objective). */
     experimentsCompleted: number;
+    /**
+     * VP taken from the Experiment cards themselves, and from the Doomsday track slots its
+     * marker landed on. Both are already inside `vp` — these are kept alongside so the score
+     * breakdown can show where the points came from, which nothing else can reconstruct:
+     * the Chronossus DISCARDS each Experiment card, so there is no pile to count at the end.
+     */
+    experimentVp: number;
+    trackVp: number;
     /** Whether an Experiment Action has resolved yet this game — the first one skips
      *  Step 1's question, since no Path markers can be out. */
     experimentActionRun: boolean;

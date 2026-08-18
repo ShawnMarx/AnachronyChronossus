@@ -342,6 +342,8 @@ export function applyDifficultySetup(
             botTracker: botTrackerFor(config.doomsdayPlayerPath ?? 'harmony'),
             botSlot: DOOMSDAY_START_SLOT,
             experimentsCompleted: 0,
+            experimentVp: 0,
+            trackVp: 0,
             experimentActionRun: false,
             impactEra: null,
             playerTrackerFinal: false,
@@ -2240,6 +2242,15 @@ export interface ChronossusScore {
   /** Fractures difficulty: 1 VP per Flux Core left in the Flux Pool. 0 otherwise. */
   leftoverFluxVP: number;
   /**
+   * Doomsday: VP from the Experiment cards it claimed, and from the Doomsday track slots
+   * its marker landed on. Both are ALREADY inside `duringGameVP` — they are split out of
+   * `tokenVP`, not added on top, so the total is unaffected. Broken out because the
+   * Chronossus discards each Experiment card, leaving nothing on the table to count back.
+   * 0 in every other mode.
+   */
+  experimentVP: number;
+  doomsdayTrackVP: number;
+  /**
    * Pioneers difficulty (`chronossus-pioneers-vp-tokens-count`): 1 VP per VP token on the
    * Exosuit Upgrade board. 0 otherwise — by default those tokens are Power, not VP.
    */
@@ -2268,7 +2279,12 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
   const timeTravelVP = TIME_TRAVEL_VP[spot];
   const superprojectVP = bot.superprojectVps.reduce((n, v) => n + v, 0);
   const buildingVP = bot.buildingVp - superprojectVP;
-  const tokenVP = bot.vp - bot.buildingVp;
+  // Doomsday: both are already inside `bot.vp`, so they are split OUT of the token line
+  // rather than added to the total — the Chronossus discards each Experiment card, so this
+  // is the only record of where those points came from.
+  const experimentVP = bot.doomsday?.experimentVp ?? 0;
+  const doomsdayTrackVP = bot.doomsday?.trackVp ?? 0;
+  const tokenVP = bot.vp - bot.buildingVp - experimentVP - doomsdayTrackVP;
   // Fractures: 3 VP per Technology held, plus (difficulty) 1 VP per leftover Flux Core.
   const technologyVP = (bot.technologies ?? 0) * TECHNOLOGY_VP;
   const leftoverFluxVP =
@@ -2300,6 +2316,8 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
     technologyVP,
     leftoverFluxVP,
     upgradeTokenVP,
+    experimentVP,
+    doomsdayTrackVP,
     total:
       bot.vp +
       timeTravelVP +

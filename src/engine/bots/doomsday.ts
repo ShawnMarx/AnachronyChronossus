@@ -324,6 +324,7 @@ export function resolveDoomsdayAction(
     result.executed = true;
     result.experimentVp = vp;
     bot.vp += vp;
+    d.experimentVp += vp;
     d.experimentsCompleted += 1;
     instr.push({
       id: `exp-take-${n}`,
@@ -356,6 +357,7 @@ export function resolveDoomsdayAction(
       const trackVp = botVpAt(toSlot);
       d.botSlot = toSlot;
       bot.vp += trackVp;
+      d.trackVp += trackVp;
       result.trackerMoved = true;
       result.toSlot = toSlot;
       result.trackVp = trackVp;

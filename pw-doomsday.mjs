@@ -27,6 +27,9 @@ const CLEANUP = !!process.env.CLEANUP;
 // SETUP=1 — stop on the setup instructions and print them, to check the module block
 // defers to the shared "set up a 2-player game" text instead of restating the base rules.
 const SETUP = !!process.env.SETUP;
+// L2=1 — drive C08 (slot II = m3s3 = marker 3, step index 2) instead of C07, to check
+// Step 1 asks for a Level 2 Experiment rather than repeating Level 1.
+const L2 = !!process.env.L2;
 
 const b = await chromium.launch();
 const page = await b.newPage({ viewport: { width: NARROW ? 1000 : 1280, height: 1000 } });
@@ -34,22 +37,37 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 const wait = (ms = 320) => page.waitForTimeout(ms);
 const bodyText = () => page.locator('body').innerText();
+let seenPath = false;
 
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.addInitScript(
-  ([stop, pass]) => {
+  ([stop, pass, l2]) => {
     window.__DD_STOP = stop;
     window.__DD_PASS = pass;
+    window.__DD_L2 = l2;
   },
-  [STOP, PASS],
+  [STOP, PASS, L2],
 );
 await page.evaluate(() => localStorage.clear());
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.getByText('Chronossus', { exact: false }).first().click(); await wait(450);
 await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
 await page.getByText('Doomsday', { exact: true }).first().click(); await wait(300);
-await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
-await page.getByRole('button', { name: /Continue/i }).first().click(); await wait();
+// Modules -> Path (Doomsday only) -> Difficulty -> Setup. Walk Continue until the setup
+// instructions are on screen rather than counting clicks, so an added step can't break this.
+for (let i = 0; i < 6; i++) {
+  const t = await bodyText();
+  if (/Setup Instructions/i.test(t)) break;
+  if (/Choose Your Path/i.test(t) && !seenPath) {
+    seenPath = true;
+    console.log('PATH STEP: shown as its own screen after module selection');
+    console.log(t.split('\n').filter((l) => l.trim()).slice(2, 12).join('\n'));
+    await page.screenshot({ path: `${SHOT}/doomsday-path-step.png`, fullPage: true });
+  }
+  const c = page.getByRole('button', { name: /Continue/i }).first();
+  if (!(await c.count())) break;
+  await c.click(); await wait(350);
+}
 if (SETUP) {
   const txt = await bodyText();
   const i = txt.indexOf('Doomsday setup');
@@ -85,7 +103,8 @@ const patch = () =>
         data.state.chronossus.exosuitsAvailable = 0;
         data.state.chronossus.passed = false;
       }
-      data.ui.markerSteps['2'] = 2; // slot I (m2p3) — where Doomsday puts C07
+      if (window.__DD_L2) data.ui.markerSteps['3'] = 2; // slot II (m3s3) — C08
+      else data.ui.markerSteps['2'] = 2; // slot I (m2p3) — C07
       localStorage.setItem(key, JSON.stringify(data));
       return { doomsday: d, steps: data.ui.markerSteps };
     },

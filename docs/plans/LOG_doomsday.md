@@ -218,6 +218,12 @@ Note deviations and decisions inline under each step.
   symbols beside **both** trackers' current slots each Clean Up.
 - The verbatim `RulesBox` is unchanged: it is p.14's "CHANGES AT SETUP", which IS the
   Chronossus setup rules, and matches the Pioneers/Guardians boxes.
+- **The Path question is its own screen step** (`'path'`, between Modules and Difficulty;
+  corrected 2026-08-18). It was first put beside Pioneers' deck-mode question on the module
+  page, where it was easy to miss — and unlike the deck mode it is not a preference, it
+  decides which half of the Doomsday track the whole game runs on. Each option now states
+  which tracker **you** control and which the Chronossus takes, with p.14's verbatim
+  "preferred marker" paragraph below.
 - **Feature 6 complete.**
 
 ## Feature 7 — UI, History and scoring
@@ -232,17 +238,25 @@ Note deviations and decisions inline under each step.
 
 **Deviations / decisions:**
 
-- **7.6 needed no change, and that is the right answer.** Experiment VP and track VP are
-  added to `bot.vp` as they are earned, so they already land in the pill's **Token VP** line
-  — exactly like Guardians' and the Adventure's VP. The pill only breaks out module VP that
-  is *derived at scoring time* (Technologies, leftover Flux). Same for the player's tally:
-  Experiment cards pay VP **tokens** (Classic p.4 step 4), which the existing "Victory Point
-  tokens" field already covers.
+- **7.6 reversed (2026-08-18): Experiment VP gets its own tracked line after all.** The first
+  pass folded it into Token VP alongside Guardians' and the Adventure's, on the grounds that
+  the pill only breaks out VP *derived at scoring time*. But the Chronossus **discards each
+  Experiment card as it claims it** — unlike a Technology or a Guardian, there is nothing left
+  on the table to recount, so the app's running total is the only record. The slice now
+  accumulates `experimentVp` and `trackVp`; `scoreChronossus` splits both **out of** `tokenVP`
+  rather than adding them on top, so the total is unchanged (there is a test for exactly
+  that). They surface as two lines in the mid-game VP pill and one combined row in the
+  end-game tally — which the **player** fills in too, for the same reason.
 - **7.7 shipped as a status chip, not a board overlay.** The Doomsday board is a separate
   physical board that the app never renders, so there is no board art to position an overlay
   against — a `%`-anchored marker would have nothing to sit on. The chip beside the Guardians
   / Hypersync ones shows the tracker's name, its slot (`n/10`) and the Experiment count, with
   a tooltip giving the VP for its current slot and whether the tracks are locked.
+- **Level 1 vs Level 2 was already correct** (verified 2026-08-18, `L2=1` on
+  `pw-doomsday.mjs`): Step 1 asks for the level printed on the tile that was activated — C07
+  asks "Level 1", C08 asks "Level 2". Step 2 is deliberately the same text on both, because
+  the rulebook's preparation rule is level-agnostic (Level 1 before Level 2, whichever tile
+  ran it).
 - **Feature 7 complete.**
 
 ## Feature 8 — Tests and browser verification

@@ -6285,6 +6285,16 @@ function CxVpPill({
                 <span>Leftover Energy Cores</span><b>{score.leftoverEnergyVP}</b>
               </li>
             )}
+            {score.experimentVP > 0 && (
+              <li title="Doomsday: the VP printed on the Experiment cards it claimed. Already counted in the total — split out of Token VP, because it discards each card and nothing is left to count back.">
+                <span>Experiments claimed</span><b>{score.experimentVP}</b>
+              </li>
+            )}
+            {score.doomsdayTrackVP > 0 && (
+              <li title="Doomsday: VP printed on the track slots its marker landed on — it takes BOTH Paths' values. Already counted in the total.">
+                <span>Doomsday track</span><b>{score.doomsdayTrackVP}</b>
+              </li>
+            )}
             {score.technologyVP > 0 && (
               <li title="Fractures: 3 VP per Technology card the Chronossus holds">
                 <span>Technologies (3 each)</span><b>{score.technologyVP}</b>
@@ -6331,6 +6341,10 @@ const CX_TALLY_FIELDS: CxTallyField[] = [
   { key: 'fractureDevice', label: 'Fracture Device' },
   { key: 'glitches', label: 'Glitches', neg: true },
   { key: 'hypersyncTiles', label: 'Hypersync tiles remaining', neg: true },
+  // Doomsday: the Experiment cards you claimed pay VP tokens, and the Doomsday track pays
+  // more on top for the spot your tracker reached. Its own line because the cards leave the
+  // table as they are claimed — there is nothing to recount at the end.
+  { key: 'experiments', label: 'Experiments + Doomsday track' },
 ];
 const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
   CX_TALLY_FIELDS.map((f) => [f.key, f]),
@@ -6348,6 +6362,7 @@ const CX_SCORE_ROWS = (
   score: ReturnType<typeof Chronossus.scoreChronossus>,
   hypersync: boolean,
   fractures: boolean,
+  doomsday: boolean,
 ): { label: string; playerKey?: string; botValue?: number }[] => [
   { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
@@ -6373,6 +6388,18 @@ const CX_SCORE_ROWS = (
   // Hypersync: the player loses 4 VP per tile still in the future; the bot never does.
   ...(hypersync
     ? [{ label: 'Hypersync tiles remaining (−4 each)', playerKey: 'hypersyncTiles' }]
+    : []),
+  // Doomsday: Experiment cards pay VP tokens and the Doomsday track pays more on top, for
+  // both sides. Its own row rather than folded into "Victory Point tokens" because the
+  // cards are discarded as they are claimed — neither player can recount them at the end.
+  ...(doomsday
+    ? [
+        {
+          label: 'Experiments + Doomsday track',
+          playerKey: 'experiments',
+          botValue: score.experimentVP + score.doomsdayTrackVP,
+        },
+      ]
     : []),
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
@@ -6414,6 +6441,7 @@ function CxScoreScreen({
   // Fractures adds three tally lines (Technologies, Fracture Device, Glitches), two of
   // them the player's alone.
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
+  const doomsdayMode = Chronossus.isDoomsdayMode(state.config.chronossusMode);
   const [mode, setMode] = useState<'number' | 'tally'>('tally');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -6470,7 +6498,7 @@ function CxScoreScreen({
   // on desktop). Includes the top line, the breakdown, and the modes + difficulty (#7).
   const [shareMsg, setShareMsg] = useState<string>('');
   const handleShare = async () => {
-    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => ({
+    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode, doomsdayMode).map((r) => ({
       // Strip the parenthetical rule hints for the compact share card (they don't wrap).
       label: r.label.replace(/\s*\([^)]*\)/g, ''),
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
@@ -6624,7 +6652,7 @@ function CxScoreScreen({
                 <span className="cx-tyou">You</span>
                 <span className="cx-tbot">Chronossus</span>
               </div>
-              {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => (
+              {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode, doomsdayMode).map((r) => (
                 <div key={r.label} className="cx-trow">
                   <span className="cx-tlabel">{r.label}</span>
                   <span className="cx-tyou">

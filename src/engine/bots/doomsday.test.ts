@@ -156,6 +156,8 @@ function bot(over: Partial<ChronossusState> = {}): ChronossusState {
       botTracker: 'seal-fate',
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
+      experimentVp: 0,
+      trackVp: 0,
       experimentActionRun: false,
       impactEra: null,
       playerTrackerFinal: false,
@@ -313,6 +315,8 @@ const doomsdayState = (over: Partial<NonNullable<ChronossusState['doomsday']>> =
       botTracker: 'seal-fate',
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
+      experimentVp: 0,
+      trackVp: 0,
       experimentActionRun: false,
       impactEra: null,
       playerTrackerFinal: false,
@@ -513,5 +517,46 @@ describe('Setup — the bot takes the tracker opposing the player’s Path', () 
       chronossusMode: 'base',
     });
     expect(bot.doomsday).toBeUndefined();
+  });
+});
+
+// --- scoring ------------------------------------------------------------------------------
+
+describe('Scoring — Experiment VP is broken out, not added on top', () => {
+  const played = () => {
+    const b = bot();
+    // Two Experiments: a 2 VP card onto slot 7 (+1), then a 3 VP card onto slot 8 (+1).
+    run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    return b;
+  };
+
+  it('records the two sources separately as they are earned', () => {
+    const b = played();
+    expect(b.doomsday!.experimentVp).toBe(5); // 2 + 3 from the cards
+    expect(b.doomsday!.trackVp).toBe(2); // slot 7 + slot 8, 1 each
+    expect(b.vp).toBe(7);
+  });
+
+  it('splits them OUT of Token VP so the total is unchanged', () => {
+    const b = played();
+    const score = Chronossus.scoreChronossus(b);
+    expect(score.experimentVP).toBe(5);
+    expect(score.doomsdayTrackVP).toBe(2);
+    // The three during-game lines still add up to `bot.vp` — nothing double-counted.
+    expect(score.tokenVP + score.experimentVP + score.doomsdayTrackVP).toBe(b.vp);
+    expect(score.total).toBe(
+      b.vp +
+        score.timeTravelVP +
+        score.breakthroughVP +
+        score.shapeSetBonus +
+        score.anomalyVP,
+    );
+  });
+
+  it('reports 0 for both in a game with no Doomsday slice', () => {
+    const score = Chronossus.scoreChronossus(emptyChronossusState());
+    expect(score.experimentVP).toBe(0);
+    expect(score.doomsdayTrackVP).toBe(0);
   });
 });

@@ -336,7 +336,7 @@ export default function ChronossusSetupFlow({
   onHome?: () => void;
   onBegin: (result: ChronossusSetupResult) => void;
 }) {
-  type Step = 'intro' | 'modules' | 'difficulty' | 'setup';
+  type Step = 'intro' | 'modules' | 'path' | 'difficulty' | 'setup';
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
   const [extraModules, setExtraModules] = useState<Set<string>>(new Set());
@@ -408,17 +408,21 @@ export default function ChronossusSetupFlow({
       ? 'New Game'
       : step === 'modules'
         ? 'Modules'
-        : step === 'difficulty'
-          ? 'Difficulty'
-          : 'Setup';
+        : step === 'path'
+          ? 'Doomsday'
+          : step === 'difficulty'
+            ? 'Difficulty'
+            : 'Setup';
   const title =
     step === 'intro'
       ? 'The Chronossus'
       : step === 'modules'
         ? 'Select a Module'
-        : step === 'difficulty'
-          ? 'Increasing the Difficulty'
-          : 'Setup Instructions';
+        : step === 'path'
+          ? 'Choose Your Path'
+          : step === 'difficulty'
+            ? 'Increasing the Difficulty'
+            : 'Setup Instructions';
 
   return (
     <div className="phase-screen">
@@ -470,7 +474,14 @@ export default function ChronossusSetupFlow({
                 <button className="phase-secondary" onClick={() => setStep('intro')}>
                   ◀ Back
                 </button>
-                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                <button
+                  className="phase-primary"
+                  onClick={() =>
+                    // Doomsday alone needs a per-game answer before anything else can be
+                    // said about it — which Doomsday track the player controls.
+                    setStep(moduleId.includes('doomsday') ? 'path' : 'difficulty')
+                  }
+                >
                   Continue ▶
                 </button>
               </div>
@@ -545,57 +556,6 @@ export default function ChronossusSetupFlow({
                 </>
               )}
 
-              {moduleId.includes('doomsday') && (
-                <>
-                  <p className="phase-note">
-                    <b>Doomsday — which Path are you playing?</b> The Chronossus always moves
-                    the opposing tracker, for the whole game.
-                  </p>
-                  <div className="difficulty-list">
-                    {(
-                      [
-                        {
-                          id: 'harmony' as const,
-                          label: 'Path of Harmony',
-                          detail: 'You move “Save Earth” up, so the Chronossus moves “Seal Fate” down.',
-                        },
-                        {
-                          id: 'dominance' as const,
-                          label: 'Path of Dominance',
-                          detail: 'You move “Save Earth” up, so the Chronossus moves “Seal Fate” down.',
-                        },
-                        {
-                          id: 'salvation' as const,
-                          label: 'Path of Salvation',
-                          detail: 'You move “Seal Fate” down, so the Chronossus moves “Save Earth” up.',
-                        },
-                        {
-                          id: 'progress' as const,
-                          label: 'Path of Progress',
-                          detail: 'You move “Seal Fate” down, so the Chronossus moves “Save Earth” up.',
-                        },
-                      ]
-                    ).map((o) => (
-                      <label
-                        key={o.id}
-                        className={`difficulty-opt ${doomsdayPlayerPath === o.id ? 'on' : ''}`}
-                      >
-                        <input
-                          type="radio"
-                          name="cx-doomsday-path"
-                          checked={doomsdayPlayerPath === o.id}
-                          onChange={() => setDoomsdayPlayerPath(o.id)}
-                        />
-                        <span className="difficulty-opt-text">
-                          <b>{o.label}</b>
-                          <span>{o.detail}</span>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </>
-              )}
-
               <p className="phase-note">
                 Optional add-on modules (combine with any base mode above):
               </p>
@@ -639,10 +599,88 @@ export default function ChronossusSetupFlow({
           )}
 
           {/* ---- Step 3: Difficulty (stubbed, disabled) ------------------ */}
-          {step === 'difficulty' && (
+          {/* ---- Step 2b: Doomsday's Path (its own screen — the whole module hangs off it) -- */}
+          {step === 'path' && (
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('modules')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                  Continue ▶
+                </button>
+              </div>
+              <p className="phase-note">
+                Doomsday gives each Path a side of the Doomsday track. Tell the app which one
+                you are playing and it takes the other for the Chronossus — that holds for the
+                whole game.
+              </p>
+              <div className="difficulty-list">
+                {(
+                  [
+                    { id: 'harmony' as const, label: 'Path of Harmony', track: 'Save Earth' },
+                    { id: 'dominance' as const, label: 'Path of Dominance', track: 'Save Earth' },
+                    { id: 'salvation' as const, label: 'Path of Salvation', track: 'Seal Fate' },
+                    { id: 'progress' as const, label: 'Path of Progress', track: 'Seal Fate' },
+                  ]
+                ).map((o) => (
+                  <label
+                    key={o.id}
+                    className={`difficulty-opt ${doomsdayPlayerPath === o.id ? 'on' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="cx-doomsday-path"
+                      checked={doomsdayPlayerPath === o.id}
+                      onChange={() => setDoomsdayPlayerPath(o.id)}
+                    />
+                    <span className="difficulty-opt-text">
+                      <b>{o.label}</b>
+                      <span>
+                        You control the <b>{o.track}</b> tracker, moving it{' '}
+                        {o.track === 'Save Earth' ? 'up' : 'down'} the track. The Chronossus
+                        takes the <b>{o.track === 'Save Earth' ? 'Seal Fate' : 'Save Earth'}</b>{' '}
+                        tracker.
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="phase-note">
+                You will move <b>both</b> physical tokens during the game. The app tracks where
+                the Chronossus’s marker sits so it knows the VP its Experiments earn, and tells
+                you when to advance it — and you will read both trackers’ (+)/(−) symbols
+                yourself for the Trajectory roll each Clean Up.
+              </p>
+              <RulesBox label="Doomsday — the Chronossus’s tracker" showPreamble>
+                <p>
+                  If it successfully took an Experiment and the Doomsday tracks aren’t yet
+                  locked, it moves its preferred marker (Seal Fate or Save Earth), taking any
+                  printed VP on it—regardless of which Path that VP belongs to. The
+                  Chronossus’s preferred marker is always the opposing one to yours. For
+                  example, if you are playing as the Path of Harmony, thus interacting with
+                  the Save Earth marker, it will move the Seal Fate marker on its turn as if
+                  it was the Path of Salvation.
+                </p>
+              </RulesBox>
+              <div className="setup-actions">
+                <button className="phase-secondary" onClick={() => setStep('modules')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                  Continue ▶
+                </button>
+              </div>
+            </>
+          )}
+
+          {step === 'difficulty' && (
+            <>
+              <div className="setup-actions setup-actions-top">
+                <button
+                  className="phase-secondary"
+                  onClick={() => setStep(moduleId.includes('doomsday') ? 'path' : 'modules')}
+                >
                   ◀ Back
                 </button>
                 <button className="phase-primary" onClick={() => setStep('setup')}>
