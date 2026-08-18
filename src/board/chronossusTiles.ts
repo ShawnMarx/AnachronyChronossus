@@ -126,6 +126,40 @@ const ADVENTURE_DETAIL =
   '\n' +
   'NOTE: It is possible for one of these steps to fail. If this happens, ignore that step.';
 
+/**
+ * "NEW ACTION: EXPERIMENT", its two steps and the NOTE (Solo Opponents p.14). Shared by
+ * C07 and C08 — the tile only says WHICH level of Experiment the Chronossus executes.
+ */
+const EXPERIMENT_DETAIL =
+  'When taking an Experiment Action, the Chronossus places an Exosuit on the Experiment ' +
+  'hex pool space and performs two steps, in the following order:\n' +
+  '\n' +
+  'STEP 1: EXECUTE EXPERIMENT\n' +
+  'The Chronossus takes an Experiment with a Path marker on it (see Step 2 for adding Path ' +
+  'markers) and discards the Path marker. Whether it takes a Level 1 or Level 2 Experiment ' +
+  'is shown on the Action tile. If none of that level is available, skip this step. If ' +
+  'multiple are available, pick the leftmost available one on the Timeline.\n' +
+  '\n' +
+  'If it successfully took an Experiment and the Doomsday tracks aren\u2019t yet locked, it ' +
+  'moves its preferred marker (Seal Fate or Save Earth), taking any printed VP on it\u2014' +
+  'regardless of which Path that VP belongs to. The Chronossus\u2019s preferred marker is ' +
+  'always the opposing one to yours. For example, if you are playing as the Path of Harmony, ' +
+  'thus interacting with the Save Earth marker, it will move the Seal Fate marker on its turn ' +
+  'as if it was the Path of Salvation.\n' +
+  '\n' +
+  'STEP 2: PREPARE FOR EXPERIMENTATION\n' +
+  'It places a Path marker on a face-up Experiment card (except the one under the next Era), ' +
+  'that does not yet have one on it. (Your Focus marker has no effect on this.) If there are ' +
+  'multiple available ones, pick Level 1 before Level 2 ones; if still tied, pick the ' +
+  'furthest in the past on the Timeline.\n' +
+  '\n' +
+  'NOTE: It is possible for one of the steps to fail (if none/all of the Experiments have a ' +
+  'Path marker, respectively). If this happens, ignore that step.\n' +
+  '\n' +
+  'When you take an Experiment with one of the Chronossus\u2019s Path markers on it, move it ' +
+  'onto a face-up Experiment under a later Era (up to the present Era) that does not yet have ' +
+  'one. If all of them do, discard the Path marker.';
+
 /** Every modular Action tile, keyed by its printed code. */
 export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
   // --- Base-game default setup (A sides of C01/C02/C03) --------------------
@@ -198,24 +232,28 @@ export const CHRONOSSUS_TILES: Record<string, ModularTile> = {
     code: 'C07A',
     name: 'Level 1 Experiment',
     rule: 'The Chronossus executes a Level 1 Experiment then prepares for Experimentation. (See page 14 for details).',
+    detail: EXPERIMENT_DETAIL,
     future: true,
   },
   C07B: {
     code: 'C07B',
     name: 'Level 1 Experiment',
     rule: 'The Chronossus executes a Level 1 Experiment and prepares for Experimentation. Then gains 1 Energy Core.',
+    detail: EXPERIMENT_DETAIL,
     future: true,
   },
   C08A: {
     code: 'C08A',
     name: 'Level 2 Experiment',
     rule: 'The Chronossus executes a Level 2 Experiment then prepares for Experimentation. (See page 14 for details).',
+    detail: EXPERIMENT_DETAIL,
     future: true,
   },
   C08B: {
     code: 'C08B',
     name: 'Level 2 Experiment',
     rule: 'The Chronossus executes a Level 2 Experiment and prepares for Experimentation. Then, gains 1 VP and 1 Energy Core.',
+    detail: EXPERIMENT_DETAIL,
     future: true,
   },
   C09A: {
