@@ -156,8 +156,10 @@ No model of which Experiment card sits under which Timeline tile. The Experiment
   - Step 2: emit the Path-marker placement instruction with its priority rule.
   - B sides: C07B adds 1 Energy Core; C08B adds 1 VP **and** 1 Energy Core.
   - Detect the bot's marker reaching its final slot → fire the matching hard stop (D2).
-- **Placement:** the Experiment hex pool is a **Main board** space — it does **not** join
-  `OFF_MAIN_BOARD_ACTIONS`, and it **does** take an Energy Core.
+- **Placement:** a plain figure placement on a shared hex pool. The on/off-Main-board split
+  serves Fractures' Blink only, and Doomsday combines with nothing — so **no Energy Core**
+  (that is the Blink marker, not a general placement cost) and nothing recorded as
+  Blink-able.
 - **Run `passesInsteadOfAction`** on this path like every other rolled Action, via
   `passIfOutOfFigures`. `placesExosuitFor` returns true for both new ids.
 

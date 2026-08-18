@@ -107,12 +107,15 @@ Note deviations and decisions inline under each step.
 
 - **The pass rule came for free.** `wouldPassOn` keys off `placesExosuitFor`, so adding the
   two ids there is the whole of step 3.6 — no separate wiring, and the test proves it.
-- **The Experiment hex pool is a MAIN board placement**, the only module space that is.
-  Classic p.3 says to "treat [the Doomsday board] as part of the Main board" and p.4 calls
-  the Experiment "a new Main board Action", so it takes an Energy Core (every other module's
-  placement does not) and is absent from `OFF_MAIN_BOARD_ACTIONS`. It is therefore a Blink
-  source in principle — but Doomsday can never combine with Fractures, so that seam is
-  theoretical; the code keeps it honest anyway.
+- **The on/off-Main-board distinction is MOOT for Doomsday** (corrected 2026-08-18). It only
+  exists to serve Fractures' Blink — which Exosuits can move, and what the Energy Core marks
+  — and Doomsday combines with nothing (Solo Opponents p.19), so no Doomsday game has a Flux
+  Pool for any of it to mean anything against. The Experiment placement is therefore a plain
+  figure placement: **no Energy Core instruction** (the first draft invented one — the engine
+  never mentions a Core on placement anywhere else) and no `placedExosuits` recording (dead
+  code). The ids stay out of `OFF_MAIN_BOARD_ACTIONS` but nothing turns on that. The hex pool
+  is shared by any number of figures, so unlike a Capital Action it can never run out of
+  space.
 - **`playerTrackerFinal` lives in state, not in the Action input.** The Clean Up question
   (F5) is its only writer, so the resolver reads the slice rather than having every caller
   re-supply it.

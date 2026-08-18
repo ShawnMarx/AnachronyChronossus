@@ -887,10 +887,13 @@ export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate',
 export const ADVENTURE_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-adventure'];
 
 /**
- * Doomsday's two Experiment Actions. Unlike every other module's board, the Doomsday board
- * is "treated as part of the Main board" (Classic p.3) and the rulebook calls the Experiment
- * "a new Main board Action" (p.4) — so these place an Exosuit that DOES take an Energy Core
- * and are deliberately absent from `OFF_MAIN_BOARD_ACTIONS`.
+ * Doomsday's two Experiment Actions. They place a figure (so the pass rule applies via
+ * `placesExosuitFor`), on a hex pool that any number of figures can share — so unlike a
+ * Capital Action it can never run out of space.
+ *
+ * They are absent from `OFF_MAIN_BOARD_ACTIONS`, but nothing turns on that: the on/off-board
+ * split exists for Fractures' Blink, and Doomsday combines with nothing (Solo Opponents
+ * p.19), so no Doomsday game has a Flux Pool for it to matter against.
  */
 export const EXPERIMENT_TILE_ACTIONS: ChronossusTileActionId[] = [
   'tile-experiment-1',
@@ -1143,24 +1146,21 @@ export function resolveAction(
         });
       }
     }
-    // Doomsday: the Experiment hex pool. On the Main board by rule (Classic p.3 "treat
-    // this as part of the Main board"), so unlike every other module's placement it DOES
-    // take an Energy Core — and it is a Blink source, though Doomsday can never combine
-    // with Fractures so that seam is theoretical.
+    // Doomsday: the Experiment hex pool — a plain figure placement, and nothing more.
+    //
+    // The on/off-Main-board distinction that every other module's placement has to make is
+    // MOOT here: it exists only for Fractures' Blink (which Exosuits can move, and what the
+    // Energy Core marks), and Doomsday combines with nothing (Solo Opponents p.19). So there
+    // is no Energy Core to instruct and no `placedExosuits` to record — a Doomsday game has
+    // no Flux Pool for either to mean anything against.
     if (EXPERIMENT_TILE_ACTIONS.includes(input.actionId) && placeableFigures(bot) > 0) {
       const figure = spendFigure(bot);
       tileFigure = figure;
       instr.push({
         id: `exp-place-${n}`,
-        text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the Experiment hex pool space, with an Energy Core from the supply.`,
+        text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the Experiment hex pool space.`,
         detail: 'Any number of figures can share the Experiment hex pool.',
       });
-      if (bot.fluxPool != null && isMainBoardPlacement(input.actionId)) {
-        bot.placedExosuits = [
-          ...(bot.placedExosuits ?? []),
-          { action: input.actionId, space: 'action', hasCore: true },
-        ];
-      }
     }
     let acquired: ReturnType<typeof resolveAcquireGuardian> | null = null;
     let adventured: AdventureResult | null = null;

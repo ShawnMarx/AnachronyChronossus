@@ -339,12 +339,15 @@ describe('Experiment — resolved through takeActionTurn', () => {
     expect(next.chronossus!.doomsday!.experimentsCompleted).toBe(1);
   });
 
-  it('places an Exosuit on the hex pool, with an Energy Core (it is a Main board space)', () => {
+  it('places a figure on the hex pool — no Energy Core, which is a Fractures-only marker', () => {
     const state = doomsdayState();
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     expect(next.chronossus!.exosuitsAvailable).toBe(2);
     const text = instructions.map((i) => i.text).join('\n');
-    expect(text).toMatch(/Experiment hex pool space, with an Energy Core/);
+    expect(text).toMatch(/Experiment hex pool space\./);
+    expect(text).not.toMatch(/Energy Core/);
+    // Nothing is recorded as Blink-able: Doomsday never coexists with Fractures.
+    expect(next.chronossus!.placedExosuits).toBeUndefined();
   });
 
   it('scores the B side’s printed bonus on top of the Action', () => {
