@@ -6286,13 +6286,8 @@ function CxVpPill({
               </li>
             )}
             {score.experimentVP > 0 && (
-              <li title="Doomsday: the VP printed on the Experiment cards it claimed. Already counted in the total — split out of Token VP, because it discards each card and nothing is left to count back.">
+              <li title="Doomsday: the VP printed on the Experiment cards it claimed. Already counted in the total — split out of Token VP, because it discards each card and nothing is left to count back. Doomsday track VP is ordinary VP and stays in the token line.">
                 <span>Experiments claimed</span><b>{score.experimentVP}</b>
-              </li>
-            )}
-            {score.doomsdayTrackVP > 0 && (
-              <li title="Doomsday: VP printed on the track slots its marker landed on — it takes BOTH Paths' values. Already counted in the total.">
-                <span>Doomsday track</span><b>{score.doomsdayTrackVP}</b>
               </li>
             )}
             {score.technologyVP > 0 && (
@@ -6341,10 +6336,9 @@ const CX_TALLY_FIELDS: CxTallyField[] = [
   { key: 'fractureDevice', label: 'Fracture Device' },
   { key: 'glitches', label: 'Glitches', neg: true },
   { key: 'hypersyncTiles', label: 'Hypersync tiles remaining', neg: true },
-  // Doomsday: the Experiment cards you claimed pay VP tokens, and the Doomsday track pays
-  // more on top for the spot your tracker reached. Its own line because the cards leave the
-  // table as they are claimed — there is nothing to recount at the end.
-  { key: 'experiments', label: 'Experiments + Doomsday track' },
+  // Doomsday: the Experiment cards leave the table as they are claimed, so there is nothing
+  // to recount at the end. (Doomsday track VP is ordinary VP — it goes in 'vpTokens'.)
+  { key: 'experiments', label: 'Experiments' },
 ];
 const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
   CX_TALLY_FIELDS.map((f) => [f.key, f]),
@@ -6389,18 +6383,11 @@ const CX_SCORE_ROWS = (
   ...(hypersync
     ? [{ label: 'Hypersync tiles remaining (−4 each)', playerKey: 'hypersyncTiles' }]
     : []),
-  // Doomsday: Experiment cards pay VP tokens and the Doomsday track pays more on top, for
-  // both sides. Its own row rather than folded into "Victory Point tokens" because the
-  // cards are discarded as they are claimed — neither player can recount them at the end.
-  ...(doomsday
-    ? [
-        {
-          label: 'Experiments + Doomsday track',
-          playerKey: 'experiments',
-          botValue: score.experimentVP + score.doomsdayTrackVP,
-        },
-      ]
-    : []),
+  // Doomsday: the Experiment cards get their own row because they are DISCARDED as they are
+  // claimed — neither side can recount them at the end. The Doomsday track's VP is not
+  // broken out: it is granted as ordinary VP as the marker is pushed along, so it sits in
+  // "Victory Point tokens" with everything else.
+  ...(doomsday ? [{ label: 'Experiments', playerKey: 'experiments', botValue: score.experimentVP }] : []),
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
     ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]

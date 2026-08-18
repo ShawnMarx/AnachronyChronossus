@@ -157,7 +157,6 @@ function bot(over: Partial<ChronossusState> = {}): ChronossusState {
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
       experimentVp: 0,
-      trackVp: 0,
       experimentActionRun: false,
       impactEra: null,
       playerTrackerFinal: false,
@@ -316,7 +315,6 @@ const doomsdayState = (over: Partial<NonNullable<ChronossusState['doomsday']>> =
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
       experimentVp: 0,
-      trackVp: 0,
       experimentActionRun: false,
       impactEra: null,
       playerTrackerFinal: false,
@@ -531,20 +529,20 @@ describe('Scoring — Experiment VP is broken out, not added on top', () => {
     return b;
   };
 
-  it('records the two sources separately as they are earned', () => {
+  it('records only the card VP — the track pays ordinary VP', () => {
     const b = played();
     expect(b.doomsday!.experimentVp).toBe(5); // 2 + 3 from the cards
-    expect(b.doomsday!.trackVp).toBe(2); // slot 7 + slot 8, 1 each
-    expect(b.vp).toBe(7);
+    expect(b.vp).toBe(7); // ...plus 1 + 1 from the track slots, as plain VP
   });
 
-  it('splits them OUT of Token VP so the total is unchanged', () => {
+  it('splits the card VP OUT of Token VP so the total is unchanged', () => {
     const b = played();
     const score = Chronossus.scoreChronossus(b);
     expect(score.experimentVP).toBe(5);
-    expect(score.doomsdayTrackVP).toBe(2);
-    // The three during-game lines still add up to `bot.vp` — nothing double-counted.
-    expect(score.tokenVP + score.experimentVP + score.doomsdayTrackVP).toBe(b.vp);
+    // The two during-game lines still add up to `bot.vp` — nothing double-counted, and the
+    // 2 VP the track paid is in `tokenVP` like any other scoring.
+    expect(score.tokenVP).toBe(2);
+    expect(score.tokenVP + score.experimentVP).toBe(b.vp);
     expect(score.total).toBe(
       b.vp +
         score.timeTravelVP +
@@ -554,9 +552,7 @@ describe('Scoring — Experiment VP is broken out, not added on top', () => {
     );
   });
 
-  it('reports 0 for both in a game with no Doomsday slice', () => {
-    const score = Chronossus.scoreChronossus(emptyChronossusState());
-    expect(score.experimentVP).toBe(0);
-    expect(score.doomsdayTrackVP).toBe(0);
+  it('reports 0 in a game with no Doomsday slice', () => {
+    expect(Chronossus.scoreChronossus(emptyChronossusState()).experimentVP).toBe(0);
   });
 });

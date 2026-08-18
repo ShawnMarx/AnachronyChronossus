@@ -238,15 +238,16 @@ Note deviations and decisions inline under each step.
 
 **Deviations / decisions:**
 
-- **7.6 reversed (2026-08-18): Experiment VP gets its own tracked line after all.** The first
-  pass folded it into Token VP alongside Guardians' and the Adventure's, on the grounds that
-  the pill only breaks out VP *derived at scoring time*. But the Chronossus **discards each
-  Experiment card as it claims it** — unlike a Technology or a Guardian, there is nothing left
-  on the table to recount, so the app's running total is the only record. The slice now
-  accumulates `experimentVp` and `trackVp`; `scoreChronossus` splits both **out of** `tokenVP`
-  rather than adding them on top, so the total is unchanged (there is a test for exactly
-  that). They surface as two lines in the mid-game VP pill and one combined row in the
-  end-game tally — which the **player** fills in too, for the same reason.
+- **7.6, final: the Experiment cards get a breakout line; the Doomsday track does not.**
+  The Chronossus **discards each Experiment card as it claims it**, so unlike a Technology or
+  a Guardian there is nothing left on the table to recount — the app's running total is the
+  only record either side has, which is why it needs its own line (and its own row in the
+  player's tally). **Doomsday track VP is ordinary VP**, granted as the marker is pushed
+  along the track (the multiplayer rule, kept in solo), so it belongs in the plain token line
+  like any other scoring and is deliberately NOT tracked separately.
+  Implementation note: `experimentVp` is already inside `bot.vp`, so `scoreChronossus` splits
+  it **out of** `tokenVP` rather than adding it on top — a test asserts
+  `tokenVP + experimentVP === bot.vp` so the total can never inflate.
 - **7.7 shipped as a status chip, not a board overlay.** The Doomsday board is a separate
   physical board that the app never renders, so there is no board art to position an overlay
   against — a `%`-anchored marker would have nothing to sit on. The chip beside the Guardians

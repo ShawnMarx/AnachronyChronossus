@@ -43,7 +43,6 @@ const doomsdayState = (over: Record<string, unknown> = {}): GameState => {
       botSlot: 6,
       experimentsCompleted: 0,
       experimentVp: 0,
-      trackVp: 0,
       experimentActionRun: false,
       impactEra: null,
       playerTrackerFinal: false,

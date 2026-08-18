@@ -240,13 +240,15 @@ export interface ChronossusState {
     /** Experiments the Chronossus has executed (the "Completed Experiments" Objective). */
     experimentsCompleted: number;
     /**
-     * VP taken from the Experiment cards themselves, and from the Doomsday track slots its
-     * marker landed on. Both are already inside `vp` — these are kept alongside so the score
-     * breakdown can show where the points came from, which nothing else can reconstruct:
-     * the Chronossus DISCARDS each Experiment card, so there is no pile to count at the end.
+     * VP taken from the Experiment cards themselves. Already inside `vp` — kept alongside
+     * only so the score breakdown can show it, which nothing else can reconstruct: the
+     * Chronossus DISCARDS each Experiment card, so there is no pile to count at the end.
+     *
+     * The Doomsday TRACK's VP is deliberately not tracked here. It is granted as ordinary
+     * VP when the marker is pushed along the track (the multiplayer rule, kept in solo), so
+     * it belongs in the plain token line like any other scoring.
      */
     experimentVp: number;
-    trackVp: number;
     /** Whether an Experiment Action has resolved yet this game — the first one skips
      *  Step 1's question, since no Path markers can be out. */
     experimentActionRun: boolean;

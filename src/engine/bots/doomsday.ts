@@ -357,7 +357,6 @@ export function resolveDoomsdayAction(
       const trackVp = botVpAt(toSlot);
       d.botSlot = toSlot;
       bot.vp += trackVp;
-      d.trackVp += trackVp;
       result.trackerMoved = true;
       result.toSlot = toSlot;
       result.trackVp = trackVp;
