@@ -2,7 +2,7 @@
 
 Running log of implementation progress. Newest first.
 
-## 2026-08-17 — Fractures of Time: the Era Zero Warp, and a game two Eras shorter
+## 2026-08-17 — Fractures of Time: the Era Zero Warp, a game two Eras shorter, and the Blink check's missing second half
 
 Two rules from the Fractures rulebook had never been implemented, both of them about the
 *shape of the game* rather than any one Action — which is exactly why nothing caught them:
@@ -30,6 +30,31 @@ The seam is written up in `CLAUDE.md`: a module may re-cut the Timeline, so no r
 hard-code an Era number. Still open (`TODO.md`): Fractures + Pioneers grants a Power Upgrade
 right after the Era Zero Warp (p.15), and the Solo Opponents book doesn't say whether the
 Chronossus takes it.
+
+Playtesting that build then turned up a third rule, this one in the Blink check — and it was
+the same shape of miss as the Era counts: a decision taken once where the rules take it twice.
+
+- **A failed Blink check has to fall back to the pass.** Out of Exosuits with Flux in the
+  pool, a rolled Mine ran the check and then, on an Empty Flux Casing, told the player to
+  place an Exosuit the bot did not have. The Fractures exemption only ever stands in for a
+  Blink that *might* happen; once the Casing is out there is no Blink, and "the Chronossus
+  places an Exosuit or passes, as usual" (Solo Opponents p.12) resolves to the **pass**. So
+  every Casing continuation — printed space, Valley Action, Adventure — re-runs the passing
+  rule with the exemption dropped, and the panel says it passes instead of asking for a
+  figure that does not exist.
+- **The check belongs at the Action's placement gate, not a dialog later.** Mine ran it
+  after the Resources were picked (on the theory that the Resources identify the space); it
+  now runs the moment "is a Mining space open?" is answered, like Recruit Genius. The Blink
+  is settled at the Action's granularity and the Resources step only names *which* Mine
+  space, dropping its duplicate "place the Exosuit" clause.
+- **An Action with no gate of its own checks first.** The Adventure asked for the Path
+  marker before checking, so a Casing with no figure left had the player place a marker for
+  a turn that then passed. It now opens on the check; both outcomes hand off to the marker
+  question with the figure already moved or placed.
+
+All of it was confirmed the way the last two Fractures bugs were — a Playwright run against a
+patched save (zero figures, one Blink-ready Exosuit, a stacked Flux Pool), since no UI control
+reaches "out of Exosuits with Flux left".
 
 ## 2026-08-17 — Pioneers to production, and the playtest pass that got it there
 

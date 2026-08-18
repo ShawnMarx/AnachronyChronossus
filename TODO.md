@@ -137,6 +137,11 @@ to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLE
 No plan is active.
 
 Still backlog (not yet in a plan):
+- [ ] **Blink check: a pool of only Empty Flux Casings never draws** (2026-08-17) —
+      `shouldCheckBlink` short-circuits on `cores === 0`, but the rulebook asks "at least 1
+      token in the Flux Pool" (Solo Opponents p.12). The Blink outcome is the same either
+      way (no Core → no Blink), but skipping the draw leaves the Casing in the pool instead
+      of set aside, so the pool composition drifts from the physical game until Clean Up.
 - [ ] **Fractures + Pioneers: the post-Era-Zero Power Upgrade** — "after the Era Zero Warp
       Phase, each player may choose to spend one of their Titanium, Uranium, or Gold to
       upgrade the Power of their Exosuit as though they had taken a Power Upgrade Action"

@@ -56,7 +56,14 @@
 > now says it scores +VP instead of resolving silently; the End Game tally gained the
 > Fractures/Hypersync lines; and Warp shows one Warp tile per Paradox rolled. Remaining
 > candidates (Doomsday, Chronossus stats/history) stay in `TODO.md`; each becomes its own
-> `/plan`. The Chronossus knowledge, references, and design
+> `/plan`.
+> **2026-08-17 (later):** three **Fractures of Time** rules that were never implemented
+> shipped to production — the **Era Zero Warp Phase** before Era 1 (and, with it, an Era 1
+> Paradox phase that is no longer skipped), Fractures' **shorter Timeline** (Eras 1–5, Impact
+> after Era 3, so Era counts are now per-config rather than the base-game constants), and the
+> **second half of the Blink check** (a drawn Empty Flux Casing with no figure left resolves
+> to the pass; the check moved to each Action's placement gate, and to the *start* of the
+> Adventure). The Chronossus knowledge, references, and design
 > decisions here remain the source material behind those efforts.
 
 ## 1. What the app is (and isn't)
