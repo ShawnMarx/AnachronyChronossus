@@ -131,28 +131,55 @@ Note deviations and decisions inline under each step.
 
 ## Feature 4 — The Impact Era becomes an answer, not a calculation
 
-- [ ] 4.1 Widen `postImpactEraFor(config)` to `postImpactEraFor(config, state?)`; update all
+- [x] 4.1 Widen `postImpactEraFor(config)` to `postImpactEraFor(config, state?)`; update all
       call sites to keep going through the seam.
-- [ ] 4.2 Derive Doomsday's post-Impact from the stored `doomsday.impactOccurred` answer.
-- [ ] 4.3 Default before any answer: Impact in Era 5's Clean Up → post-Impact begins Era 6.
-- [ ] 4.4 Verify the debug Era stepper reads the same seam.
-- [ ] 4.5 Note the deliberate departure from CLAUDE.md's "derived from the Era" rule.
+- [x] 4.2 Derive Doomsday's post-Impact from the stored `doomsday.impactOccurred` answer.
+- [x] 4.3 Default before any answer: Impact in Era 5's Clean Up → post-Impact begins Era 6.
+- [x] 4.4 Verify the debug Era stepper reads the same seam.
+- [x] 4.5 Note the deliberate departure from CLAUDE.md's "derived from the Era" rule.
 
 **Deviations / decisions:**
+
+- **The slice stores an Era, not a flag.** `impactEra: number | null` (the Era whose Clean Up
+  resolved the Impact) rather than `impactOccurred: boolean` — the first post-Impact Era is
+  simply that + 1, and the default (`DOOMSDAY_DEFAULT_IMPACT_ERA = 5`, so Era 6) stands until
+  the player answers. A boolean could say *that* the Impact happened but never *when*.
+- **`earthSaved` is its own flag, and a test caught why.** With Earth saved the Impact never
+  resolves, so NO Era is post-Impact — but `impactEra === null` also describes a game that
+  simply has not reached it yet. Without the distinction a saved-Earth game still read Era 6
+  as post-Impact. `postImpactEraFor` now returns `MAX_ERA + 1` in that case, so every
+  `era >= …` comparison keeps working untouched.
+- Every other mode is bit-for-bit unchanged: the new `bot` parameter is optional and only
+  consulted under `isDoomsdayMode`, with a test asserting a Doomsday slice cannot leak into
+  a base or Fractures game.
 
 ## Feature 5 — Clean Up: prompt the check, take the outcome
 
-- [ ] 5.1 Surface the Check for Impact at the right point of Clean Up, with the verbatim
+- [x] 5.1 Surface the Check for Impact at the right point of Clean Up, with the verbatim
       Classic p.5 text in a `RulesBox`.
-- [ ] 5.2 Collect "did the Impact occur this Era?" → sets `impactOccurred`.
-- [ ] 5.3 Collect "did the game end?" (Save Earth locked) → score screen; no Impact, no
+- [x] 5.2 Collect "did the Impact occur this Era?" → sets `impactOccurred`.
+- [x] 5.3 Collect "did the game end?" (Save Earth locked) → score screen; no Impact, no
       Evacuation.
-- [ ] 5.4 When the bot's own marker hits its final slot, fire that branch without asking and
+- [x] 5.4 When the bot's own marker hits its final slot, fire that branch without asking and
       say which one happened.
-- [ ] 5.5 Re-verify the existing Clean Up branches (Impact note / Collapsing Capital / final
+- [x] 5.5 Re-verify the existing Clean Up branches (Impact note / Collapsing Capital / final
       Era) now that the Impact Era is an answer.
 
 **Deviations / decisions:**
+
+- The Clean Up screen asks in the order the rules resolve: **"Is either tracker locked in?"**
+  first (Save Earth topmost / Seal Fate bottommost / Neither), then, only on *Neither*,
+  **"Did the Impact occur at the end of this Era?"** The rest of the screen is withheld until
+  the check is answered — with a movable Impact tile it has nothing true to say before then.
+- When the **Chronossus's own** marker is on its final slot the screen says so before asking,
+  since the app knows that without being told.
+- The predictive "The Impact occurs now" note is suppressed for Doomsday only. Every other
+  mode keeps it exactly as before.
+- `answerCheckForImpact` is **pure** (returns a new slice) because Clean Up commits it as a
+  phase transition, not as part of a bot turn — with a test asserting the caller's state is
+  untouched.
+- `checkedEra` lives in the slice rather than component state, so the answer survives a
+  reload and participates in Undo/History like everything else.
 
 ## Feature 6 — Setup flow
 

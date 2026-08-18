@@ -12,6 +12,9 @@ import {
   isDoomsdayMode,
   isFinalSlot,
   nextSlot,
+  answerCheckForImpact,
+  botTrackerLocked,
+  needsImpactCheck,
   resolveDoomsdayAction,
   tracksLocked,
   type DoomsdayTracker,
@@ -154,8 +157,10 @@ function bot(over: Partial<ChronossusState> = {}): ChronossusState {
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
       experimentActionRun: false,
-      impactOccurred: false,
+      impactEra: null,
       playerTrackerFinal: false,
+      checkedEra: null,
+      earthSaved: false,
     },
     ...over,
   };
@@ -209,7 +214,7 @@ describe('Experiment — Step 1 (execute)', () => {
 
 describe('Experiment — the tracks lock', () => {
   const lockedCases: [string, Partial<NonNullable<ChronossusState['doomsday']>>][] = [
-    ['the Impact has occurred', { impactOccurred: true }],
+    ['the Impact has occurred', { impactEra: 5 }],
     ["the player's tracker is final", { playerTrackerFinal: true }],
     ['its own tracker is final', { botSlot: 10 }],
   ];
@@ -309,8 +314,10 @@ const doomsdayState = (over: Partial<NonNullable<ChronossusState['doomsday']>> =
       botSlot: DOOMSDAY_START_SLOT,
       experimentsCompleted: 0,
       experimentActionRun: false,
-      impactOccurred: false,
+      impactEra: null,
       playerTrackerFinal: false,
+      checkedEra: null,
+      earthSaved: false,
       ...over,
     },
   };
@@ -374,5 +381,97 @@ describe('Experiment — resolved through takeActionTurn', () => {
     const state = doomsdayState();
     state.chronossus!.exosuitsAvailable = 0;
     expect(Chronossus.passesInsteadOfAction(state.chronossus!, 'tile-experiment-1')).toBe(true);
+  });
+});
+
+// --- the Impact Era is an answer, not a calculation ---------------------------------------
+
+describe('postImpactEraFor — Doomsday', () => {
+  const cfg = { chronossusMode: 'doomsday' };
+  const slice = (impactEra: number | null) => ({
+    doomsday: { ...bot().doomsday!, impactEra },
+  });
+
+  it('starts an Era later than the base game, before any answer', () => {
+    // The Impact tile starts between the 5th and 6th Timeline tile (Classic p.3), so the
+    // Impact would resolve in Era 5's Clean Up and Era 6 is the first post-Impact Era.
+    expect(Chronossus.postImpactEraFor(cfg, slice(null))).toBe(6);
+    expect(Chronossus.isPostImpact(5, cfg, slice(null))).toBe(false);
+    expect(Chronossus.isPostImpact(6, cfg, slice(null))).toBe(true);
+  });
+
+  it('follows the player’s answer once the Impact has been reported', () => {
+    // The Trajectory dice moved the Impact tile earlier: reported in Era 3's Clean Up.
+    expect(Chronossus.postImpactEraFor(cfg, slice(3))).toBe(4);
+    expect(Chronossus.isPostImpact(3, cfg, slice(3))).toBe(false);
+    expect(Chronossus.isPostImpact(4, cfg, slice(3))).toBe(true);
+    // ...or later.
+    expect(Chronossus.postImpactEraFor(cfg, slice(6))).toBe(7);
+    expect(Chronossus.isPostImpact(6, cfg, slice(6))).toBe(false);
+  });
+
+  it('falls back to the default when no bot is passed', () => {
+    expect(Chronossus.postImpactEraFor(cfg)).toBe(6);
+  });
+
+  it('leaves the other modes exactly as they were', () => {
+    expect(Chronossus.postImpactEraFor({ chronossusMode: 'base' })).toBe(5);
+    expect(Chronossus.postImpactEraFor({ chronossusMode: 'fractures' })).toBe(4);
+    // ...and a Doomsday slice cannot leak into them, since no other mode has one.
+    expect(Chronossus.postImpactEraFor({ chronossusMode: 'base' }, slice(3))).toBe(5);
+  });
+
+  it('still ends at Era 7 — only the Impact moves, not the game length', () => {
+    expect(Chronossus.maxEraFor(cfg)).toBe(7);
+  });
+});
+
+// --- Check for Impact (Clean Up) -----------------------------------------------------------
+
+describe('Check for Impact', () => {
+  it('is due once per Era, and not again once answered', () => {
+    const b = bot();
+    expect(needsImpactCheck(b, 3)).toBe(true);
+    const after = answerCheckForImpact(b, 3, 'not-yet');
+    expect(needsImpactCheck(after, 3)).toBe(false);
+    // ...but the next Era asks again, since the tile can move every Era.
+    expect(needsImpactCheck(after, 4)).toBe(true);
+  });
+
+  it('stops being due once the Impact has happened — the tile cannot move after that', () => {
+    const after = answerCheckForImpact(bot(), 5, 'impact-occurred');
+    expect(after.doomsday!.impactEra).toBe(5);
+    expect(needsImpactCheck(after, 6)).toBe(false);
+  });
+
+  it('"impact now" records the Era, so the very next Era is post-Impact', () => {
+    const after = answerCheckForImpact(bot(), 2, 'impact-now');
+    expect(after.doomsday!.impactEra).toBe(2);
+    expect(Chronossus.isPostImpact(3, { chronossusMode: 'doomsday' }, after)).toBe(true);
+  });
+
+  it('"earth saved" never records an Impact Era — the Impact never happens', () => {
+    const after = answerCheckForImpact(bot(), 4, 'earth-saved');
+    expect(after.doomsday!.impactEra).toBeNull();
+    expect(after.doomsday!.playerTrackerFinal).toBe(true);
+    // No Era of the game is post-Impact, so no Evacuation and no 2+X Power Up.
+    expect(Chronossus.isPostImpact(7, { chronossusMode: 'doomsday' }, after)).toBe(false);
+  });
+
+  it('does not blame the player’s tracker when the bot’s own is the locked one', () => {
+    const b = bot({ doomsday: { ...bot().doomsday!, botSlot: 10 } }); // Seal Fate, bottom
+    expect(botTrackerLocked(b)).toBe(true);
+    const after = answerCheckForImpact(b, 4, 'impact-now');
+    expect(after.doomsday!.impactEra).toBe(4);
+    // The lock is already implied by botSlot; saying the player's marker is final too
+    // would misreport whose marker ended it.
+    expect(after.doomsday!.playerTrackerFinal).toBe(false);
+  });
+
+  it('is pure — the caller’s state is untouched', () => {
+    const b = bot();
+    const before = { ...b.doomsday! };
+    answerCheckForImpact(b, 3, 'impact-occurred');
+    expect(b.doomsday).toEqual(before);
   });
 });

@@ -242,10 +242,26 @@ export interface ChronossusState {
     /** Whether an Experiment Action has resolved yet this game — the first one skips
      *  Step 1's question, since no Path markers can be out. */
     experimentActionRun: boolean;
-    /** Clean Up answer: has the Impact occurred? Doomsday cannot derive this from the Era. */
-    impactOccurred: boolean;
+    /**
+     * Clean Up answer: the Era whose Clean Up resolved the Impact, or `null` until it has.
+     *
+     * An Era number rather than a flag, because Doomsday is the one mode where the Impact's
+     * timing cannot be derived — the Impact tile moves, and the player moves it. The first
+     * post-Impact Era is this + 1; until it is answered the default stands
+     * (`DOOMSDAY_DEFAULT_IMPACT_ERA`, so Era 6 is the first post-Impact Era).
+     */
+    impactEra: number | null;
     /** Clean Up answer: is the PLAYER's tracker on its final slot? (Locks the tracks.) */
     playerTrackerFinal: boolean;
+    /** The Era whose Check for Impact has been answered, so the prompt is asked once. */
+    checkedEra: number | null;
+    /**
+     * "Save Earth" reached the topmost slot: the Impact's damage is completely mitigated
+     * and the game ends there. Distinct from `impactEra === null`, which only means the
+     * Impact has not happened YET — here it never will, so NO Era is post-Impact and there
+     * is no Evacuation (Classic p.5).
+     */
+    earthSaved: boolean;
   };
 }
 

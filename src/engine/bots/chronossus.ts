@@ -31,11 +31,41 @@ import {
 import { adventureDeckIds } from '../../data/adventureCards';
 import {
   botTrackerFor,
+  doomsdayImpactEra,
   DOOMSDAY_START_SLOT,
+  earthSaved,
   isDoomsdayMode,
   resolveDoomsdayAction,
   type ExperimentInput,
   type ExperimentResult,
+} from './doomsday';
+
+// Doomsday's public surface, re-exported so the view reaches it through `Chronossus.*`
+// like every other module's helpers.
+export {
+  answerCheckForImpact,
+  botTrackerLocked,
+  earthSaved,
+  botVpAt,
+  botTrackerFor,
+  DOOMSDAY_TRACK,
+  DOOMSDAY_START_SLOT,
+  DOOMSDAY_BOTTOM_SLOT,
+  DOOMSDAY_TOP_SLOT,
+  DOOMSDAY_CHECK_FOR_IMPACT_RULE,
+  DOOMSDAY_DIFFICULTY_RULE,
+  DOOMSDAY_PLANNED_EXPERIMENTS_RULE,
+  DOOMSDAY_REQUIREMENT,
+  DOOMSDAY_SETUP_RULE,
+  DIFFICULTY_DOOMSDAY_NO_PLANNED,
+  DIFFICULTY_DOOMSDAY_SEED_MARKERS,
+  isDoomsdayMode,
+  needsImpactCheck,
+  type CheckForImpactOutcome,
+  type DoomsdayTracker,
+  type ExperimentInput,
+  type ExperimentResult,
+  type PlayerPath,
 } from './doomsday';
 
 export {
@@ -89,21 +119,47 @@ export function maxEraFor(config: Pick<GameConfig, 'chronossusMode'>): number {
   return isFracturesMode(config.chronossusMode) ? FRACTURES_MAX_ERA : MAX_ERA;
 }
 
-/** The first post-Impact Era for this config (Era 4 with Fractures, else Era 5). */
-export function postImpactEraFor(config: Pick<GameConfig, 'chronossusMode'>): number {
+/**
+ * The first post-Impact Era: Era 4 with Fractures, Era 5 normally — and with **Doomsday**,
+ * whatever the player has told us, because that is the one mode where it cannot be derived.
+ *
+ * Doomsday starts the Impact tile a slot later (between the fifth and sixth Timeline tile,
+ * Classic p.3) AND lets it move earlier or later every Clean Up. The app does not track that
+ * movement (see PLAN D1) — the player runs Check for Impact and reports the outcome — so
+ * here the Era comes from `bot.doomsday.impactEra`, falling back to the printed default
+ * until the answer arrives.
+ *
+ * This is a deliberate departure from the "post-Impact is derived from the Era" rule that
+ * holds everywhere else in this codebase: under Doomsday the Era genuinely cannot decide it.
+ * Pass `bot` wherever it is to hand; without it Doomsday reads its default, which is right
+ * for a game that has not answered yet and merely stale for one that has.
+ */
+export function postImpactEraFor(
+  config: Pick<GameConfig, 'chronossusMode'>,
+  bot?: Pick<ChronossusState, 'doomsday'> | null,
+): number {
+  if (isDoomsdayMode(config.chronossusMode)) {
+    // Earth saved: the Impact is mitigated entirely and never resolves, so no Era of the
+    // game is post-Impact. Past the last Era rather than a sentinel, so every `era >= this`
+    // comparison keeps working unchanged.
+    if (earthSaved(bot)) return MAX_ERA + 1;
+    return doomsdayImpactEra(bot) + 1;
+  }
   return isFracturesMode(config.chronossusMode) ? FRACTURES_POST_IMPACT_ERA : POST_IMPACT_ERA;
 }
 
 /**
  * Whether a given Era is post-Impact (2+X / max-4 power-up, Collapsing Capital).
  * `config` is optional only so a caller with nothing but an Era number still reads
- * the base-game timing; every real call site passes it, since Fractures moves it.
+ * the base-game timing; every real call site passes it, since Fractures moves it and
+ * Doomsday makes it an answer.
  */
 export function isPostImpact(
   era: number,
   config?: Pick<GameConfig, 'chronossusMode'>,
+  bot?: Pick<ChronossusState, 'doomsday'> | null,
 ): boolean {
-  return era >= (config ? postImpactEraFor(config) : POST_IMPACT_ERA);
+  return era >= (config ? postImpactEraFor(config, bot) : POST_IMPACT_ERA);
 }
 
 /** D3 — "Extra starting Energy Cores": +1/2/3 energized cores in the starting pool
@@ -285,8 +341,10 @@ export function applyDifficultySetup(
             botSlot: DOOMSDAY_START_SLOT,
             experimentsCompleted: 0,
             experimentActionRun: false,
-            impactOccurred: false,
+            impactEra: null,
             playerTrackerFinal: false,
+            checkedEra: null,
+            earthSaved: false,
           },
         }
       : {}),
@@ -657,7 +715,7 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   if (!state.chronossus) throw new Error('resolvePowerUp: no Chronossus state');
   // The Era decides, not just the stored flag: it can lag a debug jump or an old save,
   // and Fractures moves the Impact an Era earlier (see `isPostImpact`).
-  const impact = state.impact || isPostImpact(state.era, state.config);
+  const impact = state.impact || isPostImpact(state.era, state.config, state.chronossus);
   const capped = poweredExosuits(impact, draw.energized);
   const extraPowerup = state.config.difficulty?.includes(DIFFICULTY_EXTRA_POWERUP) ?? false;
   const attempted = extraPowerup ? capped + 1 : capped;
@@ -1178,7 +1236,7 @@ export function resolveAction(
         // The post-Impact Eras are decided by the rules (5+ normally, 4+ with
         // Fractures); `state.impact` is the stored flag and can lag (a debug Era jump,
         // an older save), so the Era decides.
-        impact: state.impact || isPostImpact(state.era, state.config),
+        impact: state.impact || isPostImpact(state.era, state.config, bot),
         failVP,
         worldCouncilFree: input.worldCouncilFree ?? false,
         guardianAvailable: input.guardianAvailable ?? true,
@@ -2485,7 +2543,7 @@ export function startNextEra(state: GameState): GameState {
     // (same threshold as the Chronobot), Era 3 with Fractures' shorter Timeline.
     // Deriving it here keeps the flag correct for the next Era's Power Up without a
     // manual toggle.
-    impact: isPostImpact(era, state.config),
+    impact: isPostImpact(era, state.config, state.chronossus),
     phase: 'preparation',
     playerPassed: false,
     extraTurnAfterPassUsed: false,

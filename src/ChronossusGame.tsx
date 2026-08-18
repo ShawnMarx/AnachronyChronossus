@@ -991,12 +991,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Fractures of Time: splits the placement gate, runs the Blink check, tracks the Flux Pool. */
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
   const guardiansMode = Chronossus.isGuardiansMode(state.config.chronossusMode);
+  const doomsdayMode = Chronossus.isDoomsdayMode(state.config.chronossusMode);
   /** The last Era of this game — 5 with Fractures' shorter Timeline, else 7. */
   const maxEra = Chronossus.maxEraFor(state.config);
-  /** The first post-Impact Era — 4 with Fractures, else 5. */
-  const postImpactEra = Chronossus.postImpactEraFor(state.config);
+  /** The first post-Impact Era — 4 with Fractures, 5 normally, and with Doomsday whatever
+   *  the player has reported (its Impact tile moves, so it cannot be derived). */
+  const postImpactEra = Chronossus.postImpactEraFor(state.config, state.chronossus);
   /** Post-Impact from that Era on, whatever the stored flag says (it can lag a debug jump). */
-  const postImpactNow = state.impact || Chronossus.isPostImpact(state.era, state.config);
+  const postImpactNow =
+    state.impact || Chronossus.isPostImpact(state.era, state.config, state.chronossus);
   const hypersyncTargeted = state.config.difficulty?.includes(DIFFICULTY_HYPERSYNC_TARGETED) ?? false;
   // D7 ("Failed Actions score VP"): +2 VP replaces the base +1 — read once here so
   // every pre-commit "Failed Action" button label agrees with what actually resolves.
@@ -2359,6 +2362,36 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const next = finishEra(state);
     commitPhase(next, enteredLabel(next));
   };
+  /**
+   * Doomsday: record this Era's Check for Impact. The player rolls the Trajectory dice and
+   * moves the Impact tile themselves — the app only asks what happened, because the tile's
+   * position is not modelled (and cannot be derived once it starts moving).
+   *
+   * "Earth is saved" ends the game on the spot with no Impact and no Evacuation; every other
+   * answer leaves the Clean Up screen to carry on with its usual branches, which now read
+   * the recorded Impact Era.
+   */
+  const answerImpactCheck = (outcome: Chronossus.CheckForImpactOutcome) => {
+    const bot = Chronossus.answerCheckForImpact(state.chronossus!, state.era, outcome);
+    const next: GameState = { ...state, chronossus: bot };
+    const note =
+      outcome === 'earth-saved'
+        ? 'Earth is saved — the Impact never happens'
+        : outcome === 'impact-now'
+          ? 'Seal Fate locked in — the Impact resolves immediately'
+          : outcome === 'impact-occurred'
+            ? `The Impact occurred at the end of Era ${state.era}`
+            : 'The Impact has not occurred yet';
+    if (outcome === 'earth-saved') {
+      commitPhase(
+        { ...next, phase: 'endgame', finished: true },
+        `Era ${state.era} · → End Game`,
+        [note],
+      );
+      return;
+    }
+    commitPhase(next, `Era ${state.era} · Check for Impact`, [note]);
+  };
   // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
   // 5–6 when flipping Collapsing Capital tiles). Mirrors the Chronobot exactly.
   const endGameNow = () =>
@@ -2940,7 +2973,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // Keep the Impact flag with the Era, as `startNextEra` does. Without this a debug
       // jump to Era 5 left `impact` false, so every post-Impact rule (the 2+X Power Up,
       // Acquire Guardian's post-Impact branch) silently kept its pre-Impact behaviour.
-      return { ...s, era, impact: Chronossus.isPostImpact(era, s.config) };
+      return { ...s, era, impact: Chronossus.isPostImpact(era, s.config, s.chronossus) };
     });
   const playerPass = () => {
     closePanel();
@@ -4109,12 +4142,71 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       const era = state.era;
       const finalEra = era >= maxEra;
       const postImpact = era >= postImpactEra && !finalEra;
+      // Doomsday runs its own Check for Impact here, and until it is answered the rest of
+      // the screen has nothing to say: the Impact tile moves during play, so whether this
+      // Era is the one is the player's to report, not ours to predict.
+      const impactCheckDue = doomsdayMode && Chronossus.needsImpactCheck(bot, era);
+      const botLocked = doomsdayMode && Chronossus.botTrackerLocked(bot);
       body = (
         <>
           <p className="phase-note">
             Retrieve the Chronossus’s Exosuits along with your own.
           </p>
-          {era === postImpactEra - 1 && (
+          {impactCheckDue && (
+            <>
+              <p className="phase-note">
+                <b>Check for Impact.</b> Roll the two Trajectory dice and count their (+) and
+                (−) symbols together with the ones printed beside both trackers’ current
+                slots, then move the Impact tile accordingly.
+              </p>
+              <RulesBox label="Doomsday — Check for Impact">
+                {Chronossus.DOOMSDAY_CHECK_FOR_IMPACT_RULE.split('\n\n').map((para, i) => (
+                  <p key={i} style={{ whiteSpace: 'pre-line' }}>
+                    {para}
+                  </p>
+                ))}
+              </RulesBox>
+              {botLocked && (
+                <p className="phase-note">
+                  The Chronossus’s own marker is already on its final slot — the tracks are
+                  locked and the Impact tile cannot move.
+                </p>
+              )}
+              <div className="place-prompt">
+                <p className="pp-instruct">Is either tracker locked in?</p>
+                <div className="pp-buttons">
+                  <button className="pp-confirm" onClick={() => answerImpactCheck('earth-saved')}>
+                    “Save Earth” is topmost — Earth is saved
+                  </button>
+                  <button className="pp-confirm" onClick={() => answerImpactCheck('impact-now')}>
+                    “Seal Fate” is bottommost — Impact now
+                  </button>
+                  <button className="pp-cannot" onClick={() => answerImpactCheck('not-yet')}>
+                    Neither
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+          {doomsdayMode && !impactCheckDue && bot.doomsday?.impactEra == null && (
+            <div className="place-prompt">
+              <p className="pp-instruct">
+                Did the Impact occur at the end of this Era?
+              </p>
+              <div className="pp-buttons">
+                <button
+                  className="pp-confirm"
+                  onClick={() => answerImpactCheck('impact-occurred')}
+                >
+                  Yes — the Impact resolved
+                </button>
+                <button className="pp-cannot" onClick={afterCleanUp}>
+                  No — not yet
+                </button>
+              </div>
+            </div>
+          )}
+          {!doomsdayMode && era === postImpactEra - 1 && (
             <p className="phase-note">
               <b>The Impact occurs now</b> — resolve it using the usual procedure at
               the end of Era {era}. From Era {postImpactEra} on, the Chronossus powers
@@ -4127,8 +4219,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               for game end.
             </p>
           )}
-          {meta?.rules && <p className="phase-note">{meta.rules}</p>}
-          {finalEra ? (
+          {meta?.rules && !impactCheckDue && <p className="phase-note">{meta.rules}</p>}
+          {impactCheckDue ? null : finalEra ? (
             <button className="phase-primary" onClick={afterCleanUp}>
               Finish &amp; Score ▶
             </button>

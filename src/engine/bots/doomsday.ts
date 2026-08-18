@@ -218,6 +218,15 @@ export const DOOMSDAY_PLANNED_EXPERIMENTS_RULE =
  *  reaches the app as an answer rather than a calculation (see PLAN D1). */
 export const DOOMSDAY_DEFAULT_IMPACT_ERA = 5;
 
+/**
+ * The Era whose Clean Up resolves the Impact: the player's answer once they have given it,
+ * the default until then. Doomsday is the only mode where this is not a constant, because
+ * the Impact tile moves during play and the app does not track it.
+ */
+export function doomsdayImpactEra(bot: Pick<ChronossusState, 'doomsday'> | null | undefined): number {
+  return bot?.doomsday?.impactEra ?? DOOMSDAY_DEFAULT_IMPACT_ERA;
+}
+
 // --- The Experiment Action -------------------------------------------------------------
 
 /**
@@ -329,7 +338,7 @@ export function resolveDoomsdayAction(
     // tracker is on its final slot, "Experiments may still be conducted for their VP
     // values" but nothing moves (Classic p.4).
     result.locked = tracksLocked({
-      impactOccurred: d.impactOccurred,
+      impactOccurred: d.impactEra != null,
       botTracker: d.botTracker,
       botSlot: d.botSlot,
       playerTrackerFinal: d.playerTrackerFinal,
@@ -413,4 +422,81 @@ export function resolveDoomsdayAction(
 
   d.experimentActionRun = true;
   return result;
+}
+
+// --- Check for Impact (Clean Up) ---------------------------------------------------------
+
+/**
+ * What the player reports after running Check for Impact themselves.
+ *
+ * The app rolls no Trajectory dice and tracks no Impact tile (PLAN D1) — it asks first
+ * whether either tracker has locked in, and only if neither has, whether the Impact
+ * occurred. These are those answers.
+ */
+export type CheckForImpactOutcome =
+  /** "Save Earth" is on the topmost slot: the Impact is mitigated and the game ends now. */
+  | 'earth-saved'
+  /** "Seal Fate" is on the bottommost slot: the Impact resolves immediately. */
+  | 'impact-now'
+  /** Neither tracker is locked, and the Impact occurred at the end of this Era. */
+  | 'impact-occurred'
+  /** Neither tracker is locked, and the Impact has not happened yet. */
+  | 'not-yet';
+
+/** Whether the Chronossus's own tracker has reached the end of the ladder. */
+export function botTrackerLocked(bot: Pick<ChronossusState, 'doomsday'>): boolean {
+  const d = bot.doomsday;
+  return !!d && isFinalSlot(d.botTracker, d.botSlot);
+}
+
+/**
+ * Whether this Era's Check for Impact still needs an answer. False once answered, and false
+ * once the Impact has happened — after that the tracks are locked and the tile cannot move,
+ * so there is nothing left to check.
+ */
+export function needsImpactCheck(bot: Pick<ChronossusState, 'doomsday'>, era: number): boolean {
+  const d = bot.doomsday;
+  if (!d) return false;
+  if (d.impactEra != null) return false;
+  return d.checkedEra !== era;
+}
+
+/**
+ * Record this Era's Check for Impact. Pure — returns a new slice rather than mutating, since
+ * the Clean Up screen commits it as a phase transition rather than as part of a bot turn.
+ *
+ * `playerTrackerFinal` is only set when the lock came from the PLAYER's tracker; when the
+ * Chronossus's own marker is the one on its final slot the lock is already implied by
+ * `botSlot`, and claiming otherwise would misreport whose marker ended the game.
+ */
+export function answerCheckForImpact(
+  bot: ChronossusState,
+  era: number,
+  outcome: CheckForImpactOutcome,
+): ChronossusState {
+  const d = bot.doomsday;
+  if (!d) return bot;
+  const lockedByBot = botTrackerLocked(bot);
+  const locking = outcome === 'earth-saved' || outcome === 'impact-now';
+  return {
+    ...bot,
+    doomsday: {
+      ...d,
+      checkedEra: era,
+      // "earth-saved" is the one outcome where no Impact EVER happens (Classic p.5: "the
+      // Impact is never resolved, so there will be no Evacuation").
+      impactEra:
+        outcome === 'impact-now' || outcome === 'impact-occurred' ? era : d.impactEra,
+      playerTrackerFinal: d.playerTrackerFinal || (locking && !lockedByBot),
+      earthSaved: d.earthSaved || outcome === 'earth-saved',
+    },
+  };
+}
+
+/**
+ * Whether this game ended with Earth saved — the Impact mitigated entirely, so no Era is
+ * post-Impact and there is no Evacuation.
+ */
+export function earthSaved(bot: Pick<ChronossusState, 'doomsday'> | null | undefined): boolean {
+  return bot?.doomsday?.earthSaved === true;
 }
