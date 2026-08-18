@@ -15,6 +15,8 @@
 //     is the player's job; the app only says WHEN to do it and takes the outcome as input.
 //     Hence there is no `+`/`-` data anywhere in this file.
 
+import type { ChronossusState, Instruction } from '../state';
+
 /** Which of the two tracker tokens a side of the table moves. */
 export type DoomsdayTracker = 'save-earth' | 'seal-fate';
 
@@ -215,3 +217,200 @@ export const DOOMSDAY_PLANNED_EXPERIMENTS_RULE =
  *  Clean Up and Era 6 is the first post-Impact Era. Movement is the player's to apply, and
  *  reaches the app as an answer rather than a calculation (see PLAN D1). */
 export const DOOMSDAY_DEFAULT_IMPACT_ERA = 5;
+
+// --- The Experiment Action -------------------------------------------------------------
+
+/**
+ * What the app cannot know and has to ask, at the moment the Action resolves.
+ *
+ * There is no Timeline model behind these (see the file header): the dialog states the
+ * rulebook's selection rule and the player reports what is actually on the table.
+ */
+export interface ExperimentInput {
+  /**
+   * Step 1 — is there an Experiment of this tile's level carrying one of the Chronossus's
+   * Path markers? The dialog does not ask on the first Experiment Action of a game (no
+   * markers can be out yet) and passes `false`, unless the "pre-seed Path markers"
+   * difficulty put some out at setup.
+   */
+  markedAvailable: boolean;
+  /** Step 1 — the VP printed on the Experiment it took (2 or 3). Only when it took one. */
+  experimentVp?: number;
+  /**
+   * Step 2 — could a Path marker be placed? False when EVERY face-up Experiment already
+   * carries one, which is the only way this step fails (Solo Opponents p.14's NOTE).
+   */
+  canPrepare: boolean;
+}
+
+export interface ExperimentResult {
+  level: 1 | 2;
+  /** Step 1 succeeded — an Experiment was taken. */
+  executed: boolean;
+  /** VP from the Experiment card itself. */
+  experimentVp: number;
+  /** Whether the tracker moved (it does not once the tracks are locked). */
+  trackerMoved: boolean;
+  fromSlot: number;
+  toSlot: number;
+  /** VP from the track slot it landed on — both Path columns combined. */
+  trackVp: number;
+  /** The tracks were already locked, so the Experiment scored but moved nothing. */
+  locked: boolean;
+  /** Step 2 succeeded — a Path marker was placed for a later turn. */
+  prepared: boolean;
+  /** Its tracker reached "Save Earth" topmost: the Impact never happens, the game ends. */
+  endsGame: boolean;
+  /** Its tracker reached "Seal Fate" bottommost: the Impact resolves immediately. */
+  impactNow: boolean;
+}
+
+/**
+ * Resolve an Experiment Action (C07 = Level 1, C08 = Level 2).
+ *
+ * Two steps, in order, and the rulebook is explicit that either can fail on its own:
+ * "It is possible for one of the steps to fail (if none/all of the Experiments have a Path
+ * marker, respectively). If this happens, ignore that step." A failed Step 1 does NOT stop
+ * Step 2 — the bot can still mark an Experiment for a later turn.
+ *
+ * Mutates `bot` in place and pushes its instructions, like the other module resolvers.
+ */
+export function resolveDoomsdayAction(
+  bot: ChronossusState,
+  instr: Instruction[],
+  n: number,
+  level: 1 | 2,
+  input: ExperimentInput,
+): ExperimentResult {
+  const d = bot.doomsday;
+  if (!d) throw new Error('resolveDoomsdayAction: no Doomsday state');
+
+  const trackerName = d.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate';
+  const fromSlot = d.botSlot;
+  const result: ExperimentResult = {
+    level,
+    executed: false,
+    experimentVp: 0,
+    trackerMoved: false,
+    fromSlot,
+    toSlot: fromSlot,
+    trackVp: 0,
+    locked: false,
+    prepared: false,
+    endsGame: false,
+    impactNow: false,
+  };
+
+  // --- STEP 1: EXECUTE EXPERIMENT -------------------------------------------------------
+  if (!input.markedAvailable) {
+    instr.push({
+      id: `exp-none-${n}`,
+      text: `No Level ${level} Experiment carries one of the Chronossus’s Path markers — skip this step.`,
+      detail:
+        'A step that cannot be performed is simply ignored; the Action still continues to ' +
+        'Step 2.',
+    });
+  } else {
+    const vp = input.experimentVp ?? 0;
+    result.executed = true;
+    result.experimentVp = vp;
+    bot.vp += vp;
+    d.experimentsCompleted += 1;
+    instr.push({
+      id: `exp-take-${n}`,
+      text:
+        `Give the Chronossus the leftmost Level ${level} Experiment on the Timeline carrying ` +
+        `one of its Path markers, and discard that marker. It scores the ${vp} VP printed ` +
+        `on the card.`,
+      ...(vp ? { effect: { vp } } : {}),
+    });
+
+    // The tracker only moves while the tracks are open — after the Impact, or once either
+    // tracker is on its final slot, "Experiments may still be conducted for their VP
+    // values" but nothing moves (Classic p.4).
+    result.locked = tracksLocked({
+      impactOccurred: d.impactOccurred,
+      botTracker: d.botTracker,
+      botSlot: d.botSlot,
+      playerTrackerFinal: d.playerTrackerFinal,
+    });
+    if (result.locked) {
+      instr.push({
+        id: `exp-locked-${n}`,
+        text: `The Doomsday tracks are locked, so the ${trackerName} marker does not move.`,
+        detail:
+          'No movement is allowed once the Impact has occurred or either tracker has reached ' +
+          'its final slot — but Experiments still score their VP.',
+      });
+    } else {
+      const toSlot = nextSlot(d.botTracker, d.botSlot);
+      const trackVp = botVpAt(toSlot);
+      d.botSlot = toSlot;
+      bot.vp += trackVp;
+      result.trackerMoved = true;
+      result.toSlot = toSlot;
+      result.trackVp = trackVp;
+      instr.push({
+        id: `exp-track-${n}`,
+        text:
+          `Move the ${trackerName} marker one step ${d.botTracker === 'save-earth' ? 'up' : 'down'} ` +
+          `the Doomsday track` +
+          (trackVp ? `. The Chronossus scores the ${trackVp} VP printed there.` : ' (no VP printed there).'),
+        detail:
+          trackVp > 0
+            ? 'The Chronossus takes any printed VP on the spot regardless of which Path it ' +
+              'belongs to, so where a spot prints a value for each Path it takes both.'
+            : undefined,
+        ...(trackVp ? { effect: { vp: trackVp } } : {}),
+      });
+
+      // Reaching its own end of the ladder is a hard stop the app can see for itself.
+      if (isFinalSlot(d.botTracker, toSlot)) {
+        if (d.botTracker === 'save-earth') {
+          result.endsGame = true;
+          instr.push({
+            id: `exp-earth-saved-${n}`,
+            text:
+              'The Save Earth marker has reached the topmost slot — the Impact’s damage is ' +
+              'completely mitigated and the game is over.',
+            detail:
+              'In games where Earth is saved the Impact is never resolved, so there is no ' +
+              'Evacuation.',
+          });
+        } else {
+          result.impactNow = true;
+          instr.push({
+            id: `exp-fate-sealed-${n}`,
+            text:
+              'The Seal Fate marker has reached the bottommost slot — place the Impact tile ' +
+              'after the current Timeline tile and resolve the Impact immediately.',
+            detail: 'Do not roll the Trajectory dice in this Era’s Check for Impact.',
+          });
+        }
+      }
+    }
+  }
+
+  // --- STEP 2: PREPARE FOR EXPERIMENTATION ---------------------------------------------
+  if (input.canPrepare) {
+    result.prepared = true;
+    instr.push({
+      id: `exp-prepare-${n}`,
+      text:
+        'Place one of the Chronossus’s Path markers on a face-up Experiment that does not ' +
+        'already have one — a Level 1 before a Level 2, and the furthest in the past on the ' +
+        'Timeline to break a tie.',
+      detail:
+        'Never the Experiment under the next Era. Your Focus marker has no effect on this ' +
+        'choice.',
+    });
+  } else {
+    instr.push({
+      id: `exp-noprepare-${n}`,
+      text: 'Every available face-up Experiment already carries a Path marker — skip this step.',
+    });
+  }
+
+  d.experimentActionRun = true;
+  return result;
+}

@@ -221,6 +221,32 @@ export interface ChronossusState {
       '10+': { draw: string[]; discard: string[] };
     };
   };
+  /**
+   * Doomsday only; `undefined` in every other mode.
+   *
+   * Deliberately small, because most of the module is NOT modelled. The Timeline's
+   * Experiment cards are not tracked (the player can remove one of the bot's Path markers
+   * on their own turn, so any model would silently drift), and neither are the Trajectory
+   * dice, the +/- symbols or the Impact tile — Check for Impact is the player's to run.
+   * What the app does own is the bot's own tracker, because it must know the VP its every
+   * move earns, and the two Clean Up answers that the rest of the rules hang off.
+   *
+   * `botTracker` is fixed at setup from the player's Path and never changes.
+   * `botSlot` is 1..10 on the single shared ladder, starting at `DOOMSDAY_START_SLOT` (6).
+   */
+  doomsday?: {
+    botTracker: 'save-earth' | 'seal-fate';
+    botSlot: number;
+    /** Experiments the Chronossus has executed (the "Completed Experiments" Objective). */
+    experimentsCompleted: number;
+    /** Whether an Experiment Action has resolved yet this game — the first one skips
+     *  Step 1's question, since no Path markers can be out. */
+    experimentActionRun: boolean;
+    /** Clean Up answer: has the Impact occurred? Doomsday cannot derive this from the Era. */
+    impactOccurred: boolean;
+    /** Clean Up answer: is the PLAYER's tracker on its final slot? (Locks the tracks.) */
+    playerTrackerFinal: boolean;
+  };
 }
 
 /** Free-form per-bot state keyed by bot id. Only chronobot is filled for v1. */

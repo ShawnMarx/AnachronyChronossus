@@ -339,6 +339,16 @@ describe('passing & end of Action Rounds', () => {
     expect(wouldPassOn(bot, 'tile-score')).toBe(false);
   });
 
+  it('wouldPassOn: true for the Doomsday Experiment Actions at 0 figures', () => {
+    // The Experiment places an Exosuit, so it obeys the pass rule like any other
+    // placement — the module's tiles are not exempt the way Reboot/Score are.
+    const bot = withExosuits(0).chronossus!;
+    expect(wouldPassOn(bot, 'tile-experiment-1')).toBe(true);
+    expect(wouldPassOn(bot, 'tile-experiment-2')).toBe(true);
+    const withOne = withExosuits(1).chronossus!;
+    expect(wouldPassOn(withOne, 'tile-experiment-1')).toBe(false);
+  });
+
   it('passChronossus sets the passed flag', () => {
     const { state } = passChronossus(withExosuits(0));
     expect(state.chronossus!.passed).toBe(true);

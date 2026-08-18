@@ -1,4 +1,7 @@
 import { describe, it, expect } from 'vitest';
+import type { ChronossusState, Instruction } from '../state';
+import type { GameState } from '../state';
+import { Chronossus, createInitialState, emptyChronossusState, DEFAULT_CONFIG } from '../index';
 import {
   botTrackerFor,
   botVpAt,
@@ -9,8 +12,10 @@ import {
   isDoomsdayMode,
   isFinalSlot,
   nextSlot,
+  resolveDoomsdayAction,
   tracksLocked,
   type DoomsdayTracker,
+  type ExperimentInput,
   type PlayerPath,
 } from './doomsday';
 
@@ -116,5 +121,255 @@ describe('Doomsday — mode matching', () => {
     expect(isDoomsdayMode('doomsday')).toBe(true);
     expect(isDoomsdayMode('base')).toBe(false);
     expect(isDoomsdayMode(undefined)).toBe(false);
+  });
+});
+
+// --- the Experiment Action ---------------------------------------------------------------
+
+function bot(over: Partial<ChronossusState> = {}): ChronossusState {
+  return {
+    exosuitsTotal: 6,
+    exosuitsAvailable: 6,
+    vp: 0,
+    buildingVp: 0,
+    resources: { titanium: 0, uranium: 0, gold: 0, neutronium: 0, water: 0 },
+    workers: { scientist: 0, engineer: 0, administrator: 0, genius: 0 },
+    breakthroughs: { circle: 0, triangle: 0, square: 0 },
+    buildings: { factory: 0, lab: 0, powerplant: 0, support: 0 },
+    buildingVps: { factory: [], lab: [], powerplant: [], support: [] },
+    superprojects: 0,
+    superprojectVps: [],
+    paradoxes: 0,
+    anomalies: 0,
+    warpTilesOnTimeline: 0,
+    warpTilesTotal: 8,
+    timeTravelTrack: 0,
+    actionsThisEra: 0,
+    totalActions: 0,
+    passed: false,
+    energyPool: { energized: 0, exhausted: 0 },
+    hypersyncTiles: [],
+    doomsday: {
+      botTracker: 'seal-fate',
+      botSlot: DOOMSDAY_START_SLOT,
+      experimentsCompleted: 0,
+      experimentActionRun: false,
+      impactOccurred: false,
+      playerTrackerFinal: false,
+    },
+    ...over,
+  };
+}
+
+/** Run an Experiment, returning the mutated bot alongside the result. */
+function run(b: ChronossusState, level: 1 | 2, input: ExperimentInput) {
+  const instr: Instruction[] = [];
+  const res = resolveDoomsdayAction(b, instr, 1, level, input);
+  return { res, instr, text: instr.map((i) => i.text).join('\n') };
+}
+
+describe('Experiment — Step 1 (execute)', () => {
+  it('takes the Experiment, scores its printed VP, and moves the tracker', () => {
+    const b = bot();
+    const { res } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    expect(res.executed).toBe(true);
+    expect(res.experimentVp).toBe(2);
+    expect(res.trackerMoved).toBe(true);
+    expect(res.fromSlot).toBe(6);
+    expect(res.toSlot).toBe(7); // Seal Fate travels DOWN the ladder
+    expect(res.trackVp).toBe(1);
+    expect(b.doomsday!.botSlot).toBe(7);
+    expect(b.doomsday!.experimentsCompleted).toBe(1);
+    // Card VP + track VP both land on the bot.
+    expect(b.vp).toBe(3);
+  });
+
+  it('takes BOTH Path columns on a slot that prints a value for each', () => {
+    // One step above slot 9, which prints 2 for Progress and 2 for Salvation.
+    const b = bot({
+      doomsday: { ...bot().doomsday!, botSlot: 8 },
+    });
+    const { res } = run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    expect(res.toSlot).toBe(9);
+    expect(res.trackVp).toBe(4);
+    expect(b.vp).toBe(7); // 3 from the card + 4 from the track
+  });
+
+  it('skips the step, scoring nothing, when no Experiment carries its marker', () => {
+    const b = bot();
+    const { res, text } = run(b, 1, { markedAvailable: false, canPrepare: true });
+    expect(res.executed).toBe(false);
+    expect(res.trackerMoved).toBe(false);
+    expect(b.vp).toBe(0);
+    expect(b.doomsday!.botSlot).toBe(DOOMSDAY_START_SLOT);
+    expect(b.doomsday!.experimentsCompleted).toBe(0);
+    expect(text).toMatch(/skip this step/);
+  });
+});
+
+describe('Experiment — the tracks lock', () => {
+  const lockedCases: [string, Partial<NonNullable<ChronossusState['doomsday']>>][] = [
+    ['the Impact has occurred', { impactOccurred: true }],
+    ["the player's tracker is final", { playerTrackerFinal: true }],
+    ['its own tracker is final', { botSlot: 10 }],
+  ];
+
+  it.each(lockedCases)('still scores the card but moves nothing when %s', (_why, over) => {
+    const b = bot({ doomsday: { ...bot().doomsday!, ...over } });
+    const before = b.doomsday!.botSlot;
+    const { res, text } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    expect(res.executed).toBe(true);
+    expect(res.locked).toBe(true);
+    expect(res.trackerMoved).toBe(false);
+    expect(b.doomsday!.botSlot).toBe(before);
+    expect(b.vp).toBe(2); // the card only — no track VP
+    expect(text).toMatch(/tracks are locked/);
+  });
+});
+
+describe('Experiment — the two hard stops', () => {
+  it('ends the game when its Save Earth marker reaches the topmost slot', () => {
+    const b = bot({
+      doomsday: { ...bot().doomsday!, botTracker: 'save-earth', botSlot: 2 },
+    });
+    const { res, text } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    expect(res.toSlot).toBe(1);
+    expect(res.endsGame).toBe(true);
+    expect(res.impactNow).toBe(false);
+    expect(text).toMatch(/completely mitigated and the game is over/);
+  });
+
+  it('resolves the Impact at once when its Seal Fate marker reaches the bottom', () => {
+    const b = bot({ doomsday: { ...bot().doomsday!, botSlot: 9 } });
+    const { res, text } = run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    expect(res.toSlot).toBe(10);
+    expect(res.impactNow).toBe(true);
+    expect(res.endsGame).toBe(false);
+    expect(text).toMatch(/resolve the Impact immediately/);
+  });
+
+  it('fires neither mid-ladder', () => {
+    const { res } = run(bot(), 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    expect(res.endsGame).toBe(false);
+    expect(res.impactNow).toBe(false);
+  });
+});
+
+describe('Experiment — Step 2 (prepare), and the steps failing independently', () => {
+  it('instructs the Path-marker placement with its priority rule', () => {
+    const { res, text } = run(bot(), 1, {
+      markedAvailable: true,
+      experimentVp: 2,
+      canPrepare: true,
+    });
+    expect(res.prepared).toBe(true);
+    expect(text).toMatch(/Level 1 before a Level 2/);
+    expect(text).toMatch(/furthest in the past/);
+  });
+
+  it('still runs Step 2 when Step 1 failed', () => {
+    const { res } = run(bot(), 1, { markedAvailable: false, canPrepare: true });
+    expect(res.executed).toBe(false);
+    expect(res.prepared).toBe(true);
+  });
+
+  it('still runs Step 1 when Step 2 fails', () => {
+    const b = bot();
+    const { res, text } = run(b, 1, {
+      markedAvailable: true,
+      experimentVp: 2,
+      canPrepare: false,
+    });
+    expect(res.executed).toBe(true);
+    expect(res.prepared).toBe(false);
+    expect(b.vp).toBe(3);
+    expect(text).toMatch(/already carries a Path marker/);
+  });
+
+  it('can fail both steps and change nothing but the run flag', () => {
+    const b = bot();
+    const { res } = run(b, 2, { markedAvailable: false, canPrepare: false });
+    expect(res.executed).toBe(false);
+    expect(res.prepared).toBe(false);
+    expect(b.vp).toBe(0);
+    expect(b.doomsday!.experimentActionRun).toBe(true);
+  });
+});
+
+// --- the whole turn, through the real engine ---------------------------------------------
+
+const doomsdayState = (over: Partial<NonNullable<ChronossusState['doomsday']>> = {}): GameState => {
+  const st = createInitialState({ ...DEFAULT_CONFIG, chronossusMode: 'doomsday' });
+  st.phase = 'actions';
+  st.chronossus = {
+    ...emptyChronossusState(),
+    exosuitsAvailable: 3,
+    doomsday: {
+      botTracker: 'seal-fate',
+      botSlot: DOOMSDAY_START_SLOT,
+      experimentsCompleted: 0,
+      experimentActionRun: false,
+      impactOccurred: false,
+      playerTrackerFinal: false,
+      ...over,
+    },
+  };
+  return st;
+};
+
+describe('Experiment — resolved through takeActionTurn', () => {
+  const input = {
+    actionId: 'tile-experiment-1' as const,
+    experiment: { markedAvailable: true, experimentVp: 2, canPrepare: true },
+  };
+
+  it('never writes through to the caller’s pre-turn state', () => {
+    // The Pioneers bug: the module slice was only shallow-copied, so the resolver mutated
+    // the pre-turn object too. History diffs pre against post, so every one of that
+    // module's lines silently vanished — with no error and no failing unit test.
+    const state = doomsdayState();
+    const pre = state.chronossus!;
+    const preSlice = { ...pre.doomsday! };
+    const { state: next } = Chronossus.resolveAction(state, input);
+
+    expect(pre.doomsday).toEqual(preSlice);
+    expect(pre.doomsday).not.toBe(next.chronossus!.doomsday);
+    // ...and the post-turn state really did move, so the comparison above means something.
+    expect(next.chronossus!.doomsday!.botSlot).toBe(7);
+    expect(next.chronossus!.doomsday!.experimentsCompleted).toBe(1);
+  });
+
+  it('places an Exosuit on the hex pool, with an Energy Core (it is a Main board space)', () => {
+    const state = doomsdayState();
+    const { state: next, instructions } = Chronossus.resolveAction(state, input);
+    expect(next.chronossus!.exosuitsAvailable).toBe(2);
+    const text = instructions.map((i) => i.text).join('\n');
+    expect(text).toMatch(/Experiment hex pool space, with an Energy Core/);
+  });
+
+  it('scores the B side’s printed bonus on top of the Action', () => {
+    // C08B: "gains 1 VP and 1 Energy Core" on top of the Level 2 Experiment itself.
+    const state = createInitialState({
+      ...DEFAULT_CONFIG,
+      chronossusMode: 'doomsday',
+      tileSides: { C08: 'B' },
+    });
+    state.phase = 'actions';
+    state.chronossus = { ...doomsdayState().chronossus! };
+    const energizedBefore = state.chronossus.energyPool.energized;
+    const { state: next } = Chronossus.resolveAction(state, {
+      actionId: 'tile-experiment-2',
+      tileSide: 'B',
+      experiment: { markedAvailable: true, experimentVp: 3, canPrepare: true },
+    });
+    // 1 VP (tile) + 3 VP (card) + 1 VP (slot 7 of the track).
+    expect(next.chronossus!.vp).toBe(5);
+    expect(next.chronossus!.energyPool.energized).toBe(energizedBefore + 1);
+  });
+
+  it('passes instead of acting when no figure is left', () => {
+    const state = doomsdayState();
+    state.chronossus!.exosuitsAvailable = 0;
+    expect(Chronossus.passesInsteadOfAction(state.chronossus!, 'tile-experiment-1')).toBe(true);
   });
 });

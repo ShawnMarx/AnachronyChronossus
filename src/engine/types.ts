@@ -97,6 +97,13 @@ export interface GameConfig {
    * Chosen at module selection, and switchable later from the settings menu.
    */
   adventureDeckMode?: 'virtual' | 'shared';
+  /**
+   * Doomsday: which Path the human is playing. It decides ONE thing, but for the whole
+   * game — the Chronossus always moves "the opposing one to yours" (Solo Opponents p.14),
+   * so Harmony/Dominance (who move Save Earth) leave the bot on Seal Fate, and
+   * Salvation/Progress leave it on Save Earth. Asked once at setup.
+   */
+  doomsdayPlayerPath?: 'harmony' | 'dominance' | 'salvation' | 'progress';
 }
 
 /** A resource bundle, e.g. gains or costs. */

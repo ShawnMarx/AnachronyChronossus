@@ -29,6 +29,14 @@ import {
   type AdventureResult,
 } from './pioneers';
 import { adventureDeckIds } from '../../data/adventureCards';
+import {
+  botTrackerFor,
+  DOOMSDAY_START_SLOT,
+  isDoomsdayMode,
+  resolveDoomsdayAction,
+  type ExperimentInput,
+  type ExperimentResult,
+} from './doomsday';
 
 export {
   DIFFICULTY_PIONEERS_BOARD_B,
@@ -250,7 +258,13 @@ export function applyDifficultySetup(
   // Adventure decks. The shuffle is app randomness, like the Energy Pool draw, so it is
   // done by the caller and handed in via `shuffle`.
   const pioneers = isPioneersMode(config.chronossusMode);
-  if (extra === 0 && !variableAnomalies && !fractures && !guardians && !pioneers) return bot;
+  // Doomsday seeds only its own tracker. Which of the two tokens the Chronossus moves is
+  // fixed here for the whole game from the player's Path — it is always the opposing one
+  // (Solo Opponents p.14). With no Path chosen we default to the player on Harmony, which
+  // leaves the bot on Seal Fate.
+  const doomsday = isDoomsdayMode(config.chronossusMode);
+  if (extra === 0 && !variableAnomalies && !fractures && !guardians && !pioneers && !doomsday)
+    return bot;
   return {
     ...bot,
     energyPool: { ...bot.energyPool, energized: bot.energyPool.energized + extra },
@@ -264,6 +278,18 @@ export function applyDifficultySetup(
         }
       : {}),
     ...(guardians ? { guardians: { owned: startingGuardians, powered: 0 } } : {}),
+    ...(doomsday
+      ? {
+          doomsday: {
+            botTracker: botTrackerFor(config.doomsdayPlayerPath ?? 'harmony'),
+            botSlot: DOOMSDAY_START_SLOT,
+            experimentsCompleted: 0,
+            experimentActionRun: false,
+            impactOccurred: false,
+            playerTrackerFinal: false,
+          },
+        }
+      : {}),
     ...(pioneers
       ? {
           pioneers: {
@@ -800,6 +826,12 @@ export interface ChronossusActionInput {
    * drawn (the app draws them in `virtual` deck mode; the player names them in `shared`).
    */
   adventure?: AdventureInput;
+  /**
+   * Doomsday (C07/C08): the Experiment Action's answers — whether an Experiment of this
+   * level carries one of the bot's Path markers (and its printed VP), and whether a marker
+   * can be placed for Step 2. See `ExperimentInput`.
+   */
+  experiment?: ExperimentInput;
 }
 
 export interface ChronossusActionResult {
@@ -827,6 +859,12 @@ export interface ChronossusActionResult {
   acquireGuardian?: AcquireGuardianOutcome;
   /** Pioneers (C09/C10): what the Adventure resolved to, for the dialog and History. */
   adventure?: AdventureResult;
+  /**
+   * Doomsday (C07/C08): what the Experiment resolved to. `endsGame` / `impactNow` are the
+   * two hard stops the app can see for itself — its own tracker reaching the end of the
+   * ladder — and the caller acts on them rather than waiting for the Clean Up question.
+   */
+  experiment?: ExperimentResult;
 }
 
 /**
@@ -849,6 +887,24 @@ export const VALLEY_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-assimilate',
 export const ADVENTURE_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-adventure'];
 
 /**
+ * Doomsday's two Experiment Actions. Unlike every other module's board, the Doomsday board
+ * is "treated as part of the Main board" (Classic p.3) and the rulebook calls the Experiment
+ * "a new Main board Action" (p.4) — so these place an Exosuit that DOES take an Energy Core
+ * and are deliberately absent from `OFF_MAIN_BOARD_ACTIONS`.
+ */
+export const EXPERIMENT_TILE_ACTIONS: ChronossusTileActionId[] = [
+  'tile-experiment-1',
+  'tile-experiment-2',
+];
+
+/** The Experiment level a tile action executes (C07 = 1, C08 = 2). */
+export function experimentLevelFor(actionId: ChronossusActionId): 1 | 2 | null {
+  if (actionId === 'tile-experiment-1') return 1;
+  if (actionId === 'tile-experiment-2') return 2;
+  return null;
+}
+
+/**
  * Whether an Action places an Exosuit — including the Valley board's tile Actions.
  *
  * Guardians' Acquire Guardian is deliberately NOT one: it only places an Exosuit when the
@@ -858,7 +914,11 @@ export const ADVENTURE_TILE_ACTIONS: ChronossusTileActionId[] = ['tile-adventure
  */
 export function placesExosuitFor(actionId: ChronossusActionId): boolean {
   if (isTileAction(actionId))
-    return VALLEY_TILE_ACTIONS.includes(actionId) || ADVENTURE_TILE_ACTIONS.includes(actionId);
+    return (
+      VALLEY_TILE_ACTIONS.includes(actionId) ||
+      ADVENTURE_TILE_ACTIONS.includes(actionId) ||
+      EXPERIMENT_TILE_ACTIONS.includes(actionId)
+    );
   return actionDef(actionId).placesExosuit === true;
 }
 
@@ -942,6 +1002,10 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
           },
         }
       : {}),
+    // Doomsday: same reason. `resolveDoomsdayAction` moves the tracker and bumps the
+    // Experiment count in place, so without this copy every Doomsday History line would
+    // diff to nothing — the exact bug Pioneers shipped, and one no unit test catches.
+    ...(bot.doomsday ? { doomsday: { ...bot.doomsday } } : {}),
   };
 }
 
@@ -1079,8 +1143,28 @@ export function resolveAction(
         });
       }
     }
+    // Doomsday: the Experiment hex pool. On the Main board by rule (Classic p.3 "treat
+    // this as part of the Main board"), so unlike every other module's placement it DOES
+    // take an Energy Core — and it is a Blink source, though Doomsday can never combine
+    // with Fractures so that seam is theoretical.
+    if (EXPERIMENT_TILE_ACTIONS.includes(input.actionId) && placeableFigures(bot) > 0) {
+      const figure = spendFigure(bot);
+      tileFigure = figure;
+      instr.push({
+        id: `exp-place-${n}`,
+        text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the Experiment hex pool space, with an Energy Core from the supply.`,
+        detail: 'Any number of figures can share the Experiment hex pool.',
+      });
+      if (bot.fluxPool != null && isMainBoardPlacement(input.actionId)) {
+        bot.placedExosuits = [
+          ...(bot.placedExosuits ?? []),
+          { action: input.actionId, space: 'action', hasCore: true },
+        ];
+      }
+    }
     let acquired: ReturnType<typeof resolveAcquireGuardian> | null = null;
     let adventured: AdventureResult | null = null;
+    let experimented: ExperimentResult | null = null;
     const autoleap = resolveTileAction(
       bot,
       instr,
@@ -1111,9 +1195,18 @@ export function resolveAction(
             },
           }
         : undefined,
+      input.experiment
+        ? {
+            input: input.experiment,
+            onResolved: (r) => {
+              experimented = r;
+            },
+          }
+        : undefined,
     );
     const res = acquired as ReturnType<typeof resolveAcquireGuardian> | null;
     const adv = adventured as AdventureResult | null;
+    const exp = experimented as ExperimentResult | null;
     const done = finishAction(state, bot, instr, {
       figurePlaced: res?.figurePlaced ?? tileFigure,
     });
@@ -1126,6 +1219,7 @@ export function resolveAction(
         : {}),
       ...(res ? { acquireGuardian: res.outcome } : {}),
       ...(adv ? { adventure: adv } : {}),
+      ...(exp ? { experiment: exp } : {}),
     };
   }
 
@@ -1331,6 +1425,10 @@ function resolveTileAction(
     input: AdventureInput;
     onResolved: (r: AdventureResult) => void;
   },
+  experiment?: {
+    input: ExperimentInput;
+    onResolved: (r: ExperimentResult) => void;
+  },
 ): boolean {
   const family = TILE_ACTION_CODE[id].slice(0, -1); // 'C01A' → 'C01'
   // C14 replaces C04 (a Fractures difficulty option) and is resolved through the same
@@ -1367,6 +1465,21 @@ function resolveTileAction(
       });
     }
     return eff.autoleap === true;
+  }
+  if (eff.experiment && experiment) {
+    const name = CHRONOSSUS_TILES[code]?.name ?? id;
+    // The B sides' printed bonus is a flat gain for resolving the Action, so it is
+    // announced first and stands whether or not either step succeeds.
+    if (gains.length > 0) {
+      instr.push({
+        id: `tile-${code}-${n}`,
+        text: `${code} ${name}: the Chronossus ${gains.join(' and ')}.`,
+        ...(vp ? { effect: { vp } } : {}),
+      });
+    }
+    const res = resolveDoomsdayAction(bot, instr, n, eff.experiment, experiment.input);
+    experiment.onResolved(res);
+    return false;
   }
   if (eff.adventure && adventure) {
     const name = CHRONOSSUS_TILES[code]?.name ?? id;

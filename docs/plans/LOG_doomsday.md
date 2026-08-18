@@ -90,17 +90,41 @@ Note deviations and decisions inline under each step.
 
 ## Feature 3 — Engine: state slice and the Experiment Action
 
-- [ ] 3.1 Add the `ChronossusState.doomsday` slice (tracker side + slot,
+- [x] 3.1 Add the `ChronossusState.doomsday` slice (tracker side + slot,
       `experimentsCompleted`, `experimentActionRun`, `impactOccurred`).
-- [ ] 3.2 Deep-copy the slice in `cloneChronossus`.
-- [ ] 3.3 Write `resolveDoomsdayAction(level, input)` — Step 1, Step 2, independent failure,
+- [x] 3.2 Deep-copy the slice in `cloneChronossus`.
+- [x] 3.3 Write `resolveDoomsdayAction(level, input)` — Step 1, Step 2, independent failure,
       tracker move + combined slot VP when unlocked, B-side bonuses.
-- [ ] 3.4 Fire the matching hard stop when the bot's own marker reaches its final slot.
-- [ ] 3.5 Wire `placesExosuitFor` (true, Main board) — **not** in `OFF_MAIN_BOARD_ACTIONS`,
+- [x] 3.4 Fire the matching hard stop when the bot's own marker reaches its final slot.
+- [x] 3.5 Wire `placesExosuitFor` (true, Main board) — **not** in `OFF_MAIN_BOARD_ACTIONS`,
       and it does take an Energy Core.
-- [ ] 3.6 Route the new action ids through `passIfOutOfFigures` / `passesInsteadOfAction`.
+- [x] 3.6 Route the new action ids through `passIfOutOfFigures` / `passesInsteadOfAction`.
+- [x] 3.7 Tests: 32 in `doomsday.test.ts` (resolver, both hard stops, lock conditions, the
+      whole turn through `Chronossus.resolveAction`, the deep-copy guard) + the pass-rule
+      case in `chronossus.test.ts`. 427 total, build and lint clean.
 
 **Deviations / decisions:**
+
+- **The pass rule came for free.** `wouldPassOn` keys off `placesExosuitFor`, so adding the
+  two ids there is the whole of step 3.6 — no separate wiring, and the test proves it.
+- **The Experiment hex pool is a MAIN board placement**, the only module space that is.
+  Classic p.3 says to "treat [the Doomsday board] as part of the Main board" and p.4 calls
+  the Experiment "a new Main board Action", so it takes an Energy Core (every other module's
+  placement does not) and is absent from `OFF_MAIN_BOARD_ACTIONS`. It is therefore a Blink
+  source in principle — but Doomsday can never combine with Fractures, so that seam is
+  theoretical; the code keeps it honest anyway.
+- **`playerTrackerFinal` lives in state, not in the Action input.** The Clean Up question
+  (F5) is its only writer, so the resolver reads the slice rather than having every caller
+  re-supply it.
+- The B sides' printed bonus is announced BEFORE the two steps and stands whether or not
+  either step succeeds — it is granted for resolving the Action, not for succeeding, the
+  same call Guardians' C11B makes.
+- `GameConfig.doomsdayPlayerPath` added; the setup seed defaults to the player on Harmony
+  (so the bot takes Seal Fate) until F6 asks the question.
+- **Known gap until F7:** the view does not yet pass an `experiment` input, so in the browser
+  an Experiment tile currently places its Exosuit and resolves nothing else. The dialog that
+  supplies the answers is Feature 7.
+- **Feature 3 complete.**
 
 ## Feature 4 — The Impact Era becomes an answer, not a calculation
 
