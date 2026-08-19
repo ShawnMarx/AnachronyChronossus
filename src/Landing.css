@@ -25,10 +25,23 @@
   align-items: center;
   gap: 0.6rem;
 }
+/* The name is a button: it opens the player's own play history. */
 .landing-auth-who {
   color: #cfc6ea;
   font-size: 0.9rem;
   white-space: nowrap;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: none;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.landing-auth-who:hover {
+  color: #ece8f5;
+  background: rgba(52, 38, 78, 0.85);
+  border-color: rgba(139, 92, 246, 0.45);
 }
 .landing-auth-loading {
   color: #8a80a8;

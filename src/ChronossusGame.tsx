@@ -52,7 +52,8 @@ import RulesBox from './phases/RulesBox';
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import { rulesFrameUrl } from './rules/gamebrain';
 import { useAuth } from './auth/useAuth';
-import { recordGame } from './data/gameData';
+import { recordGame, type GameSummary } from './data/gameData';
+import { queuePendingGame } from './data/pendingGames';
 import {
   Chronobot,
   Chronossus,
@@ -6457,7 +6458,7 @@ function CxScoreScreen({
   onHome: () => void;
   onNewGame: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   // Whether this game uses a Hypersync mode (adds the Hypersync-tile note to the
   // player's Timeline-penalties line — the bot never loses VP for those tiles).
   const hypersyncMode = getMode(state.config.chronossusMode).slots.some(
@@ -6476,6 +6477,8 @@ function CxScoreScreen({
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   // A human-readable reason for a failed save (session expired vs. a generic error).
   const [saveErr, setSaveErr] = useState<string>('');
+  /** The failure was a lapsed login — the one case the player can act on, with a button. */
+  const [saveExpired, setSaveExpired] = useState(false);
 
   // Every field is stored as a signed absolute VP value (neg fields already hold a
   // negative number), so the total is a plain sum.
@@ -6495,27 +6498,34 @@ function CxScoreScreen({
         ? 'win'
         : 'lose';
 
+  /** The finished game as the data service takes it — also what gets queued on a failure. */
+  const pendingSummary = (): GameSummary => ({
+    won: result === 'win',
+    bot_score: score.total,
+    player_score: playerScore,
+    difficulty: 'Chronossus',
+    era_reached: state.era,
+    payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
+  });
   const saveGame = async () => {
     if (result == null || playerScore == null) return;
     setSaveState('saving');
     try {
-      await recordGame({
-        won: result === 'win',
-        bot_score: score.total,
-        player_score: playerScore,
-        difficulty: 'Chronossus',
-        era_reached: state.era,
-        payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
-      });
+      await recordGame(pendingSummary());
       setSaveState('saved');
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
+      const expired = /\b40[13]\b/.test(msg);
+      // Hold the result on this device BEFORE saying anything: logging in is a full-page
+      // redirect, so a game left only in React state would be gone by the time it returns.
+      queuePendingGame(pendingSummary());
       // 401/403 → the shared BGE session lapsed; anything else is network/server.
       setSaveErr(
-        /\b40[13]\b/.test(msg)
-          ? 'Your login session expired — log in again to save this game.'
-          : "Couldn't reach your history service.",
+        expired
+          ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
+          : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
       );
+      setSaveExpired(expired);
       setSaveState('error');
     }
   };
@@ -6734,10 +6744,19 @@ function CxScoreScreen({
             {saveState === 'error' && (
               <span className="score-save-err">
                 {saveErr || "Couldn't save automatically."}{' '}
+                {/* The old message told the player to log in again and gave them no way to
+                    — and nothing held the result. The game is queued by now, so this can
+                    safely redirect. */}
+                {saveExpired && (
+                  <button className="score-save-retry" onClick={login}>
+                    Log in
+                  </button>
+                )}{' '}
                 <button
                   className="score-save-retry"
                   onClick={() => {
                     setSaveErr('');
+                    setSaveExpired(false);
                     setSaveState('idle'); // re-arms the auto-save effect
                   }}
                 >

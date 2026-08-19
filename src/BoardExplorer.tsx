@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
-import { recordGame } from './data/gameData';
+import { recordGame, type GameSummary } from './data/gameData';
+import { queuePendingGame } from './data/pendingGames';
 import HistoryScreen from './history/HistoryScreen';
 import HistoryPane from './history/HistoryPane';
 import AdminStats from './history/AdminStats';
@@ -2601,7 +2602,7 @@ function ScoreScreen({
 }) {
   const bot = state.chronobot;
   const s = Chronobot.scoreChronobot(bot);
-  const { user } = useAuth();
+  const { user, login } = useAuth();
   const [mode, setMode] = useState<'number' | 'tally'>('number');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -2609,6 +2610,9 @@ function ScoreScreen({
   // finished score until the player clicks Done — otherwise it auto-saves 0.
   const [tallyDone, setTallyDone] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveErr, setSaveErr] = useState('');
+  /** The failure was a lapsed login — the one case the player can act on, with a button. */
+  const [saveExpired, setSaveExpired] = useState(false);
 
   const tallyTotal = TALLY_FIELDS.reduce((sum, f) => {
     const v = (tally[f.key] ?? 0) * f.mult;
@@ -2637,24 +2641,36 @@ function ScoreScreen({
       ? 'Base'
       : difficultyFlags.map((f) => DIFFICULTY_LABEL[f] ?? f).join('; ');
 
+  /** The finished game as the data service takes it — also what gets queued on a failure. */
+  const pendingSummary = (): GameSummary => ({
+    won: result === 'win',
+    bot_score: s.total,
+    player_score: playerScore,
+    difficulty: difficultyLabel,
+    era_reached: state.era,
+    payload: {
+      breakdown: s,
+      botTurns: bot.totalActions,
+      difficultyFlags,
+    },
+  });
   const saveGame = async () => {
     if (result == null || playerScore == null) return;
     setSaveState('saving');
     try {
-      await recordGame({
-        won: result === 'win',
-        bot_score: s.total,
-        player_score: playerScore,
-        difficulty: difficultyLabel,
-        era_reached: state.era,
-        payload: {
-          breakdown: s,
-          botTurns: bot.totalActions,
-          difficultyFlags,
-        },
-      });
+      await recordGame(pendingSummary());
       setSaveState('saved');
-    } catch {
+    } catch (e) {
+      const expired = /\b40[13]\b/.test(e instanceof Error ? e.message : String(e));
+      // Hold the result on this device BEFORE saying anything: logging in is a full-page
+      // redirect, so a game left only in React state would be gone by the time it returns.
+      queuePendingGame(pendingSummary());
+      setSaveErr(
+        expired
+          ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
+          : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
+      );
+      setSaveExpired(expired);
       setSaveState('error');
     }
   };
@@ -2783,7 +2799,24 @@ function ScoreScreen({
               <span className="score-save-ok">✓ Saved to your history</span>
             )}
             {saveState === 'error' && (
-              <span className="score-save-err">Couldn't save automatically.</span>
+              <span className="score-save-err">
+                {saveErr || "Couldn't save automatically."}{' '}
+                {saveExpired && (
+                  <button className="score-save-retry" onClick={login}>
+                    Log in
+                  </button>
+                )}{' '}
+                <button
+                  className="score-save-retry"
+                  onClick={() => {
+                    setSaveErr('');
+                    setSaveExpired(false);
+                    setSaveState('idle'); // re-arms the auto-save effect
+                  }}
+                >
+                  Retry
+                </button>
+              </span>
             )}
           </div>
         )}

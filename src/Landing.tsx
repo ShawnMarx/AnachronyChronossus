@@ -3,6 +3,7 @@ import './Landing.css';
 import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
 import { peekSavedChronossus, clearSavedChronossus } from './ChronossusGame';
 import { useAuth } from './auth/useAuth';
+import HistoryScreen from './history/HistoryScreen';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -68,9 +69,14 @@ function BotCard({ name, image, tagline, description, status, onLaunch, progress
   );
 }
 
-/** Top-right optional-login control on the home screen. */
+/**
+ * Top-right optional-login control on the home screen. The name is the way in to the
+ * player's own play history (and its BG Stats export/import) — until now that lived only
+ * in the ⚙ menu of a game in progress, so between games there was no way to reach it.
+ */
 function LandingAuth() {
   const { user, loading, login, logout } = useAuth();
+  const [showHistory, setShowHistory] = useState(false);
   if (loading) {
     return (
       <div className="landing-auth" aria-hidden>
@@ -82,10 +88,17 @@ function LandingAuth() {
     <div className="landing-auth">
       {user ? (
         <>
-          <span className="landing-auth-who">👤 {user.username}</span>
+          <button
+            className="landing-auth-who"
+            onClick={() => setShowHistory(true)}
+            title="Your play history, and BG Stats export / import"
+          >
+            👤 {user.username}
+          </button>
           <button className="landing-auth-btn" onClick={logout}>
             Sign out
           </button>
+          {showHistory && <HistoryScreen onClose={() => setShowHistory(false)} />}
         </>
       ) : (
         <button className="landing-auth-btn primary" onClick={login}>
