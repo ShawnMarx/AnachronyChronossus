@@ -262,7 +262,7 @@ describe('summarizeChronossusExtras — Guardian board placement', () => {
 
   it('names the Guardian board when the Action ran from its own space', () => {
     expect(summarizeChronossusExtras(pre, post, [], { guardianBoard: true })).toContain(
-      'Placed 1 Guardian on the Guardian board',
+      'Placed 1 Guardian on the **Guardian board**',
     );
   });
 

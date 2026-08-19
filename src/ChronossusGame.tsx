@@ -1286,7 +1286,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // `{flux}` renders as the Flux Core art (HistoryText) — the Blink's own component.
     // The Energy Core going back to the supply is in the rules and implied here.
     const blinkEffect = blinkFrom
-      ? `{flux} Blink — Exosuit moved from ${blinkFrom.spaceLabel} to ${blinkFrom.toLabel}`
+      ? `{flux} Blink — Exosuit moved from **${blinkFrom.spaceLabel}** to **${blinkFrom.toLabel}**`
       : null;
     /** The move IS the placement, so it replaces the shared summarizer's "Exosuit placed". */
     const withBlink = (effects: string[]) => {

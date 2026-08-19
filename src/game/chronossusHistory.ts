@@ -77,7 +77,7 @@ export function summarizeChronossusExtras(
   // else in the summary would mention it.
   const guardiansPlaced = (pre.guardians?.powered ?? 0) - (post.guardians?.powered ?? 0);
   if (guardiansPlaced > 0 && gained === 0) {
-    const where = opts.guardianBoard ? ' on the Guardian board' : '';
+    const where = opts.guardianBoard ? ' on the **Guardian board**' : '';
     effects.push(
       `Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}${where}`,
     );
@@ -104,7 +104,7 @@ export function summarizeChronossusExtras(
     );
     if (upgraded) {
       const gain = UPGRADE_SLOTS.find((sl) => sl.resource === upgraded)?.power ?? 0;
-      const line = `Power Upgrade: 1 ${upgraded} onto the Upgrade board (+${gain} Power)`;
+      const line = `Power Upgrade: 1 ${upgraded} onto the **Upgrade board** (+${gain} Power)`;
       // The shared summarizer sees the Resource leave and calls it "Discarded uranium" —
       // it wasn't discarded, it was spent onto the board. Replace that line rather than
       // printing both (the same trick the Operator line uses).

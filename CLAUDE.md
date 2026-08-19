@@ -374,6 +374,12 @@ rules allow it.
   shows that verbatim text **expanded** — the rulebook text *is* the explanation. Only fall
   back to app-voice copy where no verbatim text exists. Mid-turn dialogs may keep it
   collapsed.
+- **Bold every board location the player has to act on.** Anywhere the app tells the
+  player where to put (or move) a bot figure, the location name reads `<b>` — both ends of
+  a move: "Move its Exosuit from **Mine** (bottom-most space) to **Construct**". The
+  placement gates, `BlinkPanel` and `PlaceExosuitPanel` already do it; a new panel must
+  too. History strings are persisted, so they can't hold JSX — they carry `**…**`, which
+  `src/history/HistoryText.tsx` renders (same mechanism as the `{flux}` icon token).
 - **No decorative icons or emoji in the game UI unless asked for**, with one exception:
   real **in-game component art** (the Flux Core, Energy Core, Exosuit, tile and die faces
   in `public/assets/solo/`). Prefer the component's own art over a stand-in glyph — e.g.

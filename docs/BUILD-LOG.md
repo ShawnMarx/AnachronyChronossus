@@ -47,6 +47,24 @@ first-run skip, the hard stops, the pass rule, the dialog's width on a tablet, b
 questions, and — the one that matters most — that the module's History lines actually appear,
 since a shallow-copied state slice fails silently.
 
+Playing the setup through then corrected three things. The **Path question moved to its own
+screen** between Modules and Difficulty: sitting beside Pioneers' deck-mode question it was
+easy to miss, and unlike a deck preference it decides which half of the Doomsday track the
+whole game runs on. The **setup block stopped restating the base module's own setup** — where
+the Impact tile goes, how the Experiments are dealt — which is the established pattern
+everywhere else ("Set up the Guardian board as for a 2-player game") and was worth writing into
+`CLAUDE.md`. And the tracker line stopped claiming *the Chronossus* moves its own token: the
+player moves every physical piece, and needs the bot's marker position for their own Trajectory
+roll besides.
+
+Scoring ended up split finer than first built. **Experiment cards get their own score line**,
+on both sides of the tally, because the Chronossus *discards* each card as it claims it —
+unlike a Technology or a Guardian there is nothing left on the table to recount, so the app's
+running total is the only record. The **Doomsday track's VP does not**: those points are
+granted as ordinary VP as the marker is pushed along (the multiplayer rule, kept in solo), so
+they stay in the plain token line. The card VP is already inside `bot.vp`, so it is split *out
+of* the token line rather than added on top, with a test pinning that the parts still sum.
+
 Archive: `docs/complete/` once the review walkthrough is done (`docs/plans/REVIEW_doomsday.md`).
 
 ## 2026-08-17 — Fractures of Time: the Era Zero Warp, a game two Eras shorter, and the Blink check's missing second half
