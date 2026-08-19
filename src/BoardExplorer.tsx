@@ -120,11 +120,11 @@ const DEBUG_PHASES: Phase[] = [
 ];
 
 /**
- * The Warp-tile marker's tap-out: where the Chronossus's tiles actually sit. Time Travel
- * "removes any one Warp tile from the PAST Timeline tile where it has the most (oldest if
- * tied)" (Solo Opponents p.5), so the tiles it placed in this Era's Warp phase are on the
- * current tile and untouchable until the next Era — a distinction the single total on the
- * marker cannot make.
+ * The Warp-tile marker's tap-out: where the bot's tiles actually sit, past tiles versus
+ * this Era's. It exists to CHECK the app against the board — the split drives Time Travel's
+ * past-tile rule, and the app is choosing which tile to take from, so the player needs to
+ * see the same numbers it is working from. It does not restate the rule itself: which tiles
+ * Time Travel may take is core play the player already knows.
  */
 export function WarpTileBreakdown({
   bot,
@@ -164,10 +164,6 @@ export function WarpTileBreakdown({
         <span>Era {era} (current) tile</span>
         <b>{current}</b>
       </div>
-      <p className="cx-warp-note">
-        Time Travel only takes a tile off a <b>past</b> Timeline tile — the ones placed this
-        Era stay put until the next.
-      </p>
     </div>
   );
 }
