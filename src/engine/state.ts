@@ -83,8 +83,15 @@ export interface ChronobotState {
    */
   paradoxes: number;
   anomalies: number;
-  /** Total Warp tiles still on the Timeline (per-tile split lives on the table). */
+  /** Total Warp tiles still on the Timeline. */
   warpTilesOnTimeline: number;
+  /**
+   * The same tiles, keyed by the Era whose Timeline tile they sit on (0 = Fractures' Era
+   * Zero). Time Travel may only take one off a PAST tile, so the total alone can't answer
+   * it — see `src/engine/warpTiles.ts`. Optional: a save written before this existed has
+   * no map and falls back to the total.
+   */
+  warpTilesByEra?: Record<number, number>;
   warpTilesTotal: number;
   timeTravelTrack: number;
   /** Actions the bot has taken so far this Era (min 3 before it can stop). */
@@ -133,6 +140,8 @@ export interface ChronossusState {
   paradoxes: number;
   anomalies: number;
   warpTilesOnTimeline: number;
+  /** Per-Era split of those tiles — see `ChronobotState.warpTilesByEra`. */
+  warpTilesByEra?: Record<number, number>;
   warpTilesTotal: number;
   timeTravelTrack: number;
   /**
@@ -319,6 +328,7 @@ export function emptyChronobotState(): ChronobotState {
     paradoxes: 0,
     anomalies: 0,
     warpTilesOnTimeline: 0,
+    warpTilesByEra: {},
     warpTilesTotal: 8,
     timeTravelTrack: 0,
     actionsThisEra: 0,
@@ -343,6 +353,7 @@ export function emptyChronossusState(): ChronossusState {
     paradoxes: 0,
     anomalies: 0,
     warpTilesOnTimeline: 0,
+    warpTilesByEra: {},
     warpTilesTotal: 8,
     timeTravelTrack: 0,
     actionsThisEra: 0,

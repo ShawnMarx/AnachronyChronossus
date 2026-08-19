@@ -1,0 +1,122 @@
+// Where the bot's Warp tiles sit on the Timeline, Era by Era.
+//
+// `warpTilesOnTimeline` is only the total, and the rules keep asking a question the total
+// can't answer: Time Travel "removes any one Warp tile from the **past** Timeline tile
+// where the bot has the most Warp tiles (oldest if tied)" (Solo Opponents p.5). The Warp
+// phase (4) comes before Action Rounds (5) in the same Era, so the tiles the bot placed
+// this Era are on the CURRENT Timeline tile and are not eligible — with a bare total the
+// app happily removed one, and told the player to take a tile the bot may not touch.
+//
+// Keys are the Era the tiles were placed in; 0 is Fractures' Era Zero tile. Pure, so
+// every rule that reads it is unit-tested.
+
+/** Warp tiles on the Timeline, keyed by the Era whose tile they sit on (0 = Era Zero). */
+export type WarpTilesByEra = Record<number, number>;
+
+/**
+ * A bot slice that may predate per-Era tracking. An old save has no map, so its tiles are
+ * read as all-past — the behaviour before this existed, rather than a game that suddenly
+ * can't Time Travel.
+ */
+interface WarpTileHolder {
+  warpTilesOnTimeline: number;
+  warpTilesByEra?: WarpTilesByEra;
+}
+
+/**
+ * True when the map can't account for the tiles the bot has — an old save with no map at
+ * all, or a hand-built state that set only the total. Those fall back to the old
+ * behaviour (every tile treated as past) rather than stranding a game that can never Time
+ * Travel again. A correctly tracked game never hits this: `resolveWarp` fills the map
+ * whenever it raises the total.
+ */
+function untracked(bot: WarpTileHolder): boolean {
+  if (!bot.warpTilesByEra) return true;
+  const tracked = Object.values(bot.warpTilesByEra).reduce((n, c) => n + c, 0);
+  return tracked === 0 && bot.warpTilesOnTimeline > 0;
+}
+
+const eras = (byEra: WarpTilesByEra): number[] =>
+  Object.keys(byEra)
+    .map(Number)
+    .filter((e) => byEra[e] > 0)
+    .sort((a, b) => a - b);
+
+/** Tiles on PAST Timeline tiles — everything placed before the Era now being played. */
+export function pastWarpTiles(bot: WarpTileHolder, era: number): number {
+  if (untracked(bot)) return bot.warpTilesOnTimeline;
+  return eras(bot.warpTilesByEra!)
+    .filter((e) => e < era)
+    .reduce((n, e) => n + bot.warpTilesByEra![e], 0);
+}
+
+/** Tiles on the CURRENT Era's Timeline tile — placed this Era's Warp phase. */
+export function currentEraWarpTiles(bot: WarpTileHolder, era: number): number {
+  return bot.warpTilesByEra?.[era] ?? 0;
+}
+
+/** Which past Timeline tile a removal takes from, and whether there is one at all. */
+export interface WarpRemoval {
+  /** The Era whose tile it comes from — null on a save written before per-Era tracking. */
+  era: number | null;
+  /** False when every tile it has is on the CURRENT Era's tile (or it has none). */
+  eligible: boolean;
+}
+
+/**
+ * The past Timeline tile a removal takes from: the one where the bot has the most tiles,
+ * oldest (lowest Era) on a tie. Not eligible when it has none on a past tile — a Failed
+ * Time Travel even while tiles it placed this Era sit on the current one.
+ */
+export function warpRemoval(bot: WarpTileHolder, era: number): WarpRemoval {
+  // A save from before per-Era tracking knows only the total: keep what it used to do
+  // rather than stranding a game mid-Era, and let the instruction stay generic.
+  if (untracked(bot)) return { era: null, eligible: bot.warpTilesOnTimeline > 0 };
+  const past = eras(bot.warpTilesByEra!).filter((e) => e < era);
+  if (past.length === 0) return { era: null, eligible: false };
+  // `past` is ascending, so a strict > keeps the oldest of a tie.
+  const pick = past.reduce((best, e) =>
+    bot.warpTilesByEra![e] > bot.warpTilesByEra![best] ? e : best,
+  );
+  return { era: pick, eligible: true };
+}
+
+/** How the app names that tile to the player. */
+export function warpTileLabel(era: number): string {
+  return era === 0 ? 'the Era Zero tile' : `the Era ${era} Timeline tile`;
+}
+
+/** Place `n` tiles on `era`'s Timeline tile. */
+export function placeWarpTiles(
+  byEra: WarpTilesByEra | undefined,
+  era: number,
+  n: number,
+): WarpTilesByEra {
+  const next = { ...(byEra ?? {}) };
+  if (n > 0) next[era] = (next[era] ?? 0) + n;
+  return next;
+}
+
+/** Take one tile off `era`'s Timeline tile. */
+export function removeWarpTile(
+  byEra: WarpTilesByEra | undefined,
+  era: number,
+): WarpTilesByEra {
+  const next = { ...(byEra ?? {}) };
+  if (next[era] > 0) next[era] -= 1;
+  if (next[era] === 0) delete next[era];
+  return next;
+}
+
+/**
+ * Take one tile off wherever the bot has the most (oldest on a tie), PAST tile or not —
+ * for the effects that just "return a Warp tile" without Time Travel's past-tile rule
+ * (Pioneers' Adventure cards). Returns the map unchanged when it has none.
+ */
+export function removeAnyWarpTile(byEra: WarpTilesByEra | undefined): WarpTilesByEra {
+  if (!byEra) return {};
+  const all = eras(byEra);
+  if (all.length === 0) return { ...byEra };
+  const pick = all.reduce((best, e) => (byEra[e] > byEra[best] ? e : best));
+  return removeWarpTile(byEra, pick);
+}

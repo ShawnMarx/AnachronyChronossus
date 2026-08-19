@@ -341,6 +341,16 @@ app does differently. Doomsday's first draft restated where the Impact tile goes
 Experiment cards are dealt — all base-module setup the player does as normal. The verbatim
 `RulesBox` beside it is the rulebook's own "CHANGES AT SETUP", which is already Chronossus-only.
 
+**Warp tiles are tracked per Timeline tile, not as a total.** Time Travel "removes any one
+Warp tile from the **past** Timeline tile where the bot has the most (oldest if tied)"
+(Solo Opponents p.5) — and the Warp phase (4) precedes Action Rounds (5), so the tiles the
+bot placed THIS Era sit on the current tile and are not eligible. `warpTilesOnTimeline` is
+only the total; `warpTilesByEra` (both bot states, key 0 = Fractures' Era Zero tile) is what
+the rules read, through `src/engine/warpTiles.ts` (`warpRemoval` / `pastWarpTiles` /
+`placeWarpTiles` / `removeWarpTile`). Every path that adds or removes a tile must keep the
+map in step with the total — including the debug stepper. A save written before the map
+existed has none, and `warpRemoval` falls back to the total rather than stranding the game.
+
 **Decide what NOT to model before building a module.** Doomsday's plan initially had the app
 roll the Trajectory dice, track both trackers' `+`/`−` symbols and own the Impact tile's
 position; asking first deleted a two-mode setting, a settings toggle and a column of board

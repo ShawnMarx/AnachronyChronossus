@@ -252,6 +252,32 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     expect(state.chronossus!.timeTravelTrack).toBe(1);
   });
 
+  it('Time Travel takes from the PAST tile it has the most on, and names it', () => {
+    const s = withExosuits(4);
+    s.era = 4;
+    s.chronossus!.warpTilesOnTimeline = 4;
+    s.chronossus!.warpTilesByEra = { 1: 1, 2: 2, 4: 1 };
+    const { state, instructions } = resolveAction(s, { actionId: 'time-travel' });
+    expect(state.chronossus!.warpTilesByEra).toEqual({ 1: 1, 2: 1, 4: 1 });
+    expect(state.chronossus!.warpTilesOnTimeline).toBe(3);
+    expect(instructions.some((i) => i.text.includes('the Era 2 Timeline tile'))).toBe(true);
+  });
+
+  it('Time Travel is Failed when every Warp tile is on the CURRENT Era’s tile', () => {
+    // The Warp phase (4) precedes Action Rounds (5), so tiles placed this Era sit on the
+    // current Timeline tile — which Time Travel may not take from (Solo Opponents p.5).
+    const s = withExosuits(4);
+    s.era = 3;
+    s.chronossus!.warpTilesOnTimeline = 2;
+    s.chronossus!.warpTilesByEra = { 3: 2 };
+    const before = s.chronossus!.vp;
+    const { state, instructions } = resolveAction(s, { actionId: 'time-travel' });
+    expect(state.chronossus!.warpTilesOnTimeline).toBe(2); // nothing removed
+    expect(state.chronossus!.timeTravelTrack).toBe(0);
+    expect(state.chronossus!.vp).toBe(before + 1); // Failed Action
+    expect(instructions.some((i) => i.text.includes('current Era’s Timeline tile'))).toBe(true);
+  });
+
   it('no-space Failed: +1 VP AND discards an active Exosuit (every placing action)', () => {
     // The no-space branch runs before the action switch, so it discards for ANY
     // Exosuit-placing action — Mine, Construct, Recruit, Research alike.

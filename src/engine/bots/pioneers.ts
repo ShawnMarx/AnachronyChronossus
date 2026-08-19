@@ -9,6 +9,7 @@
 // happens, ignore that step."
 
 import type { ChronossusState, Instruction } from '../state';
+import { removeAnyWarpTile } from '../warpTiles';
 import type { Resource } from '../types';
 import { adventureCard, type AdventureCard, type AdventureDeck } from '../../data/adventureCards';
 
@@ -310,6 +311,9 @@ function applyCardToBot(
   }
   if (b.returnWarpTile && bot.warpTilesOnTimeline > 0) {
     bot.warpTilesOnTimeline -= 1;
+    // Not Time Travel: the card just returns a tile, so no past-tile restriction — but the
+    // per-Era map still has to lose the one it took.
+    bot.warpTilesByEra = removeAnyWarpTile(bot.warpTilesByEra);
     actions.push('returns 1 Warp tile from the Timeline to its supply');
   }
 

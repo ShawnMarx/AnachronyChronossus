@@ -12,6 +12,7 @@ import type {
   Worker,
 } from '../types';
 import { BREAKTHROUGH_SHAPES } from '../types';
+import { placeWarpTiles, removeWarpTile, warpRemoval, warpTileLabel } from '../warpTiles';
 import {
   createInitialState,
   emptyChronobotState,
@@ -361,13 +362,19 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       });
     } else {
       bot.anomalies += 1;
-      const removed = bot.warpTilesOnTimeline > 0;
-      if (removed) bot.warpTilesOnTimeline -= 1;
+      // The Paradox phase (2) runs before this Era's Warp phase (4), so everything it has
+      // is on a past tile already — the map just has to lose the one it removes.
+      const from = warpRemoval(bot, state.era);
+      const removed = from.eligible;
+      if (removed) {
+        bot.warpTilesOnTimeline -= 1;
+        if (from.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, from.era);
+      }
       instructions.push({
         id: 'paradox-anomaly',
         text: `The Chronobot rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
         detail: removed
-          ? 'Remove one of the Chronobot’s Warp tiles from the Timeline tile where it has the most (oldest if tied). Its Paradox tracker resets' +
+          ? `Remove one of the Chronobot’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
             (total > 0 ? ` to ${total}.` : ' to 0.')
           : 'It has no Warp tiles on the Timeline to remove.',
       });
@@ -439,6 +446,8 @@ export function resolveWarp(state: GameState, paradoxes: number): GameState {
   const bot = { ...state.chronobot };
   const place = Math.max(0, paradoxes);
   bot.warpTilesOnTimeline += place;
+  // Which Timeline tile they land on is what makes them eligible for Time Travel later.
+  bot.warpTilesByEra = placeWarpTiles(bot.warpTilesByEra, state.era, place);
   const instructions: Instruction[] = [
     {
       id: 'warp',
@@ -593,7 +602,7 @@ export function takeActionTurn(
       break;
 
     case 'time-travel':
-      resolveTimeTravel(bot, instr);
+      resolveTimeTravel(bot, instr, state.era);
       break;
 
     case 'remove-anomaly': {
@@ -717,20 +726,28 @@ function consumeExosuit(bot: ChronobotState, def: { placesExosuit: boolean }): v
  * one and advances the track. Time Travel never places an Exosuit. Shared by the
  * rolled Action turn and the out-of-Exosuits pass sequence.
  */
-function resolveTimeTravel(bot: ChronobotState, instr: Instruction[]): void {
-  if (bot.warpTilesOnTimeline <= 0) {
+function resolveTimeTravel(bot: ChronobotState, instr: Instruction[], era: number): void {
+  // "from the PAST Timeline tile" (rulebook p.5): the tiles this Era's Warp phase put on
+  // the current tile are not eligible, so this can fail while its Warp count reads 2.
+  const removal = warpRemoval(bot, era);
+  if (!removal.eligible) {
     instr.push({
       id: `tt-fail-${bot.totalActions}`,
-      text: 'No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronobot takes +1 VP (no Exosuit).',
+      text:
+        (bot.warpTilesOnTimeline > 0
+          ? 'The Chronobot’s only Warp tiles are on the current Era’s Timeline tile, which Time Travel may not take from'
+          : 'No Warp tiles remain on the Timeline') +
+        ' — Time Travel is Failed; the Chronobot takes +1 VP (no Exosuit).',
       effect: { vp: 1 },
     });
     bot.vp += 1;
   } else {
     bot.warpTilesOnTimeline -= 1;
+    if (removal.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, removal.era);
     bot.timeTravelTrack += 1;
     instr.push({
       id: `tt-${bot.totalActions}`,
-      text: 'Remove one of the Chronobot’s Warp tiles from the past Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot along the track.',
+      text: `Remove one of the Chronobot’s Warp tiles from ${removal.era != null ? warpTileLabel(removal.era) : 'the past Timeline tile where it has the most (oldest if tied)'}; advance its Time Travel marker 1 spot along the track.`,
       detail: `Time Travel places no Exosuit. The marker is now worth ${timeTravelVp(bot)} VP.`,
     });
   }
@@ -998,7 +1015,7 @@ export function resolveBotPass(state: GameState): ActionTurnResult {
         text: 'The Chronobot is out of Exosuits — it takes one final Time Travel Action, then passes.',
       },
     ];
-    resolveTimeTravel(bot, instr);
+    resolveTimeTravel(bot, instr, state.era);
     bot.passed = true;
     // finishTurn bumps actionsThisEra / totalActions (the Time Travel counts as a turn).
     return finishTurn(state, bot, instr);

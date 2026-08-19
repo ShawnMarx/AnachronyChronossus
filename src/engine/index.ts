@@ -34,6 +34,7 @@ export { engineFor, registerEngine, hasEngine } from './bots/soloEngine';
 export type { SoloEngine } from './bots/soloEngine';
 
 export * from './rules/chronobotActions';
+export * from './warpTiles';
 
 // Chronobot guided engine (pure phase functions).
 export * as Chronobot from './bots/chronobot';

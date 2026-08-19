@@ -24,6 +24,7 @@ import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chrono
 import {
   DetailPanel,
   AnchoredPopover,
+  WarpTileBreakdown,
   BadgePopover,
   ShapeIcon,
   SettingsMenu,
@@ -125,6 +126,7 @@ import {
   type AdventureDeck,
 } from './data/adventureCards';
 import { resolveAdventure, type AdventureInput, type AdventureResult } from './engine/bots/pioneers';
+import { placeWarpTiles, removeAnyWarpTile, warpRemoval } from './engine/warpTiles';
 import {
   getMode,
   selectedModeLabels,
@@ -1114,7 +1116,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     if (tappedBadge == null) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest('.count-badge') && !t.closest('.badge-portal')) setTappedBadge(null);
+      // The Warp marker is a badge for this purpose too — clicking it must not be read as
+      // an outside click, or its popover closes on the same press that opened it.
+      if (!t.closest('.count-badge') && !t.closest('.warp-marker') && !t.closest('.badge-portal'))
+        setTappedBadge(null);
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setTappedBadge(null);
     window.addEventListener('mousedown', onDown);
@@ -1995,7 +2000,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         rolledShape={rolledShape}
         researchNewShape={state.config.difficulty?.includes(Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE) ?? false}
         breakthroughs={bot.breakthroughs}
-        timeTravel={{ canTravel: bot.warpTilesOnTimeline > 0 }}
+        timeTravel={(() => {
+          const r = warpRemoval(bot, state.era);
+          return {
+            canTravel: r.eligible,
+            fromEra: r.era,
+            onlyCurrentEra: !r.eligible && bot.warpTilesOnTimeline > 0,
+          };
+        })()}
         failVP={Chronossus.failedActionVP(state.config.difficulty)}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
@@ -3260,13 +3272,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       onEndActions={endActions}
       warpTiles={bot.warpTilesOnTimeline}
       onWarpTiles={(d) =>
-        setState((s) => ({
-          ...s,
-          chronossus: {
-            ...s.chronossus!,
-            warpTilesOnTimeline: Math.max(0, s.chronossus!.warpTilesOnTimeline + d),
-          },
-        }))
+        setState((s) => {
+          const b = s.chronossus!;
+          const total = Math.max(0, b.warpTilesOnTimeline + d);
+          if (total === b.warpTilesOnTimeline) return s;
+          // Keep the per-Era map in step, or Time Travel would read the debug tiles as
+          // untracked. A debug-added tile goes on the most recent PAST tile, which is what
+          // you want when stepping the count up to try a Time Travel.
+          const byEra =
+            d > 0
+              ? placeWarpTiles(b.warpTilesByEra, Math.max(0, s.era - 1), d)
+              : removeAnyWarpTile(b.warpTilesByEra);
+          return { ...s, chronossus: { ...b, warpTilesOnTimeline: total, warpTilesByEra: byEra } };
+        })
       }
       timeTravel={Math.min(bot.timeTravelTrack, Chronobot.TIME_TRAVEL_VP.length - 1)}
       maxTimeTravel={Chronobot.TIME_TRAVEL_VP.length - 1}
@@ -3682,20 +3700,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 const sel = calibrate && selected === WARP_KEY;
                 return (
                   <div
-                    className={`warp-marker ${sel ? 'cal-selected' : ''}`}
+                    className={`warp-marker ${sel ? 'cal-selected' : ''} ${!calibrate ? 'clickable' : ''}`}
                     style={{ left: `${wx}%`, top: `${wy}%`, width: `${warpWidth}%` }}
-                    title={`Chronossus Warp tiles on the Timeline: ${bot.warpTilesOnTimeline}`}
-                    onClick={
+                    title={
                       calibrate
-                        ? (e) => {
-                            e.stopPropagation();
-                            setSelected(WARP_KEY);
-                          }
-                        : undefined
+                        ? undefined
+                        : `Chronossus Warp tiles on the Timeline: ${bot.warpTilesOnTimeline} — tap for the past / current Era split`
                     }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (calibrate) {
+                        setSelected(WARP_KEY);
+                      } else {
+                        setTappedRect(e.currentTarget.getBoundingClientRect());
+                        setTappedBadge((k) => (k === WARP_KEY ? null : WARP_KEY));
+                      }
+                    }}
                   >
                     <img className="warp-img" src="/assets/solo/chronossus/warp-tile.png" alt="Chronossus Warp tile" />
                     <span className="warp-count">{bot.warpTilesOnTimeline}</span>
+                    {/* Time Travel may only take a tile off a PAST Timeline tile, so the
+                        total on its own doesn't say what the bot can actually do — the
+                        split is the point of tapping this. */}
+                    {!calibrate && tappedBadge === WARP_KEY && (
+                      <BadgePopover rect={tappedRect} variant="text">
+                        <WarpTileBreakdown bot={bot} era={state.era} />
+                      </BadgePopover>
+                    )}
                   </div>
                 );
               })()}
@@ -5303,7 +5334,8 @@ function HypersyncDialog({
 }) {
   const tile = CHRONOSSUS_TILES[code];
   const plan = Chronossus.hypersyncPlan(bot, era);
-  const canTimeTravel = bot.warpTilesOnTimeline > 0;
+  // Same past-tile rule as the Action itself: tiles placed this Era don't count.
+  const canTimeTravel = warpRemoval(bot, era).eligible;
   const isAutoleap = tileEffect(code).autoleap === true;
   // When a Hypersync Action is possible (pending tile + available Exosuit), skip the
   // intro and open straight on the 3 hexes; only fall back to Time Travel / Failed once
@@ -5418,7 +5450,11 @@ function HypersyncDialog({
                       ? ' (no retrievable Hypersync tile in a prior Era)'
                       : ' (no available Exosuit)'}
                   . The Chronossus performs a normal Time Travel Action instead
-                  {canTimeTravel ? '' : ', but no Warp tiles remain, so it is a Failed Action'}.
+                  {canTimeTravel
+                    ? ''
+                    : bot.warpTilesOnTimeline > 0
+                      ? ', but its only Warp tiles are on the current Era’s Timeline tile, so it is a Failed Action'
+                      : ', but no Warp tiles remain, so it is a Failed Action'}.
                 </p>
                 <button
                   className="start-turn"

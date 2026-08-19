@@ -72,6 +72,12 @@ import SetupFlow from './phases/SetupFlow';
 import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
+import {
+  currentEraWarpTiles,
+  pastWarpTiles,
+  warpRemoval,
+  warpTileLabel,
+} from './engine/warpTiles';
 import { ActionIcon } from './board/ActionIcon';
 
 /** Time Travel marker spot keys used in the calibration flow (tt0 = start). */
@@ -112,6 +118,59 @@ const DEBUG_PHASES: Phase[] = [
   'cleanup',
   'endgame',
 ];
+
+/**
+ * The Warp-tile marker's tap-out: where the Chronossus's tiles actually sit. Time Travel
+ * "removes any one Warp tile from the PAST Timeline tile where it has the most (oldest if
+ * tied)" (Solo Opponents p.5), so the tiles it placed in this Era's Warp phase are on the
+ * current tile and untouchable until the next Era — a distinction the single total on the
+ * marker cannot make.
+ */
+export function WarpTileBreakdown({
+  bot,
+  era,
+}: {
+  bot: { warpTilesOnTimeline: number; warpTilesByEra?: Record<number, number> };
+  era: number;
+}) {
+  const byEra = bot.warpTilesByEra;
+  const past = pastWarpTiles(bot, era);
+  const current = currentEraWarpTiles(bot, era);
+  const tiles = (n: number) => `${n} tile${n === 1 ? '' : 's'}`;
+  return (
+    <div className="cx-warp-pop">
+      <div className="cx-warp-total">
+        <b>{bot.warpTilesOnTimeline}</b> Warp tile{bot.warpTilesOnTimeline === 1 ? '' : 's'} on
+        the Timeline
+      </div>
+      <div className="cx-warp-row">
+        <span>Past Timeline tiles</span>
+        <b>{past}</b>
+      </div>
+      {byEra && (
+        <ul className="cx-warp-eras">
+          {Object.keys(byEra)
+            .map(Number)
+            .filter((e) => e < era && byEra[e] > 0)
+            .sort((a, b) => a - b)
+            .map((e) => (
+              <li key={e}>
+                {warpTileLabel(e)} — {tiles(byEra[e])}
+              </li>
+            ))}
+        </ul>
+      )}
+      <div className="cx-warp-row">
+        <span>Era {era} (current) tile</span>
+        <b>{current}</b>
+      </div>
+      <p className="cx-warp-note">
+        Time Travel only takes a tile off a <b>past</b> Timeline tile — the ones placed this
+        Era stay put until the next.
+      </p>
+    </div>
+  );
+}
 
 /** Fractures: the Blink check drew a Flux Core — an Exosuit already on the board moves to
  *  this Action instead of a new one being placed. Shared by the Action and tile dialogs. */
@@ -809,7 +868,10 @@ export default function BoardExplorer({
     if (tappedBadge == null) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as HTMLElement;
-      if (!t.closest('.count-badge') && !t.closest('.badge-portal')) setTappedBadge(null);
+      // The Warp marker counts as a badge here too — otherwise the press that opens its
+      // popover reads as an outside click and closes it again.
+      if (!t.closest('.count-badge') && !t.closest('.warp-marker') && !t.closest('.badge-portal'))
+        setTappedBadge(null);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setTappedBadge(null);
@@ -1451,7 +1513,16 @@ export default function BoardExplorer({
         selectedWorker={selectedWorker}
         rolledShape={rolledShape}
         breakthroughs={bot.breakthroughs}
-        timeTravel={{ canTravel: bot.warpTilesOnTimeline > 0 }}
+        timeTravel={(() => {
+          // Only a PAST Timeline tile can be taken from, so the total alone can't answer
+          // whether Time Travel works this turn.
+          const r = warpRemoval(bot, state.era);
+          return {
+            canTravel: r.eligible,
+            fromEra: r.era,
+            onlyCurrentEra: !r.eligible && bot.warpTilesOnTimeline > 0,
+          };
+        })()}
         removeAnomaly={(() => {
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
           return {
@@ -1676,9 +1747,22 @@ export default function BoardExplorer({
             const sel = calibrate && selected === WARP_KEY;
             return (
               <div
-                className={`warp-marker ${sel ? 'cal-selected' : ''}`}
+                className={`warp-marker ${sel ? 'cal-selected' : ''} ${!calibrate ? 'clickable' : ''}`}
                 style={{ left: `${wx}%`, top: `${wy}%`, width: `${warpMarkerWidth}%` }}
-                title={`Chronobot Warp tiles on the Timeline: ${bot.warpTilesOnTimeline}`}
+                title={
+                  calibrate
+                    ? undefined
+                    : `Chronobot Warp tiles on the Timeline: ${bot.warpTilesOnTimeline} — tap for the past / current Era split`
+                }
+                onClick={
+                  calibrate
+                    ? undefined
+                    : (e) => {
+                        e.stopPropagation();
+                        setTappedRect(e.currentTarget.getBoundingClientRect());
+                        setTappedBadge((k) => (k === WARP_KEY ? null : WARP_KEY));
+                      }
+                }
               >
                 <img
                   className="warp-img"
@@ -1686,6 +1770,13 @@ export default function BoardExplorer({
                   alt="Chronobot Warp tile"
                 />
                 <span className="warp-count">{bot.warpTilesOnTimeline}</span>
+                {/* Time Travel only takes from a PAST Timeline tile, so the total on its
+                    own doesn't say what the bot can actually do. */}
+                {!calibrate && tappedBadge === WARP_KEY && (
+                  <BadgePopover rect={tappedRect} variant="text">
+                    <WarpTileBreakdown bot={bot} era={state.era} />
+                  </BadgePopover>
+                )}
               </div>
             );
           })()}
@@ -3625,7 +3716,13 @@ export function DetailPanel({
   breakthroughs: Record<BreakthroughShape, number>;
   removeAnomaly: { canRemove: boolean; discards: string; reason: string };
   /** Whether a Time Travel can actually happen (it needs a Warp tile on the Timeline). */
-  timeTravel?: { canTravel: boolean };
+  timeTravel?: {
+    canTravel: boolean;
+    /** The past Timeline tile it takes from — null on a save with no per-Era tracking. */
+    fromEra?: number | null;
+    /** It HAS Warp tiles, but every one is on the current Era's tile (not eligible). */
+    onlyCurrentEra?: boolean;
+  };
   /** VP a Failed Action scores — 1, or 2 under the Chronossus difficulty option. */
   failVP?: number;
   mineOrder: Resource[];
@@ -4073,8 +4170,15 @@ export function DetailPanel({
           (timeTravel.canTravel ? (
             <div className="place-prompt">
               <p className="pp-instruct">
-                Remove one of the {botName}’s <b>Warp tiles</b> from the past
-                Timeline tile where it has the most (oldest if tied).
+                Remove one of the {botName}’s <b>Warp tiles</b> from{' '}
+                {timeTravel.fromEra != null ? (
+                  <>
+                    <b>{warpTileLabel(timeTravel.fromEra)}</b> — the past tile where it has
+                    the most (oldest if tied).
+                  </>
+                ) : (
+                  <>the past Timeline tile where it has the most (oldest if tied).</>
+                )}
               </p>
               <button className="start-turn" onClick={onStartTurn}>
                 {startLabel}
@@ -4083,9 +4187,19 @@ export function DetailPanel({
           ) : (
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
-                Failed Action: the {botName} has <b>no Warp tiles</b> on the Timeline, so
-                it cannot Time Travel — it takes <b>+{failVP} VP</b> instead (no Exosuit
-                placed).
+                Failed Action:{' '}
+                {timeTravel.onlyCurrentEra ? (
+                  <>
+                    the {botName}’s only Warp tiles are on the{' '}
+                    <b>current Era’s Timeline tile</b>, which Time Travel may not take from
+                  </>
+                ) : (
+                  <>
+                    the {botName} has <b>no Warp tiles</b> on the Timeline, so it cannot
+                    Time Travel
+                  </>
+                )}{' '}
+                — it takes <b>+{failVP} VP</b> instead (no Exosuit placed).
               </p>
               <button className="start-turn" onClick={onStartTurn}>
                 {startLabel}

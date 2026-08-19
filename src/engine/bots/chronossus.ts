@@ -21,6 +21,12 @@ import {
 } from '../rules/chronobotActions';
 import { CHRONOSSUS_TILES, TILE_ACTION_CODE, tileEffect } from '../../board/chronossusTiles';
 import {
+  placeWarpTiles,
+  removeWarpTile,
+  warpRemoval,
+  warpTileLabel,
+} from '../warpTiles';
+import {
   DIFFICULTY_PIONEERS_BOARD_B,
   isPioneersMode,
   resolveAdventure,
@@ -1048,6 +1054,9 @@ function cloneChronossus(bot: ChronossusState): ChronossusState {
       support: [...bot.buildingVps.support],
     },
     superprojectVps: [...bot.superprojectVps],
+    // The resolvers reassign this map rather than mutating it, but a shallow share would
+    // still let a later `removeWarpTile` write through to the caller's pre-turn state.
+    ...(bot.warpTilesByEra ? { warpTilesByEra: { ...bot.warpTilesByEra } } : {}),
     energyPool: { ...bot.energyPool },
     hypersyncTiles: [...bot.hypersyncTiles],
     // Pioneers: every nested piece has to be copied too. `resolveAdventure` mutates
@@ -1375,7 +1384,7 @@ export function resolveAction(
     }
 
     case 'time-travel':
-      resolveTimeTravel(bot, instr, n, failVP);
+      resolveTimeTravel(bot, instr, n, state.era, failVP);
       break;
 
     case 'remove-anomaly': {
@@ -1855,15 +1864,36 @@ function applyResourceSetBonus(bot: ChronossusState, instr: Instruction[], n: nu
   }
 }
 
-function resolveTimeTravel(bot: ChronossusState, instr: Instruction[], n: number, failVP = 1): void {
-  if (bot.warpTilesOnTimeline <= 0) {
+/**
+ * Time Travel takes a tile off a PAST Timeline tile only (Solo Opponents p.5) — the tiles
+ * the Chronossus placed in this Era's Warp phase sit on the CURRENT tile and are not
+ * eligible, so it can be a Failed Action while its Warp count still reads 2.
+ */
+function resolveTimeTravel(
+  bot: ChronossusState,
+  instr: Instruction[],
+  n: number,
+  era: number,
+  failVP = 1,
+): void {
+  const removal = warpRemoval(bot, era);
+  if (!removal.eligible) {
     bot.vp += failVP;
-    instr.push({ id: `tt-${n}`, text: `No Warp tiles remain on the Timeline — Time Travel is Failed; the Chronossus takes +${failVP} VP (no Exosuit).`, effect: { vp: failVP } });
+    const why =
+      bot.warpTilesOnTimeline > 0
+        ? `The Chronossus’s only Warp tiles are on the current Era’s Timeline tile, which Time Travel may not take from`
+        : 'No Warp tiles remain on the Timeline';
+    instr.push({ id: `tt-${n}`, text: `${why} — Time Travel is Failed; the Chronossus takes +${failVP} VP (no Exosuit).`, effect: { vp: failVP } });
   } else {
     bot.warpTilesOnTimeline -= 1;
+    if (removal.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, removal.era);
     bot.timeTravelTrack += 1;
     const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
-    instr.push({ id: `tt-${n}`, text: 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied); advance its Time Travel marker 1 spot.', detail: `The marker is now worth ${TIME_TRAVEL_VP[spot]} VP.` });
+    const from =
+      removal.era != null
+        ? `from ${warpTileLabel(removal.era)}`
+        : 'from the past Timeline tile where it has the most (oldest if tied)';
+    instr.push({ id: `tt-${n}`, text: `Remove one of the Chronossus’s Warp tiles ${from}; advance its Time Travel marker 1 spot.`, detail: `The marker is now worth ${TIME_TRAVEL_VP[spot]} VP.` });
   }
 }
 
@@ -2127,8 +2157,10 @@ export function resolveHypersyncAction(
     });
     succeeded = true;
   } else if (input.outcome === 'time-travel') {
-    const hadWarp = state.chronossus.warpTilesOnTimeline > 0;
-    resolveTimeTravel(bot, instr, n, failedActionVP(state.config.difficulty));
+    // "Succeeded" means a tile actually came off — which needs a PAST tile, not just a
+    // non-zero total.
+    const hadWarp = warpRemoval(state.chronossus, state.era).eligible;
+    resolveTimeTravel(bot, instr, n, state.era, failedActionVP(state.config.difficulty));
     succeeded = hadWarp;
   } else {
     const vp = failedActionVP(state.config.difficulty);
@@ -2385,13 +2417,19 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       });
     } else {
       bot.anomalies += 1;
-      const removed = bot.warpTilesOnTimeline > 0;
-      if (removed) bot.warpTilesOnTimeline -= 1;
+      // The Paradox phase (2) runs before this Era's Warp phase (4), so every tile it has
+      // is already on a past tile — but the map still has to lose the one it removes.
+      const from = warpRemoval(bot, state.era);
+      const removed = from.eligible;
+      if (removed) {
+        bot.warpTilesOnTimeline -= 1;
+        if (from.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, from.era);
+      }
       instructions.push({
         id: 'paradox-anomaly',
         text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
         detail: removed
-          ? 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied). Its Paradox tracker resets' +
+          ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
             (total > 0 ? ` to ${total}.` : ' to 0.')
           : 'It has no Warp tiles on the Timeline to remove.',
       });
@@ -2444,8 +2482,12 @@ export function resolveVariableAnomalyGain(
     ...state.chronossus,
     anomalyVps: [...(state.chronossus.anomalyVps ?? []), chosen.vp],
   };
-  const removed = chosen.retrieveEligible && bot.warpTilesOnTimeline > 0;
-  if (removed) bot.warpTilesOnTimeline -= 1;
+  const from = warpRemoval(bot, state.era);
+  const removed = chosen.retrieveEligible && from.eligible;
+  if (removed) {
+    bot.warpTilesOnTimeline -= 1;
+    if (from.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, from.era);
+  }
   const instructions: Instruction[] = [
     {
       id: 'variable-anomaly-gain',
@@ -2453,7 +2495,7 @@ export function resolveVariableAnomalyGain(
         `The Chronossus takes the ${chosen.vp} VP Anomaly` +
         (chosen.retrieveEligible ? ' and retrieves a Warp tile.' : '.'),
       detail: removed
-        ? 'Remove one of the Chronossus’s Warp tiles from the Timeline tile where it has the most (oldest if tied).'
+        ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}.`
         : chosen.retrieveEligible
           ? 'It has no Warp tiles on the Timeline to remove.'
           : undefined,
@@ -2519,6 +2561,13 @@ export function resolveWarp(
   const bot = {
     ...state.chronossus,
     warpTilesOnTimeline: state.chronossus.warpTilesOnTimeline + place,
+    // Which Timeline tile they land on decides whether Time Travel may ever take them
+    // back; Era Zero's tile is key 0.
+    warpTilesByEra: placeWarpTiles(
+      state.chronossus.warpTilesByEra,
+      eraZero ? 0 : state.era,
+      place,
+    ),
     vp: state.chronossus.vp + bonusVP,
   };
   const where = eraZero ? 'on the Era Zero tile' : 'on the Timeline';
