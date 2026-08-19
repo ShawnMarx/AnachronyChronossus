@@ -45,9 +45,18 @@ export function summarizeChronossusExtras(
   // Fractures — Operators. An Operator arrives as a wildcard Worker, so the shared
   // summarizer reports it as a plain "Recruited <type>": say what it actually is, and
   // which column it filled.
+  //
+  // Neither delta survives an Operator that COMPLETES the +5 VP Worker set: the set
+  // discards one of each, so the count goes 0 → 1 → 0 and the column nets out too. What
+  // does survive is the column key `operatorSlots` gained — it stays behind at 0.
   const ops = (post.operators ?? 0) - (pre.operators ?? 0);
-  if (ops > 0) {
-    const col = WORKER_KEYS.find((w) => post.workers[w] > pre.workers[w]);
+  const opsColumn = WORKER_KEYS.find(
+    (w) =>
+      (post.operatorSlots?.[w] ?? 0) > (pre.operatorSlots?.[w] ?? 0) ||
+      (post.operatorSlots != null && w in post.operatorSlots && !(w in (pre.operatorSlots ?? {}))),
+  );
+  if (ops > 0 || opsColumn) {
+    const col = opsColumn ?? WORKER_KEYS.find((w) => post.workers[w] > pre.workers[w]);
     const line = `Recruited an Operator${col ? ` into the ${col} column` : ''} (wildcard Worker)`;
     const i = effects.findIndex((e) => e.startsWith('Recruited '));
     if (i >= 0) effects[i] = line;

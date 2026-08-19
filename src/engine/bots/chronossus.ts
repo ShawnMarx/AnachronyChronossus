@@ -548,7 +548,11 @@ export function assimilate(
     const set = applyWorkerSetBonus(bot);
     if (set) {
       res.vp += 5;
-      res.gains.push(set);
+      // NOT folded into `gains`: an Operator counts towards the +5 VP Worker set (Solo
+      // Opponents p.13), and the set reads as its own instruction the way Recruit's does
+      // — both so the tile text stops running "and … and …" together, and so History can
+      // see the set fired (it looks for a `rec-set` instruction id).
+      res.workerSet = set;
     }
   };
   const takeTechnology = () => {
@@ -566,6 +570,8 @@ export function assimilate(
 /** What Assimilate does, as phrases to fold into the tile instruction plus the VP it moved. */
 export interface AssimilateResult {
   gains: string[];
+  /** Set when the recruited Operator completed the +5 VP Worker set; its own instruction. */
+  workerSet?: string;
   vp: number;
 }
 
@@ -1561,10 +1567,12 @@ function resolveTileAction(
     }
     return eff.autoleap === true;
   }
+  let workerSet: string | undefined;
   if (eff.assimilate) {
     const res = assimilate(bot, shape, operatorsAvailable);
     gains.push(...res.gains);
     vp += res.vp;
+    workerSet = res.workerSet;
   }
   const name = tile?.name ?? id;
   let text =
@@ -1577,6 +1585,9 @@ function resolveTileAction(
     text,
     ...(vp ? { effect: { vp } } : {}),
   });
+  // The set's 5 VP is already in the tile instruction's total, so this one carries no
+  // effect of its own — it is the player-facing "and now discard one of each" step.
+  if (workerSet) instr.push({ id: `rec-set-${n}`, text: capitalize(workerSet) });
   return eff.autoleap === true;
 }
 

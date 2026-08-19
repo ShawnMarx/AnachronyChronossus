@@ -206,6 +206,34 @@ export function getMode(id: string | undefined, difficulty?: string[]): Chronoss
   };
 }
 
+/**
+ * The optional add-on modules, by id. They combine with any base mode, so they are listed
+ * alongside it wherever the game's setup is shown (the turn overview, the End Game screen)
+ * — the setup flow's own picker reads its labels from here so the two can't drift.
+ */
+export const EXTRA_MODULE_LABELS: Record<string, string> = {
+  'variable-anomalies': 'Variable Anomalies',
+  'quantum-loops': 'Quantum Loops',
+  'alternate-timelines': 'Alternate Timelines',
+};
+
+/**
+ * Every module in play, one per line: the base mode (combo modes like
+ * "Fractures of Time + Pioneers of New Earth" split into their parts) followed by the
+ * selected add-ons. `difficulty` is not consulted — a tile swap doesn't change which
+ * modules are in the game, and the difficulty list is shown right below this one.
+ */
+export function selectedModeLabels(config: {
+  chronossusMode?: string;
+  extraModules?: string[];
+}): string[] {
+  const base = (CHRONOSSUS_MODES[config.chronossusMode ?? 'base'] ?? CHRONOSSUS_MODES.base).label;
+  return [
+    ...base.split(' + '),
+    ...(config.extraModules ?? []).map((id) => EXTRA_MODULE_LABELS[id] ?? id),
+  ];
+}
+
 /** The live tile code for a family given the player's per-tile A/B selection. */
 export function tileCodeFor(family: string, tileSides: Record<string, 'A' | 'B'> | undefined): string {
   return `${family}${tileSides?.[family] ?? 'A'}`;

@@ -6,6 +6,7 @@ import {
   DIFFICULTY_SWAP_TILES,
   DIFFICULTY_FRACTURES_C14,
   worldCouncilMandatory,
+  EXTRA_MODULE_LABELS,
 } from '../board/chronossusModes';
 import { Chronossus } from '../engine';
 
@@ -175,11 +176,13 @@ interface ExtraModuleConfig {
   label: string;
   available: boolean;
 }
+// The labels come from `EXTRA_MODULE_LABELS` so the picker and every place that lists the
+// game's modules (the turn overview, End Game) can't drift apart.
 const EXTRA_MODULES: ExtraModuleConfig[] = [
-  { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, label: 'Variable Anomalies', available: true },
-  { id: 'quantum-loops', label: 'Quantum Loops', available: false },
-  { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, label: 'Alternate Timelines', available: true },
-];
+  { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, available: true },
+  { id: 'quantum-loops', available: false },
+  { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, available: true },
+].map((m) => ({ ...m, label: EXTRA_MODULE_LABELS[m.id] ?? m.id }));
 
 /** Extra-module-specific difficulty options (Solo Opponents p.18's own
  *  "Increasing the Difficulty" bullets — only Alternate Timelines has one). */

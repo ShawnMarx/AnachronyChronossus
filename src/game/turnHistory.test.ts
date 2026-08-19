@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { summarizeTurn } from './turnHistory';
+import { summarizeChronossusExtras } from './chronossusHistory';
 import {
   Chronossus,
   createInitialState,
@@ -57,5 +58,32 @@ describe('summarizeTurn — the +5 VP sets', () => {
     const mine = effectsFor(st, { actionId: 'mine-resource', placementSpace: 'action', minedResources: ['gold'] });
     expect(mine).toContain('Gained gold');
     expect(mine.some((e) => e.includes('set completed'))).toBe(false);
+  });
+});
+
+describe('summarizeTurn — Assimilate completes the set with an Operator', () => {
+  it('reports the Operator, its column, and the set it completed', () => {
+    // Fractures' Assimilate recruits an Operator into the topmost empty Worker column —
+    // and an Operator counts towards the +5 VP set (Solo Opponents p.13). The set then
+    // discards one of each, so BOTH the Operator count and its column net to zero.
+    const st = createInitialState({ ...DEFAULT_CONFIG, chronossusMode: 'fractures' });
+    st.phase = 'actions';
+    st.chronossus = {
+      ...emptyChronossusState(),
+      exosuitsAvailable: 3,
+      fluxPool: { cores: 0, casings: 3, setAside: 0 },
+      workers: { genius: 1, administrator: 1, engineer: 1, scientist: 0 },
+      placedExosuits: [],
+    };
+    const pre = st.chronossus;
+    const { state: next, instructions } = Chronossus.resolveAction(st, {
+      actionId: 'tile-assimilate',
+      placementSpace: 'action',
+      shape: 'circle',
+      operatorsAvailable: true,
+    });
+    const out = summarizeChronossusExtras(pre, next.chronossus!, summarizeTurn(pre, next.chronossus!, instructions));
+    expect(out).toContain('Recruited an Operator into the scientist column (wildcard Worker)');
+    expect(out).toContain('Worker set completed — discard one of each (+5 VP)');
   });
 });

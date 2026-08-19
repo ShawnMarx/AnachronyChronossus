@@ -127,6 +127,7 @@ import {
 import { resolveAdventure, type AdventureInput, type AdventureResult } from './engine/bots/pioneers';
 import {
   getMode,
+  selectedModeLabels,
   slotAtPos,
   slotCovering,
   tileCodeFor,
@@ -3970,6 +3971,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   </RulesBox>
                 ) : undefined
               }
+              modes={selectedModeLabels(state.config)}
               difficulty={state.config.difficulty.map((f) =>
                 chronossusDifficultyLabel(f, state.config.difficultyValues),
               )}

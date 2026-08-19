@@ -33,6 +33,8 @@ export interface TurnBarOverviewProps {
    * other rule boxes. The Chronossus passes its Guardians / module text here.
    */
   extraRules?: React.ReactNode;
+  /** Modules in play (base mode + add-ons); omit for a bot with no modules. */
+  modes?: string[];
   /** Difficulty option labels to list; omit to hide the section entirely. */
   difficulty?: string[];
   /** Recent bot turns (oldest→newest); the last few show as a mini turn log. */
@@ -40,6 +42,24 @@ export interface TurnBarOverviewProps {
   /** Verbatim passing/end-of-actions rules (paragraphs split on a blank line). */
   passingRule: string;
   onClose: () => void;
+}
+
+/**
+ * The modules this game is being played with — the base mode (a combo mode arrives already
+ * split into its parts) plus any add-ons. It sits directly above the difficulty options,
+ * which are the other half of "what game is this".
+ */
+export function ModeList({ modes }: { modes: string[] }) {
+  return (
+    <div className="eoa-difficulty">
+      <span className="eoa-diff-title">Modules in play</span>
+      <ul className="eoa-diff-list">
+        {modes.map((m) => (
+          <li key={m}>{m}</li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 /**
@@ -101,6 +121,7 @@ export default function TurnBarOverview({
   canEnd,
   turnRules,
   extraRules,
+  modes,
   difficulty,
   entries,
   passingRule,
@@ -128,6 +149,8 @@ export default function TurnBarOverview({
           <span className="eoa-end">✓ Action Rounds Phase ends</span>
         </div>
       )}
+
+      {modes && modes.length > 0 && <ModeList modes={modes} />}
 
       {difficulty && <DifficultyList difficulty={difficulty} />}
 

@@ -8,6 +8,8 @@ import {
   DIFFICULTY_SWAP_TILES,
   DIFFICULTY_FRACTURES_C14,
   CHRONOSSUS_MODES,
+  selectedModeLabels,
+  EXTRA_MODULE_LABELS,
 } from './chronossusModes';
 import { CHRONOSSUS_COUNTERS } from './chronossusHotspots';
 import {
@@ -409,5 +411,35 @@ describe('every implemented tile explains itself', () => {
   it('gives every in-play tile action a Command-view description', () => {
     const actions = new Set(Object.values(FAMILY_TO_TILE_ACTION_FOR_TEST));
     for (const a of actions) expect(TILE_DESC[a], a).toBeTruthy();
+  });
+});
+
+describe('selectedModeLabels — the modules the turn overview lists', () => {
+  it('lists the base mode alone', () => {
+    expect(selectedModeLabels({ chronossusMode: 'base' })).toEqual(['Base']);
+    expect(selectedModeLabels({})).toEqual(['Base']);
+  });
+
+  it('splits a combo mode into one line per module', () => {
+    expect(selectedModeLabels({ chronossusMode: 'fractures+pioneers' })).toEqual([
+      'Fractures of Time',
+      'Pioneers of New Earth',
+    ]);
+  });
+
+  it('appends the selected add-on modules', () => {
+    expect(
+      selectedModeLabels({
+        chronossusMode: 'doomsday',
+        extraModules: ['alternate-timelines', 'variable-anomalies'],
+      }),
+    ).toEqual(['Doomsday', 'Alternate Timelines', 'Variable Anomalies']);
+  });
+
+  it('has a label for every mode id and every add-on', () => {
+    for (const id of Object.keys(CHRONOSSUS_MODES)) {
+      expect(selectedModeLabels({ chronossusMode: id }).every((l) => l.length > 0)).toBe(true);
+    }
+    for (const label of Object.values(EXTRA_MODULE_LABELS)) expect(label).toBeTruthy();
   });
 });
