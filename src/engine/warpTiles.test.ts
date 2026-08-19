@@ -53,6 +53,22 @@ describe('warpRemoval — the tile Time Travel takes from', () => {
     expect(warpRemoval(legacy, 3)).toEqual({ era: null, eligible: true });
     expect(pastWarpTiles(legacy, 3)).toBe(2);
   });
+
+  it('keeps a part-migrated game working: anonymous older tiles still count as past', () => {
+    // A game that started before the map existed: its first tracked Warp phase fills
+    // Era 3 while two older tiles carry no Era at all. Those two are on past tiles by
+    // definition, and go first — reading them as "not tracked, so nothing" would have
+    // taken Time Travel away mid-game.
+    const mixed = { warpTilesOnTimeline: 3, warpTilesByEra: { 3: 1 } };
+    expect(pastWarpTiles(mixed, 3)).toBe(2);
+    expect(currentEraWarpTiles(mixed, 3)).toBe(1);
+    expect(warpRemoval(mixed, 3)).toEqual({ era: null, eligible: true });
+  });
+
+  it('hands over to the map once the anonymous tiles are gone', () => {
+    const mixed = { warpTilesOnTimeline: 2, warpTilesByEra: { 1: 1, 3: 1 } };
+    expect(warpRemoval(mixed, 3)).toEqual({ era: 1, eligible: true });
+  });
 });
 
 describe('placing and removing', () => {
