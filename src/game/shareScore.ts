@@ -20,6 +20,12 @@ export interface ScoreShareData {
   botScore: number;
   result: 'win' | 'lose' | null;
   rows: ScoreShareRow[];
+  /**
+   * Lines that belong under the rule, above SETUP — facts about the game rather than
+   * scoring rows (the bot's turn count). Kept out of the table so the two score columns
+   * stay a like-for-like comparison.
+   */
+  notes?: string[];
   /** Setup lines (mode, B-side, difficulty), one per entry. */
   setup: string[];
   footer: string;
@@ -34,8 +40,11 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
   // Measure height: header block + rows + setup + footer.
   const rowH = 34;
   const headBlock = 210;
+  const notes = d.notes ?? [];
+  const notesH = notes.length * 28;
   const setupH = d.setup.length ? 30 + d.setup.length * 28 + 20 : 0;
-  const height = headBlock + d.rows.length * rowH + setupH + 90;
+  const belowH = notes.length || d.setup.length ? 20 + notesH + setupH : 0;
+  const height = headBlock + d.rows.length * rowH + belowH + 90;
 
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const canvas = document.createElement('canvas');
@@ -107,24 +116,35 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
     y += rowH;
   }
 
-  // Setup section.
-  if (d.setup.length) {
+  // Everything below the rule: the notes first, then the setup block.
+  if (notes.length || d.setup.length) {
     y += 6;
     ctx.strokeStyle = 'rgba(200,162,74,0.3)';
     ctx.beginPath();
     ctx.moveTo(PAD, y - 14);
     ctx.lineTo(W - PAD, y - 14);
     ctx.stroke();
-    ctx.fillStyle = ACCENT;
-    ctx.font = '700 14px system-ui, sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('SETUP', PAD, y + 8);
-    y += 34;
-    ctx.font = '400 15px system-ui, sans-serif';
-    ctx.fillStyle = '#c7bdd6';
-    for (const line of d.setup) {
-      ctx.fillText(line, PAD, y);
-      y += 28;
+    if (notes.length) {
+      ctx.font = '400 15px system-ui, sans-serif';
+      ctx.fillStyle = '#c7bdd6';
+      y += 14;
+      for (const line of notes) {
+        ctx.fillText(line, PAD, y);
+        y += 28;
+      }
+    }
+    if (d.setup.length) {
+      ctx.fillStyle = ACCENT;
+      ctx.font = '700 14px system-ui, sans-serif';
+      ctx.fillText('SETUP', PAD, y + 8);
+      y += 34;
+      ctx.font = '400 15px system-ui, sans-serif';
+      ctx.fillStyle = '#c7bdd6';
+      for (const line of d.setup) {
+        ctx.fillText(line, PAD, y);
+        y += 28;
+      }
     }
   }
 

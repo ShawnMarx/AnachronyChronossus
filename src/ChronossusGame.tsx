@@ -6539,7 +6539,7 @@ function CxScoreScreen({
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
       bot: r.botValue ?? null,
     }));
-    rows.push({ label: 'Bot turns taken', you: null, bot: totalActions });
+
     const setup: string[] = [`Mode: ${getMode(state.config.chronossusMode).label}`];
     const bSides = Object.entries(state.config.tileSides ?? {})
       .filter(([, s]) => s === 'B')
@@ -6555,6 +6555,9 @@ function CxScoreScreen({
         botScore: score.total,
         result,
         rows,
+        // Not a scoring row — it has no "You" side, so it reads as a comparison with a
+        // hole in it. Below the rule with the rest of the game's facts.
+        notes: [`Bot turns taken: ${totalActions}`],
         setup,
         footer: `anachrony.boardgameedge.com · ${new Date().toLocaleDateString()}`,
       });
