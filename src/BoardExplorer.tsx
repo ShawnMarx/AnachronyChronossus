@@ -13,6 +13,8 @@ import DebugBar from './components/DebugBar';
 import { useMediaQuery } from './game/useMediaQuery';
 // Re-exported for existing importers (e.g. ChronossusGame).
 export { AnchoredPopover };
+import { summarizeTurn } from './game/turnHistory';
+export { summarizeTurn };
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import {
   AI_DIE_FACES,
@@ -285,13 +287,6 @@ interface UndoEntry {
   effects: string[];
 }
 
-const BUILDING_LABEL: Record<string, string> = {
-  factory: 'Factory',
-  lab: 'Lab',
-  powerplant: 'Power Plant',
-  support: 'Life Support',
-};
-
 /** Short labels for the difficulty flags (kept in sync with SetupFlow). */
 const DIFFICULTY_LABEL: Record<string, string> = {
   [Chronobot.DIFFICULTY_REBOOT_ADVANCE]: 'Advance off Reboot immediately',
@@ -300,80 +295,6 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   [Chronobot.DIFFICULTY_MIN_ACTIONS_6]: 'Minimum Actions raised to 6',
   [Chronobot.DIFFICULTY_HEX_UNAVAILABLE]: 'Right World Council space covered (Hex Unavailable)',
 };
-
-/**
- * Summarize the concrete board/virtual changes of a turn from the pre→post
- * Chronobot state (using instruction ids only to spot the +5 VP set bonuses).
- * These are the things the player physically applies: mech placed, tile taken for
- * X VP, cubes gained/discarded, Warp tile removed, etc.
- */
-export function summarizeTurn(
-  pre: ChronobotState,
-  post: ChronobotState,
-  instructions: Instruction[],
-): string[] {
-  const out: string[] = [];
-  const hasId = (part: string) => instructions.some((i) => i.id.includes(part));
-
-  // A Failed Action costs the Chronossus an active Exosuit — it is discarded, not placed,
-  // so the same "one fewer Exosuit" delta has to read differently.
-  if (post.exosuitsAvailable < pre.exosuitsAvailable) {
-    out.push(hasId('fail') ? 'Discarded an active Exosuit' : 'Exosuit placed');
-  }
-  // The VP granted for a Failed Action is normally +1, but the Chronossus's
-  // "Failed Actions score VP" difficulty replaces that with +2 — read the actual
-  // delta rather than hardcoding +1, so this line never contradicts the turn's
-  // own VP total.
-  if (hasId('fail')) out.push(`Failed action (+${post.vp - pre.vp} VP)`);
-
-  (['factory', 'lab', 'powerplant', 'support'] as const).forEach((t) => {
-    if (post.buildings[t] > pre.buildings[t]) {
-      const vp = post.buildingVps[t][post.buildingVps[t].length - 1];
-      out.push(`${BUILDING_LABEL[t]} taken (${vp} VP)`);
-    }
-  });
-  if (post.superprojects > pre.superprojects) {
-    const vp = post.superprojectVps[post.superprojectVps.length - 1];
-    out.push(`Superproject taken (${vp} VP) · Breakthrough discarded`);
-  }
-
-  (['circle', 'triangle', 'square'] as const).forEach((s) => {
-    if (post.breakthroughs[s] > pre.breakthroughs[s]) {
-      out.push(`Breakthrough taken (${s})`);
-    }
-  });
-
-  if (hasId('recruit-set')) {
-    out.push('Worker set completed — discard one of each (+5 VP)');
-  } else {
-    (['genius', 'administrator', 'engineer', 'scientist'] as const).forEach((w) => {
-      if (post.workers[w] > pre.workers[w]) out.push(`Recruited ${w}`);
-    });
-  }
-
-  const resTypes = ['neutronium', 'uranium', 'gold', 'titanium'] as const;
-  if (hasId('mine-set')) {
-    out.push('Resource set completed — discard one of each (+5 VP)');
-  } else {
-    resTypes.forEach((r) => {
-      const d = post.resources[r] - pre.resources[r];
-      if (d > 0) out.push(`Gained ${d > 1 ? d + ' ' : ''}${r}`);
-    });
-    resTypes.forEach((r) => {
-      const d = pre.resources[r] - post.resources[r];
-      if (d > 0) out.push(`Discarded ${d > 1 ? d + ' ' : ''}${r}`);
-    });
-  }
-
-  if (post.anomalies < pre.anomalies) out.push('Removed 1 Anomaly');
-  if (
-    post.warpTilesOnTimeline < pre.warpTilesOnTimeline ||
-    post.timeTravelTrack > pre.timeTravelTrack
-  ) {
-    out.push('Warp tile removed — Time Travel advances');
-  }
-  return out;
-}
 
 /**
  * Summarize a Paradox-phase die roll from the pre→post Chronobot state: the
