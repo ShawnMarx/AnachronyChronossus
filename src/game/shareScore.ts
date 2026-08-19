@@ -1,6 +1,7 @@
 // shareScore.ts — render a final-score summary to a PNG and share/save it.
 //
-// Draws a self-contained score card (top line: Chronossus vs You, then the bot
+// Draws a self-contained score card (top line: the two totals under YOU /
+// CHRONOSSUS labels, then the bot
 // breakdown, then the modes + difficulty selections) on a canvas and hands it to the
 // OS share sheet via the Web Share API (navigator.share with a File). On desktop /
 // where file-sharing isn't supported it falls back to a download. No external libs.
@@ -59,7 +60,6 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
   // the big totals sit directly above their own column (aligned to the same edge).
   const colBotRight = W - PAD;
   const colYouRight = W - PAD - 150;
-  const vsX = (colYouRight + colBotRight) / 2;
 
   // Big scores, right-aligned over each column.
   const yBig = 160;
@@ -68,10 +68,9 @@ function drawCard(d: ScoreShareData): HTMLCanvasElement {
   ctx.textAlign = 'right';
   ctx.fillText(d.playerScore == null ? '—' : String(d.playerScore), colYouRight, yBig);
   ctx.fillText(String(d.botScore), colBotRight, yBig);
-  ctx.fillStyle = ACCENT;
-  ctx.font = '800 22px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('vs', vsX, yBig);
+  // No "vs" between them: the gap between the two columns is set by the value columns
+  // below, not by the big numerals, so a glyph centred in it lands against whichever
+  // total is wider — and the YOU / CHRONOSSUS labels already say which is which.
   ctx.fillStyle = '#a89bb8';
   ctx.font = '600 15px system-ui, sans-serif';
   ctx.textAlign = 'right';
