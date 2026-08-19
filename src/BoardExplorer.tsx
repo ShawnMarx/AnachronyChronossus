@@ -4208,9 +4208,10 @@ export function DetailPanel({
           (removeAnomaly.canRemove ? (
             <div className="place-prompt">
               <p className="pp-instruct">
-                Discard <b>{removeAnomaly.discards}</b> from the {botName} and
-                remove 1 Anomaly. (Remove Anomaly places no Exosuit.)
+                The {botName} discards <b>{removeAnomaly.discards}</b> and removes{' '}
+                <b>1 Anomaly</b> from its board.
               </p>
+              <p className="pp-sub">Remove Anomaly places no Exosuit.</p>
               <button className="start-turn" onClick={onStartTurn}>
                 {startLabel}
               </button>
