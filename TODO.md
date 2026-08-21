@@ -149,9 +149,11 @@ archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLETED.md`.
 No plan is active.
 
-**Doomsday** — the last module — shipped to production 2026-08-20 and was archived
-2026-08-21 to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`. With it, **every module in the
-Solo Opponents matrix is done**; the only thing left in the picker is **Quantum Loops**.
+**Doomsday** shipped to production 2026-08-20 and was archived 2026-08-21 to
+`docs/complete/20260821_DOOMSDAY_COMPLETED.md`. **Quantum Loops** — the last one — shipped to
+`staging` 2026-08-21 and is archived in
+`docs/complete/20260821_QUANTUM_WRAPUP_COMPLETED.md`. With it, **every module AND add-on in
+the Solo Opponents matrix is done** and the picker has nothing left to add.
 
 Still backlog (not yet in a plan):
 - [ ] **Blink check: a pool of only Empty Flux Casings never draws** (2026-08-17) —
