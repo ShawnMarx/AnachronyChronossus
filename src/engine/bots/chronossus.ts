@@ -36,6 +36,25 @@ import {
 } from './pioneers';
 import { adventureDeckIds } from '../../data/adventureCards';
 import {
+  isQuantumLoops,
+  quantumLoopRemoval,
+  DIFFICULTY_QL_REMOVE_ON_5,
+} from './quantumLoops';
+// Re-exported so the view and setup flow reach them through the `Chronossus` namespace,
+// exactly as the Doomsday and Pioneers constants are.
+export {
+  EXTRA_MODULE_QUANTUM_LOOPS,
+  DIFFICULTY_QL_REMOVE_ON_5,
+  DIFFICULTY_QL_2VP,
+  QUANTUM_LOOPS_REQUIREMENT,
+  QUANTUM_LOOPS_SETUP_RULE,
+  QUANTUM_LOOPS_WARP_RULE,
+  QUANTUM_LOOPS_ACTION_RULE,
+  QUANTUM_LOOPS_DIFFICULTY_RULE,
+  isQuantumLoops,
+  quantumLoopRemoval,
+} from './quantumLoops';
+import {
   botTrackerFor,
   doomsdayImpactEra,
   DOOMSDAY_START_SLOT,
@@ -2553,11 +2572,18 @@ export function resolveWarp(
   paradoxes: number,
   positiveSpaces = 0,
   eraZero = false,
+  quantumRoll: number | null = null,
 ): GameState {
   if (!state.chronossus) throw new Error('resolveWarp: no Chronossus state');
   const place = Math.max(0, paradoxes);
   const perSpace = state.config.difficulty.includes(DIFFICULTY_ALT_TIMELINES_3VP) ? 3 : 2;
   const bonusVP = positiveSpaces * perSpace;
+  // Quantum Loops: having placed at least one tile, the AI die decides whether the card
+  // farthest from the player's draw deck leaves play for good. The caller rolls; with the
+  // module off it passes null and this is a no-op.
+  const quantum = isQuantumLoops(state.config.extraModules)
+    ? quantumLoopRemoval({ tilesPlaced: place, roll: quantumRoll, difficulty: state.config.difficulty })
+    : { rolled: false, removes: false, vp: 0 };
   const bot = {
     ...state.chronossus,
     warpTilesOnTimeline: state.chronossus.warpTilesOnTimeline + place,
@@ -2568,7 +2594,7 @@ export function resolveWarp(
       eraZero ? 0 : state.era,
       place,
     ),
-    vp: state.chronossus.vp + bonusVP,
+    vp: state.chronossus.vp + bonusVP + quantum.vp,
   };
   const where = eraZero ? 'on the Era Zero tile' : 'on the Timeline';
   const instructions: Instruction[] = [
@@ -2588,6 +2614,26 @@ export function resolveWarp(
           : ''),
       ...(bonusVP ? { effect: { vp: bonusVP } } : {}),
     },
+    // The Quantum Loops check is its own instruction so a miss still reports — a check that
+    // only ever appears when it fires is indistinguishable from one that never ran.
+    ...(quantum.rolled
+      ? [
+          {
+            id: 'quantum-loops',
+            text: quantum.removes
+              ? 'Remove the Quantum Loop card **farthest from the draw deck** from play — permanently.'
+              : 'No Quantum Loop card is removed this Warp Phase.',
+            detail:
+              `The Chronossus placed a Warp tile, so it rolled the AI die: ${quantumRoll}. ` +
+              (quantum.removes
+                ? 'It never returns a card, so this one is out of the game for good.' +
+                  (quantum.vp ? ` It also receives ${quantum.vp} VP for the removal.` : '')
+                : 'A card is only removed on a roll of ' +
+                  (state.config.difficulty.includes(DIFFICULTY_QL_REMOVE_ON_5) ? '4 or 5.' : '4.')),
+            ...(quantum.vp ? { effect: { vp: quantum.vp } } : {}),
+          } as Instruction,
+        ]
+      : []),
   ];
   return {
     ...state,
@@ -2600,7 +2646,7 @@ export function resolveWarp(
       ...state.log,
       `${eraZero ? 'Era Zero Warp phase' : 'Warp phase'} (placed ${place}${
         bonusVP ? `, +${bonusVP} VP Alternate Timelines` : ''
-      }).`,
+      }${quantum.removes ? ', Quantum Loops card removed' : ''}).`,
     ],
   };
 }

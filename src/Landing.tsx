@@ -33,6 +33,23 @@ interface BotCardProps {
   progress?: number;
 }
 
+/**
+ * Where "Part of BoardGameEdge" points, per environment — the same hostname sniff
+ * `bgeAuth.ts` uses for the auth service.
+ *
+ * Null means "don't show the link at all". The **prod apex is still a GoDaddy
+ * 'Launching Soon' placeholder** (checked 2026-08-21): the landing service is written and
+ * lists Anachrony, but it is only served at `staging.boardgameedge.com`. Linking players
+ * from a finished app to a placeholder is worse than not linking, so prod stays off until
+ * the apex cuts over — at which point this returns the apex URL and the link appears.
+ */
+const BGE_LANDING_URL: string | null = (() => {
+  const h = window.location.hostname;
+  if (h === 'localhost' || h.startsWith('127.')) return 'https://staging.boardgameedge.com';
+  if (h.includes('staging')) return 'https://staging.boardgameedge.com';
+  return null; // ← 'https://boardgameedge.com' once the apex serves the landing service
+})();
+
 function BotCard({ name, image, tagline, description, status, onLaunch, progress }: BotCardProps) {
   const ready = status === 'ready';
   return (
@@ -55,9 +72,15 @@ function BotCard({ name, image, tagline, description, status, onLaunch, progress
           <div
             className="upload-bar"
             role="img"
-            aria-label={`Uploading: ${progress} percent`}
+            aria-label={
+              progress >= 100 ? 'Upload complete: 100 percent' : `Uploading: ${progress} percent`
+            }
           >
-            <div className="upload-bar-label">Uploading…</div>
+            {/* The in-fiction progress bar tracks how much of the Solo Opponents matrix is
+                implemented. At 100% it stops saying it is still working. */}
+            <div className="upload-bar-label">
+              {progress >= 100 ? 'Upload complete' : 'Uploading…'}
+            </div>
             <div className="upload-bar-track">
               <div className="upload-bar-fill" style={{ width: `${progress}%` }} />
             </div>
@@ -185,11 +208,21 @@ export default function Landing({
           image="/assets/solo/chronossus-hero.jpg"
           tagline="The advanced automa · more modes, more depth"
           status="ready"
-          description="A deeper opponent supporting the base game, Hypersync Future Actions, Fractures of Time, Guardians of the Council, Pioneers of New Earth, and Doomsday, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
+          description="A deeper opponent supporting every module in the Solo Opponents matrix: the base game, Hypersync Future Actions, Fractures of Time, Guardians of the Council, Pioneers of New Earth and Doomsday, plus the Variable Anomalies, Quantum Loops and Alternate Timelines add-ons. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
-          progress={90}
+          progress={100}
         />
       </div>
+
+      {BGE_LANDING_URL && (
+        <p className="landing-foot landing-bge">
+          Part of{' '}
+          <a href={BGE_LANDING_URL} target="_blank" rel="noreferrer">
+            BoardGameEdge
+          </a>{' '}
+          — more play aids for the games on your table.
+        </p>
+      )}
 
       <p className="landing-foot">
         Unofficial fan-made aid. Anachrony and its artwork are © Mindclash Games. This

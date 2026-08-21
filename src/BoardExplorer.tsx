@@ -4,7 +4,7 @@ import { useAuth } from './auth/useAuth';
 import { recordGame, type GameSummary } from './data/gameData';
 import { queuePendingGame } from './data/pendingGames';
 import HistoryScreen from './history/HistoryScreen';
-import HistoryPane from './history/HistoryPane';
+import HistoryPane, { PhaseHistoryDock } from './history/HistoryPane';
 import AdminStats from './history/AdminStats';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
@@ -331,6 +331,14 @@ interface Snapshot {
   tokens: CommandTokensState;
   botDie: number | null;
   activeToken: CommandToken | null;
+  /**
+   * The phase rolls (Warp's Paradox die, and a reusable Paradox-phase roll), so Undo
+   * re-shows the SAME roll instead of silently re-rolling — the Chronossus's playtest bug
+   * #10, which the Chronobot carried unfixed until 2026-08-21. They belong on the snapshot
+   * rather than in component state for exactly that reason.
+   */
+  warpRoll: number | null;
+  paradoxRoll: number | null;
 }
 
 /** One entry on the undo/history stack: the pre-commit snapshot + what happened. */
@@ -394,6 +402,13 @@ interface PersistedGame {
   tokens: CommandTokensState;
   undoStack: UndoEntry[];
   debug: boolean;
+  /**
+   * An in-progress phase roll, persisted so a reload mid-Warp (or mid-Paradox) re-shows
+   * the roll rather than rolling again. The Chronossus keeps these in its `ui` slice for
+   * the same reason; the Chronobot had them in component state, where nothing saw them.
+   */
+  warpRoll?: number | null;
+  paradoxRoll?: number | null;
   /** Epoch ms of the last committed save — drives the "last played" prompt. */
   savedAt: number;
 }
@@ -737,6 +752,14 @@ export default function BoardExplorer({
   );
   const [botDie, setBotDie] = useState<number | null>(null);
   const [activeToken, setActiveToken] = useState<CommandToken | null>(null);
+  // Phase rolls, held here (not inside the phase bodies) so a snapshot can restore them.
+  const [warpRoll, setWarpRoll] = useState<number | null>(() => persisted?.warpRoll ?? null);
+  const [paradoxRoll, setParadoxRoll] = useState<number | null>(
+    () => persisted?.paradoxRoll ?? null,
+  );
+  // The Paradox body keeps its roll log and check count in local state that no snapshot
+  // rewinds; bumping this remounts it after an Undo so it cannot contradict the state.
+  const [paradoxNonce, setParadoxNonce] = useState(0);
   // Undo/history stack: each entry is the snapshot *before* a committed step.
   const [undoStack, setUndoStack] = useState<UndoEntry[]>(
     () => persisted?.undoStack ?? [],
@@ -835,8 +858,8 @@ export default function BoardExplorer({
 
   // Persist the committed game whenever it changes (transient UI is excluded).
   useEffect(() => {
-    savePersisted({ state, tokens, undoStack, debug });
-  }, [state, tokens, undoStack, debug]);
+    savePersisted({ state, tokens, undoStack, debug, warpRoll, paradoxRoll });
+  }, [state, tokens, undoStack, debug, warpRoll, paradoxRoll]);
 
   // Dismiss the status popover on Escape or a click outside it (and its chip).
   useEffect(() => {
@@ -925,7 +948,7 @@ export default function BoardExplorer({
     effects: string[] = [],
     die: number | null = null,
   ) => {
-    const pre: Snapshot = { state, tokens, botDie, activeToken };
+    const pre: Snapshot = { state, tokens, botDie, activeToken, warpRoll, paradoxRoll };
     setUndoStack((s) => [...s, { snap: pre, label, die, effects }].slice(-UNDO_CAP));
     setState(next);
     setTokens(nextTokens);
@@ -957,6 +980,14 @@ export default function BoardExplorer({
     botDieRef.current = snap.botDie;
     pendingDieRef.current = snap.botDie; // pending again → next Take repeats the roll
     activeTokenRef.current = null;
+    // The phase rolls come back exactly as they were. A Paradox-roll entry also re-seeds
+    // its own die, so re-answering "yes" repeats that roll rather than re-randomizing.
+    setWarpRoll(snap.warpRoll);
+    const entry = undoStack[undoStack.length - 1];
+    setParadoxRoll(
+      snap.state.phase === 'paradox' && entry.die != null ? entry.die : snap.paradoxRoll,
+    );
+    setParadoxNonce((n) => n + 1);
     setPassMsg(null);
     setUndoStack((s) => s.slice(0, -1));
   };
@@ -997,11 +1028,10 @@ export default function BoardExplorer({
   };
 
   // Clean Up (Phase 6) → start the next Era at Preparation (Phase 1).
-  const startNextEraNow = () => setState((s) => Chronobot.startNextEra(s));
+  const startNextEraNow = () => commitPhase(Chronobot.startNextEra(state));
   // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
   // 5–6 when flipping Collapsing Capital tiles). Show the final score.
-  const endGameNow = () =>
-    setState((s) => ({ ...s, phase: 'endgame', finished: true }));
+  const endGameNow = () => commitPhase({ ...state, phase: 'endgame', finished: true });
 
   // Debug toggle. Turning it OFF (play mode) also forces the dev-only outline and
   // calibrate controls off; any open panel is closed so the mode switch is clean.
@@ -1420,12 +1450,16 @@ export default function BoardExplorer({
   // outcome (so the body knows whether the bot must keep rolling).
   const rollBotParadox = (rolled: number) => {
     const res = Chronobot.rollParadox(state, rolled);
+    // The rolled value rides on the entry (`die`) so Undo can re-seed the same roll
+    // instead of re-randomizing; the reusable one is cleared going forward.
     commit(
       res.state,
       tokens,
       `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`,
       summarizeParadox(state.chronobot, res.state.chronobot),
+      rolled,
     );
+    setParadoxRoll(null);
     return res;
   };
 
@@ -1439,27 +1473,40 @@ export default function BoardExplorer({
       `Era ${state.era} · Warp: placed ${Math.max(0, paradoxes)}`,
       summarizeWarp(state.chronobot, next.chronobot),
     );
+    setWarpRoll(null);
   };
 
   // Advance out of the current non-Action phase (calls the matching resolver).
+  /** "Era 3 · → Power Up" — the label a phase move gets in History. */
+  const enteredLabel = (next: GameState) =>
+    `Era ${next.era} · → ${PHASE_META[next.phase]?.name ?? next.phase}`;
+  /**
+   * Every phase advance commits, so it is undoable and shows in History — the Chronossus
+   * has worked this way since 2026-08-11 and the Chronobot's phase screens did not.
+   */
+  const commitPhase = (next: GameState) => {
+    if (next === state) return;
+    commit(next, tokens, enteredLabel(next));
+  };
   const advancePhase = () =>
-    setState((s) => {
-      switch (s.phase) {
-        case 'preparation':
-          return advanceFromPreparation(s);
-        case 'paradox':
-          return Chronobot.endParadoxPhase(s);
-        case 'powerup':
-          return Chronobot.resolvePowerUp(s);
-        case 'warp':
-          return Chronobot.resolveWarp(s, 0);
-        case 'cleanup':
-          return finishEra(s);
-        default:
-          return s;
-      }
-    });
-
+    commitPhase(
+      ((s: GameState) => {
+        switch (s.phase) {
+          case 'preparation':
+            return advanceFromPreparation(s);
+          case 'paradox':
+            return Chronobot.endParadoxPhase(s);
+          case 'powerup':
+            return Chronobot.resolvePowerUp(s);
+          case 'warp':
+            return Chronobot.resolveWarp(s, 0);
+          case 'cleanup':
+            return finishEra(s);
+          default:
+            return s;
+        }
+      })(state),
+    );
   const topBar = (
       <StatsBar
         onHome={onHome}
@@ -1964,6 +2011,26 @@ export default function BoardExplorer({
           headerRight={
             <>
               <VpPill bot={bot} />
+              {/* Same Undo as the Action Rounds top bar: restores the last committed step
+                  of this phase — rolls come back as they were rather than re-rolled. */}
+              <button
+                className="undo-btn cx-undo-btn"
+                onClick={undo}
+                disabled={undoStack.length === 0}
+                title="Undo the last committed step"
+              >
+                ↶ Undo
+              </button>
+              {/* History is otherwise reachable only from the Action Rounds board, so a
+                  phase's own entries (a Warp placement, a Paradox roll) looked unlogged. */}
+              <button
+                className={`stat-pill status-chip ${showHistory ? 'on' : ''}`}
+                onClick={() => setShowHistory((v) => !v)}
+                title="Turn history"
+                aria-pressed={showHistory}
+              >
+                🕑
+              </button>
               {/* The same Turn chip the Action Rounds top bar carries: the overview's
                   counts, pass state and recent turns are just as useful between phases. */}
               <button
@@ -1980,14 +2047,23 @@ export default function BoardExplorer({
           statusView={boardStage}
         >
           {state.phase === 'warp' ? (
-            <WarpPhaseBody state={state} meta={meta} onCommit={commitWarp} />
+            // Controlled roll: it lives on the snapshot, so Undo re-shows the same one.
+            <WarpPhaseBody
+              state={state}
+              meta={meta}
+              onCommit={commitWarp}
+              roll={warpRoll}
+              onRoll={() => setWarpRoll(rollParadoxDie())}
+            />
           ) : state.phase === 'paradox' ? (
             <ParadoxPhaseBody
+              key={`paradox-${paradoxNonce}`}
               state={state}
               bot={state.chronobot}
               meta={meta}
               onRoll={rollBotParadox}
               onAdvance={advancePhase}
+              pendingRoll={paradoxRoll}
             />
           ) : state.phase === 'cleanup' ? (
             <CleanUpPhaseBody
@@ -2004,6 +2080,9 @@ export default function BoardExplorer({
             <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
           )}
         </PhaseScreen>
+        {showHistory && (
+          <PhaseHistoryDock entries={undoStack} onClose={() => setShowHistory(false)} />
+        )}
         {modals}
       </div>
     );
@@ -2182,6 +2261,28 @@ export function ParadoxDieFace({ n, size = 44 }: { n: number; size?: number }) {
 }
 
 /**
+ * The shape (Research) die, shown as the real component face instead of the word.
+ *
+ * Like `ParadoxDieFace` this replaces the ROLL READOUT only. What the roll produced is a
+ * separate statement and keeps its own art: Research shows the Breakthrough taken beside
+ * the die, because the shape rolled and the Breakthrough kept are two different things.
+ * Fractures' Assimilate shows the die ALONE — that roll resolves to an Operator, a
+ * Technology or whichever it has fewer of, never a Breakthrough, so pairing it with
+ * Breakthrough art would state something false.
+ */
+export function ShapeDieFace({ shape, size = 52 }: { shape: BreakthroughShape; size?: number }) {
+  return (
+    <img
+      className="shape-die-face"
+      src={`/assets/solo/shape-die-${shape}.png`}
+      alt={`Shape die: ${shape}`}
+      title={`Rolled ${shape}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/**
  * Phase 4 (Warp) body: Warping happens in player order. You place your own 0–2
  * Warp tiles; the app rolls the Paradox die for the Chronobot and places that
  * many Warp tiles for it (0, 1, or 2 — it gains nothing and any tile will do).
@@ -2196,6 +2297,7 @@ export function WarpPhaseBody({
   roll,
   onRoll,
   followUp,
+  beforeCommit,
   intro,
   extraRules,
   tileLabel = 'the current Timeline tile',
@@ -2232,6 +2334,13 @@ export function WarpPhaseBody({
   intro?: ReactNode;
   /** An extra verbatim rules box, rendered under the phase's own. */
   extraRules?: ReactNode;
+  /**
+   * Rendered between the roll result and whatever commits the phase. Unlike `followUp`
+   * this does NOT replace the Continue button — it is for an outcome the app resolves
+   * itself and only reports (Quantum Loops' AI-die check), which must share the screen
+   * with the placement rather than chain a second prompt after it.
+   */
+  beforeCommit?: ReactNode;
 }) {
   const [localRolled, setLocalRolled] = useState<number | null>(null);
   const controlled = onRoll != null;
@@ -2281,6 +2390,7 @@ export function WarpPhaseBody({
                 : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on ${tileLabel}. Any tiles will do; the ${botName} gains nothing from them.`}
             </p>
           </div>
+          {beforeCommit}
           {followUp ?? (
             <button className="phase-primary" onClick={() => onCommit(rolled)}>
               Continue ▶
@@ -4201,6 +4311,8 @@ export function DetailPanel({
               )}
             </p>
             <div className="shape-roll">
+              {/* The die face rolled, then the Breakthrough it takes — two statements. */}
+              <ShapeDieFace shape={rolledShape} />
               <ShapeIcon shape={rolledShape} size={52} />
               <div className="shape-tally">
                 {SHAPE_ORDER.map((s) => (

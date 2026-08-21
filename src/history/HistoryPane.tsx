@@ -73,3 +73,26 @@ export default function HistoryPane({
     </div>
   );
 }
+
+/**
+ * The same pane, docked over a phase screen.
+ *
+ * The pane itself is a flex child of the Action Rounds board stage, so before this it was
+ * reachable only from that one screen — during Preparation / Paradox / Power Up / Warp /
+ * Clean Up there was nowhere showing it, which made a phase's own entries (an Era Zero Warp
+ * placement, a Paradox roll) look unlogged when they had in fact been recorded. The wrapper
+ * gives it somewhere to sit on those screens; the pane is unchanged.
+ */
+export function PhaseHistoryDock({
+  entries,
+  onClose,
+}: {
+  entries: HistoryEntry[];
+  onClose: () => void;
+}) {
+  return (
+    <div className="phase-history-dock">
+      <HistoryPane entries={entries} onClose={onClose} />
+    </div>
+  );
+}

@@ -27,6 +27,7 @@ import {
   WarpTileBreakdown,
   BadgePopover,
   ShapeIcon,
+  ShapeDieFace,
   SettingsMenu,
   WarpPhaseBody,
   ParadoxPhaseBody,
@@ -37,7 +38,7 @@ import {
   summarizeTurn,
   type PendingStep,
 } from './BoardExplorer';
-import HistoryPane from './history/HistoryPane';
+import HistoryPane, { PhaseHistoryDock } from './history/HistoryPane';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
 import TurnBarOverview, { DifficultyList } from './phases/TurnBarOverview';
@@ -182,6 +183,9 @@ interface ChronossusUi {
   // than re-randomizing (#4, #10): the Warp-phase Paradox-die roll, a reusable Paradox
   // roll (restored from the undone entry's die), and the Hypersync target hex.
   warpRoll: number | null;
+  /** Quantum Loops' Warp-Phase AI-die face, rolled with the Warp roll so Undo re-shows
+   *  the same one instead of re-rolling. Null when the module is off. */
+  quantumRoll: number | null;
   paradoxRoll: number | null;
   hsRolledHex: number | null;
   /**
@@ -225,6 +229,7 @@ const emptyCxUi = (): ChronossusUi => ({
   activeMarker: null,
   lastDraw: null,
   warpRoll: null,
+  quantumRoll: null,
   paradoxRoll: null,
   hsRolledHex: null,
   owedLeap: null,
@@ -913,7 +918,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const [rolledShape, setRolledShape] = useState<BreakthroughShape | null>(null);
   // Alternate Timelines: Warp tiles placed this phase, awaiting the player's
   // positive-effect-space count before the Warp phase actually commits.
-  const [altTimelinesPending, setAltTimelinesPending] = useState<number | null>(null);
   // Variable Anomalies: awaiting the player's report of the 2 offered tiles.
   const [variableAnomalyPending, setVariableAnomalyPending] = useState(false);
   // Doomsday Clean Up: the Check-for-Impact answer the player has toggled on, held until
@@ -1059,6 +1063,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const altTimelines = state.config.extraModules?.includes(
     Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES,
   ) ?? false;
+  const quantumLoops = Chronossus.isQuantumLoops(state.config.extraModules);
+  // What the Warp screen's Quantum Loops check came to, for the on-screen report. Derived
+  // from the same pure helper the engine uses, so screen and state can't disagree.
+  const quantumOutcome = Chronossus.quantumLoopRemoval({
+    tilesPlaced: ui.warpRoll ?? 0,
+    roll: ui.quantumRoll,
+    difficulty: state.config.difficulty,
+  });
   // VP the Chronossus scores per positive-effect space it Warps onto (3 with that
   // module's difficulty option selected, otherwise the printed 2).
   const altTimelinesPerSpace = state.config.difficulty.includes(
@@ -2378,7 +2390,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   };
   // Roll the Warp-phase Paradox die once and stash it in the ui slice so backing to
   // the Warp phase (Undo) re-shows the same roll instead of re-rolling (#10).
-  const rollWarp = () => setUi((u) => ({ ...u, warpRoll: rollParadoxDie() }));
+  // Quantum Loops' check rides along with the Warp roll: it is conditioned on the
+  // Chronossus placing at least one tile, so it is decided the moment the Paradox die is,
+  // and rolling both at once keeps the whole phase on ONE screen (no chained prompt).
+  const rollWarp = () =>
+    setUi((u) => ({
+      ...u,
+      warpRoll: rollParadoxDie(),
+      quantumRoll: quantumLoops ? rollAiDie() : null,
+    }));
   const advanceParadox = () => {
     const next = Chronossus.endParadoxPhase(state);
     commitPhase(next, enteredLabel(next));
@@ -2387,32 +2407,43 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // placement lands in History) — mirrors the Chronobot's commitWarp. Alternate
   // Timelines intercepts first: ask how many landed on a positive space before
   // actually resolving/committing.
-  const commitWarp = (paradoxes: number) => {
-    const place = Math.max(0, paradoxes);
-    if (altTimelines && place > 0) {
-      setAltTimelinesPending(place);
-      return;
-    }
-    finishWarp(place, 0);
-  };
+  // Nothing to intercept: with Alternate Timelines on, its question is already on the Warp
+  // screen (see the `followUp` below), so this only ever runs for the plain Continue —
+  // module off, or no tile placed and so nothing to ask about.
+  const commitWarp = (paradoxes: number) => finishWarp(Math.max(0, paradoxes), 0);
   const finishWarp = (place: number, positiveSpaces: number) => {
     // Fractures' one-off Era Zero Warp runs the same resolver; it just places on the
     // Era Zero tile and hands off to Era 1's Preparation instead of Action Rounds.
     const eraZero = state.phase === 'era0warp';
-    const next = Chronossus.resolveWarp(state, place, positiveSpaces, eraZero);
+    const quantumRoll = quantumLoops ? ui.quantumRoll : null;
+    const next = Chronossus.resolveWarp(state, place, positiveSpaces, eraZero, quantumRoll);
     const bonusVP = positiveSpaces * altTimelinesPerSpace;
+    // Reported even on a miss: a check that only ever appears when it fires is
+    // indistinguishable from one that never ran.
+    const quantum = Chronossus.quantumLoopRemoval({
+      tilesPlaced: place,
+      roll: quantumRoll,
+      difficulty: state.config.difficulty,
+    });
     commit(
       next,
-      { ...ui, warpRoll: null },
+      { ...ui, warpRoll: null, quantumRoll: null },
       `Era ${eraZero ? 0 : state.era} · Warp: placed ${place}`,
       [
         place > 0
           ? `Placed ${place} Warp tile${place === 1 ? '' : 's'} on the ${eraZero ? 'Era Zero tile' : 'Timeline'}`
           : 'Placed no Warp tiles',
         ...(bonusVP ? [`Alternate Timelines: +${bonusVP} VP (${positiveSpaces} positive space${positiveSpaces === 1 ? '' : 's'})`] : []),
+        ...(quantum.rolled
+          ? [
+              quantum.removes
+                ? `Quantum Loops: rolled ${quantumRoll} — removed the card **farthest from the draw deck**` +
+                  (quantum.vp ? ` (+${quantum.vp} VP)` : '')
+                : `Quantum Loops: rolled ${quantumRoll} — no card removed`,
+            ]
+          : []),
       ],
     );
-    setAltTimelinesPending(null);
   };
   // End of Action Rounds → ask who took First Player next Era, then Clean Up.
   // On the last Era there is no next Era, so skip the prompt and go to Clean Up.
@@ -4165,6 +4196,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         >
           ↶ Undo
         </button>
+        <button
+          className={`stat-pill status-chip ${showHistory ? 'on' : ''}`}
+          onClick={() => setShowHistory((v) => !v)}
+          title="Turn history"
+          aria-pressed={showHistory}
+        >
+          🕑
+        </button>
         {/* The same Turn chip the Action Rounds top bar carries: the overview's counts,
             trackers and recent turns are just as useful between phases. */}
         <button
@@ -4324,14 +4363,76 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
                 </RulesBox>
               )}
+              {quantumLoops && (
+                <RulesBox label="Quantum Loops">
+                  <p>
+                    <b>WARP PHASE:</b> In each Warp Phase, when the Chronossus places at
+                    least one warp tile, roll the AI die. On a roll of 4, remove the Quantum
+                    Loop card farthest from the draw deck from play.
+                  </p>
+                  <p>
+                    <b>ACTION ROUNDS PHASE:</b> The Chronossus does not actually interact
+                    with Quantum Loops. It never “returns” them, thus cards removed during
+                    the Warp Phase are permanently removed. When you return a card, add it
+                    back to the row of Quantum Loop cards farthest from the draw deck.
+                  </p>
+                  {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_REMOVE_ON_5) && (
+                    <p>
+                      <b>INCREASING THE DIFFICULTY:</b> Also remove a Quantum Loop card on a
+                      roll of 5.
+                    </p>
+                  )}
+                  {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_2VP) && (
+                    <p>
+                      <b>INCREASING THE DIFFICULTY:</b> When removing a Quantum Loop card,
+                      the Chronossus receives 2 VPs.
+                    </p>
+                  )}
+                  <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+                </RulesBox>
+              )}
             </>
           }
+          beforeCommit={
+            // Quantum Loops: the app rolled this with the Warp roll, so the outcome is on
+            // screen before the player answers anything else — one screen, one commit.
+            quantumLoops && (ui.warpRoll ?? 0) > 0 && ui.quantumRoll != null ? (
+              <div className="warp-roll-result quantum-check">
+                <span className="bot-die" aria-label={`AI die shows ${ui.quantumRoll}`}>
+                  {ui.quantumRoll}
+                </span>
+                <p className="phase-note">
+                  <b>Quantum Loops:</b>{' '}
+                  {quantumOutcome.removes ? (
+                    <>
+                      the Chronossus rolled {ui.quantumRoll} — remove the Quantum Loop card{' '}
+                      <b>farthest from the draw deck</b> from play. It never returns a card,
+                      so this one is gone <b>permanently</b>.
+                      {quantumOutcome.vp ? ` It receives ${quantumOutcome.vp} VP for the removal.` : ''}
+                    </>
+                  ) : (
+                    <>
+                      the Chronossus rolled {ui.quantumRoll} — <b>no card is removed</b>. A
+                      card only goes on a roll of{' '}
+                      {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_REMOVE_ON_5)
+                        ? '4 or 5'
+                        : '4'}
+                      .
+                    </>
+                  )}
+                </p>
+              </div>
+            ) : undefined
+          }
           followUp={
-            altTimelinesPending != null ? (
+            // One screen: with a tile placed, Alternate Timelines' question REPLACES the
+            // Continue button rather than appearing after it, so the placement, the
+            // Quantum Loops outcome and this all commit together in one entry.
+            altTimelines && (ui.warpRoll ?? 0) > 0 ? (
               <div className="place-prompt">
                 <p className="pp-instruct">
-                  Alternate Timelines: how many of the Chronossus’s {altTimelinesPending}{' '}
-                  newly placed Warp tile{altTimelinesPending === 1 ? '' : 's'} landed on a{' '}
+                  Alternate Timelines: how many of the Chronossus’s {ui.warpRoll}{' '}
+                  newly placed Warp tile{ui.warpRoll === 1 ? '' : 's'} landed on a{' '}
                   <b>positive</b>-effect Timeline space?
                 </p>
                 <p className="pp-sub">
@@ -4339,12 +4440,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   those. Each positive one scores it {altTimelinesPerSpace} VP.
                 </p>
                 <div className="vp-digits">
-                  {Array.from({ length: altTimelinesPending + 1 }, (_, n) => n).map((n) => (
+                  {Array.from({ length: (ui.warpRoll ?? 0) + 1 }, (_, n) => n).map((n) => (
                     <button
                       key={n}
                       type="button"
                       className="vp-digit"
-                      onClick={() => finishWarp(altTimelinesPending, n)}
+                      onClick={() => finishWarp(ui.warpRoll ?? 0, n)}
                     >
                       {n}
                     </button>
@@ -4547,6 +4648,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {upgradeBoardModal}
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
+      {/* History otherwise renders only inside the Action Rounds board harness, so a
+          phase's own entries looked unlogged between phases. Same pane, docked. */}
+      {showHistory && (
+        <PhaseHistoryDock entries={entries} onClose={() => setShowHistory(false)} />
+      )}
       {turnOverview}
       {showFirstPlayer && (
         <FirstPlayerPrompt
@@ -5164,7 +5270,9 @@ function CxTileDialog({
               </p>
               {valleyGate.assimilateShape && (
                 <div className="shape-roll">
-                  <ShapeIcon shape={valleyGate.assimilateShape} size={52} />
+                  {/* The die alone: this roll resolves to an Operator / Technology /
+                      fewer-of, never a Breakthrough — so no Breakthrough art beside it. */}
+                  <ShapeDieFace shape={valleyGate.assimilateShape} />
                 </div>
               )}
               <p className="pp-sub">It is worth 3 VP at the end of the game.</p>
@@ -5182,7 +5290,9 @@ function CxTileDialog({
               </p>
               {valleyGate.assimilateShape && (
                 <div className="shape-roll">
-                  <ShapeIcon shape={valleyGate.assimilateShape} size={52} />
+                  {/* The die alone: this roll resolves to an Operator / Technology /
+                      fewer-of, never a Breakthrough — so no Breakthrough art beside it. */}
+                  <ShapeDieFace shape={valleyGate.assimilateShape} />
                 </div>
               )}
               {/* The Chronossus's Worker collection is app-tracked, so the only physical

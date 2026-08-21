@@ -2,6 +2,54 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-21 — Quantum Loops, and the wrap-up that takes the card to 100%
+
+The last module in the Solo Opponents matrix, plus the four loose ends that stood between the
+landing card's 90% and 100%. With this, **every module and add-on in the matrix is implemented**.
+
+**Quantum Loops.** The smallest module by a distance, because the Chronossus barely touches it:
+in each Warp Phase where it places at least one Warp tile, roll the AI die, and on a **4** the
+Quantum Loop card farthest from the player's draw deck leaves play — permanently, since the bot
+never *returns* a card. Two difficulty bullets (also remove on a **5**; **2 VP** per removal) and
+a setup line about keeping the cards in a row so "farthest from the draw deck" means something.
+It is an **add-on checkbox**, not a base mode, and it combines with everything including Doomsday.
+
+The card row itself is **deliberately not modelled**. The player takes and returns cards and
+Preparation refills the offer, so any model would drift silently within an Era — the same call
+Doomsday's Experiment cards got. The upshot is a module with **no `ChronossusState` slice at
+all**, a first: an instruction, a History line, and VP that already had a home.
+
+**The die shows on a miss too.** A check that only ever appears when it fires is
+indistinguishable from one that never ran, so a 3 reads "no card is removed" with the face
+beside it. And it shares the Warp screen rather than chaining after it — which turned up a real
+bug: **Alternate Timelines was still a chained prompt**, asking "how many landed on a positive
+space?" only after the Continue button. Its question now replaces that button on the Warp screen
+itself, so the placement, the Quantum Loops outcome and the answer commit as one entry.
+
+**Chronobot parity.** Three behaviours the Chronossus had and the Chronobot never got. Its phase
+rolls lived in component state where no snapshot could see them, so **Undo silently re-rolled** —
+the playtest's bug #10, still live on that side. They are on the `Snapshot` now (and in the save,
+so a reload mid-Warp doesn't re-roll either). Every **phase advance commits**, so it is undoable
+and appears in History. And **History is reachable from a phase screen** at last — the pane was a
+flex child of the Action Rounds board stage, so during Preparation / Paradox / Power Up / Warp
+there was nowhere showing it, which is what made the Era Zero Warp look unlogged. `PhaseHistoryDock`
+gives it somewhere to sit, on **both** bots.
+
+**The real dice on the real rolls.** The shape die now shows its own face: on **Research** beside
+the Breakthrough art (the shape rolled and the Breakthrough kept are two statements), and on
+Fractures' **Assimilate** alone, because that roll resolves to an Operator / Technology /
+fewer-of and never to a Breakthrough. The Paradox die was already done. The AI die stays
+CSS-drawn, as decided.
+
+**Publishing.** The CI deploy key is **rotated** — new pair added to the Droplet before the old
+was removed, each half proven by a real staging deploy, and the runbook now carries the
+add-before-remove recipe. The BGE landing card turned out to have been registered all along and
+renders on the live landing service; the app's own "Part of BoardGameEdge" link ships env-aware
+and stays hidden in prod, because `boardgameedge.com` is still a GoDaddy "Launching Soon"
+placeholder and linking a finished app to one is worse than not linking.
+
+Landing card: **100%**, and the bar stops saying "Uploading…". 493 tests, build and lint clean.
+
 ## 2026-08-20 — Doomsday's Impact check on one screen, the overview off the board, and production
 
 The Doomsday review walkthrough turned up its own UX rather than a rules bug, and a playtest

@@ -175,18 +175,37 @@ interface ExtraModuleConfig {
   id: string;
   label: string;
   available: boolean;
+  /** The physical expansion this add-on needs, when it needs one. */
+  note?: string;
 }
 // The labels come from `EXTRA_MODULE_LABELS` so the picker and every place that lists the
 // game's modules (the turn overview, End Game) can't drift apart.
 const EXTRA_MODULES: ExtraModuleConfig[] = [
   { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, available: true },
-  { id: 'quantum-loops', available: false },
+  {
+    id: Chronossus.EXTRA_MODULE_QUANTUM_LOOPS,
+    available: true,
+    note: 'Requires the Future Imperfect expansion.',
+  },
   { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, available: true },
 ].map((m) => ({ ...m, label: EXTRA_MODULE_LABELS[m.id] ?? m.id }));
 
 /** Extra-module-specific difficulty options (Solo Opponents p.18's own
  *  "Increasing the Difficulty" bullets — only Alternate Timelines has one). */
 const EXTRA_MODULE_DIFFICULTY: Record<string, DifficultyOption[]> = {
+  [Chronossus.EXTRA_MODULE_QUANTUM_LOOPS]: [
+    {
+      flag: Chronossus.DIFFICULTY_QL_REMOVE_ON_5,
+      label: 'Quantum Loops: also remove a card on a roll of 5',
+      detail:
+        'The Warp Phase check removes a Quantum Loop card on a roll of 4 or 5, not just a 4.',
+    },
+    {
+      flag: Chronossus.DIFFICULTY_QL_2VP,
+      label: 'Quantum Loops: 2 VP per card removed',
+      detail: 'When removing a Quantum Loop card, the Chronossus receives 2 VPs.',
+    },
+  ],
   [Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES]: [
     {
       flag: Chronossus.DIFFICULTY_ALT_TIMELINES_3VP,
@@ -581,6 +600,7 @@ export default function ChronossusSetupFlow({
                       />
                       <span className="difficulty-opt-text">
                         <b>{m.label}</b>
+                        {m.note && <span>{m.note}</span>}
                       </span>
                     </label>
                   );
@@ -1030,6 +1050,35 @@ export default function ChronossusSetupFlow({
                 </div>
               )}
 
+              {extraModules.has(Chronossus.EXTRA_MODULE_QUANTUM_LOOPS) && (
+                <div className="setup-modified">
+                  <h3>Quantum Loops setup</h3>
+                  <ul>
+                    <li>
+                      Set up the <b>Quantum Loops module</b> as for a 2-player game — the
+                      card offer, the draw deck and the Quantum Warp tiles are unchanged.
+                    </li>
+                    <li>
+                      Keep the Quantum Loop cards in a <b>row</b>, adding new ones{' '}
+                      <b>closest to the draw deck</b>. That order is what the Chronossus
+                      reads: it always removes the card <b>farthest from the draw deck</b>.
+                      When you return a card of your own, add it back farthest from the deck
+                      too.
+                    </li>
+                    <li>
+                      The app rolls the check for you each Warp Phase in which the Chronossus
+                      places a Warp tile, and tells you whether a card leaves play. It never
+                      takes or returns a card itself, so anything it removes is gone{' '}
+                      <b>permanently</b>.
+                    </li>
+                    <li>
+                      If you gain the <b>“Cosmic Data Leak”</b> card, draw 2 unused Solo
+                      Objectives and put them into play.
+                    </li>
+                  </ul>
+                </div>
+              )}
+
               {moduleId?.includes('hypersync') && (
                 <div className="setup-modified">
                   <h3>Hypersync Future Actions setup</h3>
@@ -1168,6 +1217,19 @@ export default function ChronossusSetupFlow({
                     src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
                     alt="Solo Hypersync setup tiles"
                   />
+                </RulesBox>
+              )}
+
+              {extraModules.has(Chronossus.EXTRA_MODULE_QUANTUM_LOOPS) && (
+                <RulesBox label="Quantum Loops — setup" showPreamble>
+                  <p>
+                    This requires the Future Imperfect expansion to play. All of the Quantum
+                    Loops module and Chronossus base rules apply, unless noted below.
+                  </p>
+                  <p>
+                    No changes at Setup. Keep the Quantum Loop cards in a row, adding new ones
+                    closest to the draw deck.
+                  </p>
                 </RulesBox>
               )}
             </>

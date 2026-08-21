@@ -2583,3 +2583,51 @@
   color: #fca5a5;
   border: 1px solid rgba(248, 113, 113, 0.45);
 }
+
+/* Quantum Loops' Warp-Phase check: the AI die and its outcome, reported on the Warp
+   screen itself rather than in a chained prompt. Reported on a miss too. */
+.warp-roll-result.quantum-check {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* The shape (Research) die's real face, used as the roll readout. Sits on its own dark
+   ground rather than the Breakthrough art's light chip — it is a die, not a component. */
+.shape-die-face {
+  object-fit: contain;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
+
+/* History, docked over a phase screen. The pane is a flex child of the Action Rounds
+   board stage, so on the phase screens it needs somewhere of its own to sit. */
+.phase-history-dock {
+  position: fixed;
+  top: 64px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 60;
+  display: flex;
+  pointer-events: none;
+}
+.phase-history-dock .history-pane {
+  margin-left: 0;
+  max-height: 100%;
+  pointer-events: auto;
+}
+@media (max-width: 640px) {
+  .phase-history-dock {
+    left: 12px;
+    right: 12px;
+  }
+}
+
+/* "Part of BoardGameEdge" — the link back to the hub, above the copyright line. */
+.landing-foot.landing-bge {
+  margin-bottom: 0.35rem;
+}
+.landing-foot.landing-bge a {
+  color: var(--sp-accent);
+  text-decoration: underline;
+}

@@ -372,6 +372,30 @@ rather than cropping the rulebook Appendix (the shipped `C06A.png` is byte-ident
 The TTS mod does **not** contain the Doomsday board, so its track was transcribed from the
 Classic Expansion rulebook and confirmed with the user.
 
+**A module can add no state at all — decide that before writing a slice.** Quantum Loops
+(Solo Opponents p.18) is one AI-die roll in the Warp Phase and nothing else: on a 4 the player
+removes the Quantum Loop card farthest from their draw deck. The card row is **not modelled** —
+the player takes and returns cards and Preparation refills the offer, so any model would drift
+inside an Era, exactly as Doomsday's Experiment cards would have. So it has no
+`ChronossusState` slice, only an instruction, a History line and (with its difficulty option)
+VP. `quantumLoops.ts` holds the verbatim text and one pure helper; `resolveWarp` takes the
+rolled face as an argument because the caller rolls, as everywhere else.
+
+**A phase's outcomes belong on the phase's own screen — including ones the app resolves
+alone.** The one-screen rule (2026-08-20's Check-for-Impact rework) is not only about
+questions. `WarpPhaseBody` takes **`beforeCommit`** for an outcome the app resolves and merely
+reports (Quantum Loops' die), which — unlike `followUp` — does not replace the Continue button.
+Alternate Timelines was still chaining its own question behind that button until 2026-08-21;
+it now renders from `ui.warpRoll` on the screen itself, so the placement, the Quantum Loops
+result and the answer commit as **one** entry. **Report a miss, too**: a check that only
+appears when it fires is indistinguishable from one that never ran.
+
+**A phase roll belongs on the snapshot, never in the phase body.** Both bots keep the Warp and
+Paradox rolls in restorable state (the Chronossus's `ui` slice, the Chronobot's `Snapshot` +
+save) so Undo — and a reload — re-show the SAME roll. A roll held in component state is
+remounted and silently re-rolled, which is playtest bug #10; the Chronobot carried it until
+2026-08-21. A Paradox entry additionally re-seeds its roll from the entry's `die`.
+
 **Two tiles that are genuinely different Actions get separate action ids.** Pioneers' C09/C10
 share `tile-adventure` because they *are* the same Action, which is why `liveTileFamily` had to
 exist. Doomsday's C07/C08 execute different Experiment levels, so they take

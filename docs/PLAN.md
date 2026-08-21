@@ -5,19 +5,19 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-21): every module in the Solo Opponents matrix is live in production.**
+> **Status (2026-08-21): every module AND add-on in the Solo Opponents matrix is implemented.**
 > Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
-> Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth and
-> **Doomsday** all ship on `main`. Doomsday's review walkthrough ran on 2026-08-20 and
-> produced one change — its Clean Up Check for Impact is a single screen of toggles rather
-> than two chained prompts — after which it promoted with the rest; the effort was archived
-> **2026-08-21** to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`. Phase 4
-> (Modules/expansions) is complete bar one: the landing card reads **90%** and the only module
-> left in the picker is the **Quantum Loops** add-on (registered, `available: false`). The
-> **active plan is `docs/plans/PLAN_quantum_wrapup.md`** (created 2026-08-21) — Quantum Loops
-> plus the four wrap-up items that take the card to 100%: the landing progress, Chronobot
-> Undo/phase-screen parity, the die art on the existing Paradox/Research rolls, and the
-> publishing finishers (CI deploy-key rotation, link-back + support).
+> Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth, **Doomsday**
+> and — as of today — **Quantum Loops** are all built. Doomsday was archived 2026-08-21 to
+> `docs/complete/20260821_DOOMSDAY_COMPLETED.md`. **Phase 4 (Modules/expansions) is closed**
+> and the landing card reads **100%**. The same effort closed four wrap-up items: Chronobot
+> parity with the Chronossus's Undo / phase-screen work, the real shape-die art on the
+> Research and Assimilate rolls, History reachable from the phase screens on both bots, and
+> the CI deploy-key rotation. See `docs/plans/PLAN_quantum_wrapup.md` until it is archived.
+> **What is left** is no longer modules: **Phase 5 (login + stats)** — the Chronossus-specific
+> stats/history in `AdminStats` and the score-tally export — plus the deferred publishing work
+> (access-gating via `auth.boardgameedge.com`, the `boardgameedge.com` apex cutover, making the
+> repo public) and the on-device verification passes listed in `TODO.md`.
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real

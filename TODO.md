@@ -11,52 +11,30 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
 - [x] **Landing-page listing** — **already done** (confirmed 2026-08-21): Anachrony is an
       `AppCard` in `boardgameedge/services/landing/src/bge_landing/config.py` (slug
       `anachrony`, icon `clock`). ↳ `PLAN_quantum_wrapup.md` F9 only confirms it renders live.
-- [ ] **Link back to BGE landing** — once `boardgameedge.com` landing is live, add a
-      reference/link from this app (e.g. the Landing/home screen) back to it. Include a
-      "support me" message linking to whatever donation platform I set up (Ko-fi /
-      Patreon / etc. — TBD).
-- [ ] **Security: rotate the CI deploy key** — the `the deploy key` SSH
-      private key was printed to a tool output during an earlier session. Regenerate the
-      keypair, update the Droplet `authorized_keys` + repo secret `DEPLOY_SSH_KEY`.
+- [~] **Link back to BGE landing** — **half done 2026-08-21.** The link ships on the home
+      screen, env-aware (`BGE_LANDING_URL` in `Landing.tsx`), but **prod returns null so it
+      does not render**: `boardgameedge.com` is still a GoDaddy "Launching Soon" placeholder,
+      while the landing service itself is live at `staging.boardgameedge.com`. One line to
+      flip when the apex cuts over. Still open: the **"support me" message** — the donation
+      platform (Ko-fi / Patreon / …) is undecided, so nothing was shipped for it.
+- [x] **Security: rotate the CI deploy key** — **done 2026-08-21.** New pair
+      `the deploy key`, added before the old was removed, each half
+      proven by a real staging deploy. Old key gone from `authorized_keys`; backup at
+      `the host's key-list backup`. Recipe now in `docs/DEPLOYMENT.md`.
 - [ ] **Make the GitHub repo public** — currently private because the board art is
       copyrighted. Before flipping: strip/relocate the copyrighted board art + sprite
       assets (or confirm licensing), scrub git history for any secrets, and re-confirm
       the CI deploy key was rotated (see above).
 
 ## App
-- [ ] **Show real die art on the existing Paradox / Research-shape rolls** (2026-08-15) —
-      `public/assets/solo/paradox-die-{0,1,2}.png` and `shape-die-{circle,triangle,square}.png`
-      are extracted and committed, but nothing renders them yet; both rolls still show text.
-      Both bots share these dice. Extracted alongside the Pioneers Adventure die — see the
-      die-art notes in `docs/complete/20260817_PIONEERS_COMPLETED.md` for the TTS atlas geometry.
-      **Shape-die display rule:** the die face *replaces the rolled-shape readout only* —
-      it does not replace the outcome art beside it.
-      - **Research:** show the die face, and **keep the Breakthrough art next to it** (the
-        shape rolled vs. the Breakthrough actually taken are two different things).
-      - **Assimilate (Fractures, C04):** the **black die alone**, no shape art beside it —
-        that roll resolves to an Operator / Technology / fewer-of, never a Breakthrough, so
-        pairing it with Breakthrough art would state something false.
-      **The AI / Solo die is deliberately NOT extracted** (decided 2026-08-15). `.bot-die`
-      draws it in CSS — black face, red `tabular-nums` numeral — which stays sharp at any
-      size and retints per bot; a raster crop would be a downgrade. Leave it as is.
-- [ ] **History is only visible on the Action Rounds board** (2026-08-19) — `HistoryPane`
-      renders inside the board harness, so during Preparation / Paradox / Power Up / Warp
-      there is nowhere showing it. A phase-screen entry is what made the Era Zero Warp look
-      unlogged when it had in fact been recorded. Give the phase screens a way in (the ⚙
-      menu already opens it in-game) if it comes up again.
-      **Partly addressed 2026-08-20:** both bots' phase screens now carry the Action Rounds'
-      **Turn chip**, and the overview it opens lists the **3 most recent bot turns** with the
-      same per-turn detail History shows. The full pane is still board-only.
-- [~] **Quantum Loops** (2026-08-20) — the last module in the picker
-      (`EXTRA_MODULE_LABELS['quantum-loops']`, `available: false` in
-      `ChronossusSetupFlow.tsx`). **Now planned:** `docs/plans/PLAN_quantum_wrapup.md`
-      (2026-08-21), which also carries the wrap-up items marked ↳ below.
-- [ ] **Finish the Doomsday review walkthrough** (2026-08-20; archived 2026-08-21) — the
-      effort is archived to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`, which carries the
-      walkthrough with sections 1–5 and 7–10 still un-walked (blank verdict lines). It needs
-      the **Classic Expansion Pack** physically on the table for the Experiment steps. The
-      Check-for-Impact behaviour it *did* exercise produced two fixes and is covered by
-      `pw-doomsday.mjs`.
+- [x] **Show real die art on the existing Paradox / Research-shape rolls** — **done
+      2026-08-21.** The Paradox die was already rendering (`ParadoxDieFace`); the new
+      `ShapeDieFace` covers Research (die + Breakthrough art beside it) and Fractures'
+      Assimilate (die alone). Verified in a browser with `pw-shapedie.mjs`. The AI die stays
+      CSS-drawn, as decided 2026-08-15.
+- [x] **History is only visible on the Action Rounds board** — **fixed 2026-08-21** for
+      **both** bots. `PhaseHistoryDock` (a wrapper around the same pane) plus a 🕑 button in
+      the phase-screen header. The turn chip added 2026-08-20 stays as the quick view.
 - [ ] **Export the score tally, not just BG Stats** (2026-08-19, open question) — the home
       screen's history modal exports BG Stats' summary fields (result, scores, era,
       difficulty). Asked for but never specified: a per-game export of the full scoring
@@ -87,13 +65,13 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 - [ ] **On-device verification** — never ran a `/plan review`. Manually check on iPad/
       iPhone: undo/roll-persistence (Paradox/Warp/Hypersync re-show the same roll), the
       side-by-side tally at tablet width, and the share-sheet flow.
-- [ ] **Mirror roll-persistence to the Chronobot** — the Chronobot (`BoardExplorer`) uses its
-      own separate snapshot system and still has the latent reroll-on-undo bug (#4/#10).
-      (The save-error half, #1, is done: 2026-08-19 gave both bots the same reason text,
-      Retry, Log in button and pending-upload queue.)
-- [ ] **Mirror the phase-screen ↶ Undo to the Chronobot** (2026-08-11) — the Chronossus
-      phase screens gained the header Undo plus `commitPhase` (every phase advance is
-      undoable); the Chronobot's phase screens have neither. Pairs with the item above.
+- [x] **Mirror roll-persistence to the Chronobot** — **done 2026-08-21.** The Warp and
+      Paradox rolls are on the Chronobot's `Snapshot` (and in its save), so Undo — and a
+      reload — re-show the same roll instead of re-rolling. Verified with
+      `pw-chronobot-parity.mjs`.
+- [x] **Mirror the phase-screen ↶ Undo to the Chronobot** — **done 2026-08-21.** The header
+      Undo and `commitPhase` are both there; `advancePhase`, `startNextEraNow` and
+      `endGameNow` all commit, so every phase move is undoable and lands in History.
 
 ## Guardians follow-ups (from the 2026-08-14 module build)
 - [ ] **Mirror the Chronossus's phase/History polish to the Chronobot** where it applies —
