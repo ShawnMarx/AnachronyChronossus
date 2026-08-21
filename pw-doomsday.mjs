@@ -126,8 +126,11 @@ if (CLEANUP) {
   await page.screenshot({ path: `${SHOT}/doomsday-cleanup-1.png`, fullPage: true });
 
   if (process.env.EARTH) {
-    // "Save Earth" topmost ends the game on the spot — no Impact, no Evacuation.
-    await page.getByRole('button', { name: /Earth is saved/i }).first().click(); await wait(800);
+    // "Save Earth" topmost ends the game on the spot — no Impact, no Evacuation. Since
+    // 2026-08-20 the check is a TOGGLE on the ordinary Clean Up screen: tick the outcome,
+    // then leave the Era with the button, which becomes the Finish & Score exit.
+    await page.getByRole('button', { name: /Save Earth. reached/i }).first().click(); await wait(300);
+    await page.getByRole('button', { name: /Earth is saved — Finish/i }).first().click(); await wait(800);
     const t = await bodyText();
     const ended = /Final Score|Score|End Game/i.test(t);
     const slice = await page.evaluate(() => {
@@ -144,16 +147,18 @@ if (CLEANUP) {
     await b.close();
     process.exit(0);
   }
-  const neither = page.getByRole('button', { name: /^Neither$/ }).first();
-  console.log(`"Is either tracker locked in?" asked = ${await neither.count() > 0}`);
-  if (await neither.count()) { await neither.click(); await wait(600); }
-  const t2 = await bodyText();
-  const asked2 = /Did the Impact occur at the end of this Era/i.test(t2);
-  console.log(`then "Did the Impact occur?" asked = ${asked2} -> ${asked2 ? 'OK' : 'FAIL'}`);
+  // All three outcomes are on this one screen, as toggles; nothing commits until the Era
+  // is ended. Reporting nothing is the ordinary case, so there is no "Neither" button.
+  const toggles = await page.locator('.impact-toggle').count();
+  console.log(`three Check-for-Impact toggles on one screen = ${toggles === 3} -> ${toggles === 3 ? 'OK' : 'FAIL'}`);
+  const occurred = page.getByRole('button', { name: /The Impact occurred/i }).first();
+  if (await occurred.count()) { await occurred.click(); await wait(300); }
+  const pressed = await occurred.getAttribute('aria-pressed');
+  console.log(`toggling it on = ${pressed === 'true'} -> ${pressed === 'true' ? 'OK' : 'FAIL'}`);
   await page.screenshot({ path: `${SHOT}/doomsday-cleanup-2.png`, fullPage: true });
 
-  const yes = page.getByRole('button', { name: /Yes — the Impact resolved/i }).first();
-  if (await yes.count()) { await yes.click(); await wait(700); }
+  const endEra = page.getByRole('button', { name: /End the Era/i }).first();
+  if (await endEra.count()) { await endEra.click(); await wait(700); }
   const after = await page.evaluate(() => {
     const d = JSON.parse(localStorage.getItem('anachrony:chronossus'));
     return d.state.chronossus.doomsday;

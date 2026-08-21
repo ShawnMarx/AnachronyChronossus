@@ -8,8 +8,9 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
 
 - [ ] **Access-gating / SSO** — protect the copyrighted board art by wiring nginx
       `auth_request` against `auth.boardgameedge.com` (shared `bge_session` cookie).
-- [ ] **Landing-page listing** — add Anachrony to the `boardgameedge.com` landing
-      service's app registry (`boardgameedge/services/landing/`).
+- [x] **Landing-page listing** — **already done** (confirmed 2026-08-21): Anachrony is an
+      `AppCard` in `boardgameedge/services/landing/src/bge_landing/config.py` (slug
+      `anachrony`, icon `clock`). ↳ `PLAN_quantum_wrapup.md` F9 only confirms it renders live.
 - [ ] **Link back to BGE landing** — once `boardgameedge.com` landing is live, add a
       reference/link from this app (e.g. the Landing/home screen) back to it. Include a
       "support me" message linking to whatever donation platform I set up (Ko-fi /
@@ -27,7 +28,7 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       `public/assets/solo/paradox-die-{0,1,2}.png` and `shape-die-{circle,triangle,square}.png`
       are extracted and committed, but nothing renders them yet; both rolls still show text.
       Both bots share these dice. Extracted alongside the Pioneers Adventure die — see the
-      die-art notes in `docs/plans/LOG_pioneers.md` for the TTS atlas geometry.
+      die-art notes in `docs/complete/20260817_PIONEERS_COMPLETED.md` for the TTS atlas geometry.
       **Shape-die display rule:** the die face *replaces the rolled-shape readout only* —
       it does not replace the outcome art beside it.
       - **Research:** show the die face, and **keep the Breakthrough art next to it** (the
@@ -38,13 +39,47 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       **The AI / Solo die is deliberately NOT extracted** (decided 2026-08-15). `.bot-die`
       draws it in CSS — black face, red `tabular-nums` numeral — which stays sharp at any
       size and retints per bot; a raster crop would be a downgrade. Leave it as is.
+- [ ] **History is only visible on the Action Rounds board** (2026-08-19) — `HistoryPane`
+      renders inside the board harness, so during Preparation / Paradox / Power Up / Warp
+      there is nowhere showing it. A phase-screen entry is what made the Era Zero Warp look
+      unlogged when it had in fact been recorded. Give the phase screens a way in (the ⚙
+      menu already opens it in-game) if it comes up again.
+      **Partly addressed 2026-08-20:** both bots' phase screens now carry the Action Rounds'
+      **Turn chip**, and the overview it opens lists the **3 most recent bot turns** with the
+      same per-turn detail History shows. The full pane is still board-only.
+- [~] **Quantum Loops** (2026-08-20) — the last module in the picker
+      (`EXTRA_MODULE_LABELS['quantum-loops']`, `available: false` in
+      `ChronossusSetupFlow.tsx`). **Now planned:** `docs/plans/PLAN_quantum_wrapup.md`
+      (2026-08-21), which also carries the wrap-up items marked ↳ below.
+- [ ] **Finish the Doomsday review walkthrough** (2026-08-20; archived 2026-08-21) — the
+      effort is archived to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`, which carries the
+      walkthrough with sections 1–5 and 7–10 still un-walked (blank verdict lines). It needs
+      the **Classic Expansion Pack** physically on the table for the Experiment steps. The
+      Check-for-Impact behaviour it *did* exercise produced two fixes and is covered by
+      `pw-doomsday.mjs`.
+- [ ] **Export the score tally, not just BG Stats** (2026-08-19, open question) — the home
+      screen's history modal exports BG Stats' summary fields (result, scores, era,
+      difficulty). Asked for but never specified: a per-game export of the full scoring
+      breakdown the tally collects. Needs a format decision (CSV? the share card's rows?).
+- [ ] **Engine instruction voice** (2026-08-19) — the score-screen and Action dialogs now say
+      what the *bot* does ("The Chronossus discards … and removes 1 Anomaly from its board").
+      A few engine `Instruction.text` strings still address the player about the bot's supply
+      (`chronobot.ts` `resolveRemoveAnomaly`: "Discard … from the Chronobot"). They feed
+      History labels rather than dialogs, so nothing is wrong on screen — worth a sweep if the
+      voice ever shows.
+- [ ] **Paradox roll count could be derived now** (2026-08-19) — the phase asks the player how
+      many past Timeline tiles the bot leads/ties on, capped by `state.era - 1` and its total
+      Warp tiles. With `warpTilesByEra` the app knows exactly which past tiles hold the bot's
+      tiles; it still cannot know the *player's*, so the question stays — but the cap could be
+      exact rather than an upper bound.
 - [ ] **`impact` flag** is reminder-only (Era-4 Clean Up note); no logic reads it.
       Wire it if Collapsing-Capital timing/automation is ever wanted.
 - [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
       could tighten button sizing/gaps if desired).
 - [ ] **Push local games to the server on first login** — deferred enhancement from
       the auth/stats work: offer a one-time "import my local (localStorage) finished
-      games" action; currently local prior games are export/import only.
+      games" action; currently local prior games are export/import only. (Distinct from the
+      2026-08-19 pending-upload queue, which only holds games whose save *failed*.)
 
 ## Chronossus follow-ups (from the 2026-08-08 playtest fixes)
 See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
@@ -52,10 +87,10 @@ See `docs/complete/20260808_CHRONOSSUS_PLAYTEST_FIXES_COMPLETED.md`.
 - [ ] **On-device verification** — never ran a `/plan review`. Manually check on iPad/
       iPhone: undo/roll-persistence (Paradox/Warp/Hypersync re-show the same roll), the
       side-by-side tally at tablet width, and the share-sheet flow.
-- [ ] **Mirror roll-persistence + save-retry to the Chronobot** — the Chronobot
-      (`BoardExplorer`) uses its own separate snapshot system and still has the latent
-      reroll-on-undo bug (#4/#10) and the generic save-error message (#1). Port the
-      Chronossus fixes.
+- [ ] **Mirror roll-persistence to the Chronobot** — the Chronobot (`BoardExplorer`) uses its
+      own separate snapshot system and still has the latent reroll-on-undo bug (#4/#10).
+      (The save-error half, #1, is done: 2026-08-19 gave both bots the same reason text,
+      Retry, Log in button and pending-upload queue.)
 - [ ] **Mirror the phase-screen ↶ Undo to the Chronobot** (2026-08-11) — the Chronossus
       phase screens gained the header Undo plus `commitPhase` (every phase advance is
       undoable); the Chronobot's phase screens have neither. Pairs with the item above.
@@ -136,9 +171,9 @@ archived in `docs/complete/20260814_GUARDIANS_COMPLETED.md`. No plan is active.
 to production 2026-08-17 — archived in `docs/complete/20260817_PIONEERS_COMPLETED.md`.
 No plan is active.
 
-**Doomsday** — the last module — is **implemented and on staging** (2026-08-18). Its plan,
-log and review walkthrough are in `docs/plans/`; run the review, then `/plan cleanup` to
-archive it. With it, every module in the Solo Opponents matrix is done.
+**Doomsday** — the last module — shipped to production 2026-08-20 and was archived
+2026-08-21 to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`. With it, **every module in the
+Solo Opponents matrix is done**; the only thing left in the picker is **Quantum Loops**.
 
 Still backlog (not yet in a plan):
 - [ ] **Blink check: a pool of only Empty Flux Casings never draws** (2026-08-17) —
@@ -152,8 +187,6 @@ Still backlog (not yet in a plan):
       (Fractures rulebook p.15). The Solo Opponents book doesn't say whether the Chronossus
       takes it; if it does, it's Pioneers' Step 2 `powerUpgradeChoice` restricted to
       Ti/U/Gold, run once after the Era Zero Warp screen.
-- [ ] **Doomsday: the review walkthrough** — `docs/plans/REVIEW_doomsday.md` is written but
-      not yet walked. Needs the Classic Expansion Pack on the table for the Experiment steps.
 - [ ] **Doomsday: Experiment / Doomsday-board iconography** — deliberately out of scope for
       the module itself (Guardians and Pioneers shipped without their equivalents). Revisit
       as its own pass across all the modules rather than one at a time.

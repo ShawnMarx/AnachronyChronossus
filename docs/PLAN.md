@@ -5,13 +5,19 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-18): every module in the Solo Opponents matrix is implemented.**
+> **Status (2026-08-21): every module in the Solo Opponents matrix is live in production.**
 > Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
-> Anomalies, Fractures of Time, Guardians of the Council and Pioneers of New Earth are live in
-> production; **Doomsday** — the last one — is implemented and **on staging**, awaiting its
-> review walkthrough (`docs/plans/REVIEW_doomsday.md`) before it archives and promotes.
-> With Doomsday done, Phase 4 (Modules/expansions) is complete and the next efforts are
-> **Phase 5 (login + stats)** and the Chronossus-specific stats/history in `TODO.md`.
+> Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth and
+> **Doomsday** all ship on `main`. Doomsday's review walkthrough ran on 2026-08-20 and
+> produced one change — its Clean Up Check for Impact is a single screen of toggles rather
+> than two chained prompts — after which it promoted with the rest; the effort was archived
+> **2026-08-21** to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`. Phase 4
+> (Modules/expansions) is complete bar one: the landing card reads **90%** and the only module
+> left in the picker is the **Quantum Loops** add-on (registered, `available: false`). The
+> **active plan is `docs/plans/PLAN_quantum_wrapup.md`** (created 2026-08-21) — Quantum Loops
+> plus the four wrap-up items that take the card to 100%: the landing progress, Chronobot
+> Undo/phase-screen parity, the die art on the existing Paradox/Research rolls, and the
+> publishing finishers (CI deploy-key rotation, link-back + support).
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real

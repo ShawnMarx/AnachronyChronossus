@@ -2,6 +2,113 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-20 — Doomsday's Impact check on one screen, the overview off the board, and production
+
+The Doomsday review walkthrough turned up its own UX rather than a rules bug, and a playtest
+sweep of the phase screens caught three smaller things. All of it, plus the 22 commits waiting
+on `staging`, went to **production**.
+
+**Check for Impact is one screen now.** It used to be a branch: a first prompt asking "is either
+tracker locked in?", then — only once that was answered — a second screen asking whether the
+Impact occurred, with the Era-end button hidden behind both and nothing else on the Clean Up
+screen visible while it ran. The three things the player might have to report are now **toggles**
+on the ordinary Clean Up screen — "Save Earth" reached its topmost slot, "Seal Fate" reached its
+bottommost slot, the Impact occurred — at most one on, tapping the on one turns it off, and
+reporting nothing needs no option of its own. The Era-end button below carries the answer and
+becomes **"Earth is saved — Finish & Score"** for the outcome that ends the game, committing the
+check and the end of the Era as one History entry (`finishCleanUp`, replacing `answerImpactCheck`
++ `afterCleanUp`). The check is recorded even when nothing is reported, so `checkedEra` stays
+truthful. The Collapsing-Capital branch can never collide with a pending answer: it only appears
+once an Impact Era is recorded, which is exactly when the toggles stop.
+
+**Rule boxes at the foot of every screen, not just the dialogs.** Four screens still put a
+verbatim box above what the player has to act on: Clean Up's Doomsday box sat above its own
+prompt; Variable Anomalies rendered its box *inside* the `.place-prompt` step box; both Setup
+screens led with the rulebook's setup (and each module's block) ahead of "Setup for this app";
+and both score screens carried "End Game scoring" mid-screen. The convention the Action dialogs
+already followed now holds everywhere — the app's own instructions first, the rulebook text
+under them. On the score screens the box sits above the sticky Close / New Game row, since
+anything after it renders under that row.
+
+**The Turn overview is no longer Phase-5-only.** Its counts, trackers, modes, difficulty and
+recent bot turns are just as useful between phases, but it was reachable only from the Action
+Rounds' Turn chip. Both bots' phase screens carry the same chip in their header now; the
+Chronossus's overview moved out of the Phase 5 branch into a `turnOverview` const both returns
+render. Off the Action Rounds its pass hint would answer a question the player has not reached,
+so it reads "Outside the Action Rounds — the counts and recent turns below are this Era so far"
+and the "Action Rounds Phase ends" line is suppressed.
+
+**A half-line under the score box** turned out to be the Number / Tally toggle. The score screen
+is a scrolling flex column, so on a short viewport it shrank its children: the toggle collapsed
+to its own 2px border with the buttons clipped by its `overflow: hidden`. `.score-screen > * {
+flex-shrink: 0 }` — the same trap waits for any bordered child of a scrolling flex column.
+
+**A finished game no longer needs a login to survive.** With a score settled and nobody logged
+in, both score screens now offer **"Log in & save"**: it queues the game on this device *first*
+(the login is a full-page redirect, so anything only in React state is gone by the time it
+returns) and `AppRoot` uploads the queue as soon as it knows who the player is. Until now the
+logged-out case simply dropped the result.
+
+Landing: the Chronossus card reads **90%** and lists Doomsday. `pw-doomsday.mjs`'s `CLEANUP=1`
+and `CLEANUP=1 EARTH=1` runs were rewritten for the toggles and both pass; 478 tests, build and
+lint clean. `staging` fast-forwarded onto `main` and the production deploy succeeded — every
+module in the Solo Opponents matrix is now live, with only the **Quantum Loops** add-on left.
+
+## 2026-08-19 — A playtest pass: the Time Travel rule the app got wrong, and a finished game that couldn't be saved
+
+A completed Fractures + Pioneers game, read back line by line. Most of what it turned up was
+History not saying what happened; one item was a rule the engine had never enforced.
+
+**Time Travel may only take a Warp tile off a PAST Timeline tile** (Solo Opponents p.5), and
+the Warp phase (4) runs before Action Rounds (5) — so the tiles the bot places this Era sit on
+the *current* tile and are not eligible. The engine only ever had a total, so it removed one
+anyway and told the player to take a tile the bot may not touch. `warpTilesByEra` (both bot
+states, key 0 = Fractures' Era Zero tile) now records which tile each one is on, with the rules
+in a pure `src/engine/warpTiles.ts`. Time Travel is a **Failed Action** when everything it has
+is on the current tile — the dialog says why rather than claiming no Warp tiles remain — and,
+now that the app can compute the target, it *names* it ("the Era 2 Timeline tile") instead of
+leaving the player to work out where it has the most. Tapping the Warp marker breaks the count
+out into past tiles (itemised per Era) versus the current Era's; that is a check of the app
+against the board, not a rules explainer, so it carries no footnote. A game already in progress
+when the map arrived carries anonymous older tiles alongside tracked ones: those read as past —
+which is what they are — and are removed first, so the pre-tracking pool drains and the map
+takes over on its own.
+
+**History gained the lines it was quietly dropping.** The +5 VP set discards one of each type,
+which cancels out the very thing the turn just gained, so diffing pre against post left the
+Recruit / Mine line with nothing to show and the old code printed the set line *instead of* it;
+it now diffs against the state before the discard and the set reads as a line underneath. The
+Worker-set branch had never fired for the Chronossus at all — it matches an instruction id, and
+the Chronossus ids it `rec-set` where the Chronobot uses `recruit-set`. Assimilate's Operator
+completing that set (Solo Opponents p.13) reached History for the first time: the engine had
+always applied it, but the text was folded into the tile's run-on sentence with no id to find,
+and the Operator line had the same cancelling problem — the column key left behind in
+`operatorSlots` is what identifies it now. `summarizeTurn` moved out of the view into
+`src/game/turnHistory.ts` so all of it is unit-tested (importing the view hits `window`).
+
+Two smaller UI corrections came out of the same read-back. Every **board location the player has
+to act on now reads bold**, both ends of a move included — the dialogs already did, History
+couldn't, since a persisted string can't hold JSX, so it carries `**…**` for
+`HistoryText` to render alongside the existing `{flux}` icon token (written into `CLAUDE.md`).
+The **turn overview lists the modules in play** above the difficulty options, a combo mode split
+into its parts. And Remove Anomaly speaks in the bot's voice ("The Chronossus discards … and
+removes 1 Anomaly from its board") rather than instructing the player about the bot's supply.
+
+**A finished game now survives a lapsed login.** The score screen auto-saves; when that failed it
+said "log in again to save this game", offered no way to log in, and held nothing — so leaving
+the screen lost the result, which is exactly what a long game produces when the shared
+`bge_session` expires mid-play. A failed save is written to this device first
+(`src/data/pendingGames.ts`), *then* the error appears with a **Log in** button, and `AppRoot`
+flushes the queue as soon as it knows who the player is — including the load right after that
+redirect returns. Ordering is the whole trick, and it generalises to every BGE app: see
+`~/brain` — "A redirect login can't be the last thing holding unsaved work". Both bots share it;
+the Chronobot's score screen previously had no reason text at all. The home screen's user name
+is also a button now, opening the same play-history modal (list + BG Stats export/import) that
+until now lived only in the ⚙ menu of a game in progress. Finally the shared score card dropped
+the "vs" between the totals — it was centred on the value columns below, not on the numerals, so
+it drifted into whichever score was wider — and moved "Bot turns taken" under the rule, since
+with no You side it read as a comparison with a hole in it.
+
 ## 2026-08-18 — Doomsday: the last module, and an Impact that will not stay put
 
 Doomsday completes the module roadmap. It is the only one that combines with **nothing**

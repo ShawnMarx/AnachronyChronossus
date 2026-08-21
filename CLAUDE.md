@@ -451,6 +451,17 @@ rules allow it.
   fixed order — the Action's own rule first, then whatever the current step adds (Blink,
   Time Travel, Autoleap, Exosuit placement). `.place-prompt` step boxes must not contain
   one: a rule box drawn inside the amber box is the bug, not the layout.
+  **This holds on every screen, not just dialogs** (2026-08-20): the phase bodies, both Setup
+  flows and both score screens put their verbatim boxes last too — the app's own instructions
+  first, the rulebook text under them. On the score screens "last" means *above* the sticky
+  `.score-actions` row, since anything after it renders underneath it.
+- **The Turn overview is not Phase-5-only.** Its counts, trackers, modes, difficulty and recent
+  bot turns are just as useful between phases, so both bots' `PhaseScreen` headers carry the
+  same `.turn-chip` the Action Rounds top bar does. The Chronossus's `<TurnBarOverview>` lives
+  in a `turnOverview` const above both returns; the Chronobot's is in its shared `modals`. Off
+  the Action Rounds the pass hint would answer a question the player has not reached, so both
+  swap it for a neutral line and suppress the "Action Rounds Phase ends" flag
+  (`isActionsPhase` gates both).
 - **A new module's Action must show up in History.** `summarizeTurn` was written against
   the Chronobot's state, so it cannot see module-only pools; `summarizeChronossusExtras`
   in `ChronossusGame.tsx` adds the Chronossus/Fractures deltas (Flux Cores, Technologies,
