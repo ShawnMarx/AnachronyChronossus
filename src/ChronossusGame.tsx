@@ -3366,6 +3366,192 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     />
   ) : null;
 
+  // The Turn overview: this Era's bot-turn count, the trackers, the modes and
+  // difficulty in play, the most recent bot turns, and the turn / passing rules.
+  // Opened from the Turn chip — in Phase 5's top bar and, since the details are just
+  // as useful there, in the non-Phase-5 screens' header — so it lives above both.
+  const turnOverview = !calibrate && showStatus && (
+            <TurnBarOverview
+              botName="Chronossus"
+              era={state.era}
+              phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
+              actionsThisEra={turnsThisEra}
+              countLabel="Bot Turns"
+              extraFlags={
+                <TapFlagRow>
+                  <span className="cx-exo-stack">
+                    <TapFlag
+                      className="cx-exosuit-flag"
+                      hint={
+                        (bot.guardians?.powered ?? 0) > 0
+                          ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
+                          : 'Powered Exosuits available this Era'
+                      }
+                    >
+                      <CxExosuit
+                        count={bot.exosuitsAvailable}
+                        guardians={bot.guardians?.powered ?? 0}
+                        size={18}
+                      />
+                    </TapFlag>
+                    {/* No Power chip here: the overview already carries one further right,
+                        and that one opens the Upgrade board. Two said the same thing. */}
+                  </span>
+                  <TapFlag
+                    className="cx-energy-flag"
+                    hint="Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores"
+                  >
+                    <CxEnergyPool pool={bot.energyPool} size={18} />
+                  </TapFlag>
+                  {fracturesMode && bot.fluxPool && (
+                    <TapFlag
+                      className="cx-energy-flag"
+                      hint="Flux Pool — Flux Cores / Empty Flux Casings, and any Casings set aside this Era (they return in Clean Up). A drawn Flux Core makes the Chronossus Blink."
+                    >
+                      <CxFluxPool pool={bot.fluxPool} size={18} />
+                    </TapFlag>
+                  )}
+                  {/* Pioneers: the Chronossus's Power. It lives on a board the app doesn't
+                      render, and it decides which Adventure deck the bot draws from, so the
+                      running total plus its breakdown belongs in the turn overview. */}
+                  {bot.pioneers && (
+                    <TapFlag
+                      className="cx-energy-flag"
+                      onClick={() => setShowUpgradeBoard(true)}
+                      hint={
+                        `Exosuit Upgrade board (${bot.pioneers.boardSide} side) — ` +
+                        Chronossus.powerBreakdown(bot)
+                          .map((b) => `${b.power} ${b.label}`)
+                          .join(' + ') +
+                        `. At ${Chronossus.BIG_DECK_THRESHOLD}+ Power (with the Path-marker ` +
+                        'bonus) it draws from the 10+ Adventure deck. Tap to open the board.'
+                      }
+                    >
+                      <span className="cx-tech-ops">
+                        <b>{Chronossus.boardPower(bot)}</b>
+                        <img src={POWER_ICON} alt="Power" className="cx-power-icon" />
+                      </span>
+                    </TapFlag>
+                  )}
+                  {/* No Operator count: an Operator is a wildcard Worker, so it is already
+                      tracked by the Worker slot it filled — a separate chip only duplicated it. */}
+                  {fracturesMode && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint="Technology cards it holds (3 VP each at the end)"
+                    >
+                      <span className="cx-tech-ops">
+                        <b>{bot.technologies ?? 0}</b> Tech
+                      </span>
+                    </TapFlag>
+                  )}
+                  {/* No separate Guardians chip: a powered Guardian is one of the figures
+                      the Exosuit chip counts (it shows "inc N Guardians"). This one is the
+                      total ENLISTED, which the Exosuit count can't show — they persist
+                      across Eras while `powered` resets. */}
+                  {guardiansMode && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint="Guardians powered up this Era / Guardians it has. They are permanent — each keeps a Path marker on its own Guardian board slot — and every Era it powers up as many of them as it can before its own Exosuits. A gap means it has a Guardian it could not power up."
+                    >
+                      <span className="cx-tech-ops">
+                        <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0}{' '}
+                        Guardian{(bot.guardians?.owned ?? 0) === 1 ? '' : 's'}
+                      </span>
+                    </TapFlag>
+                  )}
+                  {/* Doomsday: its tracker's slot, and the Experiments it has completed. The
+                      slot is the one piece of the Doomsday board the app owns — the VP every
+                      future Experiment earns depends on it, and the player moves the physical
+                      token when told, so a readout is how they check the two agree. */}
+                  {doomsdayMode && bot.doomsday && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint={
+                        `The Chronossus moves the ${
+                          bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'
+                        } tracker (the one opposing yours), now on slot ${
+                          bot.doomsday.botSlot
+                        } of 10. Landing there is worth ${Chronossus.botVpAt(
+                          bot.doomsday.botSlot,
+                        )} VP — it takes BOTH Paths' printed values, unlike you. ` +
+                        `Experiments completed: ${bot.doomsday.experimentsCompleted}` +
+                        (Chronossus.tracksLocked({
+                          impactOccurred: bot.doomsday.impactEra != null,
+                          botTracker: bot.doomsday.botTracker,
+                          botSlot: bot.doomsday.botSlot,
+                          playerTrackerFinal: bot.doomsday.playerTrackerFinal,
+                        })
+                          ? '. The tracks are locked — Experiments still score, but nothing moves.'
+                          : '.')
+                      }
+                    >
+                      <span className="cx-tech-ops">
+                        <b>
+                          {bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'}
+                        </b>{' '}
+                        {bot.doomsday.botSlot}/10 · {bot.doomsday.experimentsCompleted} Exp
+                      </span>
+                    </TapFlag>
+                  )}
+                  {hypersyncMode && (
+                    <TapFlag
+                      className="cx-hypersync-flag"
+                      hint={`Pending Solo Hypersync tiles (max one per Era, 3 total). Hypersync placed this Era: ${
+                        bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N — the no-space fallback is still open'
+                      }`}
+                    >
+                      <img
+                        src="/assets/solo/chronossus/hypersync-solo-tile.png"
+                        alt="Hypersync tiles"
+                        width={18}
+                        height={18}
+                      />
+                      {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
+                    </TapFlag>
+                  )}
+                </TapFlagRow>
+              }
+              // The pass hint describes the Action Rounds; on the other phases' screens
+              // it would answer a question the player has not reached yet.
+              hint={
+                isActionsPhase
+                  ? chronossusTurnHint(bot)
+                  : 'Outside the Action Rounds — the counts and recent turns below are this Era so far.'
+              }
+              canEnd={isActionsPhase && bothPassed}
+              turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
+              extraRules={
+                guardiansMode ? (
+                  <RulesBox label="Guardians of the Council">
+                    <p>
+                      <b>3 POWER UP PHASE:</b> The Chronossus first powers up as many
+                      Guardians as it can, then it powers up its own Exosuits (e.g. if it
+                      needs to power up 4 Exosuits and has 2 Guardians, it will power up
+                      both of them and 2 of its own).
+                    </p>
+                    <p>
+                      <b>GAMEPLAY CHANGES:</b> When deciding which Exosuit to place, the
+                      Chronossus places Guardians last. If it wants to take a Capital Action
+                      (Research, Recruit, Construct) and there are no Action spaces
+                      remaining (including the World Council Action space), it places a
+                      Guardian (if it has any) on the reserved Guardian Action space and
+                      performs the Capital Action. This means the Action is not a Failed
+                      Action, so it does not take 1 VP.
+                    </p>
+                  </RulesBox>
+                ) : undefined
+              }
+              modes={selectedModeLabels(state.config)}
+              difficulty={state.config.difficulty.map((f) =>
+                chronossusDifficultyLabel(f, state.config.difficultyValues),
+              )}
+              entries={thisEraEntries}
+              passingRule={Chronossus.CHRONOSSUS_PASSING_RULE}
+              onClose={() => setShowStatus(false)}
+            />
+  );
+
   // ---- Phase 5: Action Rounds (the real board) ---------------------------
   // The full board stage (Phase 5 board + SCV + dialogs). Reused read-only as the
   // "Status" tab of the shared PhaseScreen in the non-Action phases.
@@ -3881,181 +4067,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               </button>
             </div>
           )}
-          {!calibrate && showStatus && (
-            <TurnBarOverview
-              botName="Chronossus"
-              era={state.era}
-              phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
-              actionsThisEra={turnsThisEra}
-              countLabel="Bot Turns"
-              extraFlags={
-                <TapFlagRow>
-                  <span className="cx-exo-stack">
-                    <TapFlag
-                      className="cx-exosuit-flag"
-                      hint={
-                        (bot.guardians?.powered ?? 0) > 0
-                          ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
-                          : 'Powered Exosuits available this Era'
-                      }
-                    >
-                      <CxExosuit
-                        count={bot.exosuitsAvailable}
-                        guardians={bot.guardians?.powered ?? 0}
-                        size={18}
-                      />
-                    </TapFlag>
-                    {/* No Power chip here: the overview already carries one further right,
-                        and that one opens the Upgrade board. Two said the same thing. */}
-                  </span>
-                  <TapFlag
-                    className="cx-energy-flag"
-                    hint="Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores"
-                  >
-                    <CxEnergyPool pool={bot.energyPool} size={18} />
-                  </TapFlag>
-                  {fracturesMode && bot.fluxPool && (
-                    <TapFlag
-                      className="cx-energy-flag"
-                      hint="Flux Pool — Flux Cores / Empty Flux Casings, and any Casings set aside this Era (they return in Clean Up). A drawn Flux Core makes the Chronossus Blink."
-                    >
-                      <CxFluxPool pool={bot.fluxPool} size={18} />
-                    </TapFlag>
-                  )}
-                  {/* Pioneers: the Chronossus's Power. It lives on a board the app doesn't
-                      render, and it decides which Adventure deck the bot draws from, so the
-                      running total plus its breakdown belongs in the turn overview. */}
-                  {bot.pioneers && (
-                    <TapFlag
-                      className="cx-energy-flag"
-                      onClick={() => setShowUpgradeBoard(true)}
-                      hint={
-                        `Exosuit Upgrade board (${bot.pioneers.boardSide} side) — ` +
-                        Chronossus.powerBreakdown(bot)
-                          .map((b) => `${b.power} ${b.label}`)
-                          .join(' + ') +
-                        `. At ${Chronossus.BIG_DECK_THRESHOLD}+ Power (with the Path-marker ` +
-                        'bonus) it draws from the 10+ Adventure deck. Tap to open the board.'
-                      }
-                    >
-                      <span className="cx-tech-ops">
-                        <b>{Chronossus.boardPower(bot)}</b>
-                        <img src={POWER_ICON} alt="Power" className="cx-power-icon" />
-                      </span>
-                    </TapFlag>
-                  )}
-                  {/* No Operator count: an Operator is a wildcard Worker, so it is already
-                      tracked by the Worker slot it filled — a separate chip only duplicated it. */}
-                  {fracturesMode && (
-                    <TapFlag
-                      className="cx-hypersync-flag"
-                      hint="Technology cards it holds (3 VP each at the end)"
-                    >
-                      <span className="cx-tech-ops">
-                        <b>{bot.technologies ?? 0}</b> Tech
-                      </span>
-                    </TapFlag>
-                  )}
-                  {/* No separate Guardians chip: a powered Guardian is one of the figures
-                      the Exosuit chip counts (it shows "inc N Guardians"). This one is the
-                      total ENLISTED, which the Exosuit count can't show — they persist
-                      across Eras while `powered` resets. */}
-                  {guardiansMode && (
-                    <TapFlag
-                      className="cx-hypersync-flag"
-                      hint="Guardians powered up this Era / Guardians it has. They are permanent — each keeps a Path marker on its own Guardian board slot — and every Era it powers up as many of them as it can before its own Exosuits. A gap means it has a Guardian it could not power up."
-                    >
-                      <span className="cx-tech-ops">
-                        <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0}{' '}
-                        Guardian{(bot.guardians?.owned ?? 0) === 1 ? '' : 's'}
-                      </span>
-                    </TapFlag>
-                  )}
-                  {/* Doomsday: its tracker's slot, and the Experiments it has completed. The
-                      slot is the one piece of the Doomsday board the app owns — the VP every
-                      future Experiment earns depends on it, and the player moves the physical
-                      token when told, so a readout is how they check the two agree. */}
-                  {doomsdayMode && bot.doomsday && (
-                    <TapFlag
-                      className="cx-hypersync-flag"
-                      hint={
-                        `The Chronossus moves the ${
-                          bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'
-                        } tracker (the one opposing yours), now on slot ${
-                          bot.doomsday.botSlot
-                        } of 10. Landing there is worth ${Chronossus.botVpAt(
-                          bot.doomsday.botSlot,
-                        )} VP — it takes BOTH Paths' printed values, unlike you. ` +
-                        `Experiments completed: ${bot.doomsday.experimentsCompleted}` +
-                        (Chronossus.tracksLocked({
-                          impactOccurred: bot.doomsday.impactEra != null,
-                          botTracker: bot.doomsday.botTracker,
-                          botSlot: bot.doomsday.botSlot,
-                          playerTrackerFinal: bot.doomsday.playerTrackerFinal,
-                        })
-                          ? '. The tracks are locked — Experiments still score, but nothing moves.'
-                          : '.')
-                      }
-                    >
-                      <span className="cx-tech-ops">
-                        <b>
-                          {bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'}
-                        </b>{' '}
-                        {bot.doomsday.botSlot}/10 · {bot.doomsday.experimentsCompleted} Exp
-                      </span>
-                    </TapFlag>
-                  )}
-                  {hypersyncMode && (
-                    <TapFlag
-                      className="cx-hypersync-flag"
-                      hint={`Pending Solo Hypersync tiles (max one per Era, 3 total). Hypersync placed this Era: ${
-                        bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N — the no-space fallback is still open'
-                      }`}
-                    >
-                      <img
-                        src="/assets/solo/chronossus/hypersync-solo-tile.png"
-                        alt="Hypersync tiles"
-                        width={18}
-                        height={18}
-                      />
-                      {bot.hypersyncTiles.length}/{Chronossus.MAX_HYPERSYNC_TILES}
-                    </TapFlag>
-                  )}
-                </TapFlagRow>
-              }
-              hint={chronossusTurnHint(bot)}
-              canEnd={bothPassed}
-              turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
-              extraRules={
-                guardiansMode ? (
-                  <RulesBox label="Guardians of the Council">
-                    <p>
-                      <b>3 POWER UP PHASE:</b> The Chronossus first powers up as many
-                      Guardians as it can, then it powers up its own Exosuits (e.g. if it
-                      needs to power up 4 Exosuits and has 2 Guardians, it will power up
-                      both of them and 2 of its own).
-                    </p>
-                    <p>
-                      <b>GAMEPLAY CHANGES:</b> When deciding which Exosuit to place, the
-                      Chronossus places Guardians last. If it wants to take a Capital Action
-                      (Research, Recruit, Construct) and there are no Action spaces
-                      remaining (including the World Council Action space), it places a
-                      Guardian (if it has any) on the reserved Guardian Action space and
-                      performs the Capital Action. This means the Action is not a Failed
-                      Action, so it does not take 1 VP.
-                    </p>
-                  </RulesBox>
-                ) : undefined
-              }
-              modes={selectedModeLabels(state.config)}
-              difficulty={state.config.difficulty.map((f) =>
-                chronossusDifficultyLabel(f, state.config.difficultyValues),
-              )}
-              entries={thisEraEntries}
-              passingRule={Chronossus.CHRONOSSUS_PASSING_RULE}
-              onClose={() => setShowStatus(false)}
-            />
-          )}
+          {turnOverview}
 
         {/* Ready-to-begin splash (once/Era); if the Chronossus is First Player its
             button fires the first Take Bot Action. */}
@@ -4152,6 +4164,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           title="Undo the last committed step"
         >
           ↶ Undo
+        </button>
+        {/* The same Turn chip the Action Rounds top bar carries: the overview's counts,
+            trackers and recent turns are just as useful between phases. */}
+        <button
+          className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
+          onClick={() => setShowStatus((v) => !v)}
+          title="Turn tracker — pass status & recent bot turns"
+          aria-pressed={showStatus}
+        >
+          Turn <b>{turnsThisEra}</b>
         </button>
         <RulesButton onClick={() => setModeRules(true)} />
       </>
@@ -4525,6 +4547,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       {upgradeBoardModal}
       {debugBar}
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
+      {turnOverview}
       {showFirstPlayer && (
         <FirstPlayerPrompt
           botName="Chronossus"
@@ -6530,7 +6553,7 @@ function CxScoreScreen({
   onHome: () => void;
   onNewGame: () => void;
 }) {
-  const { user, login } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   // Whether this game uses a Hypersync mode (adds the Hypersync-tile note to the
   // player's Timeline-penalties line — the bot never loses VP for those tiles).
   const hypersyncMode = getMode(state.config.chronossusMode).slots.some(
@@ -6579,6 +6602,16 @@ function CxScoreScreen({
     era_reached: state.era,
     payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
   });
+  /**
+   * Logged out: hold the finished game on this device FIRST, then hand off to the shared
+   * BGE login. Logging in is a full-page redirect, so anything still only in React state
+   * would be gone by the time it returns — and the app uploads the queue on the way back
+   * in (AppRoot), so the score lands in their history without them doing anything else.
+   */
+  const loginAndSave = () => {
+    queuePendingGame(pendingSummary());
+    login();
+  };
   const saveGame = async () => {
     if (result == null || playerScore == null) return;
     setSaveState('saving');
@@ -6803,6 +6836,19 @@ function CxScoreScreen({
             {result === 'win'
               ? '🎉 You win! (more points than the Chronossus)'
               : 'You lose — the Chronossus has at least as many points.'}
+          </div>
+        )}
+
+        {/* Logged out, with a finished score: nothing would hold this game once the screen
+            closes. Offer the login rather than silently dropping it. */}
+        {!user && !authLoading && result != null && (
+          <div className="score-save score-login">
+            <span className="score-login-msg">
+              Log in to save this game to your history.
+            </span>
+            <button className="score-save-retry" onClick={loginAndSave}>
+              Log in &amp; save
+            </button>
           </div>
         )}
 

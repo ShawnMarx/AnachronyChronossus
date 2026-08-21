@@ -2301,6 +2301,12 @@
   color: #7ee0a6;
   font-weight: 700;
 }
+/* Logged-out prompt: an offer, not a failure — so it reads in the body colour rather
+   than the red a failed save uses. */
+.score-login-msg {
+  font-size: 0.9rem;
+  color: var(--sp-text-base);
+}
 .score-save-err {
   color: #ff9b9b;
   font-size: 0.9rem;
@@ -2449,6 +2455,12 @@
 .score-player-head h3 {
   margin: 0;
   color: var(--sp-text-2);
+}
+/* The screen scrolls, so nothing in it may be squashed to fit: a flex column shrinks
+   its children by default, which on a short viewport collapsed the Number / Tally
+   toggle to a bare 2px border — a stray half-line under the score box. */
+.score-screen > * {
+  flex-shrink: 0;
 }
 .score-mode {
   display: inline-flex;

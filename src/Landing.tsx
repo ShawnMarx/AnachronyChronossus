@@ -185,9 +185,9 @@ export default function Landing({
           image="/assets/solo/chronossus-hero.jpg"
           tagline="The advanced automa · more modes, more depth"
           status="ready"
-          description="A deeper opponent supporting the base game, Hypersync Future Actions, Fractures of Time, Guardians of the Council, and Pioneers of New Earth, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
+          description="A deeper opponent supporting the base game, Hypersync Future Actions, Fractures of Time, Guardians of the Council, Pioneers of New Earth, and Doomsday, with more modes on the way. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
-          progress={80}
+          progress={90}
         />
       </div>
 

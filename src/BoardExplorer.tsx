@@ -1866,14 +1866,18 @@ export default function BoardExplorer({
           phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
           actionsThisEra={bot.actionsThisEra}
           minActions={Chronobot.chronobotMinActions(state)}
+          // The pass hint describes the Action Rounds; on the other phases' screens it
+          // would answer a question the player has not reached yet.
           hint={
-            passMsg ??
-            describeDecision(
-              Chronobot.botPassDecision(state),
-              Chronobot.chronobotMinActions(state),
-            )
+            !isActionsPhase
+              ? 'Outside the Action Rounds — the counts and recent turns below are this Era so far.'
+              : (passMsg ??
+                describeDecision(
+                  Chronobot.botPassDecision(state),
+                  Chronobot.chronobotMinActions(state),
+                ))
           }
-          canEnd={Chronobot.actionRoundsCanEnd(state)}
+          canEnd={isActionsPhase && Chronobot.actionRoundsCanEnd(state)}
           turnRules={PHASE_META.actions?.rules}
           difficulty={state.config.difficulty.map((f) => DIFFICULTY_LABEL[f] ?? f)}
           entries={undoStack.filter(
@@ -1960,6 +1964,16 @@ export default function BoardExplorer({
           headerRight={
             <>
               <VpPill bot={bot} />
+              {/* The same Turn chip the Action Rounds top bar carries: the overview's
+                  counts, pass state and recent turns are just as useful between phases. */}
+              <button
+                className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
+                onClick={() => setShowStatus((v) => !v)}
+                title="Turn tracker — pass status & recent bot turns"
+                aria-pressed={showStatus}
+              >
+                Turn <b>{bot.actionsThisEra}</b>
+              </button>
               <RulesButton onClick={() => setModeRules(true)} />
             </>
           }
@@ -2602,7 +2616,7 @@ function ScoreScreen({
 }) {
   const bot = state.chronobot;
   const s = Chronobot.scoreChronobot(bot);
-  const { user, login } = useAuth();
+  const { user, loading: authLoading, login } = useAuth();
   const [mode, setMode] = useState<'number' | 'tally'>('number');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -2654,6 +2668,12 @@ function ScoreScreen({
       difficultyFlags,
     },
   });
+  /** Logged out: queue the finished game on this device, THEN hand off to the shared BGE
+   *  login — the redirect returns here and the app uploads the queue on start. */
+  const loginAndSave = () => {
+    queuePendingGame(pendingSummary());
+    login();
+  };
   const saveGame = async () => {
     if (result == null || playerScore == null) return;
     setSaveState('saving');
@@ -2784,6 +2804,19 @@ function ScoreScreen({
             {result === 'win'
               ? '🎉 You win! (more points than the Chronobot)'
               : 'You lose — the Chronobot has at least as many points.'}
+          </div>
+        )}
+
+        {/* Logged out, with a finished score: nothing would hold this game once the screen
+            closes. Offer the login rather than silently dropping it. */}
+        {!user && !authLoading && result != null && (
+          <div className="score-save score-login">
+            <span className="score-login-msg">
+              Log in to save this game to your history.
+            </span>
+            <button className="score-save-retry" onClick={loginAndSave}>
+              Log in &amp; save
+            </button>
           </div>
         )}
 
