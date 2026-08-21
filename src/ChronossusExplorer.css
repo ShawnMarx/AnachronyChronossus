@@ -1427,3 +1427,48 @@ p.cx-adv-brk {
 .cx-adv-select option:disabled {
   color: var(--sp-text-mute);
 }
+
+/* Doomsday Clean Up — the Check-for-Impact toggles. At most one is on, and clicking the
+   one that is on turns it back off: nothing is committed until the Era is ended, so these
+   read as toggles rather than as the action buttons around them. */
+.impact-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.impact-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.35;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  color: var(--sp-text-base);
+  background: rgba(var(--sp-accent-rgb), 0.14);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
+  cursor: pointer;
+}
+.impact-toggle:hover {
+  background: rgba(var(--sp-accent-rgb), 0.28);
+}
+.impact-toggle.on {
+  background: rgba(var(--sp-accent-rgb), 0.45);
+  border-color: var(--sp-accent);
+  color: var(--sp-text-2);
+  box-shadow: 0 0 0 2px rgba(var(--sp-accent-rgb), 0.35);
+}
+.impact-toggle-box {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 1.15rem;
+  height: 1.15rem;
+  font-size: 0.85rem;
+  font-weight: 800;
+  border-radius: 5px;
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.7);
+  background: rgba(0, 0, 0, 0.25);
+}
