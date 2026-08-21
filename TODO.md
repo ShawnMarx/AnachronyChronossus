@@ -69,6 +69,24 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       Wire it if Collapsing-Capital timing/automation is ever wanted.
 - [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
       could tighten button sizing/gaps if desired).
+- [ ] **Anonymous-visitor counting** (2026-08-21, **awaiting Shawn's decision**) — the
+      platform's `login_events` can't see anyone who never signs in, which for this app is
+      most sessions, so the admin dashboard would read usage as *falling* as anonymous use
+      grows. Spec: `~/repos/boardgameedge/docs/CONTRACT_anonymous_usage.md` (one row per app
+      per visitor per UTC day in `bge_auth.anon_visits`).
+      **This app can't implement the contract's normal shape** — it is a static SPA with no
+      server, no request pipeline and **no DB role** (anything in `dist/` is public), so it
+      is explicitly granted nothing. The agreed route is the contract's **third mode**: the
+      SPA mints a random 128-bit **host-only** `bge_anon` cookie (~10 lines; it cannot be
+      `HttpOnly`, since JS mints it), **nginx logs only that cookie plus a signed-in
+      boolean** — so the server, not the client, decides anonymous-vs-authenticated — and a
+      local periodic job rolls it into daily uniques. No public write endpoint, so nothing
+      to rate-limit.
+      **Blocked on:** Shawn's yes to the cookie *and* to touching droplet nginx (same file
+      as the platform's `limit_req` work, so likely done together). Before shipping, the
+      `log_format` line goes to the `boardgameedge` session for review — that is where an IP
+      or user-agent could sneak back in. Host-only means staging and prod count separately,
+      so testing can't contaminate the prod figure.
 - [ ] **Push local games to the server on first login** — deferred enhancement from
       the auth/stats work: offer a one-time "import my local (localStorage) finished
       games" action; currently local prior games are export/import only. (Distinct from the
