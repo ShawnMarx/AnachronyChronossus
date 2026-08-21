@@ -10,7 +10,8 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       `auth_request` against `auth.boardgameedge.com` (shared `bge_session` cookie).
 - [x] **Landing-page listing** — **already done** (confirmed 2026-08-21): Anachrony is an
       `AppCard` in `boardgameedge/services/landing/src/bge_landing/config.py` (slug
-      `anachrony`, icon `clock`). ↳ `PLAN_quantum_wrapup.md` F9 only confirms it renders live.
+      `anachrony`, icon `clock`). Confirmed live on the landing service at `staging.boardgameedge.com`; the
+      prod apex is still a GoDaddy placeholder.
 - [~] **Link back to BGE landing** — **half done 2026-08-21.** The link ships on the home
       screen, env-aware (`BGE_LANDING_URL` in `Landing.tsx`), but **prod returns null so it
       does not render**: `boardgameedge.com` is still a GoDaddy "Launching Soon" placeholder,
@@ -27,6 +28,20 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       the CI deploy key was rotated (see above).
 
 ## App
+- [x] **Quantum Loops** — **shipped 2026-08-21**, the last module in the picker. The
+      Warp-Phase AI-die check (removes the Quantum Loop card farthest from the draw deck on a
+      4), its two difficulty options, setup text and verbatim boxes. The card row is
+      deliberately not modelled, so the module adds no state slice. Archived to
+      `docs/complete/20260821_QUANTUM_WRAPUP_COMPLETED.md`.
+- [ ] **Play Quantum Loops on the table** (2026-08-21) — verified by browser harness
+      (`pw-quantum.mjs`) and unit test only; never actually played. Needs the **Future
+      Imperfect** expansion.
+- [ ] **Finish the Doomsday review walkthrough** (2026-08-20; archived 2026-08-21) — the
+      effort is archived to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`, which carries the
+      walkthrough with sections 1–5 and 7–10 still un-walked (blank verdict lines). It needs
+      the **Classic Expansion Pack** physically on the table for the Experiment steps. The
+      Check-for-Impact behaviour it *did* exercise produced two fixes and is covered by
+      `pw-doomsday.mjs`.
 - [x] **Show real die art on the existing Paradox / Research-shape rolls** — **done
       2026-08-21.** The Paradox die was already rendering (`ParadoxDieFace`); the new
       `ShapeDieFace` covers Research (die + Breakthrough art beside it) and Fractures'
