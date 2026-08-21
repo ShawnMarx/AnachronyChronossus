@@ -13,7 +13,7 @@
 > and the landing card reads **100%**. The same effort closed four wrap-up items: Chronobot
 > parity with the Chronossus's Undo / phase-screen work, the real shape-die art on the
 > Research and Assimilate rolls, History reachable from the phase screens on both bots, and
-> the CI deploy-key rotation. See `docs/plans/PLAN_quantum_wrapup.md` until it is archived.
+> the CI deploy-key rotation. Archived to `docs/complete/20260821_QUANTUM_WRAPUP_COMPLETED.md`; **no plan is active**.
 > **What is left** is no longer modules: **Phase 5 (login + stats)** — the Chronossus-specific
 > stats/history in `AdminStats` and the score-tally export — plus the deferred publishing work
 > (access-gating via `auth.boardgameedge.com`, the `boardgameedge.com` apex cutover, making the
