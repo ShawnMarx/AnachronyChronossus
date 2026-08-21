@@ -665,6 +665,16 @@ export default function BoardExplorer({
   // (and why it passed), so it should be there without being asked for. The ⚙ menu and
   // the 🕑 button still toggle it.
   const [showHistory, setShowHistory] = useState(true);
+  /**
+   * History on a PHASE screen is opt-in, unlike on the Action Rounds board.
+   *
+   * There the pane is a flex child: it pushes the board over and the turn log is the main
+   * way to see what the bot just did, so open-by-default earns its place. A phase screen has
+   * no such slot — the pane is an overlay — so inheriting that default meant every phase
+   * opened with an empty "No turns taken yet." panel covering the hero art and the phase's
+   * own text. It starts closed and the 🕑 button opens it.
+   */
+  const [showPhaseHistory, setShowPhaseHistory] = useState(false);
   // Rules mode: a full-viewport GameBrain rules frame overlays the game view
   // (which stays mounted underneath, so Back-to-Game restores the exact spot).
   const [modeRules, setModeRules] = useState(false);
@@ -2024,10 +2034,10 @@ export default function BoardExplorer({
               {/* History is otherwise reachable only from the Action Rounds board, so a
                   phase's own entries (a Warp placement, a Paradox roll) looked unlogged. */}
               <button
-                className={`stat-pill status-chip ${showHistory ? 'on' : ''}`}
-                onClick={() => setShowHistory((v) => !v)}
+                className={`stat-pill status-chip ${showPhaseHistory ? 'on' : ''}`}
+                onClick={() => setShowPhaseHistory((v) => !v)}
                 title="Turn history"
-                aria-pressed={showHistory}
+                aria-pressed={showPhaseHistory}
               >
                 🕑
               </button>
@@ -2080,8 +2090,8 @@ export default function BoardExplorer({
             <PhaseBody state={state} meta={meta} onAdvance={advancePhase} />
           )}
         </PhaseScreen>
-        {showHistory && (
-          <PhaseHistoryDock entries={undoStack} onClose={() => setShowHistory(false)} />
+        {showPhaseHistory && (
+          <PhaseHistoryDock entries={undoStack} onClose={() => setShowPhaseHistory(false)} />
         )}
         {modals}
       </div>

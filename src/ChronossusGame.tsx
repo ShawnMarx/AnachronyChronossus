@@ -788,6 +788,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // (and why it passed), so it should be there without being asked for. The ⚙ menu and
   // the 🕑 button still toggle it.
   const [showHistory, setShowHistory] = useState(true);
+  /** History on a PHASE screen is opt-in — see the note in `BoardExplorer.tsx`. On the
+   *  Action Rounds board the pane is a flex child and open-by-default is right; on a phase
+   *  screen it is an overlay, and defaulting it open covers the screen with an empty pane. */
+  const [showPhaseHistory, setShowPhaseHistory] = useState(false);
   const [modeRules, setModeRules] = useState(false); // GameBrain rules overlay open
   const [actionsIntroEra, setActionsIntroEra] = useState<number | null>(null);
   const [showFirstPlayer, setShowFirstPlayer] = useState(false);
@@ -4197,10 +4201,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           ↶ Undo
         </button>
         <button
-          className={`stat-pill status-chip ${showHistory ? 'on' : ''}`}
-          onClick={() => setShowHistory((v) => !v)}
+          className={`stat-pill status-chip ${showPhaseHistory ? 'on' : ''}`}
+          onClick={() => setShowPhaseHistory((v) => !v)}
           title="Turn history"
-          aria-pressed={showHistory}
+          aria-pressed={showPhaseHistory}
         >
           🕑
         </button>
@@ -4650,8 +4654,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       <PhaseScreen {...phaseProps}>{body}</PhaseScreen>
       {/* History otherwise renders only inside the Action Rounds board harness, so a
           phase's own entries looked unlogged between phases. Same pane, docked. */}
-      {showHistory && (
-        <PhaseHistoryDock entries={entries} onClose={() => setShowHistory(false)} />
+      {showPhaseHistory && (
+        <PhaseHistoryDock entries={entries} onClose={() => setShowPhaseHistory(false)} />
       )}
       {turnOverview}
       {showFirstPlayer && (

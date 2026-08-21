@@ -47,12 +47,16 @@ ok('reached the Warp phase', atWarp);
 const histBtn = page.getByRole('button', { name: '🕑' }).first();
 ok('the phase screen has a History button', (await histBtn.count()) > 0);
 if (await histBtn.count()) {
-  // It defaults open; toggle it closed and back so we know the button drives the pane.
-  await histBtn.click(); await wait(300);
-  const closed = await page.locator('.phase-history-dock').count();
+  // On a phase screen History is OPT-IN: the pane is an overlay here, not a flex child as
+  // it is on the Action Rounds board, so defaulting it open covered the screen with an
+  // empty "No turns taken yet." panel. Arrive closed, open on the button, close again.
+  const onArrival = await page.locator('.phase-history-dock').count();
   await histBtn.click(); await wait(300);
   const opened = await page.locator('.phase-history-dock').count();
-  ok('it opens the History pane on a phase screen', closed === 0 && opened === 1);
+  await histBtn.click(); await wait(300);
+  const closed = await page.locator('.phase-history-dock').count();
+  ok('the phase screen does NOT open History by itself', onArrival === 0);
+  ok('the 🕑 button opens and closes it', opened === 1 && closed === 0);
 }
 
 // --- 2. Phase advances are undoable ------------------------------------------------

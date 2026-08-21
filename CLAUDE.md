@@ -390,6 +390,13 @@ it now renders from `ui.warpRoll` on the screen itself, so the placement, the Qu
 result and the answer commit as **one** entry. **Report a miss, too**: a check that only
 appears when it fires is indistinguishable from one that never ran.
 
+**History is docked-open on the board and opt-in on a phase screen.** On the Action Rounds
+board the pane is a flex child — it pushes the board aside and the turn log is the main way to
+see what the bot just did, so open-by-default is right. On a phase screen (`PhaseHistoryDock`)
+it is an **overlay**, so inheriting that default put an empty "No turns taken yet." panel over
+the hero art and the phase's own text the moment a game started. Both bots keep a separate
+`showPhaseHistory`, defaulting closed, driven by the 🕑 button in the phase header.
+
 **A phase roll belongs on the snapshot, never in the phase body.** Both bots keep the Warp and
 Paradox rolls in restorable state (the Chronossus's `ui` slice, the Chronobot's `Snapshot` +
 save) so Undo — and a reload — re-show the SAME roll. A roll held in component state is

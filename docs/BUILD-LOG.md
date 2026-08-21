@@ -33,7 +33,9 @@ so a reload mid-Warp doesn't re-roll either). Every **phase advance commits**, s
 and appears in History. And **History is reachable from a phase screen** at last — the pane was a
 flex child of the Action Rounds board stage, so during Preparation / Paradox / Power Up / Warp
 there was nowhere showing it, which is what made the Era Zero Warp look unlogged. `PhaseHistoryDock`
-gives it somewhere to sit, on **both** bots.
+gives it somewhere to sit, on **both** bots — **opt-in**, unlike the board's docked-open pane:
+it is an overlay there, and defaulting it open covered every phase screen with an empty
+"No turns taken yet." panel from the moment a game began (caught in play, fixed the same day).
 
 **The real dice on the real rolls.** The shape die now shows its own face: on **Research** beside
 the Breakthrough art (the shape rolled and the Breakthrough kept are two statements), and on
