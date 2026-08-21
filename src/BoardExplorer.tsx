@@ -2704,11 +2704,6 @@ function ScoreScreen({
             <span className="score-total-label">Chronobot VP</span>
           </div>
           <ScoreBreakdown score={s} botTurns={bot.totalActions} />
-          <div className="score-rules">
-            <RulesBox label="End Game scoring">
-              <p>{ENDGAME_RULES}</p>
-            </RulesBox>
-          </div>
         </div>
 
         {/* Player score */}
@@ -2821,6 +2816,13 @@ function ScoreScreen({
           </div>
         )}
 
+        {/* Verbatim rules last, as on every other screen. */}
+        <div className="score-rules">
+          <RulesBox label="End Game scoring">
+            <p>{ENDGAME_RULES}</p>
+          </RulesBox>
+        </div>
+
         <div className="score-actions">
           <button className="modal-no" onClick={onClose}>
             Close
@@ -2829,6 +2831,7 @@ function ScoreScreen({
             ⟳ New Game
           </button>
         </div>
+
       </div>
     </div>
   );

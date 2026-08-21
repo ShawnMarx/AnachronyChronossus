@@ -2394,10 +2394,10 @@
   border: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   border-radius: 10px;
 }
-/* Rulebook text always sits on its own row beneath the total + breakdown
-   (side-by-side is cramped, especially on phones). */
+/* Rulebook text sits on its own row at the foot of the score screen, above the
+   pinned actions — reference material under what the player has to act on. */
 .score-rules {
-  flex: 1 1 100%;
+  flex: 0 0 auto;
 }
 .score-total {
   display: flex;

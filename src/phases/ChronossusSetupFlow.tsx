@@ -655,6 +655,16 @@ export default function ChronossusSetupFlow({
                 you when to advance it — and you will read both trackers’ (+)/(−) symbols
                 yourself for the Trajectory roll each Clean Up.
               </p>
+              <div className="setup-actions">
+                <button className="phase-secondary" onClick={() => setStep('modules')}>
+                  ◀ Back
+                </button>
+                <button className="phase-primary" onClick={() => setStep('difficulty')}>
+                  Continue ▶
+                </button>
+              </div>
+
+              {/* Verbatim rules last, under what the player has to act on. */}
               <RulesBox label="Doomsday — the Chronossus’s tracker" showPreamble>
                 <p>
                   If it successfully took an Experiment and the Doomsday tracks aren’t yet
@@ -666,14 +676,6 @@ export default function ChronossusSetupFlow({
                   it was the Path of Salvation.
                 </p>
               </RulesBox>
-              <div className="setup-actions">
-                <button className="phase-secondary" onClick={() => setStep('modules')}>
-                  ◀ Back
-                </button>
-                <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                  Continue ▶
-                </button>
-              </div>
             </>
           )}
 
@@ -800,131 +802,6 @@ export default function ChronossusSetupFlow({
                   Begin Era 1 ▶
                 </button>
               </div>
-              <RulesBox label="Setup" showPreamble>
-                <p>
-                  Set up a 2-player game with the Chronossus as one of the players. In
-                  addition to using the Chronossus’s side of the Solo board, the
-                  following changes need to be made during set-up:
-                </p>
-                <p>
-                  • The Chronossus receives its 6 Exosuits and 8 Warp tiles. It does not
-                  receive any Starting Assets or Workers.
-                  <br />• Leave all Endgame Condition cards in the box and shuffle all
-                  Solo Objective cards, revealing 3. Return the rest to the box.
-                  <br />• Place the Chronossus board next to the Main board, and place the
-                  4 Command tokens on the 4 marked positions. The Chronossus does not use
-                  a Focus marker.
-                  <br />• Place the Action tiles (marked side up) on the empty spaces of
-                  the Chronossus board: C01A, C02A, C03A. (Suggested for your first game;
-                  later you may assign them randomly.)
-                  <br />• Fill the Chronossus’s Energy Pool container with 5 Energy Core
-                  tokens and 5 Exhausted Energy Core tokens.
-                  <br />• Place the Chronossus’s Banner on the First Player spot; it is
-                  the First Player in the 1st Era. You receive 1 additional Water (for
-                  being the second player).
-                  <br />• You may still choose to use either the “A” or the “B” side of
-                  your Player board.
-                  <br />• For a more challenging game, cover the right World Council space
-                  with a Hex Unavailable tile.
-                </p>
-              </RulesBox>
-
-              {/* Per-mode setup additions (verbatim). Each module drops its own
-                  section here on top of the base setup above. */}
-              {moduleId?.includes('fractures') && (
-                <RulesBox label="Fractures of Time — setup" showPreamble>
-                  <p>Setup the Valley board as if it was a 2-Player game.</p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C04A, C05A and C06A.
-                  </p>
-                  <p>
-                    You will need a second container, referred to as the “Flux Pool.” At
-                    setup, add 1 Flux Core and all 3 Empty Flux Casing tokens to it.
-                  </p>
-                  <p>The Chronossus does not use a Fracture Device.</p>
-                  <p>
-                    Add the “Technology Cards” and “Flux on Track” Solo Objective cards to
-                    the deck before drawing.
-                  </p>
-                </RulesBox>
-              )}
-
-              {moduleId?.includes('guardians') && (
-                <RulesBox label="Guardians of the Council — setup" showPreamble>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C02A to the (I) empty space, C11A
-                    to the (II) empty space. Leave C03A in play.
-                  </p>
-                  <p>Add the “Guardians” Solo Objective card to the Solo Objective deck.</p>
-                  <p>
-                    Cover the right World Council Action space with a Hex Unavailable tile
-                    (as noted in the Guardians of the Council rules for 2 players).
-                  </p>
-                </RulesBox>
-              )}
-
-              {moduleId?.includes('pioneers') && (
-                <RulesBox label="Pioneers of New Earth — setup" showPreamble>
-                  <p>
-                    This requires the Classic Expansion Pack to play. All of the Pioneers of
-                    New Earth module and Chronossus base rules apply, unless noted below.
-                  </p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C03A to the (I) empty space, C09A
-                    to the (II) empty space, C02A to the (III) empty space. C10A replaces the
-                    printed “Recruit Genius or Research” Action space.
-                  </p>
-                  <p>
-                    Add the “Successful Adventures” Solo Objective card to the Solo Objective
-                    deck.
-                  </p>
-                  <p>Give it the Chronossus Exosuit Upgrade board with the “A” side up.</p>
-                </RulesBox>
-              )}
-
-              {moduleId?.includes('doomsday') && (
-                <RulesBox label="Doomsday — setup" showPreamble>
-                  <p>
-                    This requires the Classic Expansion Pack to play. All of the Doomsday
-                    module and the Chronossus base rules apply, unless noted below. We suggest
-                    using the “Planned Experiments” variant the first few times you play this
-                    against the Chronossus.
-                  </p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C07A to the (I) empty space, C08A to
-                    the (II) empty space. Leave C03A in play.
-                  </p>
-                  <p>
-                    Add the “Completed Experiments” Solo Objective card to the Solo Objective
-                    deck.
-                  </p>
-                </RulesBox>
-              )}
-
-              {moduleId?.includes('hypersync') && (
-                <RulesBox label="Hypersync Future Actions — setup" showPreamble>
-                  <p>
-                    Use the 2-player side of the Hypersync board, and cover the right World
-                    Council Action space on the Main board with a Hex Unavailable tile (as
-                    noted in the Hypersync rules for 2 players).
-                  </p>
-                  <p>
-                    Replace C01A with C12A. Leave C02A and C03A in play. Cover the Time
-                    Travel Action space with C13A.
-                  </p>
-                  <p>Place the Solo Hypersync tiles next to the Chronossus board.</p>
-                  <img
-                    className="setup-tiles-img"
-                    src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
-                    alt="Solo Hypersync setup tiles"
-                  />
-                </RulesBox>
-              )}
-
               <div className="setup-modified">
                 <h3>Setup for this app</h3>
                 <p>
@@ -1165,6 +1042,133 @@ export default function ChronossusSetupFlow({
                     <li>Place the Solo Hypersync tiles next to the Chronossus board.</li>
                   </ul>
                 </div>
+              )}
+
+              {/* Verbatim rulebook setup last, under the app's own instructions —
+                  reference material sits below what the player has to act on. */}
+              <RulesBox label="Setup" showPreamble>
+                <p>
+                  Set up a 2-player game with the Chronossus as one of the players. In
+                  addition to using the Chronossus’s side of the Solo board, the
+                  following changes need to be made during set-up:
+                </p>
+                <p>
+                  • The Chronossus receives its 6 Exosuits and 8 Warp tiles. It does not
+                  receive any Starting Assets or Workers.
+                  <br />• Leave all Endgame Condition cards in the box and shuffle all
+                  Solo Objective cards, revealing 3. Return the rest to the box.
+                  <br />• Place the Chronossus board next to the Main board, and place the
+                  4 Command tokens on the 4 marked positions. The Chronossus does not use
+                  a Focus marker.
+                  <br />• Place the Action tiles (marked side up) on the empty spaces of
+                  the Chronossus board: C01A, C02A, C03A. (Suggested for your first game;
+                  later you may assign them randomly.)
+                  <br />• Fill the Chronossus’s Energy Pool container with 5 Energy Core
+                  tokens and 5 Exhausted Energy Core tokens.
+                  <br />• Place the Chronossus’s Banner on the First Player spot; it is
+                  the First Player in the 1st Era. You receive 1 additional Water (for
+                  being the second player).
+                  <br />• You may still choose to use either the “A” or the “B” side of
+                  your Player board.
+                  <br />• For a more challenging game, cover the right World Council space
+                  with a Hex Unavailable tile.
+                </p>
+              </RulesBox>
+
+              {/* Per-mode setup additions (verbatim). Each module drops its own
+                  section here on top of the base setup above. */}
+              {moduleId?.includes('fractures') && (
+                <RulesBox label="Fractures of Time — setup" showPreamble>
+                  <p>Setup the Valley board as if it was a 2-Player game.</p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C04A, C05A and C06A.
+                  </p>
+                  <p>
+                    You will need a second container, referred to as the “Flux Pool.” At
+                    setup, add 1 Flux Core and all 3 Empty Flux Casing tokens to it.
+                  </p>
+                  <p>The Chronossus does not use a Fracture Device.</p>
+                  <p>
+                    Add the “Technology Cards” and “Flux on Track” Solo Objective cards to
+                    the deck before drawing.
+                  </p>
+                </RulesBox>
+              )}
+
+              {moduleId?.includes('guardians') && (
+                <RulesBox label="Guardians of the Council — setup" showPreamble>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C02A to the (I) empty space, C11A
+                    to the (II) empty space. Leave C03A in play.
+                  </p>
+                  <p>Add the “Guardians” Solo Objective card to the Solo Objective deck.</p>
+                  <p>
+                    Cover the right World Council Action space with a Hex Unavailable tile
+                    (as noted in the Guardians of the Council rules for 2 players).
+                  </p>
+                </RulesBox>
+              )}
+
+              {moduleId?.includes('pioneers') && (
+                <RulesBox label="Pioneers of New Earth — setup" showPreamble>
+                  <p>
+                    This requires the Classic Expansion Pack to play. All of the Pioneers of
+                    New Earth module and Chronossus base rules apply, unless noted below.
+                  </p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C03A to the (I) empty space, C09A
+                    to the (II) empty space, C02A to the (III) empty space. C10A replaces the
+                    printed “Recruit Genius or Research” Action space.
+                  </p>
+                  <p>
+                    Add the “Successful Adventures” Solo Objective card to the Solo Objective
+                    deck.
+                  </p>
+                  <p>Give it the Chronossus Exosuit Upgrade board with the “A” side up.</p>
+                </RulesBox>
+              )}
+
+              {moduleId?.includes('doomsday') && (
+                <RulesBox label="Doomsday — setup" showPreamble>
+                  <p>
+                    This requires the Classic Expansion Pack to play. All of the Doomsday
+                    module and the Chronossus base rules apply, unless noted below. We suggest
+                    using the “Planned Experiments” variant the first few times you play this
+                    against the Chronossus.
+                  </p>
+                  <p>
+                    Place the following Action tiles (with the marked sides face up) on the
+                    empty spaces of the Chronossus board: C07A to the (I) empty space, C08A to
+                    the (II) empty space. Leave C03A in play.
+                  </p>
+                  <p>
+                    Add the “Completed Experiments” Solo Objective card to the Solo Objective
+                    deck.
+                  </p>
+                </RulesBox>
+              )}
+
+              {moduleId?.includes('hypersync') && (
+                <RulesBox label="Hypersync Future Actions — setup" showPreamble>
+                  <p>
+                    Use the 2-player side of the Hypersync board, and cover the right World
+                    Council Action space on the Main board with a Hex Unavailable tile (as
+                    noted in the Hypersync rules for 2 players).
+                  </p>
+                  <p>
+                    Replace C01A with C12A. Leave C02A and C03A in play. Cover the Time
+                    Travel Action space with C13A.
+                  </p>
+                  <p>Place the Solo Hypersync tiles next to the Chronossus board.</p>
+                  <img
+                    className="setup-tiles-img"
+                    src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
+                    alt="Solo Hypersync setup tiles"
+                  />
+                </RulesBox>
               )}
             </>
           )}

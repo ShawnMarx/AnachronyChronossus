@@ -167,31 +167,6 @@ export default function SetupFlow({
                   Begin Era 1 ▶
                 </button>
               </div>
-              <RulesBox label="Setup" showPreamble>
-                <p>
-                  Set up a 2-player game, with the Chronobot as one of the players. Use
-                  the Chronobot side of the Solo board. In addition to using the
-                  Chronobot’s side of the Solo board, the following changes need to be
-                  made during setup:
-                </p>
-                <p>
-                  • The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not
-                  receive any Starting Assets or Workers.
-                  <br />• Leave all Endgame Condition cards in the box.
-                  <br />• Place the Chronobot board next to the Main board, and place the
-                  4 Command tokens on the 4 marked positions. The Chronobot does not use a
-                  Focus marker.
-                  <br />• Place the Chronobot’s Banner on the First Player spot; it is the
-                  First Player in the 1st Era. You receive 1 additional Water (for being
-                  the second player).
-                  <br />• You may still choose to use either the “A” or the “B” side of
-                  your Player board.
-                  <br />• For a more challenging game, use the variant rule described in
-                  the base game rulebook: cover the right World Council space with a Hex
-                  Unavailable tile.
-                </p>
-              </RulesBox>
-
               <div className="setup-modified">
                 <h3>Setup for this app</h3>
                 <p>
@@ -223,6 +198,33 @@ export default function SetupFlow({
                   are discarded, rather than placed on the bot’s board.
                 </p>
               </div>
+
+              {/* Verbatim rulebook setup last, under the app's own instructions —
+                  reference material sits below what the player has to act on. */}
+              <RulesBox label="Setup" showPreamble>
+                <p>
+                  Set up a 2-player game, with the Chronobot as one of the players. Use
+                  the Chronobot side of the Solo board. In addition to using the
+                  Chronobot’s side of the Solo board, the following changes need to be
+                  made during setup:
+                </p>
+                <p>
+                  • The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not
+                  receive any Starting Assets or Workers.
+                  <br />• Leave all Endgame Condition cards in the box.
+                  <br />• Place the Chronobot board next to the Main board, and place the
+                  4 Command tokens on the 4 marked positions. The Chronobot does not use a
+                  Focus marker.
+                  <br />• Place the Chronobot’s Banner on the First Player spot; it is the
+                  First Player in the 1st Era. You receive 1 additional Water (for being
+                  the second player).
+                  <br />• You may still choose to use either the “A” or the “B” side of
+                  your Player board.
+                  <br />• For a more challenging game, use the variant rule described in
+                  the base game rulebook: cover the right World Council space with a Hex
+                  Unavailable tile.
+                </p>
+              </RulesBox>
             </>
           )}
         </div>

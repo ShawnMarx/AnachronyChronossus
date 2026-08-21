@@ -4317,13 +4317,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 (−) symbols together with the ones printed beside both trackers’ current
                 slots, then move the Impact tile accordingly.
               </p>
-              <RulesBox label="Doomsday — Check for Impact">
-                {Chronossus.DOOMSDAY_CHECK_FOR_IMPACT_RULE.split('\n\n').map((para, i) => (
-                  <p key={i} style={{ whiteSpace: 'pre-line' }}>
-                    {para}
-                  </p>
-                ))}
-              </RulesBox>
               {botLocked && (
                 <p className="phase-note">
                   The Chronossus’s own marker is already on its final slot — the tracks are
@@ -4404,6 +4397,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             <button className="phase-primary" onClick={afterCleanUp}>
               End the Era — start Era {era + 1} ▶
             </button>
+          )}
+          {/* Verbatim rules last, under what the player has to act on — same as every
+              other phase screen. */}
+          {impactCheckDue && (
+            <RulesBox label="Doomsday — Check for Impact">
+              {Chronossus.DOOMSDAY_CHECK_FOR_IMPACT_RULE.split('\n\n').map((para, i) => (
+                <p key={i} style={{ whiteSpace: 'pre-line' }}>
+                  {para}
+                </p>
+              ))}
+            </RulesBox>
           )}
         </>
       );
@@ -5676,6 +5680,7 @@ function VariableAnomalyGainPrompt({
   // A mis-tap is fixed with ↶ Undo (which restores the roll without re-rolling it).
   const [vp, setVp] = useState<number | null>(null);
   return (
+    <>
     <div className="place-prompt">
       <p className="pp-instruct">
         <b>Variable Anomalies — the Chronossus receives an Anomaly.</b> From the visible
@@ -5717,6 +5722,8 @@ function VariableAnomalyGainPrompt({
           </div>
         </>
       )}
+    </div>
+      {/* Verbatim rules below the step box, never inside it. */}
       <RulesBox label="Variable Anomalies">
         <p>
           <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
@@ -5729,7 +5736,7 @@ function VariableAnomalyGainPrompt({
         </p>
         <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
       </RulesBox>
-    </div>
+    </>
   );
 }
 
@@ -6726,12 +6733,6 @@ function CxScoreScreen({
         <ul className="score-breakdown score-meta">
           <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
         </ul>
-        <div className="score-rules">
-          <RulesBox label="End Game scoring">
-            <p>{CHRONOSSUS_ENDGAME_RULES}</p>
-          </RulesBox>
-        </div>
-
         {result && (
           <div className={`score-result ${result}`}>
             {result === 'win'
@@ -6771,6 +6772,13 @@ function CxScoreScreen({
         )}
 
         {shareMsg && <div className="score-share-msg">{shareMsg}</div>}
+
+        {/* Verbatim rules last, as on every other screen — above the pinned actions. */}
+        <div className="score-rules">
+          <RulesBox label="End Game scoring">
+            <p>{CHRONOSSUS_ENDGAME_RULES}</p>
+          </RulesBox>
+        </div>
 
         <div className="score-actions">
           <button className="modal-no" onClick={onHome}>
