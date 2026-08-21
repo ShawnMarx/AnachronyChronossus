@@ -1,5 +1,5 @@
 /* Phase-flow shell: splash banner + overview + phase body, with a tab to the
-   read-only board ("Chronobot Status"). Shares the app's dark/purple theme. */
+   read-only board (the "Board" tab). Shares the app's dark/purple theme. */
 
 .phase-screen {
   height: 100dvh;
@@ -15,13 +15,20 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
   padding: 0.45rem 0.9rem;
   border-bottom: 1px solid rgba(var(--sp-accent-rgb), 0.35);
   background: var(--sp-panel-2);
 }
+/* The right-hand group is pushed over rather than spread by `space-between`, so the
+   Phase | Board toggle can follow it as its own child and still sit at the far right. */
+.phase-bar-right {
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .phase-bar-left,
 .phase-bar-right {
   display: flex;
@@ -567,4 +574,65 @@
   flex: 0 0 auto;
   object-fit: contain;
   border-radius: 8px;
+}
+
+/* Phone: two rows, and the toggle holds the top right.
+   It used to wrap down into the second row along with the VP pill, Undo, History, Turn and
+   Rules — a row that already had more in it than fits a 390px screen. */
+@media (max-width: 640px) {
+  .phase-bar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.4rem 0.6rem;
+  }
+  .phase-bar-left {
+    grid-column: 1;
+    grid-row: 1;
+    min-width: 0;
+  }
+  .phase-tabs {
+    grid-column: 2;
+    grid-row: 1;
+    justify-self: end;
+  }
+  .phase-bar-right {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin-left: 0;
+    justify-content: flex-start;
+    gap: 0.4rem;
+  }
+  .phase-title {
+    font-size: 1rem;
+  }
+  /* Eyebrow above title in the left cell, rather than side by side: on one line the two
+     together ran under the toggle and the phase name was clipped. The home button spans
+     both. Everything is min-width:0 / clipped so a long name can never reach the toggle. */
+  .phase-bar-left {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-items: center;
+    gap: 0 0.5rem;
+    overflow: hidden;
+  }
+  .phase-bar-left .home-btn {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+  }
+  .phase-eyebrow {
+    grid-column: 2;
+    grid-row: 1;
+    font-size: 0.62rem;
+    white-space: nowrap;
+  }
+  .phase-title {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }

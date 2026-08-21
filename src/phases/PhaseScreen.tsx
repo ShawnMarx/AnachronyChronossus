@@ -5,9 +5,13 @@ const CHRONOBOT_HERO = '/assets/solo/chronobot-hero.jpg';
 /**
  * The reusable frame for every non-Action phase (Phases 1–4 & 6, plus Start /
  * Setup). Shows the bot splash banner, the rulebook overview, and the phase's
- * body/controls (`children`); a tab flips to the full board as read-only bot
- * status (`statusView`, provided by the caller). Phase 5 renders the board
+ * body/controls (`children`); a **Phase | Board** toggle flips to the full board as
+ * read-only bot status (`statusView`, provided by the caller). Phase 5 renders the board
  * directly and does not use this frame.
+ *
+ * The toggle is a direct child of the header bar rather than part of `headerRight`: on a
+ * phone the bar is a two-row grid and the toggle holds the top right of row one, while the
+ * pills wrap below it.
  *
  * `hero`/`statusLabel`/`heroAlt` default to the Chronobot so existing callers are
  * unchanged; the Chronossus flow passes its own.
@@ -36,7 +40,7 @@ export default function PhaseScreen({
   statusView?: React.ReactNode;
   /** Splash-banner image (defaults to the Chronobot hero). */
   hero?: string;
-  /** Label for the status tab (defaults to "Chronobot Status"). */
+  /** Accessible name for the board tab — the tab itself reads "Board". */
   statusLabel?: string;
   /** Alt/aria text for the hero banner (defaults to "Chronobot"). */
   heroAlt?: string;
@@ -63,29 +67,35 @@ export default function PhaseScreen({
           </span>
           <h1 className="phase-title">{phaseName}</h1>
         </div>
-        <div className="phase-bar-right">
-          {headerRight}
-          {statusView && (
-            <div className="phase-tabs" role="tablist">
-              <button
-                role="tab"
-                aria-selected={tab === 'phase'}
-                className={tab === 'phase' ? 'on' : ''}
-                onClick={() => setTab('phase')}
-              >
-                This Phase
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'status'}
-                className={tab === 'status' ? 'on' : ''}
-                onClick={() => setTab('status')}
-              >
-                {statusLabel}
-              </button>
-            </div>
-          )}
-        </div>
+        <div className="phase-bar-right">{headerRight}</div>
+        {/* A direct child of the bar, not part of `phase-bar-right`: on a phone the bar
+            becomes a two-row grid and this stays pinned to the top right of row one, while
+            the pills wrap to row two. Inside the right-hand group it was wrapping down with
+            them, into a row that already had too much in it. */}
+        {statusView && (
+          <div className="phase-tabs" role="tablist">
+            <button
+              role="tab"
+              aria-selected={tab === 'phase'}
+              className={tab === 'phase' ? 'on' : ''}
+              onClick={() => setTab('phase')}
+            >
+              Phase
+            </button>
+            <button
+              role="tab"
+              aria-selected={tab === 'status'}
+              className={tab === 'status' ? 'on' : ''}
+              onClick={() => setTab('status')}
+              // The tab reads "Board", but which bot's board it is still matters to a
+              // screen reader — that is what `statusLabel` carries now.
+              title={statusLabel}
+              aria-label={statusLabel}
+            >
+              Board
+            </button>
+          </div>
+        )}
       </header>
 
       {tab === 'status' && statusView ? (
