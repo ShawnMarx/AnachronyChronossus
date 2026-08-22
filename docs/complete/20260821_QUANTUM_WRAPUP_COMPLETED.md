@@ -239,9 +239,9 @@ die-face component if three call sites want one.
 ## Feature 9 — Publishing finishers
 
 - **Rotate the CI deploy key** (security; the private key was printed to a tool output).
-  Regenerate `the deploy key`, update the Droplet's `authorized_keys` for `deploy`
-  and the repo secret `DEPLOY_SSH_KEY`, then prove it by watching a `staging` deploy succeed
-  and confirming the old key is refused.
+  Regenerate the pair, install the new public half on the host, update the repo secret,
+  and prove it with a real deploy before removing the old one. (Procedure lives with the
+  infrastructure docs, not in this repo.)
 - **Link back to BGE + support** — a link from this app's Landing screen to
   `boardgameedge.com`, with the support message. **Open question:** the donation platform is
   still TBD (Ko-fi / Patreon) — if it is still undecided at execution time, ship the link-back
@@ -464,9 +464,9 @@ Note deviations and decisions inline under each step.
 
 ## Feature 9 — Publishing finishers
 
-- [x] 9.1 Regenerate the `the deploy key` keypair.
-- [x] 9.2 Update the Droplet's `deploy` `authorized_keys` and the repo secret `DEPLOY_SSH_KEY`;
-      remove the old key.
+- [x] 9.1 Regenerate the the deploy key keypair.
+- [x] 9.2 Install the new public half on the host and update the repo secret; remove the
+      old key.
 - [x] 9.3 Prove it with a real `staging` deploy, and confirm the old key is refused.
 - [~] 9.4 Add the link back to `boardgameedge.com` from the Landing screen (+ the support
       message, if the donation platform is decided by then).
@@ -476,15 +476,12 @@ Note deviations and decisions inline under each step.
 
 **Deviations / decisions:**
 
-- **Key rotated 2026-08-21.** New pair `the deploy key`, added to the
-  Droplet's `authorized_keys` **before** the old one was removed, proven by an SSH login and
-  then by a real staging deploy (run 32484632286, success). Only then was the old
-  `the deploy key` line dropped, and a second deploy (run 32484794877, success)
-  proved CI still works without it. The local private key was deleted; the only copy is the
-  GitHub secret. Pre-rotation backup left at `the host's key-list backup`.
-  `authorized_keys` is shared with the other BGE repos, so the removal matched the key's
-  comment exactly rather than rewriting the file.
-- The rotation runbook is now in `docs/DEPLOYMENT.md` as a 9-step add-before-remove recipe.
+- **Key rotated 2026-08-21.** New pair added to the host **before** the old one was removed,
+  proven by an SSH login and then by a real staging deploy, and only then was the old key
+  dropped; a second deploy proved CI still worked without it. The local private key was
+  deleted — the only copy is the GitHub secret. Full procedure lives with the infrastructure
+  docs rather than here.
+- The rotation runbook lives with the infrastructure docs, as an add-before-remove recipe.
 - **9.5 — the listing was already done, but the prod apex is not serving it.** Anachrony is
   an `AppCard` in `bge_landing/config.py` and the landing service renders it live at
   `staging.boardgameedge.com`. `boardgameedge.com` itself is still a **GoDaddy "Launching

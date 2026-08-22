@@ -35,16 +35,13 @@ would only gate saved stats.
 
 ## Deployment
 
-Live at **https://anachrony.boardgameedge.com** — a **public static site** on the
-shared BoardGameEdge (BGE) DigitalOcean Droplet (`the deploy host`). Pushing to `main`
-auto-deploys via GitHub Actions (`.github/workflows/deploy-production.yml`): it SSHes
-to the Droplet as `deploy`, `git reset --hard origin/main`, `npm ci`, `npm run build`;
-**nginx serves `/var/www/anachrony/dist` directly** — no backend, no systemd service,
-no `sudo` in the deploy path. CI uses a dedicated `the deploy key` deploy key
-(repo secrets `PROD_HOST` + `DEPLOY_SSH_KEY`). Full runbook, nginx block, and server
-setup live in **`docs/DEPLOYMENT.md`**. **Staging** mirrors it at
-`anachrony.staging.boardgameedge.com`, deploying on push to the **`staging`** branch (same
-Droplet, `/var/www/anachrony-staging`) — work lands there first, then `staging → main`.
+Live at **https://anachrony.boardgameedge.com** — a **public static site** on a shared host. Pushing to `main`
+auto-deploys via GitHub Actions (`.github/workflows/deploy-production.yml`): it SSHes to the host, `git reset --hard origin/main`, `npm ci`, `npm run build`;
+**nginx serves the built `dist/` directly** — no backend, no systemd service,
+no `sudo` in the deploy path. CI uses a dedicated deploy key (repo secrets `PROD_HOST` + `DEPLOY_SSH_KEY`).
+Host, vhosts and key rotation live in the private BGE infrastructure repo; this repo
+keeps only a stub (`docs/DEPLOYMENT.md`). **Staging** mirrors it at
+`anachrony.staging.boardgameedge.com`, deploying on push to the **`staging`** branch (same host, its own directory) — work lands there first, then `staging → main`.
 Not yet done (deferred): access-gating via `auth.boardgameedge.com`, and listing on the
 `boardgameedge.com` landing page.
 

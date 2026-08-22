@@ -7,8 +7,8 @@ name: Deploy Anachrony to Staging
 # untouched. No systemd service and no `sudo` — nothing to restart.
 #
 # Reuses the same repo secrets as production (same Droplet, same deploy key):
-#   PROD_HOST       the Droplet IP (the deploy host)
-#   DEPLOY_SSH_KEY  the existing fleet deploy private key
+#   PROD_HOST       the deploy host
+#   DEPLOY_SSH_KEY  the deploy private key
 
 on:
   push:

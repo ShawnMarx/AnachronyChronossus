@@ -18,10 +18,9 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       while the landing service itself is live at `staging.boardgameedge.com`. One line to
       flip when the apex cuts over. Still open: the **"support me" message** — the donation
       platform (Ko-fi / Patreon / …) is undecided, so nothing was shipped for it.
-- [x] **Security: rotate the CI deploy key** — **done 2026-08-21.** New pair
-      `the deploy key`, added before the old was removed, each half
-      proven by a real staging deploy. Old key gone from `authorized_keys`; backup at
-      `the host's key-list backup`. Recipe now in `docs/DEPLOYMENT.md`.
+- [x] **Security: rotate the CI deploy key** — **done 2026-08-21.** Rotated, new key
+      proven by a real deploy before the old one was removed. Procedure lives with the
+      infrastructure docs, not here.
 - [ ] **Make the GitHub repo public** — currently private because the board art is
       copyrighted. Before flipping: strip/relocate the copyrighted board art + sprite
       assets (or confirm licensing), scrub git history for any secrets, and re-confirm
@@ -40,8 +39,7 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       claim about a service that was working, and the reason this went unfound for three
       weeks. Both bots now re-check `/api/me` before blaming the login.
 - [ ] **Admin stats still 403** (2026-08-22) — the last piece of "overall stats isn't
-      working". `the test account` (user 2) has no row in `admin_roles`; it needs
-      `(the test account, app_slug='anachrony')`. That insert is blocked in the `boardgameedge`
+      working". the test account has no admin role for this app on the shared auth service. That insert is blocked in the `boardgameedge`
       session and is waiting on Shawn. 403 is the correct answer until then, not a fault.
 - [ ] **Export the score tally, not just BG Stats** (2026-08-19, open question) — the home
       screen's history modal exports BG Stats' summary fields (result, scores, era,
