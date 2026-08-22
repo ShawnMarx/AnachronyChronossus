@@ -4,6 +4,7 @@ import { peekSavedChronobot, clearSavedChronobot } from './BoardExplorer';
 import { peekSavedChronossus, clearSavedChronossus } from './ChronossusGame';
 import { useAuth } from './auth/useAuth';
 import HistoryScreen from './history/HistoryScreen';
+import AdminStats from './history/AdminStats';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
@@ -76,10 +77,14 @@ function BotCard({ name, image, tagline, description, status, onLaunch }: BotCar
  * Top-right optional-login control on the home screen. The name is the way in to the
  * player's own play history (and its BG Stats export/import) — until now that lived only
  * in the ⚙ menu of a game in progress, so between games there was no way to reach it.
+ *
+ * Overall stats is here for the same reason: the in-game ⚙ menu carried it (both bots
+ * share `SettingsMenu`), so between games there was nowhere to read it from.
  */
 function LandingAuth() {
   const { user, loading, login, logout } = useAuth();
   const [showHistory, setShowHistory] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
   if (loading) {
     return (
       <div className="landing-auth" aria-hidden>
@@ -98,10 +103,20 @@ function LandingAuth() {
           >
             👤 {user.username}
           </button>
+          {user.isAdmin && (
+            <button
+              className="landing-auth-who"
+              onClick={() => setShowAdmin(true)}
+              title="Overall stats across all players"
+            >
+              📊 Overall stats
+            </button>
+          )}
           <button className="landing-auth-btn" onClick={logout}>
             Sign out
           </button>
           {showHistory && <HistoryScreen onClose={() => setShowHistory(false)} />}
+          {showAdmin && <AdminStats onClose={() => setShowAdmin(false)} />}
         </>
       ) : (
         <button className="landing-auth-btn primary" onClick={login}>
