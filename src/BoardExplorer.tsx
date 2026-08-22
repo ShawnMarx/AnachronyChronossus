@@ -2781,9 +2781,12 @@ function ScoreScreen({
     won: result === 'win',
     bot_score: s.total,
     player_score: playerScore,
-    difficulty: difficultyLabel,
+    // Bot-prefixed for the same reason as the Chronossus's: the admin stats table groups
+    // on this column and nothing else in the row says which opponent it was.
+    difficulty: `Chronobot · ${difficultyLabel}`,
     era_reached: state.era,
     payload: {
+      opponent: 'Chronobot',
       breakdown: s,
       botTurns: bot.totalActions,
       difficultyFlags,

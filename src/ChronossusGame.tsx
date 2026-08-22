@@ -6709,13 +6709,38 @@ function CxScoreScreen({
         : 'lose';
 
   /** The finished game as the data service takes it — also what gets queued on a failure. */
+  /**
+   * What the game was played at, as one groupable string — the admin stats table groups on
+   * this column, so it has to stay low-ish cardinality AND keep the two bots apart.
+   *
+   * It used to be the bare word "Chronossus", which meant **no Chronossus game ever
+   * recorded its difficulty at all** — every one of them landed in a single bucket, on the
+   * bot with ten difficulty options and nine modules. The bot name stays first (nothing
+   * else in the row distinguishes the opponent in that table), then the modules, then the
+   * options — the same three things the score screen and turn overview show.
+   */
+  const statsDifficulty = (): string => {
+    const modes = selectedModeLabels(state.config).join(' + ');
+    const opts = state.config.difficulty.map((f) =>
+      chronossusDifficultyLabel(f, state.config.difficultyValues),
+    );
+    return `Chronossus · ${modes} · ${opts.length ? opts.join('; ') : 'Base'}`;
+  };
   const pendingSummary = (): GameSummary => ({
     won: result === 'win',
     bot_score: score.total,
     player_score: playerScore,
-    difficulty: 'Chronossus',
+    difficulty: statsDifficulty(),
     era_reached: state.era,
-    payload: { opponent: 'Chronossus', breakdown: score, botTurns: totalActions },
+    payload: {
+      opponent: 'Chronossus',
+      breakdown: score,
+      botTurns: totalActions,
+      // Structured alongside the display string, so a future dashboard can group by mode
+      // or by a single option without parsing the label back apart.
+      modes: selectedModeLabels(state.config),
+      difficultyFlags: state.config.difficulty,
+    },
   });
   /**
    * Logged out: hold the finished game on this device FIRST, then hand off to the shared
