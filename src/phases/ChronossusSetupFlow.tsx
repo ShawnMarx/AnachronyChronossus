@@ -182,11 +182,7 @@ interface ExtraModuleConfig {
 // game's modules (the turn overview, End Game) can't drift apart.
 const EXTRA_MODULES: ExtraModuleConfig[] = [
   { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, available: true },
-  {
-    id: Chronossus.EXTRA_MODULE_QUANTUM_LOOPS,
-    available: true,
-    note: 'Requires the Future Imperfect expansion.',
-  },
+  { id: Chronossus.EXTRA_MODULE_QUANTUM_LOOPS, available: true },
   { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, available: true },
 ].map((m) => ({ ...m, label: EXTRA_MODULE_LABELS[m.id] ?? m.id }));
 

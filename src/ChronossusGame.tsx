@@ -41,7 +41,7 @@ import {
 import HistoryPane, { PhaseHistoryDock } from './history/HistoryPane';
 import ReadyToBegin from './phases/ReadyToBegin';
 import FirstPlayerPrompt from './phases/FirstPlayerPrompt';
-import TurnBarOverview, { DifficultyList } from './phases/TurnBarOverview';
+import TurnBarOverview, { DifficultyList, ModeList } from './phases/TurnBarOverview';
 import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
@@ -6935,7 +6935,10 @@ function CxScoreScreen({
         )}
 
         {/* What the game was played at, under the tally rather than above it — it is
-            reference, not something to fill in. Same block as the turn overview's. */}
+            reference, not something to fill in. Same blocks as the turn overview's: the
+            modules first, then the difficulty options. The modules were missing entirely,
+            so a finished Doomsday (or any other mode) scored as if it were a base game. */}
+        <ModeList modes={selectedModeLabels(state.config)} />
         <DifficultyList
           difficulty={state.config.difficulty.map((f) =>
             chronossusDifficultyLabel(f, state.config.difficultyValues),
@@ -6963,6 +6966,17 @@ function CxScoreScreen({
             <button className="score-save-retry" onClick={loginAndSave}>
               Log in &amp; save
             </button>
+          </div>
+        )}
+
+        {/* Logged in but no score entered yet: the auto-save is waiting on the player's own
+            score and nothing on screen said so, so a finished game looked like it had
+            silently failed to save. This is the only state that reported nothing at all. */}
+        {user && saveState === 'idle' && (playerScore == null || Number.isNaN(playerScore)) && (
+          <div className="score-save">
+            <span className="score-save-wait">
+              Enter your score above to save this game to your history.
+            </span>
           </div>
         )}
 

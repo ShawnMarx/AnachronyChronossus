@@ -1924,6 +1924,12 @@
 
 /* End-of-Actions popover (the old bottom bar, now a dismissible tooltip) */
 .eoa-popover {
+  /* Its own text colour, not the ambient one. The popover renders under two different
+     parents — inside `.explorer` on the Action Rounds board, and under the phase screen
+     everywhere else — and only the first sets a colour, so the tracker chips came out
+     BLACK between phases. They are `color: inherit` by rule (see `button.eoa-flag`), so
+     the popover is the right place to fix it for every chip at once. */
+  color: var(--sp-text-base);
   position: fixed;
   top: 3.4rem;
   left: 50%;
@@ -2591,6 +2597,11 @@
   padding-top: 0.75rem;
   border-top: 1px solid rgba(148, 163, 184, 0.25);
 }
+/* The die is a die: it keeps its size when the sentence beside it wraps. As a flex item
+   it was being squeezed narrower by the long "removed the card…" line. */
+.quantum-check .bot-die {
+  flex: 0 0 auto;
+}
 
 /* The shape (Research) die's real face, used as the roll readout. Sits on its own dark
    ground rather than the Breakthrough art's light chip — it is a die, not a component. */
@@ -2630,4 +2641,11 @@
 .landing-foot.landing-bge a {
   color: var(--sp-accent);
   text-decoration: underline;
+}
+
+/* "Enter your score…" — the auto-save is waiting on the player, not failing. Muted, since
+   it is a nudge rather than an error. */
+.score-save-wait {
+  color: var(--sp-text-mute);
+  font-size: 0.85rem;
 }

@@ -1293,6 +1293,7 @@ export function resolveAction(
       input.experiment
         ? {
             input: input.experiment,
+            failVP,
             onResolved: (r) => {
               experimented = r;
             },
@@ -1522,6 +1523,8 @@ function resolveTileAction(
   },
   experiment?: {
     input: ExperimentInput;
+    /** VP a Failed Action pays — both Experiment steps failing is one. */
+    failVP: number;
     onResolved: (r: ExperimentResult) => void;
   },
 ): boolean {
@@ -1572,7 +1575,14 @@ function resolveTileAction(
         ...(vp ? { effect: { vp } } : {}),
       });
     }
-    const res = resolveDoomsdayAction(bot, instr, n, eff.experiment, experiment.input);
+    const res = resolveDoomsdayAction(
+      bot,
+      instr,
+      n,
+      eff.experiment,
+      experiment.input,
+      experiment.failVP,
+    );
     experiment.onResolved(res);
     return false;
   }

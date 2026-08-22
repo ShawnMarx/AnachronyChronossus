@@ -2940,6 +2940,16 @@ function ScoreScreen({
           </div>
         )}
 
+        {/* Same gap the Chronossus had: logged in with no score entered, the auto-save is
+            waiting on the player and nothing said so, so the game looked unsaved. */}
+        {user && saveState === 'idle' && (playerScore == null || Number.isNaN(playerScore)) && (
+          <div className="score-save">
+            <span className="score-save-wait">
+              Enter your score above to save this game to your history.
+            </span>
+          </div>
+        )}
+
         {user && saveState !== 'idle' && (
           <div className="score-save">
             {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}

@@ -200,7 +200,7 @@ export default function Landing({
           image="/assets/solo/chronobot-hero.jpg"
           tagline="The base-game automa · easiest place to start"
           status="ready"
-          description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens and the AI die."
+          description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens."
           onLaunch={() => launch('chronobot')}
         />
         <BotCard
@@ -208,7 +208,7 @@ export default function Landing({
           image="/assets/solo/chronossus-hero.jpg"
           tagline="The advanced automa · more modes, more depth"
           status="ready"
-          description="A deeper opponent supporting every module in the Solo Opponents matrix: the base game, Hypersync Future Actions, Fractures of Time, Guardians of the Council, Pioneers of New Earth and Doomsday, plus the Variable Anomalies, Quantum Loops and Alternate Timelines add-ons. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
+          description="A deeper opponent supporting every official module and their combinations. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
           progress={100}
         />

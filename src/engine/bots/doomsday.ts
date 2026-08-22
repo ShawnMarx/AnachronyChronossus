@@ -272,6 +272,16 @@ export interface ExperimentResult {
   endsGame: boolean;
   /** Its tracker reached "Seal Fate" bottommost: the Impact resolves immediately. */
   impactNow: boolean;
+  /**
+   * BOTH steps failed, so the Action was taken but nothing was performed — a Failed
+   * Action, which pays VP in place of its normal effect (Solo Opponents p.10: "If an Action
+   * can be taken but cannot be performed … the Chronossus places the Exosuit and receives
+   * the 1 VP instead of the normal effect of the Action"). Either step succeeding makes it
+   * a real Action, so this is only the both-failed case.
+   */
+  failedAction: boolean;
+  /** VP granted for that Failed Action (0 unless `failedAction`). */
+  failedActionVp: number;
 }
 
 /**
@@ -290,6 +300,9 @@ export function resolveDoomsdayAction(
   n: number,
   level: 1 | 2,
   input: ExperimentInput,
+  /** VP a Failed Action pays — 1, or 2 with that difficulty option. Passed in, because the
+   *  amount is a config question and this module stays pure. */
+  failVp = 1,
 ): ExperimentResult {
   const d = bot.doomsday;
   if (!d) throw new Error('resolveDoomsdayAction: no Doomsday state');
@@ -308,6 +321,8 @@ export function resolveDoomsdayAction(
     prepared: false,
     endsGame: false,
     impactNow: false,
+    failedAction: false,
+    failedActionVp: 0,
   };
 
   // --- STEP 1: EXECUTE EXPERIMENT -------------------------------------------------------
@@ -418,6 +433,22 @@ export function resolveDoomsdayAction(
     instr.push({
       id: `exp-noprepare-${n}`,
       text: 'Every available face-up Experiment already carries a Path marker — skip this step.',
+    });
+  }
+
+  // Both steps failed: the Exosuit was placed and the Action produced nothing, which is
+  // exactly the Failed Action case. Either step succeeding makes it a real Action.
+  if (!result.executed && !result.prepared) {
+    result.failedAction = true;
+    result.failedActionVp = failVp;
+    bot.vp += failVp;
+    instr.push({
+      id: `exp-failed-${n}`,
+      text: `Neither step could be performed — a Failed Action, so the Chronossus takes ${failVp} VP instead.`,
+      detail:
+        'The Exosuit is still placed: an Action that can be taken but cannot be performed ' +
+        'pays VP in place of its normal effect.',
+      effect: { vp: failVp },
     });
   }
 

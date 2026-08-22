@@ -168,9 +168,9 @@ function bot(over: Partial<ChronossusState> = {}): ChronossusState {
 }
 
 /** Run an Experiment, returning the mutated bot alongside the result. */
-function run(b: ChronossusState, level: 1 | 2, input: ExperimentInput) {
+function run(b: ChronossusState, level: 1 | 2, input: ExperimentInput, failVp = 1) {
   const instr: Instruction[] = [];
-  const res = resolveDoomsdayAction(b, instr, 1, level, input);
+  const res = resolveDoomsdayAction(b, instr, 1, level, input, failVp);
   return { res, instr, text: instr.map((i) => i.text).join('\n') };
 }
 
@@ -292,13 +292,43 @@ describe('Experiment — Step 2 (prepare), and the steps failing independently',
     expect(text).toMatch(/already carries a Path marker/);
   });
 
-  it('can fail both steps and change nothing but the run flag', () => {
+  it('counts as a Failed Action when BOTH steps fail, paying VP instead', () => {
+    // The Exosuit was placed and the Action produced nothing: "an Action [that] can be
+    // taken but cannot be performed" pays VP in place of its normal effect
+    // (Solo Opponents p.10).
     const b = bot();
-    const { res } = run(b, 2, { markedAvailable: false, canPrepare: false });
+    const { res, text } = run(b, 2, { markedAvailable: false, canPrepare: false });
     expect(res.executed).toBe(false);
     expect(res.prepared).toBe(false);
-    expect(b.vp).toBe(0);
+    expect(res.failedAction).toBe(true);
+    expect(res.failedActionVp).toBe(1);
+    expect(b.vp).toBe(1);
+    expect(text).toMatch(/Failed Action/);
     expect(b.doomsday!.experimentActionRun).toBe(true);
+  });
+
+  it('pays 2 VP for that Failed Action with the difficulty option', () => {
+    const b = bot();
+    const { res } = run(b, 2, { markedAvailable: false, canPrepare: false }, 2);
+    expect(res.failedActionVp).toBe(2);
+    expect(b.vp).toBe(2);
+  });
+
+  it('is NOT a Failed Action when either step succeeds', () => {
+    // Step 2 alone still marks an Experiment for a later turn, so the Action did something.
+    const onlyPrepare = bot();
+    const a = run(onlyPrepare, 2, { markedAvailable: false, canPrepare: true });
+    expect(a.res.failedAction).toBe(false);
+    expect(onlyPrepare.vp).toBe(0);
+
+    // Step 1 alone scored the card's VP, so it is plainly not failed either.
+    const onlyExecute = bot();
+    const c = run(onlyExecute, 2, {
+      markedAvailable: true,
+      experimentVp: 2,
+      canPrepare: false,
+    });
+    expect(c.res.failedAction).toBe(false);
   });
 });
 
