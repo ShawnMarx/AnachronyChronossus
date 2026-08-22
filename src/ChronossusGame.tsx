@@ -5372,7 +5372,21 @@ function CxTileDialog({
               {/* No effect blurb here: the gate is only asking about the space. What the
                   Action does comes with the steps that resolve it (and the 📖 box below). */}
             </>
-          ) : experimentGate && !readOnly && experimentGate.step === 'marked' ? (
+          ) : experimentGate && !readOnly ? (
+            <>
+              {/* The placement, in a box of ITS OWN and above the steps.
+                  The Action spends an Exosuit, and it used to say so only as a line inside
+                  Step 2's paragraph — which is exactly where a player skimming a skipped
+                  Step 1 reads past it. Every other placing Action gets a prompt of its own;
+                  this now does too. It is stated, not gated: the Experiment space is a
+                  shared hex pool that can never be full, so there is nothing to check. */}
+              <div className="place-prompt exp-place">
+                <p className="pp-instruct">
+                  Place one of the Chronossus’s <b>Exosuits</b> on the{' '}
+                  <b>Experiment Action space</b>.
+                </p>
+              </div>
+              {experimentGate.step === 'marked' ? (
             <>
               <p className="pp-instruct">
                 <b>Step 1 — Execute Experiment.</b> Is there a{' '}
@@ -5408,7 +5422,7 @@ function CxTileDialog({
                 </button>
               </div>
             </>
-          ) : experimentGate && !readOnly ? (
+          ) : (
             <>
               <p className="pp-instruct">
                 <b>Step 2 — Prepare for Experimentation.</b> Place one of the Chronossus’s{' '}
@@ -5420,17 +5434,6 @@ function CxTileDialog({
                 Never the Experiment under the next Era. Your Focus marker has no effect on
                 this choice.
               </p>
-              {/* The Action spends an Exosuit and never said so. Every other placing Action
-                  instructs through `PlaceExosuitPanel`; the Experiment has its own step
-                  sequence and skipped it, so the figure came off the bot's supply with
-                  nothing on screen telling the player to put one on the board.
-                  No gate here on purpose: the Experiment space is a shared hex pool that
-                  any number of figures can occupy, so it can never be full — there is
-                  nothing to check, only something to do. */}
-              <p className="pp-instruct">
-                Place one of the Chronossus’s <b>Exosuits</b> on the{' '}
-                <b>Experiment Action space</b>.
-              </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => experimentGate.onPrepare(true)}>
                   {startLabel}
@@ -5439,6 +5442,8 @@ function CxTileDialog({
                   ✗ All of them already have one
                 </button>
               </div>
+            </>
+          )}
             </>
           ) : (
             <p className="pp-instruct">{tileInstruction(code)}</p>

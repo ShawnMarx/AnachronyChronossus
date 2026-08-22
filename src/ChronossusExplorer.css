@@ -1472,3 +1472,9 @@ p.cx-adv-brk {
   border: 1px solid rgba(var(--sp-accent-rgb), 0.7);
   background: rgba(0, 0, 0, 0.25);
 }
+
+/* The Experiment's Exosuit placement: its own box above the step boxes, because the
+   Action spends a figure on every path — including the ones where a step is skipped. */
+.place-prompt.exp-place {
+  margin-bottom: 0.5rem;
+}
