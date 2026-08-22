@@ -30,7 +30,6 @@ interface BotCardProps {
   status: 'ready' | 'soon';
   onLaunch?: () => void;
   /** Optional build-completeness bar shown at the bottom of the card (0–100). */
-  progress?: number;
 }
 
 /**
@@ -50,7 +49,7 @@ const BGE_LANDING_URL: string | null = (() => {
   return null; // ← 'https://boardgameedge.com' once the apex serves the landing service
 })();
 
-function BotCard({ name, image, tagline, description, status, onLaunch, progress }: BotCardProps) {
+function BotCard({ name, image, tagline, description, status, onLaunch }: BotCardProps) {
   const ready = status === 'ready';
   return (
     <button
@@ -68,25 +67,6 @@ function BotCard({ name, image, tagline, description, status, onLaunch, progress
         <p className="bot-tagline">{tagline}</p>
         <p className="bot-desc">{description}</p>
         {ready && <span className="bot-cta">Play ▶</span>}
-        {progress != null && (
-          <div
-            className="upload-bar"
-            role="img"
-            aria-label={
-              progress >= 100 ? 'Upload complete: 100 percent' : `Uploading: ${progress} percent`
-            }
-          >
-            {/* The in-fiction progress bar tracks how much of the Solo Opponents matrix is
-                implemented. At 100% it stops saying it is still working. */}
-            <div className="upload-bar-label">
-              {progress >= 100 ? 'Upload complete' : 'Uploading…'}
-            </div>
-            <div className="upload-bar-track">
-              <div className="upload-bar-fill" style={{ width: `${progress}%` }} />
-            </div>
-            <div className="upload-bar-pct">{progress}%</div>
-          </div>
-        )}
       </div>
     </button>
   );
@@ -210,7 +190,6 @@ export default function Landing({
           status="ready"
           description="A deeper opponent supporting every official module and their combinations. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
           onLaunch={() => launch('chronossus')}
-          progress={100}
         />
       </div>
 
