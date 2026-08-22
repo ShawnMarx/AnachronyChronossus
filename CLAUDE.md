@@ -432,6 +432,11 @@ rules allow it.
   placement gates, `BlinkPanel` and `PlaceExosuitPanel` already do it; a new panel must
   too. History strings are persisted, so they can't hold JSX — they carry `**…**`, which
   `src/history/HistoryText.tsx` renders (same mechanism as the `{flux}` icon token).
+- **One icon per piece the player has to pick up.** Where a roll produces components, draw
+  that many: two Paradoxes draw two Paradox tokens, two Warp tiles draw two tiles. A single
+  icon for any non-zero count is the bug — the die face says what was *rolled*, the icons say
+  what to *place*, and a boolean test (`n > 0 &&`) silently collapses the two (fixed for the
+  Paradox phase 2026-08-22; the Warp phase already did it). A zero roll draws nothing.
 - **No decorative icons or emoji in the game UI unless asked for**, with one exception:
   real **in-game component art** (the Flux Core, Energy Core, Exosuit, tile and die faces
   in `public/assets/solo/`). Prefer the component's own art over a stand-in glyph — e.g.
