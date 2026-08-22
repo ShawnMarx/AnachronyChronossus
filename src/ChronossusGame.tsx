@@ -3522,8 +3522,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                           bot.doomsday.botSlot
                         } of 10. Landing there is worth ${Chronossus.botVpAt(
                           bot.doomsday.botSlot,
-                        )} VP — it takes BOTH Paths' printed values, unlike you. ` +
-                        `Experiments completed: ${bot.doomsday.experimentsCompleted}` +
+                        )} VP — it takes BOTH Paths' printed values, unlike you` +
                         (Chronossus.tracksLocked({
                           impactOccurred: doomsdayPostImpact,
                           botTracker: bot.doomsday.botTracker,
@@ -3538,7 +3537,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         <b>
                           {bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'}
                         </b>{' '}
-                        {bot.doomsday.botSlot}/10 · {bot.doomsday.experimentsCompleted} Exp
+                        {/* No Experiment count: an Experiment's VP arrives as VP tokens
+                            when the card is claimed, so there is nothing left to track
+                            separately — History records each one as it happens. */}
+                        {bot.doomsday.botSlot}/10
                       </span>
                     </TapFlag>
                   )}
@@ -6574,11 +6576,6 @@ function CxVpPill({
                 <span>Leftover Energy Cores</span><b>{score.leftoverEnergyVP}</b>
               </li>
             )}
-            {score.experimentVP > 0 && (
-              <li title="Doomsday: the VP printed on the Experiment cards it claimed. Already counted in the total — split out of Token VP, because it discards each card and nothing is left to count back. Doomsday track VP is ordinary VP and stays in the token line.">
-                <span>Experiments claimed</span><b>{score.experimentVP}</b>
-              </li>
-            )}
             {score.technologyVP > 0 && (
               <li title="Fractures: 3 VP per Technology card the Chronossus holds">
                 <span>Technologies (3 each)</span><b>{score.technologyVP}</b>
@@ -6625,9 +6622,6 @@ const CX_TALLY_FIELDS: CxTallyField[] = [
   { key: 'fractureDevice', label: 'Fracture Device' },
   { key: 'glitches', label: 'Glitches', neg: true },
   { key: 'hypersyncTiles', label: 'Hypersync tiles remaining', neg: true },
-  // Doomsday: the Experiment cards leave the table as they are claimed, so there is nothing
-  // to recount at the end. (Doomsday track VP is ordinary VP — it goes in 'vpTokens'.)
-  { key: 'experiments', label: 'Experiments' },
 ];
 const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
   CX_TALLY_FIELDS.map((f) => [f.key, f]),
@@ -6645,7 +6639,6 @@ const CX_SCORE_ROWS = (
   score: ReturnType<typeof Chronossus.scoreChronossus>,
   hypersync: boolean,
   fractures: boolean,
-  doomsday: boolean,
 ): { label: string; playerKey?: string; botValue?: number }[] => [
   { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
   { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
@@ -6672,11 +6665,9 @@ const CX_SCORE_ROWS = (
   ...(hypersync
     ? [{ label: 'Hypersync tiles remaining (−4 each)', playerKey: 'hypersyncTiles' }]
     : []),
-  // Doomsday: the Experiment cards get their own row because they are DISCARDED as they are
-  // claimed — neither side can recount them at the end. The Doomsday track's VP is not
-  // broken out: it is granted as ordinary VP as the marker is pushed along, so it sits in
-  // "Victory Point tokens" with everything else.
-  ...(doomsday ? [{ label: 'Experiments', playerKey: 'experiments', botValue: score.experimentVP }] : []),
+  // Doomsday adds no scoring row: an Experiment's VP is taken as VP TOKENS when the card is
+  // claimed, and the Doomsday track's VP is granted as the marker moves — both are ordinary
+  // VP and sit in "Victory Point tokens" with everything else.
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
     ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]
@@ -6717,7 +6708,6 @@ function CxScoreScreen({
   // Fractures adds three tally lines (Technologies, Fracture Device, Glitches), two of
   // them the player's alone.
   const fracturesMode = Chronossus.isFracturesMode(state.config.chronossusMode);
-  const doomsdayMode = Chronossus.isDoomsdayMode(state.config.chronossusMode);
   const [mode, setMode] = useState<'number' | 'tally'>('tally');
   const [num, setNum] = useState('');
   const [tally, setTally] = useState<Record<string, number>>({});
@@ -6829,7 +6819,7 @@ function CxScoreScreen({
   // on desktop). Includes the top line, the breakdown, and the modes + difficulty (#7).
   const [shareMsg, setShareMsg] = useState<string>('');
   const handleShare = async () => {
-    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode, doomsdayMode).map((r) => ({
+    const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => ({
       // Strip the parenthetical rule hints for the compact share card (they don't wrap).
       label: r.label.replace(/\s*\([^)]*\)/g, ''),
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
@@ -6986,7 +6976,7 @@ function CxScoreScreen({
                 <span className="cx-tyou">You</span>
                 <span className="cx-tbot">Chronossus</span>
               </div>
-              {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode, doomsdayMode).map((r) => (
+              {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => (
                 <div key={r.label} className="cx-trow">
                   <span className="cx-tlabel">{r.label}</span>
                   <span className="cx-tyou">

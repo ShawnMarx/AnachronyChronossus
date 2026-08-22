@@ -2326,7 +2326,6 @@ export interface ChronossusScore {
    * The Doomsday track's own VP is NOT broken out — it is granted as ordinary VP as the
    * marker is pushed along the track. 0 in every other mode.
    */
-  experimentVP: number;
   /**
    * Pioneers difficulty (`chronossus-pioneers-vp-tokens-count`): 1 VP per VP token on the
    * Exosuit Upgrade board. 0 otherwise — by default those tokens are Power, not VP.
@@ -2360,8 +2359,11 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
   // added to the total — the Chronossus discards each Experiment card, so this is the only
   // record of those points. The Doomsday TRACK's VP is not broken out: it is granted as
   // ordinary VP as the marker is pushed along, so it stays in the token line.
-  const experimentVP = bot.doomsday?.experimentVp ?? 0;
-  const tokenVP = bot.vp - bot.buildingVp - experimentVP;
+  // Experiment VP is taken as VP TOKENS the moment the card is claimed, exactly as it is
+  // for a player — so it is ordinary token VP and gets no line of its own. It used to be
+  // split out on the grounds that the discarded cards left nothing to recount; the tokens
+  // are the record, and they are sitting on the table.
+  const tokenVP = bot.vp - bot.buildingVp;
   // Fractures: 3 VP per Technology held, plus (difficulty) 1 VP per leftover Flux Core.
   const technologyVP = (bot.technologies ?? 0) * TECHNOLOGY_VP;
   const leftoverFluxVP =
@@ -2393,7 +2395,6 @@ export function scoreChronossus(bot: ChronossusState, difficulty?: string[]): Ch
     technologyVP,
     leftoverFluxVP,
     upgradeTokenVP,
-    experimentVP,
     total:
       bot.vp +
       timeTravelVP +

@@ -594,14 +594,15 @@ describe('Scoring — Experiment VP is broken out, not added on top', () => {
     expect(b.vp).toBe(7); // ...plus 1 + 1 from the track slots, as plain VP
   });
 
-  it('splits the card VP OUT of Token VP so the total is unchanged', () => {
+  it('keeps the card VP in Token VP — it is taken as VP tokens, not a separate line', () => {
+    // An Experiment's VP arrives as VP TOKENS the moment the card is claimed, exactly as it
+    // does for a player, so it is ordinary token VP. It used to be split into its own line
+    // on the grounds that the discarded card left nothing to recount — but the tokens are
+    // the record, and they are on the table.
     const b = played();
     const score = Chronossus.scoreChronossus(b);
-    expect(score.experimentVP).toBe(5);
-    // The two during-game lines still add up to `bot.vp` — nothing double-counted, and the
-    // 2 VP the track paid is in `tokenVP` like any other scoring.
-    expect(score.tokenVP).toBe(2);
-    expect(score.tokenVP + score.experimentVP).toBe(b.vp);
+    expect(score.tokenVP).toBe(b.vp); // card VP AND track VP, all of it
+    expect('experimentVP' in score).toBe(false);
     expect(score.total).toBe(
       b.vp +
         score.timeTravelVP +
@@ -609,9 +610,5 @@ describe('Scoring — Experiment VP is broken out, not added on top', () => {
         score.shapeSetBonus +
         score.anomalyVP,
     );
-  });
-
-  it('reports 0 in a game with no Doomsday slice', () => {
-    expect(Chronossus.scoreChronossus(emptyChronossusState()).experimentVP).toBe(0);
   });
 });
