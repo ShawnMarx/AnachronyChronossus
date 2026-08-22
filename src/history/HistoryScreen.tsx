@@ -9,15 +9,20 @@ import { useEffect, useRef, useState } from 'react';
 import './HistoryScreen.css';
 import {
   deleteGame,
-  exportUrl,
   importGames,
   listMyGames,
   type GameRow,
   type ImportResult,
 } from '../data/gameData';
+import { bgStatsFilename, buildBgStatsExport } from '../data/bgStats';
+import { useAuth } from '../auth/useAuth';
 
 export default function HistoryScreen({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
   const [rows, setRows] = useState<GameRow[] | null>(null);
+  /** Ticked games. EMPTY means "no selection", which exports everything — so the button
+   *  works without anyone having to tick 40 boxes to get what they used to get. */
+  const [picked, setPicked] = useState<Set<number>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [importMsg, setImportMsg] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,10 +36,44 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
 
   useEffect(load, []);
 
+  const togglePick = (id: number) =>
+    setPicked((s) => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  /**
+   * Export the ticked games, or all of them when nothing is ticked.
+   *
+   * Built here rather than fetched from the data service: the service exports everything
+   * (no selection) and labelled every play "Solo - Chronobot", so a Chronossus game
+   * imported as a Chronobot one. See `data/bgStats.ts`.
+   */
+  const onExport = () => {
+    if (!rows || rows.length === 0) return;
+    const chosen = picked.size > 0 ? rows.filter((r) => picked.has(r.id)) : rows;
+    const file = buildBgStatsExport(chosen, user?.username ?? 'Me');
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' }),
+    );
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = bgStatsFilename(new Date().toISOString().slice(0, 10));
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const onDelete = async (id: number) => {
     try {
       await deleteGame(id);
       setRows((rs) => (rs ? rs.filter((r) => r.id !== id) : rs));
+      setPicked((s) => {
+        const next = new Set(s);
+        next.delete(id);
+        return next;
+      });
     } catch {
       setError('Delete failed — try again.');
     }
@@ -75,9 +114,9 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="history-actions">
-          <a className="history-btn" href={exportUrl()} target="_blank" rel="noreferrer">
-            ⬇ Export to BG Stats
-          </a>
+          <button className="history-btn" onClick={onExport} disabled={!rows?.length}>
+            ⬇ Export {picked.size > 0 ? `${picked.size} selected` : 'all'} to BG Stats
+          </button>
           <button className="history-btn" onClick={() => fileRef.current?.click()}>
             ⬆ Import from BG Stats
           </button>
@@ -107,6 +146,20 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
           <table className="history-table">
             <thead>
               <tr>
+                <th className="history-pick">
+                  <input
+                    type="checkbox"
+                    aria-label="Select all games"
+                    checked={!!rows && picked.size === rows.length && rows.length > 0}
+                    ref={(el) => {
+                      // Some ticked, but not all — show the indeterminate dash.
+                      if (el) el.indeterminate = picked.size > 0 && picked.size < (rows?.length ?? 0);
+                    }}
+                    onChange={(e) =>
+                      setPicked(e.target.checked ? new Set(rows?.map((r) => r.id)) : new Set())
+                    }
+                  />
+                </th>
                 <th>Date</th>
                 <th>Result</th>
                 <th>You</th>
@@ -118,7 +171,15 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
             </thead>
             <tbody>
               {rows?.map((r) => (
-                <tr key={r.id}>
+                <tr key={r.id} className={picked.has(r.id) ? 'picked' : ''}>
+                  <td className="history-pick">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select the game played on ${r.played_at}`}
+                      checked={picked.has(r.id)}
+                      onChange={() => togglePick(r.id)}
+                    />
+                  </td>
                   <td>{r.played_at}</td>
                   <td className={r.won ? 'win' : 'lose'}>{r.won ? 'Win' : 'Loss'}</td>
                   <td>{r.player_score ?? '—'}</td>

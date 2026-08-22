@@ -130,3 +130,19 @@
   margin: 0.6rem 0 0.4rem;
   font-size: 1rem;
 }
+
+/* Per-game selection for the BG Stats export. Nothing ticked exports everything, so the
+   column is an opt-in filter rather than a step the player has to complete. */
+.history-table th.history-pick,
+.history-table td.history-pick {
+  width: 1.8rem;
+  text-align: center;
+  padding-right: 0;
+}
+.history-table td.history-pick input,
+.history-table th.history-pick input {
+  cursor: pointer;
+}
+.history-table tr.picked {
+  background: rgba(var(--sp-accent-rgb), 0.12);
+}
