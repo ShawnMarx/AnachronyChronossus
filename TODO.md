@@ -28,6 +28,21 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       the CI deploy key was rotated (see above).
 
 ## App
+- [ ] **`gamedata-staging` doesn't exist** (2026-08-22, **handed to the `boardgameedge`
+      session**) — `data.staging.boardgameedge.com` has no systemd unit, no nginx vhost and
+      no cert, so the hostname falls through to the default server, presents the prod
+      anachrony cert, and every staging save/history/stats call dies at TLS. Every other app
+      has a `-staging` counterpart; the game-data service is the one that doesn't. **Nothing
+      changes in this app** — `DATA_BASE` already resolves staging hosts to that URL, and the
+      client's pending-upload queue will drain on its own once the service answers (expect a
+      burst of old games, not a bug). Verify from the staging app when they say it's up.
+- [ ] **Prod history/stats: unverified** (2026-08-22) — prod's data service is healthy
+      (`/healthz` 200, correct CORS with credentials for the app origin, 401 unauthenticated)
+      and both bots call `recordGame`, but no one has watched a real logged-in save succeed.
+      Needs the test account. Note **two different permissions**: saving needs a working login
+      (plus whatever per-app grant the data service enforces for `anachrony`), while
+      **overall stats is admin-only** and 403s otherwise — fixing one can leave the other
+      failing. Delete any test games afterwards so real stats stay clean.
 - [x] **Quantum Loops** — **shipped 2026-08-21**, the last module in the picker. The
       Warp-Phase AI-die check (removes the Quantum Loop card farthest from the draw deck on a
       4), its two difficulty options, setup text and verbatim boxes. The card row is
