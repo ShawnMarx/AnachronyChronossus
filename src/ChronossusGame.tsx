@@ -1071,6 +1071,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const quantumLoops = Chronossus.isQuantumLoops(state.config.extraModules);
   const variableAnomalies =
     state.config.extraModules?.includes(Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES) ?? false;
+  /** Past the Impact the Doomsday track is frozen (Classic Expansion p.4), so an Experiment
+   *  scores its VP and moves nothing. Derived from the Era, not from the recorded Impact
+   *  Era — that is null until the player reports one. */
+  const doomsdayPostImpact =
+    state.impact || Chronossus.isPostImpact(state.era, state.config, state.chronossus ?? undefined);
   /** Where a retrieved Warp tile comes off — the same wording the engine's own instruction
    *  uses, so the prompt and History cannot describe the removal differently. */
   const variableAnomalyWarpLabel = (() => {
@@ -2168,7 +2173,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   step: experimentStep,
                   level: pendingTile === 'tile-experiment-1' ? 1 : 2,
                   locked: Chronossus.tracksLocked({
-                    impactOccurred: bot.doomsday?.impactEra != null,
+                    impactOccurred: doomsdayPostImpact,
                     botTracker: bot.doomsday?.botTracker ?? 'seal-fate',
                     botSlot: bot.doomsday?.botSlot ?? Chronossus.DOOMSDAY_START_SLOT,
                     playerTrackerFinal: bot.doomsday?.playerTrackerFinal ?? false,
@@ -3520,7 +3525,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         )} VP — it takes BOTH Paths' printed values, unlike you. ` +
                         `Experiments completed: ${bot.doomsday.experimentsCompleted}` +
                         (Chronossus.tracksLocked({
-                          impactOccurred: bot.doomsday.impactEra != null,
+                          impactOccurred: doomsdayPostImpact,
                           botTracker: bot.doomsday.botTracker,
                           botSlot: bot.doomsday.botSlot,
                           playerTrackerFinal: bot.doomsday.playerTrackerFinal,
@@ -4577,19 +4582,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             </button>
           ) : postImpact ? (
             <div className="place-prompt">
+              {/* Same inversion as the Chronobot's: the question's YES meant the game
+                  was over, but the affirmative button said "Game continues". */}
               <p className="pp-instruct">
-                Are all Collapsing Capital tiles flipped? If so, the game has ended —
-                choose below.
+                Flip the Collapsing Capital tiles. Are they now <b>all</b> flipped?
               </p>
               <div className="pp-buttons">
+                <button className="pp-confirm" onClick={endGameNow}>
+                  ✓ Yes — the game has ended, Finish &amp; Score
+                </button>
                 <button
-                  className="pp-confirm"
+                  className="pp-cannot"
                   onClick={() => setShowFirstPlayer(true)}
                 >
-                  Game continues — start Era {era + 1} ▶
-                </button>
-                <button className="pp-cannot" onClick={endGameNow}>
-                  Game Ended — Finish &amp; Score
+                  ✗ No — the game continues, start Era {era + 1} ▶
                 </button>
               </div>
             </div>

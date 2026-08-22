@@ -1295,6 +1295,9 @@ export function resolveAction(
         ? {
             input: input.experiment,
             failVP,
+            // Derived, not read off the recorded Impact Era — that stays null until the
+            // player reports one, while the game is post-Impact by the Era regardless.
+            postImpact: state.impact || isPostImpact(state.era, state.config, bot),
             onResolved: (r) => {
               experimented = r;
             },
@@ -1526,6 +1529,8 @@ function resolveTileAction(
     input: ExperimentInput;
     /** VP a Failed Action pays — both Experiment steps failing is one. */
     failVP: number;
+    /** Past the Impact: the Doomsday track is frozen, so an Experiment scores only. */
+    postImpact: boolean;
     onResolved: (r: ExperimentResult) => void;
   },
 ): boolean {
@@ -1583,6 +1588,7 @@ function resolveTileAction(
       eff.experiment,
       experiment.input,
       experiment.failVP,
+      experiment.postImpact,
     );
     experiment.onResolved(res);
     return false;

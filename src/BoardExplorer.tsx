@@ -2225,16 +2225,19 @@ function CleanUpPhaseBody({
         </button>
       ) : postImpact ? (
         <div className="place-prompt">
+          {/* The answer and the buttons have to agree. This asked "are all flipped?",
+              where YES means the game is over — and then put "Game continues" on the
+              affirmative button, so answering the question as asked chose the opposite of
+              what it said. The buttons now ARE the two answers, in that order. */}
           <p className="pp-instruct">
-            Are all Collapsing Capital tiles flipped? If so, the game has ended — choose
-            below.
+            Flip the Collapsing Capital tiles. Are they now <b>all</b> flipped?
           </p>
           <div className="pp-buttons">
-            <button className="pp-confirm" onClick={onNextEra}>
-              Game continues — start Era {era + 1} ▶
+            <button className="pp-confirm" onClick={onEndGame}>
+              ✓ Yes — the game has ended, Finish &amp; Score
             </button>
-            <button className="pp-cannot" onClick={onEndGame}>
-              Game Ended — Finish &amp; Score
+            <button className="pp-cannot" onClick={onNextEra}>
+              ✗ No — the game continues, start Era {era + 1} ▶
             </button>
           </div>
         </div>

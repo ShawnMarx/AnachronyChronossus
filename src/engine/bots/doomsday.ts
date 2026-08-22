@@ -134,6 +134,11 @@ export function botVpAt(slot: number): number {
  * only the tracker movement (and so the track VP) stops.
  */
 export function tracksLocked(opts: {
+  /**
+   * The Impact has happened. Pass the DERIVED post-Impact state, not just whether an
+   * Impact Era was recorded: a game past the default Impact Era whose player never ticked
+   * the box is still post-Impact, and the track must be locked there too.
+   */
   impactOccurred: boolean;
   botTracker: DoomsdayTracker;
   botSlot: number;
@@ -309,6 +314,14 @@ export function resolveDoomsdayAction(
   /** VP a Failed Action pays — 1, or 2 with that difficulty option. Passed in, because the
    *  amount is a config question and this module stays pure. */
   failVp = 1,
+  /**
+   * Whether the game is past the Impact. Classic Expansion p.4: "Players may no longer
+   * make any movements on the Doomsday track after the Impact has occurred" — so from then
+   * on an Experiment scores its VP and moves nothing, exactly as it does for a player.
+   * Derived by the caller (`state.impact || isPostImpact(...)`) rather than read off the
+   * recorded Impact Era, which is null until the player reports one.
+   */
+  postImpact = false,
 ): ExperimentResult {
   const d = bot.doomsday;
   if (!d) throw new Error('resolveDoomsdayAction: no Doomsday state');
@@ -360,7 +373,7 @@ export function resolveDoomsdayAction(
     // tracker is on its final slot, "Experiments may still be conducted for their VP
     // values" but nothing moves (Classic p.4).
     result.locked = tracksLocked({
-      impactOccurred: d.impactEra != null,
+      impactOccurred: postImpact || d.impactEra != null,
       botTracker: d.botTracker,
       botSlot: d.botSlot,
       playerTrackerFinal: d.playerTrackerFinal,

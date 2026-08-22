@@ -169,13 +169,33 @@ function bot(over: Partial<ChronossusState> = {}): ChronossusState {
 }
 
 /** Run an Experiment, returning the mutated bot alongside the result. */
-function run(b: ChronossusState, level: 1 | 2, input: ExperimentInput, failVp = 1) {
+function run(
+  b: ChronossusState,
+  level: 1 | 2,
+  input: ExperimentInput,
+  failVp = 1,
+  postImpact = false,
+) {
   const instr: Instruction[] = [];
-  const res = resolveDoomsdayAction(b, instr, 1, level, input, failVp);
+  const res = resolveDoomsdayAction(b, instr, 1, level, input, failVp, postImpact);
   return { res, instr, text: instr.map((i) => i.text).join('\n') };
 }
 
 describe('Experiment — Step 1 (execute)', () => {
+  it('scores but moves NOTHING once the game is past the Impact', () => {
+    // Classic Expansion p.4: "Players may no longer make any movements on the Doomsday
+    // track after the Impact has occurred." The bot follows the same rule the players do —
+    // the Experiment still pays its VP, the marker stays put.
+    const b = bot();
+    const before = b.doomsday!.botSlot;
+    const { res } = run(b, 2, { markedAvailable: true, canPrepare: false }, 1, true);
+    expect(res.experimentVp).toBe(3);
+    expect(res.locked).toBe(true);
+    expect(res.trackerMoved).toBe(false);
+    expect(b.doomsday!.botSlot).toBe(before);
+    expect(b.vp).toBe(3); // card VP only — no track VP
+  });
+
   it('scores the level\u2019s printed VP without being asked: L1 = 2, L2 = 3', () => {
     // Every Level 1 Experiment is worth 2 VP and every Level 2 is worth 3, so the level on
     // the tile that ran the Action already answers it — the dialog used to ask the player
