@@ -5410,6 +5410,17 @@ function CxTileDialog({
                 Never the Experiment under the next Era. Your Focus marker has no effect on
                 this choice.
               </p>
+              {/* The Action spends an Exosuit and never said so. Every other placing Action
+                  instructs through `PlaceExosuitPanel`; the Experiment has its own step
+                  sequence and skipped it, so the figure came off the bot's supply with
+                  nothing on screen telling the player to put one on the board.
+                  No gate here on purpose: the Experiment space is a shared hex pool that
+                  any number of figures can occupy, so it can never be full — there is
+                  nothing to check, only something to do. */}
+              <p className="pp-instruct">
+                Place one of the Chronossus’s <b>Exosuits</b> on the{' '}
+                <b>Experiment Action space</b>.
+              </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => experimentGate.onPrepare(true)}>
                   {startLabel}
