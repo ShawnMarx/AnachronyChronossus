@@ -2379,10 +2379,10 @@ export function WarpPhaseBody({
         <>
           <div className="warp-roll-result">
             <ParadoxDieFace n={rolled} />
-            {/* One tile per Paradox rolled. Here the die result TRANSLATES into a
-                different piece — Paradoxes rolled become Warp tiles placed — so the count
-                in tiles is what makes that conversion visible. The Paradox phase keeps a
-                single symbol: there the die already says plainly what it did. */}
+            {/* One tile per Paradox rolled: the die result TRANSLATES into a different
+                piece — Paradoxes rolled become Warp tiles placed — so the count in tiles is
+                what makes that conversion visible. The Paradox phase draws one token per
+                Paradox for the same reason: a double is two pieces to place. */}
             {rolled > 0 && (
               <span className="warp-roll-tiles">
                 {Array.from({ length: rolled }, (_, i) => (
@@ -2555,9 +2555,21 @@ export function ParadoxPhaseBody({
           {rolls.map((r, i) => (
             <div key={i} className="warp-roll-result">
               <ParadoxDieFace n={r.n} />
-              {/* Blank rolls show no symbol, same as a 0 Warp roll shows no tile. */}
+              {/* ONE SYMBOL PER PARADOX GAINED, like the Warp phase's one tile per tile
+                  placed. This used to draw a single token for any non-zero roll, so a
+                  double Paradox looked identical to a single one — and the player has two
+                  to place, not one. A blank roll still shows no symbol. */}
               {r.n > 0 && (
-                <img className="warp-roll-tile" src={icons.paradox} alt="Paradox" />
+                <span className="warp-roll-tiles">
+                  {Array.from({ length: r.n }, (_, k) => (
+                    <img
+                      key={k}
+                      className="warp-roll-tile"
+                      src={icons.paradox}
+                      alt={k === 0 ? 'Paradox' : ''}
+                    />
+                  ))}
+                </span>
               )}
               <p className="phase-note">{r.text}</p>
             </div>
