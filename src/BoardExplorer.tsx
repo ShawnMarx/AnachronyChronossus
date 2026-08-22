@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import './BoardExplorer.css';
 import { useAuth } from './auth/useAuth';
 import { recordGame, type GameSummary } from './data/gameData';
+import { fetchMe } from './auth/bgeAuth';
 import { queuePendingGame } from './data/pendingGames';
 import HistoryScreen from './history/HistoryScreen';
 import HistoryPane, { PhaseHistoryDock } from './history/HistoryPane';
@@ -2805,12 +2806,23 @@ function ScoreScreen({
       // Hold the result on this device BEFORE saying anything: logging in is a full-page
       // redirect, so a game left only in React state would be gone by the time it returns.
       queuePendingGame(pendingSummary());
+      // A 401/403 does NOT prove the login lapsed — only that the HISTORY service refused
+      // this request. Prod spent months rejecting a perfectly good session, and this
+      // message sent the diagnosis after an auth problem that did not exist. Ask the auth
+      // service who we are before blaming the login.
+      let stillLoggedIn = false;
+      if (expired) {
+        stillLoggedIn = (await fetchMe()) != null;
+      }
+      const lapsed = expired && !stillLoggedIn;
       setSaveErr(
-        expired
+        lapsed
           ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
-          : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
+          : expired
+            ? "You're still logged in, but the history service rejected the save. This game is saved on this device and will upload once that's fixed."
+            : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
       );
-      setSaveExpired(expired);
+      setSaveExpired(lapsed);
       setSaveState('error');
     }
   };

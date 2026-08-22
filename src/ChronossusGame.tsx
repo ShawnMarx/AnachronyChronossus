@@ -54,6 +54,7 @@ import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import { rulesFrameUrl } from './rules/gamebrain';
 import { useAuth } from './auth/useAuth';
 import { recordGame, type GameSummary } from './data/gameData';
+import { fetchMe } from './auth/bgeAuth';
 import { queuePendingGame } from './data/pendingGames';
 import {
   Chronobot,
@@ -6738,13 +6739,24 @@ function CxScoreScreen({
       // Hold the result on this device BEFORE saying anything: logging in is a full-page
       // redirect, so a game left only in React state would be gone by the time it returns.
       queuePendingGame(pendingSummary());
-      // 401/403 → the shared BGE session lapsed; anything else is network/server.
+      // A 401/403 does NOT prove the login lapsed — it only proves the HISTORY service
+      // refused this request. Prod spent months rejecting a perfectly good session, and
+      // this message sent everyone hunting for an auth problem that did not exist. So ask
+      // the auth service who we are before blaming the login: if it still knows us, say
+      // what is actually true.
+      let stillLoggedIn = false;
+      if (expired) {
+        stillLoggedIn = (await fetchMe()) != null;
+      }
+      const lapsed = expired && !stillLoggedIn;
       setSaveErr(
-        expired
+        lapsed
           ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
-          : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
+          : expired
+            ? "You're still logged in, but the history service rejected the save. This game is saved on this device and will upload once that's fixed."
+            : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
       );
-      setSaveExpired(expired);
+      setSaveExpired(lapsed);
       setSaveState('error');
     }
   };
