@@ -8,6 +8,7 @@ import {
   CHRONOBOT_PATHS,
   chooseBreakthroughDiscard,
   chooseMineResources,
+  mineResourceOrder,
   chooseRecruitWorker,
   chooseRemoveAnomalyDiscards,
   chronobotMinActions,
@@ -47,6 +48,52 @@ describe('Mine priority', () => {
   it('breaks ties by Uranium > Gold > Titanium when it has none', () => {
     const bot = emptyChronobotState();
     expect(chooseMineResources(bot)).toEqual(['uranium', 'gold']);
+  });
+
+  it('takes the FEWEST even when it holds at least one of everything', () => {
+    // The set is what it is chasing, and once it holds one of each the counts are still
+    // what decide. A has-it/lacks-it test tied everything here and fell through to the
+    // fixed order, taking a third Uranium over the single Titanium.
+    const bot = emptyChronobotState();
+    bot.resources.uranium = 3;
+    bot.resources.gold = 2;
+    bot.resources.titanium = 1;
+    bot.resources.neutronium = 2;
+    expect(chooseMineResources(bot)).toEqual(['titanium', 'gold']);
+  });
+
+  it('decides per pick, so it can take the same Resource twice', () => {
+    // Titanium at 0 is the fewest; after gaining one it is still the fewest, so it
+    // takes a second rather than moving to a type it already has three of.
+    const bot = emptyChronobotState();
+    bot.resources.neutronium = 4;
+    bot.resources.uranium = 4;
+    bot.resources.gold = 4;
+    bot.resources.titanium = 0;
+    expect(chooseMineResources(bot)).toEqual(['titanium', 'titanium']);
+  });
+
+  it('ranks two gold below one titanium — the order is what the dialog shows', () => {
+    // Reported from play: the picker is an ORDER, not a single choice, and it was ranking
+    // by has-it/lacks-it, so with everything held it fell through to the fixed priority
+    // and put Gold (2) above Titanium (1). Fewest first means Titanium outranks Gold.
+    const bot = emptyChronobotState();
+    bot.resources.gold = 2;
+    bot.resources.titanium = 1;
+    const order = mineResourceOrder(bot);
+    expect(order.indexOf('titanium')).toBeLessThan(order.indexOf('gold'));
+    // …and the types it holds none of still outrank both.
+    expect(order.slice(0, 2)).toEqual(['neutronium', 'uranium']);
+  });
+
+  it('still puts a Resource it has none of first', () => {
+    // Set completion falls out of the same comparison: zero is always the fewest.
+    const bot = emptyChronobotState();
+    bot.resources.neutronium = 5;
+    bot.resources.uranium = 5;
+    bot.resources.gold = 0;
+    bot.resources.titanium = 5;
+    expect(chooseMineResources(bot)[0]).toBe('gold');
   });
 });
 

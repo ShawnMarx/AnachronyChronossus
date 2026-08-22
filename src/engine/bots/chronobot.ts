@@ -36,34 +36,49 @@ import {
 const MINEABLE: Resource[] = ['uranium', 'gold', 'titanium'];
 
 /**
- * The 2 Resource types the Chronobot wants most from a Mine space:
- * prioritise types it does NOT have, breaking ties by Neutronium > Uranium >
- * Gold > Titanium (restricted to mineable resources).
+ * The Mine ranking: **fewest first**, ties broken by Neutronium > Uranium > Gold >
+ * Titanium (restricted to mineable resources).
+ *
+ * "It prioritizes Resources it does not have" is about the +5 VP SET — holding one of
+ * each is the thing the Chronobot is actually chasing, so the set is the top priority and
+ * fewest-of is how it gets there. A zero is always the fewest, so set completion falls out
+ * of the same comparison; and after the set fires (one of each discarded) the counts still
+ * decide, which a has-it/lacks-it test could not do — it fell straight through to the fixed
+ * order and would take a third Neutronium over a lone Titanium.
  */
-export function rankMineResources(bot: ChronobotState): Resource[] {
+export function rankMineResources(bot: ChronobotState, counts = bot.resources): Resource[] {
   return [...MINEABLE].sort((a, b) => {
-    const lackA = bot.resources[a] === 0 ? 0 : 1;
-    const lackB = bot.resources[b] === 0 ? 0 : 1;
-    if (lackA !== lackB) return lackA - lackB; // lacking first
+    if (counts[a] !== counts[b]) return counts[a] - counts[b]; // fewest first
     return MINE_PRIORITY.indexOf(a) - MINE_PRIORITY.indexOf(b);
   });
 }
 
+/**
+ * The 2 Resources it wants most, decided **per pick**: it takes the fewest, counts that
+ * one as gained, then decides again. So a type can be taken twice when it is still the
+ * fewest afterwards (a Mine space showing two of one Resource), which a single sorted
+ * slice could never express.
+ */
 export function chooseMineResources(bot: ChronobotState): Resource[] {
-  return rankMineResources(bot).slice(0, 2);
+  const counts = { ...bot.resources };
+  const picked: Resource[] = [];
+  for (let i = 0; i < 2; i++) {
+    const next = rankMineResources(bot, counts)[0];
+    picked.push(next);
+    counts[next] += 1;
+  }
+  return picked;
 }
 
 /**
  * All 4 tracked Resources in the order the dialog should present them: the
- * Chronobot's full Mine priority (lacking-first, then Neutronium > Uranium >
+ * Chronobot's full Mine priority (fewest-first, then Neutronium > Uranium >
  * Gold > Titanium). Neutronium is shown for priority context even though Mine
  * spaces don't normally yield it.
  */
 export function mineResourceOrder(bot: ChronobotState): Resource[] {
   return [...MINE_PRIORITY].sort((a, b) => {
-    const lackA = bot.resources[a] === 0 ? 0 : 1;
-    const lackB = bot.resources[b] === 0 ? 0 : 1;
-    if (lackA !== lackB) return lackA - lackB; // lacking first
+    if (bot.resources[a] !== bot.resources[b]) return bot.resources[a] - bot.resources[b];
     return MINE_PRIORITY.indexOf(a) - MINE_PRIORITY.indexOf(b);
   });
 }
@@ -839,7 +854,9 @@ function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource
     id: `mine-${bot.totalActions}`,
     text: `Mine: give the Chronobot ${gained.join(' + ')} from the Mine space you used.`,
     detail:
-      'It wants the 2 Resources it lacks; ties: Neutronium > Uranium > Gold > Titanium.',
+      'It wants the 2 Resources it has fewest of, decided one pick at a time; ties: ' +
+      'Neutronium > Uranium > Gold > Titanium. Completing the set of all 4 is what it is ' +
+      'after, so a Resource it has none of always comes first.',
   });
   // Set bonus: once it holds all 4 tracked Resource types, discard one of each for +5 VP.
   if (SET_BONUS_RESOURCES.every((r) => bot.resources[r] > 0)) {
