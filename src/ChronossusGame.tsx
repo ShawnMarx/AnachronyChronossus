@@ -129,7 +129,7 @@ import {
   type AdventureDeck,
 } from './data/adventureCards';
 import { resolveAdventure, type AdventureInput, type AdventureResult } from './engine/bots/pioneers';
-import { placeWarpTiles, removeAnyWarpTile, warpRemoval } from './engine/warpTiles';
+import { placeWarpTiles, removeAnyWarpTile, warpRemoval, warpTileLabel } from './engine/warpTiles';
 import {
   getMode,
   selectedModeLabels,
@@ -1069,6 +1069,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES,
   ) ?? false;
   const quantumLoops = Chronossus.isQuantumLoops(state.config.extraModules);
+  const variableAnomalies =
+    state.config.extraModules?.includes(Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES) ?? false;
+  /** Where a retrieved Warp tile comes off — the same wording the engine's own instruction
+   *  uses, so the prompt and History cannot describe the removal differently. */
+  const variableAnomalyWarpLabel = (() => {
+    if (!state.chronossus) return 'the Timeline tile where it has the most (oldest if tied)';
+    const from = warpRemoval(state.chronossus, state.era);
+    return from.era != null
+      ? warpTileLabel(from.era)
+      : 'the Timeline tile where it has the most (oldest if tied)';
+  })();
   // What the Warp screen's Quantum Loops check came to, for the on-screen report. Derived
   // from the same pure helper the engine uses, so screen and state can't disagree.
   const quantumOutcome = Chronossus.quantumLoopRemoval({
@@ -4626,9 +4637,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           icons={{ ...PARADOX_ICONS, warp: '/assets/solo/chronossus/warp-tile.png' }}
           followUp={
             variableAnomalyPending ? (
-              <VariableAnomalyGainPrompt onConfirm={finishVariableAnomalyGain} />
+              <VariableAnomalyGainPrompt
+                onConfirm={finishVariableAnomalyGain}
+                warpRemovalLabel={variableAnomalyWarpLabel}
+              />
             ) : undefined
           }
+          // At the foot with the phase's own rules, not inside the prompt above.
+          extraRules={variableAnomalies ? <VariableAnomalyRules /> : undefined}
         />
       );
       break;
@@ -5887,14 +5903,16 @@ function HypersyncDialog({
 const VARIABLE_ANOMALY_VP_OPTIONS = [-2, -3, -4, -5, -6];
 function VariableAnomalyGainPrompt({
   onConfirm,
+  warpRemovalLabel,
 }: {
   onConfirm: (taken: Chronossus.VariableAnomalyCandidate) => void;
+  /** Which Timeline tile the retrieved Warp tile comes off, in the engine's own words. */
+  warpRemovalLabel: string;
 }) {
   // The Warp-retrieval answer commits the gain outright — no separate Confirm step.
   // A mis-tap is fixed with ↶ Undo (which restores the roll without re-rolling it).
   const [vp, setVp] = useState<number | null>(null);
   return (
-    <>
     <div className="place-prompt">
       <p className="pp-instruct">
         <b>Variable Anomalies — the Chronossus receives an Anomaly.</b> From the visible
@@ -5920,6 +5938,14 @@ function VariableAnomalyGainPrompt({
           <p className="pp-instruct">
             <b>Does the tile it took retrieve a Warp tile?</b>
           </p>
+          {/* Where the tile comes from, stated BEFORE the answer. A normal-mode Anomaly says
+              this in its roll-log line; the Variable Anomalies path resolves after the roll,
+              so its instruction only ever reached History and the player was told to
+              retrieve a tile without being told which one. */}
+          <p className="pp-sub">
+            If it does: remove one of the Chronossus’s Warp tiles from{' '}
+            <b>{warpRemovalLabel}</b>.
+          </p>
           <div className="pp-buttons">
             <button
               className="pp-confirm"
@@ -5937,20 +5963,31 @@ function VariableAnomalyGainPrompt({
         </>
       )}
     </div>
-      {/* Verbatim rules below the step box, never inside it. */}
-      <RulesBox label="Variable Anomalies">
-        <p>
-          <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
-          Anomalies and does not receive an Anomaly Remover tile.
-        </p>
-        <p>
-          <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will select
-          one that will allow it to retrieve a Warp tile. If both or neither do, it will
-          select the one with the smaller VP penalty.
-        </p>
-        <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
-      </RulesBox>
-    </>
+  );
+}
+
+/**
+ * Variable Anomalies' verbatim rules, as a box of its own.
+ *
+ * It used to live inside `VariableAnomalyGainPrompt`, which the Paradox phase renders as its
+ * `followUp` — so the rulebook text landed ABOVE the phase's trackers and above the phase's
+ * own rule box. Being outside the `.place-prompt` was not enough; a phase's boxes all belong
+ * at the foot, which is what `ParadoxPhaseBody`'s `extraRules` slot is for.
+ */
+function VariableAnomalyRules() {
+  return (
+    <RulesBox label="Variable Anomalies">
+      <p>
+        <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
+        Anomalies and does not receive an Anomaly Remover tile.
+      </p>
+      <p>
+        <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will select
+        one that will allow it to retrieve a Warp tile. If both or neither do, it will
+        select the one with the smaller VP penalty.
+      </p>
+      <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+    </RulesBox>
   );
 }
 

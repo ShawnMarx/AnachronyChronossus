@@ -2447,6 +2447,7 @@ export function ParadoxPhaseBody({
   hypersyncTiles,
   pendingRoll,
   followUp,
+  extraRules,
   icons = PARADOX_ICONS,
   pastTiles,
 }: {
@@ -2478,6 +2479,12 @@ export function ParadoxPhaseBody({
    * controls, so the roll that triggered it stays on screen for context.
    */
   followUp?: ReactNode;
+  /**
+   * Verbatim rules a module adds to THIS phase, rendered at the foot beside the phase's
+   * own. Variable Anomalies used to carry its box inside `followUp`, which put rulebook
+   * text above the phase's trackers and above the phase's own rule box.
+   */
+  extraRules?: ReactNode;
   /** Per-bot art for the tracker chips (the Chronossus has its own Warp-tile face). */
   icons?: typeof PARADOX_ICONS;
   /**
@@ -2667,6 +2674,7 @@ export function ParadoxPhaseBody({
           <p>{meta.rules}</p>
         </RulesBox>
       )}
+      {extraRules}
 
       {/* The two Hypersync Paradox rules live in the Future Imperfect rulebook, not the
           Solo Opponents one (which carries them over wholesale, p.17: "All of the
