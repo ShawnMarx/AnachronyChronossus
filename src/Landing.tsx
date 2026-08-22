@@ -37,17 +37,17 @@ interface BotCardProps {
  * Where "Part of BoardGameEdge" points, per environment — the same hostname sniff
  * `bgeAuth.ts` uses for the auth service.
  *
- * Null means "don't show the link at all". The **prod apex is still a GoDaddy
- * 'Launching Soon' placeholder** (checked 2026-08-21): the landing service is written and
- * lists Anachrony, but it is only served at `staging.boardgameedge.com`. Linking players
- * from a finished app to a placeholder is worse than not linking, so prod stays off until
- * the apex cuts over — at which point this returns the apex URL and the link appears.
+ * Prod was deliberately switched off at first: the landing service listed Anachrony but was
+ * only served at `staging.boardgameedge.com`, while the apex was still a "Launching Soon"
+ * placeholder, and sending players from a finished app to that was worse than not linking.
+ * The apex now serves the real landing service (confirmed 2026-08-22), so the link is live
+ * everywhere and this is a plain per-environment URL again.
  */
-const BGE_LANDING_URL: string | null = (() => {
+const BGE_LANDING_URL: string = (() => {
   const h = window.location.hostname;
   if (h === 'localhost' || h.startsWith('127.')) return 'https://staging.boardgameedge.com';
   if (h.includes('staging')) return 'https://staging.boardgameedge.com';
-  return null; // ← 'https://boardgameedge.com' once the apex serves the landing service
+  return 'https://boardgameedge.com';
 })();
 
 function BotCard({ name, image, tagline, description, status, onLaunch }: BotCardProps) {
@@ -208,15 +208,13 @@ export default function Landing({
         />
       </div>
 
-      {BGE_LANDING_URL && (
-        <p className="landing-foot landing-bge">
-          Part of{' '}
-          <a href={BGE_LANDING_URL} target="_blank" rel="noreferrer">
-            BoardGameEdge
-          </a>{' '}
-          — more play aids for the games on your table.
-        </p>
-      )}
+      <p className="landing-foot landing-bge">
+        Part of{' '}
+        <a href={BGE_LANDING_URL} target="_blank" rel="noreferrer">
+          BoardGameEdge
+        </a>{' '}
+        — more play aids for the games on your table.
+      </p>
 
       <p className="landing-foot">
         Unofficial fan-made aid. Anachrony and its artwork are © Mindclash Games. This
