@@ -179,6 +179,10 @@ node pw-check.mjs "<Module label>" <slug>   # renders a mode; prints its board t
 SHOT_DIR=/tmp node pw-adv.mjs http://localhost:5173/ 1000   # opens Pioneers' Adventure dialog
 SHOT_DIR=/tmp node pw-warp.mjs http://localhost:5173/ 6      # Warp roll vs. tiles shown
 SHOT_DIR=/tmp node pw-pass.mjs http://localhost:5173/ "<mode label>"   # pass-at-0-figures
+SHOT_DIR=/tmp node pw-quantum.mjs        # Quantum Loops' Warp check (ROLL= ALT= UNDO= SETUP=)
+SHOT_DIR=/tmp node pw-shapedie.mjs       # the shape die on Research; ASSIM=1 for Assimilate
+SHOT_DIR=/tmp node pw-chronobot-parity.mjs   # phase-screen Undo/History + roll persistence
+SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THROWS (BOT=chronobot)
 ```
 
 `pw-pass.mjs` reaches a state the UI has no control for: it edits the persisted save
@@ -194,6 +198,14 @@ the ✕, a Power line wrapping mid-sum) are invisible in a full-page screenshot.
 `pw-check.mjs` drives a real browser through setup into a mode and reports which tile images
 are on the board plus any that failed to load — how Pioneers' missing C09/C10 art and its
 missing slot-IV overlay were both caught. Run it for every new module/combo.
+
+`pw-nostorage.mjs` guards a **degraded-mode guarantee**: privacy-restricted browsers do not
+make `localStorage` absent, they make every access **throw**, so `if (window.localStorage)`
+passes and the access is what dies — a blank page for an SPA, which nobody reports. Every
+storage access here is inside `try/catch` and none runs at module scope; the harness proves
+it by playing both bots against a storage whose every method throws. The same guarantee
+covers blocked cookies (`bge_anon` simply isn't minted). **Uncounted and unsaved but
+playable is the required failure; a blank screen is not.** Run it after touching persistence.
 
 `pw-validate.mjs` uses the cached Chromium at
 `C:/Users/shawn/AppData/Local/ms-playwright/chromium_headless_shell-1217/...` — update
