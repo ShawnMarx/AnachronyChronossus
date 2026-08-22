@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Scratch Playwright harnesses used against live environments (credentials via env).
+.pw-*.tmp.mjs
