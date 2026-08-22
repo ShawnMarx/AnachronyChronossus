@@ -214,15 +214,20 @@ for (let attempt = 0; attempt < 25 && !reached; attempt++) {
     break;
   }
 
-  // Step 1 — yes, it takes one.
+  // Step 1 — yes, it takes one. There is NO VP question: every Level 1 Experiment scores
+  // 2 VP and every Level 2 scores 3, so the level on the tile already answers it and the
+  // dialog states the figure instead of asking for it.
+  const step1 = await panel.innerText();
+  const level = L2 ? 2 : 1;
+  const expected = level === 1 ? '2 VP' : '3 VP';
+  console.log(
+    `states the VP instead of asking = ${step1.includes(`Every Level ${level} Experiment scores ${expected}`)}`,
+  );
   await page.getByRole('button', { name: /Yes — it takes one/i }).first().click(); await wait(400);
-  const vpStep = await panel.innerText();
-  console.log('--- DIALOG (VP step) ---');
-  console.log(vpStep.split('\n').slice(0, 12).join('\n'));
-  await page.screenshot({ path: `${SHOT}/doomsday-vp.png`, fullPage: true });
-
-  await page.getByRole('button', { name: /^3 VP$/ }).first().click(); await wait(400);
   const prep = await panel.innerText();
+  console.log(
+    `no VP question = ${!/Victory Point value/i.test(prep) && !/^3 VP$/m.test(prep)}`,
+  );
   console.log('--- DIALOG (prepare step) ---');
   console.log(prep.split('\n').slice(0, 14).join('\n'));
   await page.screenshot({ path: `${SHOT}/doomsday-prepare.png`, fullPage: true });

@@ -9,6 +9,7 @@ import {
   DOOMSDAY_START_SLOT,
   DOOMSDAY_TOP_SLOT,
   DOOMSDAY_TRACK,
+  EXPERIMENT_VP,
   isDoomsdayMode,
   isFinalSlot,
   nextSlot,
@@ -175,9 +176,20 @@ function run(b: ChronossusState, level: 1 | 2, input: ExperimentInput, failVp = 
 }
 
 describe('Experiment — Step 1 (execute)', () => {
+  it('scores the level\u2019s printed VP without being asked: L1 = 2, L2 = 3', () => {
+    // Every Level 1 Experiment is worth 2 VP and every Level 2 is worth 3, so the level on
+    // the tile that ran the Action already answers it — the dialog used to ask the player
+    // to read a number that could only have one value.
+    const one = bot();
+    expect(run(one, 1, { markedAvailable: true, canPrepare: false }).res.experimentVp).toBe(2);
+    const two = bot();
+    expect(run(two, 2, { markedAvailable: true, canPrepare: false }).res.experimentVp).toBe(3);
+    expect(EXPERIMENT_VP).toEqual({ 1: 2, 2: 3 });
+  });
+
   it('takes the Experiment, scores its printed VP, and moves the tracker', () => {
     const b = bot();
-    const { res } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    const { res } = run(b, 1, { markedAvailable: true, canPrepare: true });
     expect(res.executed).toBe(true);
     expect(res.experimentVp).toBe(2);
     expect(res.trackerMoved).toBe(true);
@@ -195,7 +207,7 @@ describe('Experiment — Step 1 (execute)', () => {
     const b = bot({
       doomsday: { ...bot().doomsday!, botSlot: 8 },
     });
-    const { res } = run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    const { res } = run(b, 2, { markedAvailable: true, canPrepare: true });
     expect(res.toSlot).toBe(9);
     expect(res.trackVp).toBe(4);
     expect(b.vp).toBe(7); // 3 from the card + 4 from the track
@@ -223,7 +235,7 @@ describe('Experiment — the tracks lock', () => {
   it.each(lockedCases)('still scores the card but moves nothing when %s', (_why, over) => {
     const b = bot({ doomsday: { ...bot().doomsday!, ...over } });
     const before = b.doomsday!.botSlot;
-    const { res, text } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    const { res, text } = run(b, 1, { markedAvailable: true, canPrepare: true });
     expect(res.executed).toBe(true);
     expect(res.locked).toBe(true);
     expect(res.trackerMoved).toBe(false);
@@ -238,7 +250,7 @@ describe('Experiment — the two hard stops', () => {
     const b = bot({
       doomsday: { ...bot().doomsday!, botTracker: 'save-earth', botSlot: 2 },
     });
-    const { res, text } = run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    const { res, text } = run(b, 1, { markedAvailable: true, canPrepare: true });
     expect(res.toSlot).toBe(1);
     expect(res.endsGame).toBe(true);
     expect(res.impactNow).toBe(false);
@@ -247,7 +259,7 @@ describe('Experiment — the two hard stops', () => {
 
   it('resolves the Impact at once when its Seal Fate marker reaches the bottom', () => {
     const b = bot({ doomsday: { ...bot().doomsday!, botSlot: 9 } });
-    const { res, text } = run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    const { res, text } = run(b, 2, { markedAvailable: true, canPrepare: true });
     expect(res.toSlot).toBe(10);
     expect(res.impactNow).toBe(true);
     expect(res.endsGame).toBe(false);
@@ -255,7 +267,7 @@ describe('Experiment — the two hard stops', () => {
   });
 
   it('fires neither mid-ladder', () => {
-    const { res } = run(bot(), 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
+    const { res } = run(bot(), 1, { markedAvailable: true, canPrepare: true });
     expect(res.endsGame).toBe(false);
     expect(res.impactNow).toBe(false);
   });
@@ -265,7 +277,6 @@ describe('Experiment — Step 2 (prepare), and the steps failing independently',
   it('instructs the Path-marker placement with its priority rule', () => {
     const { res, text } = run(bot(), 1, {
       markedAvailable: true,
-      experimentVp: 2,
       canPrepare: true,
     });
     expect(res.prepared).toBe(true);
@@ -283,7 +294,6 @@ describe('Experiment — Step 2 (prepare), and the steps failing independently',
     const b = bot();
     const { res, text } = run(b, 1, {
       markedAvailable: true,
-      experimentVp: 2,
       canPrepare: false,
     });
     expect(res.executed).toBe(true);
@@ -325,7 +335,6 @@ describe('Experiment — Step 2 (prepare), and the steps failing independently',
     const onlyExecute = bot();
     const c = run(onlyExecute, 2, {
       markedAvailable: true,
-      experimentVp: 2,
       canPrepare: false,
     });
     expect(c.res.failedAction).toBe(false);
@@ -359,7 +368,7 @@ const doomsdayState = (over: Partial<NonNullable<ChronossusState['doomsday']>> =
 describe('Experiment — resolved through takeActionTurn', () => {
   const input = {
     actionId: 'tile-experiment-1' as const,
-    experiment: { markedAvailable: true, experimentVp: 2, canPrepare: true },
+    experiment: { markedAvailable: true, canPrepare: true },
   };
 
   it('never writes through to the caller’s pre-turn state', () => {
@@ -402,7 +411,7 @@ describe('Experiment — resolved through takeActionTurn', () => {
     const { state: next } = Chronossus.resolveAction(state, {
       actionId: 'tile-experiment-2',
       tileSide: 'B',
-      experiment: { markedAvailable: true, experimentVp: 3, canPrepare: true },
+      experiment: { markedAvailable: true, canPrepare: true },
     });
     // 1 VP (tile) + 3 VP (card) + 1 VP (slot 7 of the track).
     expect(next.chronossus!.vp).toBe(5);
@@ -554,8 +563,8 @@ describe('Scoring — Experiment VP is broken out, not added on top', () => {
   const played = () => {
     const b = bot();
     // Two Experiments: a 2 VP card onto slot 7 (+1), then a 3 VP card onto slot 8 (+1).
-    run(b, 1, { markedAvailable: true, experimentVp: 2, canPrepare: true });
-    run(b, 2, { markedAvailable: true, experimentVp: 3, canPrepare: true });
+    run(b, 1, { markedAvailable: true, canPrepare: true });
+    run(b, 2, { markedAvailable: true, canPrepare: true });
     return b;
   };
 

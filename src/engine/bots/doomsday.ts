@@ -65,6 +65,14 @@ export interface DoomsdaySlot {
   botVp: number;
 }
 
+/**
+ * VP printed on an Experiment card, by level — every Level 1 is worth 2 and every Level 2
+ * is worth 3, without exception. The level is printed on the tile that ran the Action, so
+ * the app already knows it: asking the player to read the card's VP was asking for a fact
+ * that could only ever have one answer.
+ */
+export const EXPERIMENT_VP: Record<1 | 2, number> = { 1: 2, 2: 3 };
+
 /** The slot both tracker tokens start on. */
 export const DOOMSDAY_START_SLOT = 6;
 /** The topmost slot — "Save Earth" locked: the Impact is fully mitigated and the game ends. */
@@ -243,8 +251,6 @@ export interface ExperimentInput {
    * difficulty put some out at setup.
    */
   markedAvailable: boolean;
-  /** Step 1 — the VP printed on the Experiment it took (2 or 3). Only when it took one. */
-  experimentVp?: number;
   /**
    * Step 2 — could a Path marker be placed? False when EVERY face-up Experiment already
    * carries one, which is the only way this step fails (Solo Opponents p.14's NOTE).
@@ -335,7 +341,7 @@ export function resolveDoomsdayAction(
         'Step 2.',
     });
   } else {
-    const vp = input.experimentVp ?? 0;
+    const vp = EXPERIMENT_VP[level];
     result.executed = true;
     result.experimentVp = vp;
     bot.vp += vp;

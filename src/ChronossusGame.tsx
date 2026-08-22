@@ -833,7 +833,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * and asks what is actually on the table: is one of this level carrying a Path marker,
    * what VP is printed on it, and can a marker be placed for next time.
    */
-  const [experimentStep, setExperimentStep] = useState<'marked' | 'vp' | 'prepare' | null>(null);
+  const [experimentStep, setExperimentStep] = useState<'marked' | 'prepare' | null>(null);
   /** The answers gathered so far this Experiment, replayed into the resolver. */
   const experimentAnswersRef = useRef<Chronossus.ExperimentInput>({
     markedAvailable: false,
@@ -2182,7 +2182,6 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     ),
                   ),
                   onMarked: onExperimentMarked,
-                  onVp: onExperimentVp,
                   onPrepare: onExperimentPrepare,
                 }
               : null
@@ -2942,11 +2941,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Step 1's answer — is an Experiment of this level carrying one of its Path markers? */
   const onExperimentMarked = (available: boolean) => {
     experimentAnswersRef.current = { ...experimentAnswersRef.current, markedAvailable: available };
-    setExperimentStep(available ? 'vp' : 'prepare');
-  };
-  /** Step 1's follow-up — the VP printed on the Experiment it took. */
-  const onExperimentVp = (vp: number) => {
-    experimentAnswersRef.current = { ...experimentAnswersRef.current, experimentVp: vp };
+    // No VP question: every Level 1 Experiment is 2 VP and every Level 2 is 3, so the
+    // level printed on the tile already answers it. The engine derives it.
     setExperimentStep('prepare');
   };
   /** Step 2's answer, which also commits the turn. */
@@ -4971,7 +4967,7 @@ function CxTileDialog({
    * step states the rulebook's selection rule and asks what is on the table.
    */
   experimentGate?: {
-    step: 'marked' | 'vp' | 'prepare';
+    step: 'marked' | 'prepare';
     /** Which level this tile executes (C07 = 1, C08 = 2). */
     level: 1 | 2;
     /** Whether the tracks are locked, so a successful Experiment moves nothing. */
@@ -4980,7 +4976,6 @@ function CxTileDialog({
     trackerLabel: string;
     nextSlotVp: number;
     onMarked: (available: boolean) => void;
-    onVp: (vp: number) => void;
     onPrepare: (can: boolean) => void;
   } | null;
   /** Render in normal flow (mobile) rather than absolutely on the board — same as
@@ -5378,6 +5373,23 @@ function CxTileDialog({
               </p>
               <p className="pp-sub">
                 If more than one, it takes the <b>leftmost</b> — and discards the Path marker.
+                {/* Stated, not asked: every Level 1 Experiment is 2 VP and every Level 2 is
+                    3, so the level on this tile already settles it. */}{' '}
+                Every Level {experimentGate.level} Experiment scores{' '}
+                <b>{Chronossus.EXPERIMENT_VP[experimentGate.level]} VP</b>
+                {experimentGate.locked ? (
+                  <>
+                    , and the Doomsday tracks are locked so its{' '}
+                    <b>{experimentGate.trackerLabel}</b> marker will not move.
+                  </>
+                ) : (
+                  <>
+                    , then it moves its <b>{experimentGate.trackerLabel}</b> marker one step
+                    {experimentGate.nextSlotVp > 0
+                      ? `, scoring the ${experimentGate.nextSlotVp} VP printed there.`
+                      : ' (no VP printed there).'}
+                  </>
+                )}
               </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => experimentGate.onMarked(true)}>
@@ -5387,32 +5399,6 @@ function CxTileDialog({
                   ✗ None — skip this step
                 </button>
               </div>
-            </>
-          ) : experimentGate && !readOnly && experimentGate.step === 'vp' ? (
-            <>
-              <p className="pp-instruct">
-                What is the <b>Victory Point value</b> printed on that Experiment?
-              </p>
-              <div className="pp-buttons">
-                {[2, 3].map((v) => (
-                  <button key={v} className="pp-confirm" onClick={() => experimentGate.onVp(v)}>
-                    {v} VP
-                  </button>
-                ))}
-              </div>
-              {experimentGate.locked ? (
-                <p className="pp-sub">
-                  The Doomsday tracks are locked, so its <b>{experimentGate.trackerLabel}</b>{' '}
-                  marker will not move — the Experiment still scores.
-                </p>
-              ) : (
-                <p className="pp-sub">
-                  It will then move its <b>{experimentGate.trackerLabel}</b> marker one step
-                  {experimentGate.nextSlotVp > 0
-                    ? `, scoring the ${experimentGate.nextSlotVp} VP printed there.`
-                    : ' (no VP printed there).'}
-                </p>
-              )}
             </>
           ) : experimentGate && !readOnly ? (
             <>
