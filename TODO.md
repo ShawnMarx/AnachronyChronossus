@@ -28,43 +28,21 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       the CI deploy key was rotated (see above).
 
 ## App
-- [ ] **`gamedata-staging` doesn't exist** (2026-08-22, **handed to the `boardgameedge`
-      session**) — `data.staging.boardgameedge.com` has no systemd unit, no nginx vhost and
-      no cert, so the hostname falls through to the default server, presents the prod
-      anachrony cert, and every staging save/history/stats call dies at TLS. Every other app
-      has a `-staging` counterpart; the game-data service is the one that doesn't. **Nothing
-      changes in this app** — `DATA_BASE` already resolves staging hosts to that URL, and the
-      client's pending-upload queue will drain on its own once the service answers (expect a
-      burst of old games, not a bug). Verify from the staging app when they say it's up.
-- [ ] **Prod history/stats: unverified** (2026-08-22) — prod's data service is healthy
-      (`/healthz` 200, correct CORS with credentials for the app origin, 401 unauthenticated)
-      and both bots call `recordGame`, but no one has watched a real logged-in save succeed.
-      Needs the test account. Note **two different permissions**: saving needs a working login
-      (plus whatever per-app grant the data service enforces for `anachrony`), while
-      **overall stats is admin-only** and 403s otherwise — fixing one can leave the other
-      failing. Delete any test games afterwards so real stats stay clean.
-- [x] **Quantum Loops** — **shipped 2026-08-21**, the last module in the picker. The
-      Warp-Phase AI-die check (removes the Quantum Loop card farthest from the draw deck on a
-      4), its two difficulty options, setup text and verbatim boxes. The card row is
-      deliberately not modelled, so the module adds no state slice. Archived to
-      `docs/complete/20260821_QUANTUM_WRAPUP_COMPLETED.md`.
-- [ ] **Play Quantum Loops on the table** (2026-08-21) — verified by browser harness
-      (`pw-quantum.mjs`) and unit test only; never actually played. Needs the **Future
-      Imperfect** expansion.
-- [ ] **Finish the Doomsday review walkthrough** (2026-08-20; archived 2026-08-21) — the
-      effort is archived to `docs/complete/20260821_DOOMSDAY_COMPLETED.md`, which carries the
-      walkthrough with sections 1–5 and 7–10 still un-walked (blank verdict lines). It needs
-      the **Classic Expansion Pack** physically on the table for the Experiment steps. The
-      Check-for-Impact behaviour it *did* exercise produced two fixes and is covered by
-      `pw-doomsday.mjs`.
-- [x] **Show real die art on the existing Paradox / Research-shape rolls** — **done
-      2026-08-21.** The Paradox die was already rendering (`ParadoxDieFace`); the new
-      `ShapeDieFace` covers Research (die + Breakthrough art beside it) and Fractures'
-      Assimilate (die alone). Verified in a browser with `pw-shapedie.mjs`. The AI die stays
-      CSS-drawn, as decided 2026-08-15.
-- [x] **History is only visible on the Action Rounds board** — **fixed 2026-08-21** for
-      **both** bots. `PhaseHistoryDock` (a wrapper around the same pane) plus a 🕑 button in
-      the phase-screen header. The turn chip added 2026-08-20 stays as the quick view.
+- [x] **History and stats now work in prod AND staging** (2026-08-22) — the long-standing
+      "nothing saves" was **not** in this app: prod's `gamedata` had a trailing inline comment
+      in its systemd `EnvironmentFile` (`COOKIE_NAME=bge_session   # staging: …`), and systemd
+      does not strip those, so the service looked up a 60-character cookie name that could
+      never match and every authenticated request resolved to anonymous. Fixed by the
+      `boardgameedge` session; `gamedata-staging` stood up the same day. Verified end to end
+      on both environments: admin/stats 401 → 403, `/me/games` 200, both bots save, and a
+      queued game drains by itself once the service returns.
+      **What was ours:** the app reported that 401 as "Your login session expired" — a false
+      claim about a service that was working, and the reason this went unfound for three
+      weeks. Both bots now re-check `/api/me` before blaming the login.
+- [ ] **Admin stats still 403** (2026-08-22) — the last piece of "overall stats isn't
+      working". `the test account` (user 2) has no row in `admin_roles`; it needs
+      `(the test account, app_slug='anachrony')`. That insert is blocked in the `boardgameedge`
+      session and is waiting on Shawn. 403 is the correct answer until then, not a fault.
 - [ ] **Export the score tally, not just BG Stats** (2026-08-19, open question) — the home
       screen's history modal exports BG Stats' summary fields (result, scores, era,
       difficulty). Asked for but never specified: a per-game export of the full scoring
