@@ -25,3 +25,7 @@ dist-ssr
 
 # Scratch Playwright harnesses used against live environments (credentials via env).
 .pw-*.tmp.mjs
+
+# Test artefacts: screenshots and score-share PNGs written next to the harnesses.
+score-*.png
+shot*.png
