@@ -24,10 +24,15 @@ committed and none are planned in-house.
       stepping Exosuits to 0 (the new debug stepper reaches the state — the harness just
       does not yet drive the two turns that follow); `phase.actions.*` may render nowhere
       (the Action Rounds "phase screen" is the board) — check before keeping the key.
-- [ ] **Remaining app-voice chrome.** `uiStrings.ts` covers the ⚙ menu, the 📖 boxes and the
-      common controls. The setup flows, score screens and per-Action dialog bodies still
-      hard-code their English; move them across as they are next touched rather than in one
-      sweep.
+- [~] **Remaining app-voice chrome — the sweep a real translator needs.** ~3,500 words were
+      hard-coded in `.tsx`; `Landing.tsx` (60) is done. Remaining, by size:
+      `ChronossusGame.tsx` ~1,379, `ChronossusSetupFlow.tsx` ~1,165, `BoardExplorer.tsx` ~613,
+      `SetupFlow.tsx` ~221, `RulesFrame.tsx` ~33, `HistoryScreen.tsx` ~29. No blocker — just
+      volume. Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
+      link or bold run: keep it as ONE key so the translator can move the link where their
+      grammar needs it. Verify each file with
+      `node pw-i18n-diff.mjs <before> <after>` — text and layout must match exactly; a small
+      pixel budget absorbs the antialiasing shift that text-node coalescing causes.
 - [ ] **Rule constants nothing renders.** `ENDGAME_TRIGGER_RULE`, `FAILED_ACTIONS`, the
       `QUANTUM_LOOPS_*` blocks and `DOOMSDAY_SETUP/DIFFICULTY/PLANNED_EXPERIMENTS_RULE` are
       exported but shown nowhere — they were pulled back out of the translatable surface so

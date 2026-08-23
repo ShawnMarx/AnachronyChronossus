@@ -39,6 +39,55 @@ export const UI_STRINGS = {
   'common.youPassed': 'You passed',
   'common.undo': 'Undo',
 
+  // --- Home screen ----------------------------------------------------------
+  'landing.title': 'Anachrony Solo Assistant',
+  'landing.subtitle': "Play against the game's automated Solo opponents",
+  'landing.intro':
+    'An unofficial companion app for running the Solo opponents in [**Anachrony**](store), ' +
+    "published by Mindclash Games. It runs the opponent's turns, rolls its dice, and tells " +
+    'you where to move its pieces — and teaches you how to play against it along the way. ' +
+    "You'll need the physical game to play, and you should already know (or be willing to " +
+    'learn) the base game on your own.',
+  'landing.partOfBge': 'Part of [BoardGameEdge](bge) — more play aids for the games on your table.',
+  'landing.disclaimer':
+    'Unofficial fan-made aid. Anachrony and its artwork are © Mindclash Games. This app ' +
+    'requires owning the physical game.',
+  'landing.comingSoon': 'Coming Soon',
+  'landing.play': 'Play',
+  'landing.playAgainst': 'Play against the {name}',
+  'landing.soonAria': '{name} — coming soon',
+  'landing.artworkAlt': '{name} artwork',
+  'landing.chronobot.tagline': 'The base-game automa · easiest place to start',
+  'landing.chronobot.description':
+    'Supports the base game, with optional difficulty adjustments. A streamlined opponent ' +
+    'driven by a handful of Command tokens.',
+  'landing.chronossus.tagline': 'The advanced automa · more modes, more depth',
+  'landing.chronossus.description':
+    'A deeper opponent supporting every official module and their combinations. The app ' +
+    'tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action ' +
+    'as it resolves.',
+  'landing.savedAtUnknown': 'an earlier session',
+
+  // --- Home screen: the login control ---------------------------------------
+  'landing.auth.historyTitle': 'Your play history, and BG Stats export / import',
+  'landing.auth.overallTitle': 'Overall stats across all players',
+  'landing.auth.overall': 'Overall stats',
+  'landing.auth.signOut': 'Sign out',
+  'landing.auth.logIn': 'Log in',
+
+  // --- Home screen: the continue / discard prompt ---------------------------
+  'landing.resume.continueTitle': 'Continue your {bot} game?',
+  'landing.resume.continueBody': 'You have a game in progress, last played on **{when}**.',
+  'landing.resume.continueBtn': 'Continue game',
+  'landing.resume.newBtn': 'Start a new game',
+  'landing.resume.cancel': 'Cancel',
+  'landing.resume.otherTitle': 'Start a {bot} game?',
+  'landing.resume.otherBody':
+    'You have a saved **{other}** game (last played **{when}**). Only one opponent can be ' +
+    'active at a time — starting the {bot} will discard it.',
+  'landing.resume.resumeOther': 'Resume {other}',
+  'landing.resume.discardStart': 'Discard & start {bot}',
+
   // --- History --------------------------------------------------------------
   'history.title': 'History',
   'history.empty': 'No turns taken yet.',

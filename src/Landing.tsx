@@ -5,11 +5,13 @@ import { peekSavedChronossus, clearSavedChronossus } from './ChronossusGame';
 import { useAuth } from './auth/useAuth';
 import HistoryScreen from './history/HistoryScreen';
 import AdminStats from './history/AdminStats';
+import T from './i18n/Trans';
+import { useT } from './i18n/I18nProvider';
 
 /** Official Mindclash Games product page for Anachrony. */
 const STORE_URL = 'https://mindclashgames.com/our-games/anachrony/';
 
-function formatSavedAt(ms: number): string {
+function formatSavedAt(ms: number, fallback: string): string {
   try {
     return new Date(ms).toLocaleDateString(undefined, {
       year: 'numeric',
@@ -19,7 +21,7 @@ function formatSavedAt(ms: number): string {
       minute: '2-digit',
     });
   } catch {
-    return 'an earlier session';
+    return fallback;
   }
 }
 
@@ -52,22 +54,25 @@ const BGE_LANDING_URL: string = (() => {
 
 function BotCard({ name, image, tagline, description, status, onLaunch }: BotCardProps) {
   const ready = status === 'ready';
+  const t = useT();
   return (
     <button
       className={`bot-card ${ready ? 'ready' : 'soon'}`}
       onClick={ready ? onLaunch : undefined}
       disabled={!ready}
-      aria-label={ready ? `Play against the ${name}` : `${name} — coming soon`}
+      aria-label={
+        ready ? t('ui.landing.playAgainst', { name }) : t('ui.landing.soonAria', { name })
+      }
     >
       <div className="bot-card-art">
-        <img src={image} alt={`${name} artwork`} />
-        {!ready && <span className="soon-badge">Coming Soon</span>}
+        <img src={image} alt={t('ui.landing.artworkAlt', { name })} />
+        {!ready && <span className="soon-badge">{t('ui.landing.comingSoon')}</span>}
       </div>
       <div className="bot-card-body">
         <h2>{name}</h2>
         <p className="bot-tagline">{tagline}</p>
         <p className="bot-desc">{description}</p>
-        {ready && <span className="bot-cta">Play ▶</span>}
+        {ready && <span className="bot-cta">{t('ui.landing.play')} ▶</span>}
       </div>
     </button>
   );
@@ -83,6 +88,7 @@ function BotCard({ name, image, tagline, description, status, onLaunch }: BotCar
  */
 function LandingAuth() {
   const { user, loading, login, logout } = useAuth();
+  const t = useT();
   const [showHistory, setShowHistory] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   if (loading) {
@@ -99,7 +105,7 @@ function LandingAuth() {
           <button
             className="landing-auth-who"
             onClick={() => setShowHistory(true)}
-            title="Your play history, and BG Stats export / import"
+            title={t('ui.landing.auth.historyTitle')}
           >
             👤 {user.username}
           </button>
@@ -107,20 +113,20 @@ function LandingAuth() {
             <button
               className="landing-auth-who"
               onClick={() => setShowAdmin(true)}
-              title="Overall stats across all players"
+              title={t('ui.landing.auth.overallTitle')}
             >
-              📊 Overall stats
+              📊 {t('ui.landing.auth.overall')}
             </button>
           )}
           <button className="landing-auth-btn" onClick={logout}>
-            Sign out
+            {t('ui.landing.auth.signOut')}
           </button>
           {showHistory && <HistoryScreen onClose={() => setShowHistory(false)} />}
           {showAdmin && <AdminStats onClose={() => setShowAdmin(false)} />}
         </>
       ) : (
         <button className="landing-auth-btn primary" onClick={login}>
-          Log in
+          {t('ui.landing.auth.logIn')}
         </button>
       )}
     </div>
@@ -144,6 +150,8 @@ export default function Landing({
     | { bot: BotId; kind: 'other'; otherBot: BotId; savedAt: number }
     | null
   >(null);
+  const t = useT();
+  const savedFallback = t('ui.landing.savedAtUnknown');
   const otherOf = (b: BotId): BotId => (b === 'chronobot' ? 'chronossus' : 'chronobot');
   const botName = (b: BotId) => (b === 'chronobot' ? 'Chronobot' : 'Chronossus');
   const peekFor = (b: BotId) => (b === 'chronobot' ? peekSavedChronobot() : peekSavedChronossus());
@@ -173,53 +181,39 @@ export default function Landing({
       <header className="landing-header">
         <img className="landing-logo" src="/favicon-512.png" alt="" />
         <div>
-          <h1>Anachrony Solo Assistant</h1>
-          <p className="landing-sub">Play against the game's automated Solo opponents</p>
+          <h1>{t('ui.landing.title')}</h1>
+          <p className="landing-sub">{t('ui.landing.subtitle')}</p>
         </div>
       </header>
 
       <p className="landing-intro">
-        An unofficial companion app for running the Solo opponents in{' '}
-        <a href={STORE_URL} target="_blank" rel="noreferrer">
-          <b>Anachrony</b>
-        </a>
-        , published by Mindclash Games. It runs the opponent's turns, rolls its dice,
-        and tells you where to move its pieces — and teaches you how to play against it
-        along the way. You'll need the physical game to play, and you should already know
-        (or be willing to learn) the base game on your own.
+        <T k="ui.landing.intro" links={{ store: STORE_URL }} />
       </p>
 
       <div className="bot-grid">
         <BotCard
           name="Chronobot"
           image="/assets/solo/chronobot-hero.jpg"
-          tagline="The base-game automa · easiest place to start"
+          tagline={t('ui.landing.chronobot.tagline')}
           status="ready"
-          description="Supports the base game, with optional difficulty adjustments. A streamlined opponent driven by a handful of Command tokens."
+          description={t('ui.landing.chronobot.description')}
           onLaunch={() => launch('chronobot')}
         />
         <BotCard
           name="Chronossus"
           image="/assets/solo/chronossus-hero.jpg"
-          tagline="The advanced automa · more modes, more depth"
+          tagline={t('ui.landing.chronossus.tagline')}
           status="ready"
-          description="A deeper opponent supporting every official module and their combinations. The app tracks its Energy Pool, modular Action tiles, and scoring, and explains each Action as it resolves."
+          description={t('ui.landing.chronossus.description')}
           onLaunch={() => launch('chronossus')}
         />
       </div>
 
       <p className="landing-foot landing-bge">
-        Part of{' '}
-        <a href={BGE_LANDING_URL} target="_blank" rel="noreferrer">
-          BoardGameEdge
-        </a>{' '}
-        — more play aids for the games on your table.
+        <T k="ui.landing.partOfBge" links={{ bge: BGE_LANDING_URL }} />
       </p>
 
-      <p className="landing-foot">
-        Unofficial fan-made aid. Anachrony and its artwork are © Mindclash Games. This
-        app requires owning the physical game.
-      </p>
+      <p className="landing-foot">{t('ui.landing.disclaimer')}</p>
 
       {prompt && (
         <div className="resume-overlay" onClick={() => setPrompt(null)}>
@@ -231,10 +225,12 @@ export default function Landing({
           >
             {prompt.kind === 'own' ? (
               <>
-                <h3>Continue your {botName(prompt.bot)} game?</h3>
+                <h3>{t('ui.landing.resume.continueTitle', { bot: botName(prompt.bot) })}</h3>
                 <p>
-                  You have a game in progress, last played on{' '}
-                  <b>{formatSavedAt(prompt.savedAt)}</b>.
+                  <T
+                    k="ui.landing.resume.continueBody"
+                    params={{ when: formatSavedAt(prompt.savedAt, savedFallback) }}
+                  />
                 </p>
                 <div className="resume-actions">
                   <button
@@ -245,7 +241,7 @@ export default function Landing({
                       startFor(prompt.bot);
                     }}
                   >
-                    Continue game
+                    {t('ui.landing.resume.continueBtn')}
                   </button>
                   <button
                     className="resume-new"
@@ -256,20 +252,25 @@ export default function Landing({
                       startFor(prompt.bot);
                     }}
                   >
-                    Start a new game
+                    {t('ui.landing.resume.newBtn')}
                   </button>
                 </div>
                 <button className="resume-cancel" onClick={() => setPrompt(null)}>
-                  Cancel
+                  {t('ui.landing.resume.cancel')}
                 </button>
               </>
             ) : (
               <>
-                <h3>Start a {botName(prompt.bot)} game?</h3>
+                <h3>{t('ui.landing.resume.otherTitle', { bot: botName(prompt.bot) })}</h3>
                 <p>
-                  You have a saved <b>{botName(prompt.otherBot)}</b> game (last played{' '}
-                  <b>{formatSavedAt(prompt.savedAt)}</b>). Only one opponent can be active at a
-                  time — starting the {botName(prompt.bot)} will discard it.
+                  <T
+                    k="ui.landing.resume.otherBody"
+                    params={{
+                      other: botName(prompt.otherBot),
+                      when: formatSavedAt(prompt.savedAt, savedFallback),
+                      bot: botName(prompt.bot),
+                    }}
+                  />
                 </p>
                 <div className="resume-actions">
                   <button
@@ -279,7 +280,7 @@ export default function Landing({
                       startFor(prompt.otherBot);
                     }}
                   >
-                    Resume {botName(prompt.otherBot)}
+                    {t('ui.landing.resume.resumeOther', { other: botName(prompt.otherBot) })}
                   </button>
                   <button
                     className="resume-new"
@@ -289,11 +290,11 @@ export default function Landing({
                       startFor(prompt.bot);
                     }}
                   >
-                    Discard &amp; start {botName(prompt.bot)}
+                    {t('ui.landing.resume.discardStart', { bot: botName(prompt.bot) })}
                   </button>
                 </div>
                 <button className="resume-cancel" onClick={() => setPrompt(null)}>
-                  Cancel
+                  {t('ui.landing.resume.cancel')}
                 </button>
               </>
             )}

@@ -195,7 +195,8 @@ SHOT_DIR=/tmp node pw-quantum.mjs        # Quantum Loops' Warp check (ROLL= ALT=
 SHOT_DIR=/tmp node pw-shapedie.mjs       # the shape die on Research; ASSIM=1 for Assimilate
 SHOT_DIR=/tmp node pw-chronobot-parity.mjs   # phase-screen Undo/History + roll persistence
 SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THROWS (BOT=chronobot)
-SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 before/after screens (text + pixels) for refactors
+SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 screens: text + layout geometry + screenshot
+node pw-i18n-diff.mjs <before> <after>   # compare two captures (text/layout strict, pixels budgeted)
 node pw-i18n-dropin.mjs                  # proves a dropped-in locale file works, then removes it
 LANG_CODE=de MODES=all node pw-i18n-review.mjs   # EN-vs-language capture of every screen + report.html
 LANG_CODE=de MODES=all SIDES=B node pw-i18n-review.mjs   # again for the B-side tiles
@@ -461,6 +462,17 @@ Keep it that way; a change that requires a second edit to add a language is a re
   `usePhaseMeta()`. Fixing this properly is the `{key, params}` refactor in `TODO.md`.
 - `en.json` is **generated** — `UPDATE_LOCALES=1 npm test`. The suite also checks every other
   locale file for a valid header, no unknown keys, and `{placeholder}` parity with English.
+- **A sentence with an inline link or bold run stays ONE key**, rendered by `<T>`
+  (`src/i18n/Trans.tsx`): `[**Anachrony**](store)`, `**bold**`, `*italic*`, with hrefs passed
+  as a `links` prop. Splitting it into `…before`/`…after` fragments reads tidily in the JSON
+  and is unusable — word order moves between languages, so the translator cannot put the link
+  where their grammar needs it.
+- **Do not expect byte-identical screenshots from an i18n conversion.** Moving a string into a
+  locale file coalesces JSX text nodes (`in{' '}<a>` becomes one run) and the browser reshapes
+  it by a hair: identical text, identical layout, ~180 antialiasing pixels on one line. That is
+  why `pw-i18n-snapshot.mjs` also records **layout geometry** (every element and text-run box,
+  quantised to 0.5px) and `pw-i18n-diff.mjs` compares text and layout strictly while budgeting
+  pixels. A layout regression moves a box and fails; an antialiasing shift does not.
 - **`pw-i18n-review.mjs` is how a translator sees their work.** It captures every reachable
   screen in English and the target language, side by side, into `report.html` — the text AND
   a screenshot, because the commonest translation bug is a longer string overflowing its

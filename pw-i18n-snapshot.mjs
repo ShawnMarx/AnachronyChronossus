@@ -1,5 +1,17 @@
 // Before/after harness for the i18n refactor.
 //
+// WHAT IT COMPARES, and why not just pixels. Moving a string into a locale file coalesces
+// JSX text nodes (`in{' '}<a>` becomes one run), and the browser then shapes that run a
+// hair differently — identical innerHTML, identical layout, but a few dozen antialiasing
+// pixels change on one line. Byte-equal screenshots therefore stop being achievable for a
+// change that is provably invisible, and a check nobody can pass gets ignored.
+//
+// So it records three things per screen, strictest first:
+//   .txt   the rendered text            — must match exactly
+//   .geom  every element and text-run box — must match to 0.5px (this is layout)
+//   .png   the screenshot                — compared with a small pixel tolerance
+// A layout regression moves a box and fails .geom; an antialiasing shift does not.
+//
 // The i18n layer is meant to be a pure indirection: every string the player sees must be
 // byte-identical in English, and every screen pixel-identical. So this walks both bots
 // through setup, every phase screen, the Action Rounds board, an Action dialog and the
