@@ -10,7 +10,8 @@
     "test": "vitest run",
     "preview": "vite preview",
     "i18n:review": "node pw-i18n-review.mjs",
-    "i18n:markers": "node pw-i18n-review.mjs --markers"
+    "i18n:markers": "node pw-i18n-review.mjs --markers",
+    "i18n:pseudo": "node pw-i18n-review.mjs --pseudo"
   },
   "dependencies": {
     "react": "^19.2.7",
