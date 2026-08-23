@@ -2,6 +2,95 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-23 — A translation layer, where adding a language is one file
+
+**Someone offered to translate the app, so the plumbing went in — not the translations.**
+The requirement set the whole design: *a language must be addable by dropping in one file*,
+with no registry to edit, no import list, no enum. `src/i18n/catalog.ts` gets there with
+Vite's `import.meta.glob` — the file's presence IS its registration — and the file names
+itself through its own `$locale` header, so the ⚙ picker builds from what is on disk.
+
+**It is an override layer, not a relocation.** The English text stays exactly where the rules
+live: the tile catalog, the Action catalog, the phase metadata. `surface.ts` derives a flat
+`key -> English default` map from those catalogs (so a new tile joins the translatable
+surface without anyone remembering to), and a locale file supplies replacements by key.
+Every lookup falls back to English **per key**, which is what makes a forty-key file valid
+and useful — a translator can land one module at a time. `en.json` is generated from the
+surface (`UPDATE_LOCALES=1 npm test`) as the starting point; 215 keys, ~46 KB of text.
+
+**The verbatim boxes are the interesting problem, and the answer is `officialRulebook`.**
+Most of that 46 KB is transcribed verbatim from the Solo Opponents rulebook, and it is shown
+precisely so it matches the book in the player's hands. A fan translation of it would read
+plausibly and match nothing they can check. So a locale declares whether its rule text came
+from the **official** edition: without that flag the app uses the locale's app-voice strings
+but keeps rule text in English and **says so** inside each 📖 box. Anachrony was published in
+several languages, so the real job there is transcription, not translation — and it is
+optional, per language, per key.
+
+**What stayed English, deliberately.** The bot's generated instructions ("Place the
+Chronossus's Exosuit on **Mine**") are assembled inside the pure engine and written into the
+saved History as finished sentences — translating them would freeze whatever language was
+active when the turn happened. They need the `{key, params}` message-descriptor refactor
+first (~150-200 call sites), which is worth doing on its own merits and is now the next
+phase. Adventure card prose is out entirely: it is never rendered, having been transcribed
+only to derive each card's bot outcome. Rule constants nothing renders were pulled back out
+of the surface too — a published key costs a translator real effort.
+
+**Proved by before/after, not by inspection.** `pw-i18n-snapshot.mjs` walks both bots through
+setup, every phase screen, the board, an Action dialog and the ⚙ menu, expanding every 📖 box,
+and records innerText + a screenshot at each of 36 steps. It pins `Math.random` to a fixed LCG
+(the app rolls its own dice, so an unseeded run diverges and every diff is noise) and freezes
+CSS transitions. Baseline and post-change captures are **byte-identical, text and pixels, on
+all 36 screens**, with no console errors. `pw-i18n-dropin.mjs` then proves the mechanism does
+something: it writes a synthetic `zz.json`, checks the picker appears, an app-voice string
+changes, the untranslated default label is gone, rule text stays English with the interpolated
+notice, the choice survives a reload — then deletes the file. `pw-nostorage.mjs` still passes
+for both bots, so the new language preference did not break the degraded-storage guarantee.
+
+## 2026-08-22 — The repo goes public, the history that never saved, and a playtest sweep
+
+**Saved games have never worked in production, and it was not this app.** A save from a
+logged-in player 401'd, and the app reported it as *"Your login session expired"* — a claim
+about a service that was working perfectly, which is what pointed everyone at auth for three
+weeks. The cause was a **trailing inline comment in a systemd `EnvironmentFile`** on the
+droplet: `COOKIE_NAME=bge_session   # staging: …` gave the data service a 60-character cookie
+name that could never match, so every authenticated request resolved to anonymous from Aug 1.
+Fixed by the `boardgameedge` session; verified end to end here, both bots, both environments.
+Staging had a second, separate cause — **no `gamedata-staging` service existed at all** — now
+stood up. Our half of it: the app re-checks `/api/me` before blaming the login, and says
+*"You're still logged in, but the history service rejected the save"* when the session is
+demonstrably fine.
+
+**The repo is public.** `docs/DEPLOYMENT.md` and the staging nginx vhost moved to the private
+`droplet-ops` repo: the runbook stated that the droplet's `authorized_keys` is shared across
+every BGE repo and named the other keys in it, which would have told any reader that
+compromising one key reaches all five app families. History was rewritten (`git filter-repo`)
+to remove those files and scrub the droplet IP, a personal email, the fleet key names and the
+services' loopback ports from all 373 commits — after a verified mirror of the original went
+to the NAS. A README and a LICENSE were added: MIT for the code, with an explicit carve-out
+that Mindclash Games owns the artwork and rulebook text and that neither is licensed by this
+repository.
+
+**BG Stats export, rebuilt client-side.** The data service generated it, so it could neither
+honour a selection nor know the mode — every play said `board: "Solo - Chronobot"`, so a
+Doomsday game imported as a Chronobot game. It is now built in the app from a real `.bgsplay`
+file's shape: the bot is the seat's **role** with `isNpc` rather than a player, modules are
+separated by BG Stats' fullwidth solidus, the difficulty is the comment, and each play carries
+a stable uuid so re-exporting updates rather than duplicates. The history screen has a
+checkbox per game; ticking nothing still exports everything.
+
+**Playtest fixes.** Mine ranked by *has it / does not have it*, so with one of everything it
+fell through to the fixed priority and took a third Neutronium over a lone Titanium — it ranks
+by **fewest held** now, which is what completing the +5 set actually needs. A double Paradox
+drew one token instead of two. The Collapsing Capital prompt asked "are all flipped?" and put
+"Game continues" on the affirmative button. The Doomsday track kept moving after the Impact
+(Classic Expansion p.4 forbids it) because the lock read the *recorded* Impact Era rather than
+the derived one. An Experiment no longer asks the card's VP — every Level 1 is 2 and every
+Level 2 is 3 — and its Exosuit placement is its own prompt box rather than a line buried in
+Step 2. Experiment VP is ordinary VP tokens, so it lost its separate score and overview lines.
+Variable Anomalies' rule box moved to the foot of the phase and now names which Timeline tile
+the retrieved Warp tile comes from.
+
 ## 2026-08-21 — Quantum Loops, and the wrap-up that takes the card to 100%
 
 The last module in the Solo Opponents matrix, plus the four loose ends that stood between the

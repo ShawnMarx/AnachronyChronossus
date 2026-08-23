@@ -21,6 +21,7 @@ import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
+import { useAction, usePhaseMeta, useRule, useTile } from './i18n/localized';
 import {
   DetailPanel,
   AnchoredPopover,
@@ -357,12 +358,12 @@ const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
   C08: 'tile-experiment-2',
 };
 
-/** Verbatim Time Travel Action rule — shown below the Hypersync tile rules, since
- *  the Hypersync Action falls back to a normal Time Travel Action. */
-const TIME_TRAVEL_RULE = CHRONOBOT_ACTIONS['time-travel'].rule;
-
-/** The Time Travel rulebook text block (the Hypersync fallback Action). */
+/** The Time Travel rulebook text block (the Hypersync fallback Action).
+ *  Verbatim Time Travel Action rule, shown below the Hypersync tile rules, since the
+ *  Hypersync Action falls back to a normal Time Travel Action. Resolved at render (not
+ *  at module scope) so the chosen language reaches it. */
 function TimeTravelRuleBlock() {
+  const TIME_TRAVEL_RULE = useAction('time-travel').rule;
   return (
     <div className="hs-tt-rule">
       <p className="dp-rule">
@@ -382,6 +383,7 @@ function TimeTravelRuleBlock() {
 /** Collapsible "Time Travel rules ▸" — matches the printed-action rules toggle. */
 function TimeTravelRuleBlockCollapsible() {
   const [open, setOpen] = useState(false);
+  const TIME_TRAVEL_RULE = useAction('time-travel').rule;
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
@@ -780,6 +782,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     initialUi: emptyCxUi,
     initialDebug: false, // real game starts at Setup, play mode (admins can toggle)
   });
+  // Phase names / overviews / rules in the chosen language; falls through to the
+  // English defaults in `phases/chronossusPhaseMeta.ts` for anything untranslated.
+  const phaseMeta = usePhaseMeta(true);
+  const passingRule = useRule('rule.chronossusPassing', Chronossus.CHRONOSSUS_PASSING_RULE);
+  const checkForImpactRule = useRule(
+    'rule.doomsday.checkForImpact',
+    Chronossus.DOOMSDAY_CHECK_FOR_IMPACT_RULE,
+  );
   // Read-aliases so the render/logic below keep referring to these by name.
   const markerSteps = ui.markerSteps;
   const activeMarker = ui.activeMarker;
@@ -3570,7 +3580,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   : 'Outside the Action Rounds — the counts and recent turns below are this Era so far.'
               }
               canEnd={isActionsPhase && bothPassed}
-              turnRules={CHRONOSSUS_PHASE_META.actions?.rules}
+              turnRules={phaseMeta.actions?.rules}
               extraRules={
                 guardiansMode ? (
                   <RulesBox label="Guardians of the Council">
@@ -3597,7 +3607,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 chronossusDifficultyLabel(f, state.config.difficultyValues),
               )}
               entries={thisEraEntries}
-              passingRule={Chronossus.CHRONOSSUS_PASSING_RULE}
+              passingRule={passingRule}
               onClose={() => setShowStatus(false)}
             />
   );
@@ -4183,7 +4193,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   }
 
   // ---- Non-Phase-5 phases: shared PhaseScreen shell ----------------------
-  const meta = CHRONOSSUS_PHASE_META[state.phase];
+  const meta = phaseMeta[state.phase];
   const phaseProps = {
     // The Era Zero Warp is played before Era 1 (state.era is already 1) — the header
     // says Era 0, which is the tile the player is actually placing on.
@@ -4357,7 +4367,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   Warp rule still applies to it, so show that one too. */}
               {eraZero && (
                 <RulesBox label="Warp">
-                  <p>{CHRONOSSUS_PHASE_META.warp!.rules}</p>
+                  <p>{phaseMeta.warp!.rules}</p>
                   <p className="rules-cite">Solo Opponents rulebook, p. 9</p>
                 </RulesBox>
               )}
@@ -4610,7 +4620,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               other phase screen. */}
           {impactCheckDue && (
             <RulesBox label="Doomsday — Check for Impact">
-              {Chronossus.DOOMSDAY_CHECK_FOR_IMPACT_RULE.split('\n\n').map((para, i) => (
+              {checkForImpactRule.split('\n\n').map((para, i) => (
                 <p key={i} style={{ whiteSpace: 'pre-line' }}>
                   {para}
                 </p>
@@ -4993,7 +5003,7 @@ function CxTileDialog({
   const code = family
     ? `${family}${tileSides?.[family] ?? 'A'}`
     : liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
-  const tile = CHRONOSSUS_TILES[code];
+  const tile = useTile(code);
   // The Valley board's printed Action spaces are always Assimilate and Extract, whichever
   // tile side (or C14) sits on the Chronossus board — so the player is pointed at the
   // space's own name, never the tile's ("Assimilate and Score", "Efficient Extract"…).
@@ -5566,7 +5576,7 @@ function HypersyncDialog({
   /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
   flow?: boolean;
 }) {
-  const tile = CHRONOSSUS_TILES[code];
+  const tile = useTile(code);
   const plan = Chronossus.hypersyncPlan(bot, era);
   // Same past-tile rule as the Action itself: tiles placed this Era don't count.
   const canTimeTravel = warpRemoval(bot, era).eligible;
@@ -6163,6 +6173,7 @@ function CxSimpleCommandView({
   variant?: 'overlay' | 'side' | 'below';
 }) {
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const scvPhaseMeta = usePhaseMeta(true);
   const content = (
     <>
       <div className="scv-title">What Chronossus might do next</div>
@@ -6208,7 +6219,7 @@ function CxSimpleCommandView({
         </div>
       </div>
       <RulesBox label="How the AI die moves the markers">
-        <p>{CHRONOSSUS_PHASE_META.actions?.rules}</p>
+        <p>{scvPhaseMeta.actions?.rules}</p>
       </RulesBox>
     </>
   );
@@ -6704,6 +6715,7 @@ function CxScoreScreen({
   onHome: () => void;
   onNewGame: () => void;
 }) {
+  const endgameRules = useRule('rule.chronossusEndgame', CHRONOSSUS_ENDGAME_RULES);
   const { user, loading: authLoading, login } = useAuth();
   // Whether this game uses a Hypersync mode (adds the Hypersync-tile note to the
   // player's Timeline-penalties line — the bot never loses VP for those tiles).
@@ -7087,7 +7099,7 @@ function CxScoreScreen({
         {/* Verbatim rules last, as on every other screen — above the pinned actions. */}
         <div className="score-rules">
           <RulesBox label="End Game scoring">
-            <p>{CHRONOSSUS_ENDGAME_RULES}</p>
+            <p>{endgameRules}</p>
           </RulesBox>
         </div>
 

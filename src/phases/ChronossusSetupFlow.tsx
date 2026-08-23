@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
-import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
+import { useTiles } from '../i18n/localized';
 import {
   getMode,
   DIFFICULTY_SWAP_TILES,
@@ -355,6 +355,9 @@ export default function ChronossusSetupFlow({
   onBegin: (result: ChronossusSetupResult) => void;
 }) {
   type Step = 'intro' | 'modules' | 'path' | 'difficulty' | 'setup';
+  // The tile catalog in the chosen language (the A/B flip picker shows each tile's
+  // verbatim rule text). Hoisted here because the picker renders inside a map.
+  const tiles = useTiles();
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
   const [extraModules, setExtraModules] = useState<Set<string>>(new Set());
@@ -768,7 +771,7 @@ export default function ChronossusSetupFlow({
                           {modeSlots.map((slot) => {
                             const side = tileSides[slot.family] ? 'B' : 'A';
                             const code = `${slot.family}${side}`;
-                            const tile = CHRONOSSUS_TILES[code];
+                            const tile = tiles[code];
                             return (
                               <div
                                 key={slot.family}

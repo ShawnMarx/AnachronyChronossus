@@ -2,6 +2,32 @@
 
 Loose ends and deferred work. Bigger efforts become a `/plan` when picked up.
 
+## Translation / i18n (layer shipped 2026-08-23)
+
+The mechanism is in (`src/i18n/`, `src/i18n/locales/README.md`): drop a `<code>.json` in
+`src/i18n/locales/` and it appears in the ⚙ menu. Ships English-only; no translations are
+committed and none are planned in-house.
+
+- [ ] **Engine instructions → message descriptors.** `Instruction.text` is assembled from
+      interpolated English inside the pure bot functions and persisted to History as a
+      finished sentence, so no key can reach it. Change it to `{ id, key, params }` and
+      render in the view: ~150-200 call sites across `chronossus.ts`, `chronobot.ts`,
+      `doomsday.ts`, `pioneers.ts`, `chronossusHistory.ts`. Worth doing regardless of
+      translation — it stops History freezing prose into `localStorage`, so a reworded
+      instruction fixes old saves too, and the engine tests assert keys instead of sentences.
+- [ ] **Remaining app-voice chrome.** `uiStrings.ts` covers the ⚙ menu, the 📖 boxes and the
+      common controls. The setup flows, score screens and per-Action dialog bodies still
+      hard-code their English; move them across as they are next touched rather than in one
+      sweep.
+- [ ] **Rule constants nothing renders.** `ENDGAME_TRIGGER_RULE`, `FAILED_ACTIONS`, the
+      `QUANTUM_LOOPS_*` blocks and `DOOMSDAY_SETUP/DIFFICULTY/PLANNED_EXPERIMENTS_RULE` are
+      exported but shown nowhere — they were pulled back out of the translatable surface so
+      a translator is not asked to do invisible work. Add the key back when a screen renders
+      one.
+- [ ] **When a translator appears:** point them at `src/i18n/locales/README.md`, and be clear
+      that `officialRulebook: true` means the rule text was transcribed from that language's
+      **official** Anachrony / Solo Opponents edition — not translated from the English.
+
 ## Deployment / publishing (deferred from the 2026-07-27 DO deploy)
 See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done — live at
 `anachrony.staging.boardgameedge.com`, deploying from the `staging` branch (`docs/DEPLOYMENT.md`).
@@ -12,7 +38,10 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       `AppCard` in `boardgameedge/services/landing/src/bge_landing/config.py` (slug
       `anachrony`, icon `clock`). Confirmed live on the landing service at `staging.boardgameedge.com`; the
       prod apex is still a GoDaddy placeholder.
-- [~] **Link back to BGE landing** — **half done 2026-08-21.** The link ships on the home
+- [x] **Link back to BGE landing** — **done 2026-08-22**: the apex now serves the landing
+      service, so `BGE_LANDING_URL` returns it in prod and the link renders everywhere. Still
+      open: the **"support me"** line — no donation platform chosen.
+      Superseded note — **half done 2026-08-21.** The link ships on the home
       screen, env-aware (`BGE_LANDING_URL` in `Landing.tsx`), but **prod returns null so it
       does not render**: `boardgameedge.com` is still a GoDaddy "Launching Soon" placeholder,
       while the landing service itself is live at `staging.boardgameedge.com`. One line to
@@ -21,12 +50,27 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
 - [x] **Security: rotate the CI deploy key** — **done 2026-08-21.** Rotated, new key
       proven by a real deploy before the old one was removed. Procedure lives with the
       infrastructure docs, not here.
-- [ ] **Make the GitHub repo public** — currently private because the board art is
+- [x] **Make the GitHub repo public** — **done 2026-08-22.** Ops docs moved to `droplet-ops`,
+      history rewritten to scrub the droplet IP / fleet key names / a personal email / the
+      services' loopback ports, README + LICENSE added (MIT code; Mindclash owns the art and
+      rulebook text, expressly not licensed here). A verified pre-scrub mirror is on the NAS at
+      `/Volumes/shawn/git/AnachronyChronossus-pre-scrub-20260822.git` — the ONLY copy of the
+      original history; keep it and do not publish it.
+      Superseded note — it was private because the board art is
       copyrighted. Before flipping: strip/relocate the copyrighted board art + sprite
       assets (or confirm licensing), scrub git history for any secrets, and re-confirm
       the CI deploy key was rotated (see above).
 
 ## App
+- [ ] **Experiment placement on the paths I cannot drive** (2026-08-22) — reported as "the
+      Exosuit prompt is skipped when Step 1 is skipped". Every branch reachable from a rolled
+      turn shows it, and it is now its own box at the top of the dialog rather than a line
+      inside Step 2. Two paths remain unexercised: an **Autoleap** landing on an Experiment
+      tile, and a turn that **passes** for want of figures (where no placement is correct).
+- [ ] **`rounds` in the BG Stats export is the Era reached** (2026-08-22) — BG Stats' own file
+      had 0 there. The app knows the Era, so it fills it; revert to 0 if it reads wrong in the
+      app. Expansions are deliberately not listed (each needs a BGG id, and the modules are
+      already named in `board`).
 - [x] **History and stats now work in prod AND staging** (2026-08-22) — the long-standing
       "nothing saves" was **not** in this app: prod's `gamedata` had a trailing inline comment
       in its systemd `EnvironmentFile` (`COOKIE_NAME=bge_session   # staging: …`), and systemd

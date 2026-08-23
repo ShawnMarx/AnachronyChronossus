@@ -5,7 +5,8 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-21): every module AND add-on in the Solo Opponents matrix is implemented.**
+> **Status (2026-08-22): every module AND add-on is implemented, the repo is PUBLIC, and
+> saved history works in both environments for the first time.**
 > Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
 > Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth, **Doomsday**
 > and — as of today — **Quantum Loops** are all built. Doomsday was archived 2026-08-21 to
@@ -14,10 +15,18 @@
 > parity with the Chronossus's Undo / phase-screen work, the real shape-die art on the
 > Research and Assimilate rolls, History reachable from the phase screens on both bots, and
 > the CI deploy-key rotation. Archived to `docs/complete/20260821_QUANTUM_WRAPUP_COMPLETED.md`; **no plan is active**.
+> **2026-08-22:** the repo went **public** — the droplet runbook and staging vhost moved to the
+> private `droplet-ops` repo and the git history was rewritten to scrub it (see `docs/BUILD-LOG.md`),
+> with a README and a LICENSE that keeps Mindclash Games' artwork and rulebook text expressly
+> unlicensed. The same day fixed the long-standing "nothing saves": the fault was a systemd
+> `EnvironmentFile` inline comment on the droplet's data service, not this app, and staging had
+> no `gamedata-staging` service at all. The BG Stats export moved into the app (selection +
+> correct mode), and a playtest sweep corrected the Mine ranking, the Paradox token count, the
+> Collapsing Capital prompt and four Doomsday rules details.
 > **What is left** is no longer modules: **Phase 5 (login + stats)** — the Chronossus-specific
 > stats/history in `AdminStats` and the score-tally export — plus the deferred publishing work
-> (access-gating via `auth.boardgameedge.com`, the `boardgameedge.com` apex cutover, making the
-> repo public) and the on-device verification passes listed in `TODO.md`.
+> (access-gating via `auth.boardgameedge.com`) and the on-device verification passes listed in
+> `TODO.md`. The apex cutover is **done**; making the repo public is **done**.
 > Chronobot shipped its full guided Era loop + optional BGE login / My-history / admin
 > stats / in-app rules frame (2026-07-31). **Chronossus base shipped 2026-08-09** — the
 > shared solo-bot core, engine/view, action tiles, Autoleap, Hypersync module, real

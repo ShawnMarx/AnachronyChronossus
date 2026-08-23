@@ -67,6 +67,15 @@ src/
       chronossus.ts           scaffold (implemented:false)
       BotModule.ts            metadata-only registry
     index.ts                  public API: `Chronobot.*`, dice rollers, AI_DIE_FACES=[2,3,3,4,4,5]
+  i18n/
+    surface.ts                translatable surface: flat `key -> English default`, DERIVED
+                              from the catalogs (a new tile joins it automatically)
+    uiStrings.ts              the app's own voice (chrome) — its own source of truth
+    catalog.ts                locale discovery (`import.meta.glob`) + per-key fallback
+    I18nProvider.tsx          context + `useT()`; persisted choice (try/catch, non-module-scope)
+    localized.ts              `useTile` / `useAction` / `usePhaseMeta` / `useRule` — catalog
+                              entries with translated fields swapped in
+    locales/en.json           GENERATED (`UPDATE_LOCALES=1 npm test`); + README.md for translators
   board/
     chronobotHotspots.ts      CHRONOBOT_HOTSPOTS (tap tiles) + BOARD_COUNTERS (badges), % pos
     chronobotPaths.ts         SHORT_PATH/LONG_PATH marker anchors (%), command-marker art
@@ -180,6 +189,8 @@ SHOT_DIR=/tmp node pw-quantum.mjs        # Quantum Loops' Warp check (ROLL= ALT=
 SHOT_DIR=/tmp node pw-shapedie.mjs       # the shape die on Research; ASSIM=1 for Assimilate
 SHOT_DIR=/tmp node pw-chronobot-parity.mjs   # phase-screen Undo/History + roll persistence
 SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THROWS (BOT=chronobot)
+SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 before/after screens (text + pixels) for refactors
+node pw-i18n-dropin.mjs                  # proves a dropped-in locale file works, then removes it
 ```
 
 `pw-pass.mjs` reaches a state the UI has no control for: it edits the persisted save
@@ -418,6 +429,30 @@ exist. Doomsday's C07/C08 execute different Experiment levels, so they take
 `tile-experiment-1` / `tile-experiment-2` and the ambiguity never arises. Prefer this when the
 rules allow it.
 
+## Translation (i18n)
+
+**Adding a language is one file** — drop `src/i18n/locales/<code>.json` in and it appears in
+the ⚙ menu. `import.meta.glob` makes the file's presence its registration and the file names
+itself through its `$locale` header, so there is no registry, import list or enum to edit.
+Keep it that way; a change that requires a second edit to add a language is a regression.
+
+- **It is an override layer, not a relocation.** English text stays in the catalog the rules
+  live in (`chronossusTiles.ts`, `chronobotActions.ts`, `phaseMeta.ts`); `surface.ts` derives
+  the `key -> English default` map from them, so a new tile or Action joins the translatable
+  surface for free. Lookups fall back to English **per key** — a partial locale file is valid.
+- **Verbatim rule text is gated behind `officialRulebook`.** A 📖 box exists to match the book
+  in the player's hands, so a locale that has not transcribed from its **official** edition
+  keeps English rule text and says so in the box. Its `ui.*` strings are still used.
+- **Only publish a key something renders.** A key in the surface costs a translator real
+  effort; several exported-but-unrendered rule constants were deliberately left out.
+- **Never translate a string that gets persisted.** History entries and turn labels are saved
+  as finished sentences, so a translated one would freeze in whatever language was active when
+  the turn happened. The `PHASE_META[next.phase]?.name` used for a History label is left on the
+  raw catalog for exactly this reason, while the same lookup for display goes through
+  `usePhaseMeta()`. Fixing this properly is the `{key, params}` refactor in `TODO.md`.
+- `en.json` is **generated** — `UPDATE_LOCALES=1 npm test`. The suite also checks every other
+  locale file for a valid header, no unknown keys, and `{placeholder}` parity with English.
+
 ## Conventions
 
 - Keep the engine pure and tested; add unit tests for new decision logic.
@@ -437,6 +472,15 @@ rules allow it.
   icon for any non-zero count is the bug — the die face says what was *rolled*, the icons say
   what to *place*, and a boolean test (`n > 0 &&`) silently collapses the two (fixed for the
   Paradox phase 2026-08-22; the Warp phase already did it). A zero roll draws nothing.
+- **The BG Stats export is built in the app, not fetched from the data service.**
+  `src/data/bgStats.ts`, pure and tested. The service endpoint still exists and is unused: it
+  could neither honour the history screen's per-game selection nor know the mode, and it wrote
+  `board: "Solo - Chronobot"` on every play, so a Chronossus game imported as a Chronobot one.
+  The format is modelled on a **real `.bgsplay` file** rather than guessed — the bot is the
+  seat's `role` with `metaData: {"isNpc":1}` (never a `players` entry), mode parts are joined
+  with a FULLWIDTH SOLIDUS `／`, the difficulty is the play's `comments`, and each play carries
+  a **stable uuid derived from the saved game's id** so a re-export updates rather than
+  duplicates. Only the base game is listed; naming an expansion needs its own BGG id.
 - **No decorative icons or emoji in the game UI unless asked for**, with one exception:
   real **in-game component art** (the Flux Core, Energy Core, Exosuit, tile and die faces
   in `public/assets/solo/`). Prefer the component's own art over a stand-in glyph — e.g.

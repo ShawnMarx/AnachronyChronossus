@@ -283,6 +283,17 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+/* Language picker — only rendered once a second locale file exists. */
+.settings-item.lang select {
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--sp-text-2);
+  border: 1px solid rgba(var(--sp-accent-rgb), 0.45);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.15rem 0.3rem;
+  cursor: pointer;
+}
 .settings-sep {
   height: 1px;
   background: rgba(var(--sp-accent-rgb), 0.3);

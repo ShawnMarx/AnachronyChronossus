@@ -73,6 +73,8 @@ import PhaseScreen from './phases/PhaseScreen';
 import SetupFlow from './phases/SetupFlow';
 import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
+import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
+import { useI18n } from './i18n/I18nProvider';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import {
   currentEraWarpTiles,
@@ -213,6 +215,7 @@ export function BlinkPanel({
  */
 export function BlinkRuleBlock() {
   const [open, setOpen] = useState(false);
+  const blinkRule = useRule('rule.blink', Chronossus.BLINK_RULE);
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((o) => !o)}>
@@ -220,7 +223,7 @@ export function BlinkRuleBlock() {
       </button>
       {open && (
         <div className="rule-body">
-          {Chronossus.BLINK_RULE.split('\n').map((line, i) =>
+          {blinkRule.split('\n').map((line, i) =>
             line ? (
               <p key={i} className="dp-rule">
                 {line}
@@ -756,6 +759,11 @@ export default function BoardExplorer({
         },
       };
     });
+
+  // Phase names / overviews / rules in the chosen language. Falls through to the
+  // English defaults in `phases/phaseMeta.ts` for anything untranslated.
+  const phaseMeta = usePhaseMeta();
+  const passingRule = useRule('rule.passing', PASSING_RULE);
 
   // --- Command tokens (2–5) travelling the two Action paths ---
   const [tokens, setTokens] = useState<CommandTokensState>(
@@ -1407,7 +1415,7 @@ export default function BoardExplorer({
   // board is read-only whenever it's not the Action Rounds phase (or forced R/O).
   const isActionsPhase = state.phase === 'actions';
   const boardReadOnly = readOnly || (!isActionsPhase && !calibrate);
-  const meta = PHASE_META[state.phase];
+  const meta = phaseMeta[state.phase];
   // The Action Rounds phase can end once both players have passed and the bot has
   // met its minimum Actions — then we ask about First Player and move to Clean Up.
   const canEndActions = isActionsPhase && Chronobot.actionRoundsCanEnd(state);
@@ -1936,12 +1944,12 @@ export default function BoardExplorer({
                 ))
           }
           canEnd={isActionsPhase && Chronobot.actionRoundsCanEnd(state)}
-          turnRules={PHASE_META.actions?.rules}
+          turnRules={phaseMeta.actions?.rules}
           difficulty={state.config.difficulty.map((f) => DIFFICULTY_LABEL[f] ?? f)}
           entries={undoStack.filter(
             (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
           )}
-          passingRule={PASSING_RULE}
+          passingRule={passingRule}
           onClose={() => setShowStatus(false)}
         />
       )}
@@ -2758,6 +2766,8 @@ function ScoreScreen({
   onClose: () => void;
   onNewGame: () => void;
 }) {
+  const playerScoringRule = useRule('rule.playerScoring', PLAYER_SCORING_RULE);
+  const endgameRules = useRule('rule.endgame', ENDGAME_RULES);
   const bot = state.chronobot;
   const s = Chronobot.scoreChronobot(bot);
   const { user, loading: authLoading, login } = useAuth();
@@ -2908,7 +2918,7 @@ function ScoreScreen({
             />
           ) : (
             <>
-              <p className="score-rule">{PLAYER_SCORING_RULE}</p>
+              <p className="score-rule">{playerScoringRule}</p>
               <div className="tally-grid">
                 {TALLY_FIELDS.map((f) => (
                   <div key={f.key} className="tally-row">
@@ -3020,7 +3030,7 @@ function ScoreScreen({
         {/* Verbatim rules last, as on every other screen. */}
         <div className="score-rules">
           <RulesBox label="End Game scoring">
-            <p>{ENDGAME_RULES}</p>
+            <p>{endgameRules}</p>
           </RulesBox>
         </div>
 
@@ -3604,6 +3614,8 @@ function SimpleCommandView({
   });
 
   const stop = (e: React.MouseEvent) => e.stopPropagation();
+  const actions = useActions();
+  const scvPhaseMeta = usePhaseMeta();
 
   const content = (
     <>
@@ -3617,7 +3629,7 @@ function SimpleCommandView({
             }`}
             key={`${r.path}-${r.index}`}
             onClick={() => onShowRules(r.action)}
-            title={`Show the ${CHRONOBOT_ACTIONS[r.action].label} rules`}
+            title={`Show the ${actions[r.action].label} rules`}
           >
             <div className="scv-markers">
               {r.stack.map((tk) => (
@@ -3632,7 +3644,7 @@ function SimpleCommandView({
             <div className="scv-icon">
               <ActionIcon action={r.action} size={58} />
             </div>
-            <div className="scv-name">{CHRONOBOT_ACTIONS[r.action].label}</div>
+            <div className="scv-name">{actions[r.action].label}</div>
           </button>
         ))}
       </div>
@@ -3647,7 +3659,7 @@ function SimpleCommandView({
         </div>
       </div>
       <RulesBox label="How the AI die moves the tokens">
-        <p>{PHASE_META.actions?.rules}</p>
+        <p>{scvPhaseMeta.actions?.rules}</p>
       </RulesBox>
     </>
   );
@@ -3727,6 +3739,7 @@ export function SettingsMenu({
   const [showMyHistory, setShowMyHistory] = useState(false);
   const [showAdmin, setShowAdmin] = useState(false);
   const { user, loading, login, logout } = useAuth();
+  const { t, code: lang, locales, setLocale } = useI18n();
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
@@ -3762,7 +3775,7 @@ export function SettingsMenu({
             }}
             role="menuitem"
           >
-            🕑 History
+            🕑 {t('ui.settings.history')}
           </button>
           <button
             className={`settings-item cmd-view ${simpleView ? 'active' : ''}`}
@@ -3776,7 +3789,7 @@ export function SettingsMenu({
               alt=""
               aria-hidden="true"
             />
-            Command View
+            {t('ui.settings.commandView')}
           </button>
           {adventureDeck && (
             <button
@@ -3790,9 +3803,9 @@ export function SettingsMenu({
                   : 'The bot draws from your physical Adventure decks; you name the cards'
               }
             >
-              <span>Bot’s own Adventure deck</span>
+              <span>{t('ui.settings.botAdventureDeck')}</span>
               <span className={`sw ${adventureDeck.mode === 'virtual' ? 'on' : ''}`}>
-                {adventureDeck.mode === 'virtual' ? 'ON' : 'OFF'}
+                {adventureDeck.mode === 'virtual' ? t('ui.settings.on') : t('ui.settings.off')}
               </span>
             </button>
           )}
@@ -3807,8 +3820,10 @@ export function SettingsMenu({
                 role="menuitemcheckbox"
                 aria-checked={debug}
               >
-                <span>Debug mode</span>
-                <span className={`sw ${debug ? 'on' : ''}`}>{debug ? 'ON' : 'OFF'}</span>
+                <span>{t('ui.settings.debugMode')}</span>
+                <span className={`sw ${debug ? 'on' : ''}`}>
+                  {debug ? t('ui.settings.on') : t('ui.settings.off')}
+                </span>
               </button>
               {debug && (
                 <>
@@ -3818,8 +3833,10 @@ export function SettingsMenu({
                     role="menuitemcheckbox"
                     aria-checked={outline}
                   >
-                    <span>Tile outlines</span>
-                    <span className={`sw ${outline ? 'on' : ''}`}>{outline ? 'ON' : 'OFF'}</span>
+                    <span>{t('ui.settings.tileOutlines')}</span>
+                    <span className={`sw ${outline ? 'on' : ''}`}>
+                      {outline ? t('ui.settings.on') : t('ui.settings.off')}
+                    </span>
                   </button>
                   <button
                     className="settings-item toggle sub"
@@ -3827,16 +3844,37 @@ export function SettingsMenu({
                     role="menuitemcheckbox"
                     aria-checked={calibrate}
                   >
-                    <span>Calibrate positions</span>
-                    <span className={`sw ${calibrate ? 'on' : ''}`}>{calibrate ? 'ON' : 'OFF'}</span>
+                    <span>{t('ui.settings.calibrate')}</span>
+                    <span className={`sw ${calibrate ? 'on' : ''}`}>
+                      {calibrate ? t('ui.settings.on') : t('ui.settings.off')}
+                    </span>
                   </button>
                 </>
               )}
             </>
           )}
+          {locales.length > 1 && (
+            <>
+              <div className="settings-sep" />
+              <label className="settings-item lang">
+                <span>🌐 {t('ui.settings.language')}</span>
+                <select
+                  value={lang}
+                  onChange={(e) => setLocale(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {locales.map((l) => (
+                    <option key={l.header.code} value={l.header.code}>
+                      {l.header.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
           <div className="settings-sep" />
           <button className="settings-item danger" onClick={onReset} role="menuitem">
-            ⟳ Reset Game
+            ⟳ {t('ui.settings.resetGame')}
           </button>
           <div className="settings-sep" />
           {user && (
@@ -3849,7 +3887,7 @@ export function SettingsMenu({
                 }}
                 role="menuitem"
               >
-                🗄 My history
+                🗄 {t('ui.settings.myHistory')}
               </button>
               {user.isAdmin && (
                 <button
@@ -4031,7 +4069,7 @@ export function DetailPanel({
    */
   figure?: 'exosuit' | 'guardian';
 }) {
-  const def = CHRONOBOT_ACTIONS[hotspot.action];
+  const def = useAction(hotspot.action);
   /** What to call the piece being placed — a Guardian is an Exosuit type of its own. */
   const figureLabel = figure === 'guardian' ? 'Guardian' : 'Exosuit';
   const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
@@ -4514,6 +4552,7 @@ function MechRules({
   onToggle: () => void;
   botName?: string;
 }) {
+  const mechPlacement = useRuleLines('rule.mechPlacement', MECH_PLACEMENT);
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={onToggle}>
@@ -4521,7 +4560,7 @@ function MechRules({
       </button>
       {open && (
         <ul>
-          {MECH_PLACEMENT.map((line, i) => (
+          {mechPlacement.map((line, i) => (
             <li key={i}>
               {botName === 'Chronobot' ? line : line.replace(/Chronobot/g, botName)}
             </li>
