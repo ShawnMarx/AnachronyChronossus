@@ -96,6 +96,29 @@ export const FAILED_ACTIONS =
 const CONSTRUCT_RULE =
   'Each of the Chronobot’s Construct Actions is for a specific building type (or Superproject). When using the Construct Action, the Chronobot always picks the building with the higher VP value. If tied, it takes the one in the secondary stack. If it already has 3 buildings of the desired type, it takes nothing (but it still places an Exosuit to block a Construct Action space, and takes 1 VP, as usual, for Failed Actions).';
 
+/**
+ * Verbatim "CHANGES AT SETUP" for the Chronobot (Solo Opponents, Chronobot Rules). Lives
+ * here with the other rule text rather than in the setup screen, so the translation layer
+ * gates it behind `officialRulebook` like every other verbatim block.
+ */
+export const CHRONOBOT_SETUP_RULE_INTRO =
+  'Set up a 2-player game, with the Chronobot as one of the players. Use the Chronobot ' +
+  'side of the Solo board. In addition to using the Chronobot’s side of the Solo board, ' +
+  'the following changes need to be made during setup:';
+
+/** The same block's bullet list, one bullet per line. */
+export const CHRONOBOT_SETUP_RULE_BULLETS =
+  '• The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not receive any ' +
+  'Starting Assets or Workers.\n' +
+  '• Leave all Endgame Condition cards in the box.\n' +
+  '• Place the Chronobot board next to the Main board, and place the 4 Command tokens on ' +
+  'the 4 marked positions. The Chronobot does not use a Focus marker.\n' +
+  '• Place the Chronobot’s Banner on the First Player spot; it is the First Player in the ' +
+  '1st Era. You receive 1 additional Water (for being the second player).\n' +
+  '• You may still choose to use either the “A” or the “B” side of your Player board.\n' +
+  '• For a more challenging game, use the variant rule described in the base game ' +
+  'rulebook: cover the right World Council space with a Hex Unavailable tile.';
+
 export const CHRONOBOT_ACTIONS: Record<ChronobotActionId, ChronobotActionDef> = {
   research: {
     id: 'research',

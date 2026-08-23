@@ -88,9 +88,107 @@ export const UI_STRINGS = {
   'landing.resume.resumeOther': 'Resume {other}',
   'landing.resume.discardStart': 'Discard & start {bot}',
 
-  // --- History --------------------------------------------------------------
+  // --- Chronobot setup flow -------------------------------------------------
+  'setup.eyebrow.new': 'New Game',
+  'setup.eyebrow.difficulty': 'Difficulty',
+  'setup.eyebrow.setup': 'Setup',
+  'setup.title.flavor': 'The Chronobot',
+  'setup.title.difficulty': 'Increasing the Difficulty',
+  'setup.title.setup': 'Setup Instructions',
+  'setup.home': 'Back to the home screen',
+  'setup.heroAlt': 'Chronobot',
+  'setup.continue': 'Continue',
+  'setup.back': 'Back',
+  'setup.beginEra1': 'Begin Era 1',
+  'setup.flavor':
+    'The Chronobot was sent back from a devastated alternate future with the objective of ' +
+    'finding and eliminating the cause of a war that destroyed everything. Though created ' +
+    'with the best intentions, it has identified humanity as the real problem—the root of ' +
+    'the destruction to come. Misinterpreting its original task, the Chronobot is now ' +
+    'determined to take over the leadership of all humankind, even if it has to destroy ' +
+    'the Paths, or the Capital itself, to achieve its goal.',
+  'setup.difficultyNote':
+    'Select one or more of these options to increase the difficulty of the solo game ' +
+    'against the Chronobot. You can also play with none for the standard game.',
+  'setup.diff.rebootAdvance.label': 'Advance off Reboot immediately',
+  'setup.diff.rebootAdvance.detail':
+    'Immediately advance the token when it moves onto the Reboot Action. This will ensure ' +
+    'that it will perform an Action on every turn.',
+  'setup.diff.noLeader.label': 'Play without your Leader power',
+  'setup.diff.noLeader.detail': 'Play without using your Leader power.',
+  'setup.diff.botExtraTurn.label': 'One extra Chronobot turn after you pass',
+  'setup.diff.botExtraTurn.detail': 'The Chronobot takes one additional turn after you have passed.',
+  'setup.diff.minActions6.label': 'Raise minimum Actions to 6',
+  'setup.diff.minActions6.detail': "Increase the minimum number of Chronobot's Actions from 3 to 6.",
+  'setup.diff.hexUnavailable.label': 'Cover the right World Council space',
+  'setup.diff.hexUnavailable.detail':
+    'Base-game variant: cover the right World Council space with a Hex Unavailable tile. ' +
+    '(This constrains your own board — the app changes nothing.)',
+  'setup.app.title': 'Setup for this app',
+  'setup.app.intro':
+    'Set up a 2-player game, with the Chronobot as one of the players. There’s no need for ' +
+    'the Chronobot board.',
+  'setup.app.bullets':
+    'The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not receive any ' +
+    'Starting Assets or Workers.\n' +
+    'Leave all Endgame Condition cards in the box.\n' +
+    'The Chronobot does not use a Focus marker.\n' +
+    'Place the Chronobot’s Banner on the First Player spot; it is the First Player in the ' +
+    '1st Era. You receive 1 additional Water (for being the second player).\n' +
+    'You may still choose to use either the “A” or the “B” side of your Player board.\n' +
+    'For a more challenging game, use the variant rule described in the base game rulebook: ' +
+    'cover the right World Council space with a Hex Unavailable tile.',
+  'setup.app.vpNote':
+    'This app tracks **all** of the Chronobot’s VP for you and explains each Action’s rules ' +
+    'as it takes them. Building VP is counted as tiles are discarded, rather than placed on ' +
+    'the bot’s board.',
+  'setup.rulesBoxLabel': 'Setup',
+
+  // --- Rules reference frame ------------------------------------------------
+  'rulesFrame.backToGame': 'Back to Game',
+  'rulesFrame.backToGameTitle': 'Return to the game',
+  'rulesFrame.viewGroup': 'Rules view',
+  'rulesFrame.chat': 'Chat',
+  'rulesFrame.resources': 'Resources',
+  'rulesFrame.split': 'Split',
+  'rulesFrame.splitTitle': 'Side-by-side chat + rules',
+  'rulesFrame.home': 'Back to the home screen',
+  'rulesFrame.frameTitle': 'Anachrony rules reference',
+  'rulesFrame.open': 'Rules',
+  'rulesFrame.openTitle': 'Open the rules reference',
+
+  // --- The turn log ---------------------------------------------------------
   'history.title': 'History',
   'history.empty': 'No turns taken yet.',
+
+  // --- Saved-game history screen --------------------------------------------
+  'gameHistory.title': 'Your game history',
+  'gameHistory.close': 'Close',
+  'gameHistory.loading': 'Loading…',
+  'gameHistory.none': 'No games yet. Finish a game and choose **Save to my history** on the score screen.',
+  'gameHistory.selectAll': 'Select all games',
+  'gameHistory.result': 'Result',
+  'gameHistory.difficulty': 'Difficulty',
+  'gameHistory.delete': 'Delete this game',
+  'gameHistory.exportSelected': '{n} selected',
+  'gameHistory.exportAll': 'all',
+  'gameHistory.export': 'Export {what} to BG Stats',
+  'gameHistory.import': 'Import from BG Stats',
+  'gameHistory.selectOne': 'Select the game played on {date}',
+  'gameHistory.date': 'Date',
+  'gameHistory.you': 'You',
+  'gameHistory.bot': 'Bot',
+  'gameHistory.era': 'Era',
+  'gameHistory.win': 'Win',
+  'gameHistory.loss': 'Loss',
+  'gameHistory.imported': 'imported',
+  'gameHistory.err.load': 'Could not load your history. Are you still signed in?',
+  'gameHistory.err.delete': 'Delete failed — try again.',
+  'gameHistory.err.notJson': 'That file is not valid JSON (expected a BG Stats export).',
+  'gameHistory.err.noPlays': 'No plays found in that file.',
+  'gameHistory.err.import': 'Import failed — try again.',
+  'gameHistory.importedN': 'Imported {n} game.',
+  'gameHistory.importedNPlural': 'Imported {n} games.',
 } as const satisfies Record<string, string>;
 
 export type UiKey = keyof typeof UI_STRINGS;

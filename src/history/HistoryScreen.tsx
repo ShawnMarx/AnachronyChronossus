@@ -16,8 +16,11 @@ import {
 } from '../data/gameData';
 import { bgStatsFilename, buildBgStatsExport } from '../data/bgStats';
 import { useAuth } from '../auth/useAuth';
+import { useT } from '../i18n/I18nProvider';
+import T from '../i18n/Trans';
 
 export default function HistoryScreen({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const { user } = useAuth();
   const [rows, setRows] = useState<GameRow[] | null>(null);
   /** Ticked games. EMPTY means "no selection", which exports everything — so the button
@@ -31,7 +34,7 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
     setError(null);
     listMyGames()
       .then(setRows)
-      .catch(() => setError('Could not load your history. Are you still signed in?'));
+      .catch(() => setError(t('ui.gameHistory.err.load')));
   };
 
   useEffect(load, []);
@@ -75,7 +78,7 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
         return next;
       });
     } catch {
-      setError('Delete failed — try again.');
+      setError(t('ui.gameHistory.err.delete'));
     }
   };
 
@@ -86,20 +89,20 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
     try {
       data = JSON.parse(await file.text());
     } catch {
-      setError('That file is not valid JSON (expected a BG Stats export).');
+      setError(t('ui.gameHistory.err.notJson'));
       return;
     }
     try {
       const dry: ImportResult = await importGames(data, true);
       if (dry.parsed === 0) {
-        setError('No plays found in that file.');
+        setError(t('ui.gameHistory.err.noPlays'));
         return;
       }
       const done = await importGames(data, false);
-      setImportMsg(`Imported ${done.imported} game${done.imported === 1 ? '' : 's'}.`);
+      setImportMsg(t(done.imported === 1 ? 'ui.gameHistory.importedN' : 'ui.gameHistory.importedNPlural', { n: done.imported }));
       load();
     } catch {
-      setError('Import failed — try again.');
+      setError(t('ui.gameHistory.err.import'));
     }
   };
 
@@ -107,18 +110,24 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="history-screen" onClick={(e) => e.stopPropagation()}>
         <div className="history-head">
-          <h2>Your game history</h2>
-          <button className="dp-close" onClick={onClose} aria-label="Close">
+          <h2>{t('ui.gameHistory.title')}</h2>
+          <button className="dp-close" onClick={onClose} aria-label={t('ui.gameHistory.close')}>
             ×
           </button>
         </div>
 
         <div className="history-actions">
           <button className="history-btn" onClick={onExport} disabled={!rows?.length}>
-            ⬇ Export {picked.size > 0 ? `${picked.size} selected` : 'all'} to BG Stats
+            ⬇{' '}
+            {t('ui.gameHistory.export', {
+              what:
+                picked.size > 0
+                  ? t('ui.gameHistory.exportSelected', { n: picked.size })
+                  : t('ui.gameHistory.exportAll'),
+            })}
           </button>
           <button className="history-btn" onClick={() => fileRef.current?.click()}>
-            ⬆ Import from BG Stats
+            ⬆ {t('ui.gameHistory.import')}
           </button>
           <input
             ref={fileRef}
@@ -137,10 +146,10 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
         {error && <p className="history-err">{error}</p>}
 
         {rows == null && !error ? (
-          <p className="history-empty">Loading…</p>
+          <p className="history-empty">{t('ui.gameHistory.loading')}</p>
         ) : rows && rows.length === 0 ? (
           <p className="history-empty">
-            No games yet. Finish a game and choose <b>Save to my history</b> on the score screen.
+            <T k="ui.gameHistory.none" />
           </p>
         ) : (
           <table className="history-table">
@@ -149,7 +158,7 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
                 <th className="history-pick">
                   <input
                     type="checkbox"
-                    aria-label="Select all games"
+                    aria-label={t('ui.gameHistory.selectAll')}
                     checked={!!rows && picked.size === rows.length && rows.length > 0}
                     ref={(el) => {
                       // Some ticked, but not all — show the indeterminate dash.
@@ -160,12 +169,12 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
                     }
                   />
                 </th>
-                <th>Date</th>
-                <th>Result</th>
-                <th>You</th>
-                <th>Bot</th>
-                <th>Era</th>
-                <th>Difficulty</th>
+                <th>{t('ui.gameHistory.date')}</th>
+                <th>{t('ui.gameHistory.result')}</th>
+                <th>{t('ui.gameHistory.you')}</th>
+                <th>{t('ui.gameHistory.bot')}</th>
+                <th>{t('ui.gameHistory.era')}</th>
+                <th>{t('ui.gameHistory.difficulty')}</th>
                 <th></th>
               </tr>
             </thead>
@@ -175,25 +184,25 @@ export default function HistoryScreen({ onClose }: { onClose: () => void }) {
                   <td className="history-pick">
                     <input
                       type="checkbox"
-                      aria-label={`Select the game played on ${r.played_at}`}
+                      aria-label={t('ui.gameHistory.selectOne', { date: r.played_at })}
                       checked={picked.has(r.id)}
                       onChange={() => togglePick(r.id)}
                     />
                   </td>
                   <td>{r.played_at}</td>
-                  <td className={r.won ? 'win' : 'lose'}>{r.won ? 'Win' : 'Loss'}</td>
+                  <td className={r.won ? 'win' : 'lose'}>{r.won ? t('ui.gameHistory.win') : t('ui.gameHistory.loss')}</td>
                   <td>{r.player_score ?? '—'}</td>
                   <td>{r.bot_score}</td>
                   <td>{r.era_reached ?? '—'}</td>
                   <td>
                     {r.difficulty ?? '—'}
-                    {r.source === 'import' && <span className="history-tag">imported</span>}
+                    {r.source === 'import' && <span className="history-tag">{t('ui.gameHistory.imported')}</span>}
                   </td>
                   <td>
                     <button
                       className="history-del"
                       onClick={() => onDelete(r.id)}
-                      title="Delete this game"
+                      title={t('ui.gameHistory.delete')}
                     >
                       🗑
                     </button>

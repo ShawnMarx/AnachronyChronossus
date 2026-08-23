@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { GAMEBRAIN_URL, RULES_FRAME_URL } from './gamebrain';
 import './RulesFrame.css';
+import { useT } from '../i18n/I18nProvider';
 
 /** A single PDF/url resource GameBrain reports via `gb:resources`. */
 interface Resource {
@@ -42,6 +43,7 @@ export default function RulesFrame({
   /** The GameBrain frame URL (defaults to the Chronobot preset). */
   src?: string;
 }) {
+  const t = useT();
   // Lazy: don't load GameBrain until the player first opens the rules.
   const [loaded, setLoaded] = useState(false);
   const everOpened = useRef(false);
@@ -133,18 +135,22 @@ export default function RulesFrame({
   return (
     <div className="rules-frame" style={{ display: open ? 'flex' : 'none' }}>
       <header className="rules-frame-bar">
-        <button className="rules-back" onClick={onBack} title="Return to the game">
-          ◀ Back to Game
+        <button
+          className="rules-back"
+          onClick={onBack}
+          title={t('ui.rulesFrame.backToGameTitle')}
+        >
+          ◀ {t('ui.rulesFrame.backToGame')}
         </button>
 
         {/* Chat · Resources · Split — relayed to the frame via postMessage. */}
-        <div className="rules-seg" role="group" aria-label="Rules view">
+        <div className="rules-seg" role="group" aria-label={t('ui.rulesFrame.viewGroup')}>
           <button
             className={view === 'chat' ? 'on' : ''}
             onClick={showChat}
             aria-pressed={view === 'chat'}
           >
-            Chat
+            {t('ui.rulesFrame.chat')}
           </button>
           <div className="rules-resources">
             <button
@@ -154,7 +160,7 @@ export default function RulesFrame({
               aria-haspopup={hasResources ? 'menu' : undefined}
               aria-expanded={hasResources ? resMenuOpen : undefined}
             >
-              Resources{hasResources ? ' ▾' : ''}
+              {t('ui.rulesFrame.resources')}{hasResources ? ' ▾' : ''}
             </button>
             {resMenuOpen && hasResources && (
               <div className="rules-res-menu" role="menu">
@@ -181,9 +187,9 @@ export default function RulesFrame({
             className={view === 'split' ? 'on' : ''}
             onClick={showSplit}
             aria-pressed={view === 'split'}
-            title="Side-by-side chat + rules"
+            title={t('ui.rulesFrame.splitTitle')}
           >
-            Split
+            {t('ui.rulesFrame.split')}
           </button>
         </div>
 
@@ -193,8 +199,8 @@ export default function RulesFrame({
             <button
               className="home-btn"
               onClick={onHome}
-              title="Back to the home screen"
-              aria-label="Back to the home screen"
+              title={t('ui.rulesFrame.home')}
+              aria-label={t('ui.rulesFrame.home')}
             >
               <img src="/favicon-512.png" alt="" />
             </button>
@@ -206,7 +212,7 @@ export default function RulesFrame({
           ref={frameRef}
           id="gamebrain-frame"
           className="rules-frame-iframe"
-          title="Anachrony rules reference"
+          title={t('ui.rulesFrame.frameTitle')}
           src={src}
         />
       )}
@@ -216,14 +222,15 @@ export default function RulesFrame({
 
 /** The 📖 entry button that opens the rules frame. Placed in the game top bar. */
 export function RulesButton({ onClick }: { onClick: () => void }) {
+  const t = useT();
   return (
     <button
       className="rules-open-btn"
       onClick={onClick}
-      title="Open the rules reference"
-      aria-label="Open the rules reference"
+      title={t('ui.rulesFrame.openTitle')}
+      aria-label={t('ui.rulesFrame.openTitle')}
     >
-      📖 <span className="rules-open-label">Rules</span>
+      📖 <span className="rules-open-label">{t('ui.rulesFrame.open')}</span>
     </button>
   );
 }

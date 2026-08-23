@@ -31,6 +31,8 @@ import {
   MECH_PLACEMENT,
   PASSING_RULE,
   PLAYER_SCORING_RULE,
+  CHRONOBOT_SETUP_RULE_INTRO,
+  CHRONOBOT_SETUP_RULE_BULLETS,
 } from '../engine/rules/chronobotActions';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
 import { PHASE_META, ENDGAME_RULES } from '../phases/phaseMeta';
@@ -70,6 +72,8 @@ export function englishMessages(): Messages {
   put('rule.passing', PASSING_RULE);
   put('rule.playerScoring', PLAYER_SCORING_RULE);
   put('rule.endgame', ENDGAME_RULES);
+  put('rule.chronobotSetup.intro', CHRONOBOT_SETUP_RULE_INTRO);
+  put('rule.chronobotSetup.bullets', CHRONOBOT_SETUP_RULE_BULLETS);
 
   // --- Chronossus rule blocks -----------------------------------------------
   put('rule.blink', BLINK_RULE);

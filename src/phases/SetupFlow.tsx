@@ -1,54 +1,23 @@
 import { useState } from 'react';
 import { Chronobot } from '../engine';
 import RulesBox from './RulesBox';
+import { useT } from '../i18n/I18nProvider';
+import T from '../i18n/Trans';
+import { useRule } from '../i18n/localized';
+import {
+  CHRONOBOT_SETUP_RULE_BULLETS,
+  CHRONOBOT_SETUP_RULE_INTRO,
+} from '../engine/rules/chronobotActions';
 
 const HERO = '/assets/solo/chronobot-hero.jpg';
 
-const FLAVOR =
-  'The Chronobot was sent back from a devastated alternate future with the ' +
-  'objective of finding and eliminating the cause of a war that destroyed ' +
-  'everything. Though created with the best intentions, it has identified ' +
-  'humanity as the real problem—the root of the destruction to come. ' +
-  'Misinterpreting its original task, the Chronobot is now determined to take ' +
-  'over the leadership of all humankind, even if it has to destroy the Paths, ' +
-  'or the Capital itself, to achieve its goal.';
-
-interface DifficultyOption {
-  flag: string;
-  label: string;
-  detail: string;
-}
-
-const DIFFICULTY_OPTIONS: DifficultyOption[] = [
-  {
-    flag: Chronobot.DIFFICULTY_REBOOT_ADVANCE,
-    label: 'Advance off Reboot immediately',
-    detail:
-      'Immediately advance the token when it moves onto the Reboot Action. This ' +
-      'will ensure that it will perform an Action on every turn.',
-  },
-  {
-    flag: Chronobot.DIFFICULTY_NO_LEADER,
-    label: 'Play without your Leader power',
-    detail: 'Play without using your Leader power.',
-  },
-  {
-    flag: Chronobot.DIFFICULTY_BOT_EXTRA_TURN,
-    label: 'One extra Chronobot turn after you pass',
-    detail: 'The Chronobot takes one additional turn after you have passed.',
-  },
-  {
-    flag: Chronobot.DIFFICULTY_MIN_ACTIONS_6,
-    label: 'Raise minimum Actions to 6',
-    detail: "Increase the minimum number of Chronobot's Actions from 3 to 6.",
-  },
-  {
-    flag: Chronobot.DIFFICULTY_HEX_UNAVAILABLE,
-    label: 'Cover the right World Council space',
-    detail:
-      'Base-game variant: cover the right World Council space with a Hex ' +
-      'Unavailable tile. (This constrains your own board — the app changes nothing.)',
-  },
+/** Difficulty options, as flag + the key stem its label/detail live under. */
+const DIFFICULTY_OPTIONS: { flag: string; key: string }[] = [
+  { flag: Chronobot.DIFFICULTY_REBOOT_ADVANCE, key: 'rebootAdvance' },
+  { flag: Chronobot.DIFFICULTY_NO_LEADER, key: 'noLeader' },
+  { flag: Chronobot.DIFFICULTY_BOT_EXTRA_TURN, key: 'botExtraTurn' },
+  { flag: Chronobot.DIFFICULTY_MIN_ACTIONS_6, key: 'minActions6' },
+  { flag: Chronobot.DIFFICULTY_HEX_UNAVAILABLE, key: 'hexUnavailable' },
 ];
 
 /**
@@ -63,6 +32,9 @@ export default function SetupFlow({
   onHome?: () => void;
   onBegin: (difficulty: string[]) => void;
 }) {
+  const t = useT();
+  const setupIntro = useRule('rule.chronobotSetup.intro', CHRONOBOT_SETUP_RULE_INTRO);
+  const setupBullets = useRule('rule.chronobotSetup.bullets', CHRONOBOT_SETUP_RULE_BULLETS);
   const [step, setStep] = useState<'flavor' | 'difficulty' | 'setup'>('flavor');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
@@ -74,14 +46,20 @@ export default function SetupFlow({
       return next;
     });
 
-  const eyebrow =
-    step === 'flavor' ? 'New Game' : step === 'difficulty' ? 'Difficulty' : 'Setup';
-  const title =
+  const eyebrow = t(
     step === 'flavor'
-      ? 'The Chronobot'
+      ? 'ui.setup.eyebrow.new'
       : step === 'difficulty'
-        ? 'Increasing the Difficulty'
-        : 'Setup Instructions';
+        ? 'ui.setup.eyebrow.difficulty'
+        : 'ui.setup.eyebrow.setup',
+  );
+  const title = t(
+    step === 'flavor'
+      ? 'ui.setup.title.flavor'
+      : step === 'difficulty'
+        ? 'ui.setup.title.difficulty'
+        : 'ui.setup.title.setup',
+  );
 
   return (
     <div className="phase-screen">
@@ -91,8 +69,8 @@ export default function SetupFlow({
             <button
               className="home-btn"
               onClick={onHome}
-              title="Back to the home screen"
-              aria-label="Back to the home screen"
+              title={t('ui.setup.home')}
+              aria-label={t('ui.setup.home')}
             >
               <img src="/favicon-512.png" alt="" />
             </button>
@@ -107,17 +85,17 @@ export default function SetupFlow({
           className="phase-hero"
           style={{ backgroundImage: `url(${HERO})` }}
           role="img"
-          aria-label="Chronobot"
+          aria-label={t('ui.setup.heroAlt')}
         />
         <div className="phase-body">
           {step === 'flavor' && (
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                  Continue ▶
+                  {t('ui.setup.continue')} ▶
                 </button>
               </div>
-              <p className="setup-flavor">{FLAVOR}</p>
+              <p className="setup-flavor">{t('ui.setup.flavor')}</p>
             </>
           )}
 
@@ -125,17 +103,13 @@ export default function SetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('flavor')}>
-                  ◀ Back
+                  ◀ {t('ui.setup.back')}
                 </button>
                 <button className="phase-primary" onClick={() => setStep('setup')}>
-                  Continue ▶
+                  {t('ui.setup.continue')} ▶
                 </button>
               </div>
-              <p className="phase-note">
-                Select one or more of these options to increase the difficulty of the
-                solo game against the Chronobot. You can also play with none for the
-                standard game.
-              </p>
+              <p className="phase-note">{t('ui.setup.difficultyNote')}</p>
               <div className="difficulty-list">
                 {DIFFICULTY_OPTIONS.map((o) => (
                   <label
@@ -148,8 +122,8 @@ export default function SetupFlow({
                       onChange={() => toggle(o.flag)}
                     />
                     <span className="difficulty-opt-text">
-                      <b>{o.label}</b>
-                      <span>{o.detail}</span>
+                      <b>{t(`ui.setup.diff.${o.key}.label`)}</b>
+                      <span>{t(`ui.setup.diff.${o.key}.detail`)}</span>
                     </span>
                   </label>
                 ))}
@@ -161,68 +135,38 @@ export default function SetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('difficulty')}>
-                  ◀ Back
+                  ◀ {t('ui.setup.back')}
                 </button>
                 <button className="phase-primary" onClick={() => onBegin([...selected])}>
-                  Begin Era 1 ▶
+                  {t('ui.setup.beginEra1')} ▶
                 </button>
               </div>
               <div className="setup-modified">
-                <h3>Setup for this app</h3>
-                <p>
-                  Set up a 2-player game, with the Chronobot as one of the players.
-                  There’s no need for the Chronobot board.
-                </p>
+                <h3>{t('ui.setup.app.title')}</h3>
+                <p>{t('ui.setup.app.intro')}</p>
                 <ul>
-                  <li>
-                    The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not
-                    receive any Starting Assets or Workers.
-                  </li>
-                  <li>Leave all Endgame Condition cards in the box.</li>
-                  <li>The Chronobot does not use a Focus marker.</li>
-                  <li>
-                    Place the Chronobot’s Banner on the First Player spot; it is the First
-                    Player in the 1st Era. You receive 1 additional Water (for being the
-                    second player).
-                  </li>
-                  <li>You may still choose to use either the “A” or the “B” side of your Player board.</li>
-                  <li>
-                    For a more challenging game, use the variant rule described in the base
-                    game rulebook: cover the right World Council space with a Hex
-                    Unavailable tile.
-                  </li>
+                  {t('ui.setup.app.bullets')
+                    .split('\n')
+                    .map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
                 </ul>
                 <p className="phase-note">
-                  This app tracks <b>all</b> of the Chronobot’s VP for you and explains
-                  each Action’s rules as it takes them. Building VP is counted as tiles
-                  are discarded, rather than placed on the bot’s board.
+                  <T k="ui.setup.app.vpNote" />
                 </p>
               </div>
 
               {/* Verbatim rulebook setup last, under the app's own instructions —
                   reference material sits below what the player has to act on. */}
-              <RulesBox label="Setup" showPreamble>
+              <RulesBox label={t('ui.setup.rulesBoxLabel')} showPreamble>
+                <p>{setupIntro}</p>
                 <p>
-                  Set up a 2-player game, with the Chronobot as one of the players. Use
-                  the Chronobot side of the Solo board. In addition to using the
-                  Chronobot’s side of the Solo board, the following changes need to be
-                  made during setup:
-                </p>
-                <p>
-                  • The Chronobot receives its 6 Exosuits and 8 Warp tiles; it does not
-                  receive any Starting Assets or Workers.
-                  <br />• Leave all Endgame Condition cards in the box.
-                  <br />• Place the Chronobot board next to the Main board, and place the
-                  4 Command tokens on the 4 marked positions. The Chronobot does not use a
-                  Focus marker.
-                  <br />• Place the Chronobot’s Banner on the First Player spot; it is the
-                  First Player in the 1st Era. You receive 1 additional Water (for being
-                  the second player).
-                  <br />• You may still choose to use either the “A” or the “B” side of
-                  your Player board.
-                  <br />• For a more challenging game, use the variant rule described in
-                  the base game rulebook: cover the right World Council space with a Hex
-                  Unavailable tile.
+                  {setupBullets.split('\n').map((line, i) => (
+                    <span key={i}>
+                      {i > 0 && <br />}
+                      {line}
+                    </span>
+                  ))}
                 </p>
               </RulesBox>
             </>
