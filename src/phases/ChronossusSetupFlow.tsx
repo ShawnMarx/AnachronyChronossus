@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import RulesBox from './RulesBox';
 import { useTiles } from '../i18n/localized';
+import { useT } from '../i18n/I18nProvider';
+import { UI_STRINGS } from '../i18n/uiStrings';
 import {
   getMode,
   DIFFICULTY_SWAP_TILES,
@@ -29,95 +31,25 @@ export function modeDifficultyFor(modeId: string | undefined): DifficultyOption[
 
 const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
   fractures: [
-    {
-      flag: DIFFICULTY_FRACTURES_C14,
-      label: 'Fractures: replace C04 with C14',
-      detail: 'C14 is a more difficult tile — Assimilate, but it also gains 1 additional Flux Core.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX,
-      label: 'Fractures: extra starting Flux Cores',
-      detail:
-        'Increase the number of Flux Cores in the Flux Pool by 1/2/3 at the beginning of ' +
-        'the game — a fuller pool means it Blinks more often.',
-      values: [1, 2, 3],
-    },
-    {
-      flag: Chronossus.DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP,
-      label: 'Fractures: leftover Flux Cores score',
-      detail:
-        'Each leftover Flux Core in the Flux Pool at the end of the game is worth 1 VP to ' +
-        'the Chronossus.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_FRACTURES_PLAYER_GLITCH,
-      label: 'Fractures: roll a starting Glitch for yourself',
-      detail:
-        'Roll the Glitch die after setup and place the rolled Glitch for yourself, in ' +
-        'addition to the two starting Glitches from the Fractures of Time rules.',
-    },
+    { flag: DIFFICULTY_FRACTURES_C14, key: 'fracturesC14' },
+    { flag: Chronossus.DIFFICULTY_FRACTURES_EXTRA_FLUX, key: 'fracturesExtraFlux', values: [1, 2, 3] },
+    { flag: Chronossus.DIFFICULTY_FRACTURES_LEFTOVER_FLUX_VP, key: 'fracturesLeftoverFluxVp' },
+    { flag: Chronossus.DIFFICULTY_FRACTURES_PLAYER_GLITCH, key: 'fracturesPlayerGlitch' },
   ],
   guardians: [
-    {
-      flag: Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP,
-      label: 'Guardians: Acquire Guardian scores 2 VP post-Impact',
-      detail:
-        'After the Impact the Chronossus can no longer acquire Guardians. Instead of the ' +
-        'usual Failed Action, it scores 2 VPs when it resolves the Acquire Guardian Action.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_GUARDIANS_START_1,
-      label: 'Guardians: it starts the game with 1 Guardian',
-      detail:
-        'The Chronossus starts with 1 Guardian — place one of its Path markers on an empty ' +
-        'Guardian board slot at setup, and give it a Guardian.',
-    },
+    { flag: Chronossus.DIFFICULTY_GUARDIANS_POSTIMPACT_2VP, key: 'guardiansPostimpact2vp' },
+    { flag: Chronossus.DIFFICULTY_GUARDIANS_START_1, key: 'guardiansStart1' },
   ],
   pioneers: [
-    {
-      flag: Chronossus.DIFFICULTY_PIONEERS_BOARD_B,
-      label: 'Pioneers: flip its Exosuit Upgrade board to the B side',
-      detail:
-        'The Chronossus starts with a Power value of 3 instead of 2, and each VP token on ' +
-        'its Upgrade board is worth 3 Power instead of 2.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_PIONEERS_VP_TOKENS_COUNT,
-      label: 'Pioneers: VP tokens on the Upgrade board count as VP',
-      detail:
-        'By default the VP tokens it places when it cannot upgrade a Resource add Power ' +
-        'but are not worth VP. With this on, each one also scores 1 VP at the end.',
-    },
+    { flag: Chronossus.DIFFICULTY_PIONEERS_BOARD_B, key: 'pioneersBoardB' },
+    { flag: Chronossus.DIFFICULTY_PIONEERS_VP_TOKENS_COUNT, key: 'pioneersVpTokensCount' },
   ],
   doomsday: [
-    {
-      flag: Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED,
-      label: 'Doomsday: play without the Planned Experiments variant',
-      detail:
-        'By default the Level 2 Experiment stack sits face up and a claimed Experiment is ' +
-        'replaced from it immediately. Without the variant the stack is face down and Level 2 ' +
-        'Experiments are dealt under the Timeline in the Preparation phase instead — the ' +
-        'rulebook suggests keeping the variant on for your first few games.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS,
-      label: 'Doomsday: it starts with Path markers on future Experiments',
-      detail:
-        'Place 1/2/3 of the Chronossus’s Path markers on future Experiments during setup. ' +
-        'They become available to it once they are in the present, so it can execute an ' +
-        'Experiment on its very first Experiment Action.',
-      values: [1, 2, 3],
-    },
+    { flag: Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED, key: 'doomsdayNoPlanned' },
+    { flag: Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS, key: 'doomsdaySeedMarkers', values: [1, 2, 3] },
   ],
   hypersync: [
-    {
-      flag: DIFFICULTY_HYPERSYNC_TARGETED,
-      label: 'Hypersync: take your oldest tile’s space (no random roll)',
-      detail:
-        'Instead of randomly selecting a Hypersync Action space to take, the Chronossus ' +
-        'takes the one corresponding to one of your pending Hypersync tiles. If you have ' +
-        'more than one, it takes the one furthest in the past.',
-    },
+    { flag: DIFFICULTY_HYPERSYNC_TARGETED, key: 'hypersyncTargeted' },
   ],
 };
 
@@ -190,24 +122,11 @@ const EXTRA_MODULES: ExtraModuleConfig[] = [
  *  "Increasing the Difficulty" bullets — only Alternate Timelines has one). */
 const EXTRA_MODULE_DIFFICULTY: Record<string, DifficultyOption[]> = {
   [Chronossus.EXTRA_MODULE_QUANTUM_LOOPS]: [
-    {
-      flag: Chronossus.DIFFICULTY_QL_REMOVE_ON_5,
-      label: 'Quantum Loops: also remove a card on a roll of 5',
-      detail:
-        'The Warp Phase check removes a Quantum Loop card on a roll of 4 or 5, not just a 4.',
-    },
-    {
-      flag: Chronossus.DIFFICULTY_QL_2VP,
-      label: 'Quantum Loops: 2 VP per card removed',
-      detail: 'When removing a Quantum Loop card, the Chronossus receives 2 VPs.',
-    },
+    { flag: Chronossus.DIFFICULTY_QL_REMOVE_ON_5, key: 'qlRemoveOn5' },
+    { flag: Chronossus.DIFFICULTY_QL_2VP, key: 'ql2vp' },
   ],
   [Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES]: [
-    {
-      flag: Chronossus.DIFFICULTY_ALT_TIMELINES_3VP,
-      label: 'Alternate Timelines: 3 VP per positive effect',
-      detail: 'The Chronossus scores 3 VPs per positive effect instead of 2.',
-    },
+    { flag: Chronossus.DIFFICULTY_ALT_TIMELINES_3VP, key: 'altTimelines3vp' },
   ],
 };
 
@@ -217,72 +136,26 @@ const DIFFICULTY_WORLD_COUNCIL = 'chronossus-hex-unavailable';
 
 interface DifficultyOption {
   flag: string;
-  label: string;
-  detail: string;
+  /**
+   * Key stem under `ui.cxSetup.diff.*` for this option's label and detail. The English
+   * used to live here; it moved to the locale file so a translation can reach it.
+   */
+  key: string;
   /** Sub-selector choices (e.g. [1,2,3]) for options with a numeric intensity. */
   values?: number[];
 }
 // Step 3 — the base-game Chronossus difficulty options (Solo Opponents p. 10),
 // plus the Chronobot's World Council variant as the last item.
 const DIFFICULTY_OPTIONS: DifficultyOption[] = [
-  {
-    flag: DIFFICULTY_TILES_B_SIDE,
-    label: 'Flip Action tiles to their B side',
-    detail: 'Flip some or all of the Action tiles to their B side (pick which below).',
-  },
-  {
-    flag: DIFFICULTY_SWAP_TILES,
-    label: 'Swap Action tiles between spaces',
-    detail: 'Swap the Action tiles between Slot I and Slot III (the two marked spaces).',
-  },
-  {
-    flag: Chronossus.DIFFICULTY_EXTRA_ENERGY,
-    label: 'Extra starting Energy Cores',
-    detail:
-      'Increase the number of Energy Cores by 1/2/3 in the Energy Pool at the ' +
-      'beginning of the game.',
-    values: [1, 2, 3],
-  },
-  {
-    flag: Chronossus.DIFFICULTY_EXTRA_POWERUP,
-    label: 'One extra powered Exosuit each Era',
-    detail:
-      'The Chronossus powers up one additional Exosuit each Era for free. If this ' +
-      'would exceed its maximum number of Exosuits, it gains 2 VPs instead for each ' +
-      'excess Energy Core drawn (those Energy Cores are still removed from the game).',
-  },
-  {
-    flag: Chronossus.DIFFICULTY_LEFTOVER_ENERGY_VP,
-    label: 'Leftover Energy Cores score VP',
-    detail:
-      'Each leftover (non-exhausted) Energy Core in the Energy Pool at the end of ' +
-      'the game is worth 1 VP to the Chronossus.',
-  },
-  {
-    flag: Chronossus.DIFFICULTY_FEWER_OBJECTIVES,
-    label: 'Fewer (or no) Solo Objectives',
-    detail: 'Play with fewer (or no) Solo Objectives.',
-    values: [0, 1, 2],
-  },
-  {
-    flag: Chronossus.DIFFICULTY_FAILED_ACTION_VP,
-    label: 'Failed Actions score VP',
-    detail: 'The Chronossus gains 2 VPs for each Failed Action.',
-  },
-  {
-    flag: Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE,
-    label: 'Research takes a new Breakthrough shape',
-    detail:
-      'When taking a Research Action, the Chronossus takes a Breakthrough shape it ' +
-      'does not already possess.',
-  },
-  {
-    flag: DIFFICULTY_WORLD_COUNCIL,
-    label: 'Cover the right World Council space',
-    detail:
-      'For a more challenging game, cover the right World Council space with a Hex ' +
-      'Unavailable tile. (This constrains your own board — the app changes nothing.)',
-  },
+  { flag: DIFFICULTY_TILES_B_SIDE, key: 'tilesBSide' },
+  { flag: DIFFICULTY_SWAP_TILES, key: 'swapTiles' },
+  { flag: Chronossus.DIFFICULTY_EXTRA_ENERGY, key: 'extraEnergy', values: [1, 2, 3] },
+  { flag: Chronossus.DIFFICULTY_EXTRA_POWERUP, key: 'extraPowerup' },
+  { flag: Chronossus.DIFFICULTY_LEFTOVER_ENERGY_VP, key: 'leftoverEnergyVp' },
+  { flag: Chronossus.DIFFICULTY_FEWER_OBJECTIVES, key: 'fewerObjectives', values: [0, 1, 2] },
+  { flag: Chronossus.DIFFICULTY_FAILED_ACTION_VP, key: 'failedActionVp' },
+  { flag: Chronossus.DIFFICULTY_RESEARCH_NEW_SHAPE, key: 'researchNewShape' },
+  { flag: DIFFICULTY_WORLD_COUNCIL, key: 'worldCouncil' },
 ];
 
 /**
@@ -293,6 +166,12 @@ const DIFFICULTY_OPTIONS: DifficultyOption[] = [
 export function chronossusDifficultyLabel(
   flag: string,
   difficultyValues?: Record<string, number>,
+  /**
+   * Optional translator. This is a pure helper — the share text and score summary call it
+   * outside React — so it cannot use a hook. A component passes `useT()`; anything else
+   * gets English, which is also what a persisted string should keep.
+   */
+  translate?: (key: string) => string,
 ): string {
   const all = [
     ...DIFFICULTY_OPTIONS,
@@ -302,7 +181,14 @@ export function chronossusDifficultyLabel(
   const found = all.find((o) => o.flag === flag);
   const value = difficultyValues?.[flag];
   const suffix = found?.values && value != null ? ` (${value})` : '';
-  if (found) return found.label + suffix;
+  if (found) {
+    const key = `ui.cxSetup.diff.${found.key}.label`;
+    const label = translate?.(key);
+    // UI_STRINGS is the English source of truth for these keys, so the pure path still
+    // returns real text rather than a bare key.
+    const english = UI_STRINGS[key.replace(/^ui\./, '') as keyof typeof UI_STRINGS];
+    return (label && label !== key ? label : (english ?? found.key)) + suffix;
+  }
   // Fallback: prettify an unknown flag ("chronossus-extra-energy" → "Extra energy").
   const s = flag.replace(/^chronossus-/, '').replace(/-/g, ' ');
   return s.charAt(0).toUpperCase() + s.slice(1) + suffix;
@@ -358,6 +244,7 @@ export default function ChronossusSetupFlow({
   // The tile catalog in the chosen language (the A/B flip picker shows each tile's
   // verbatim rule text). Hoisted here because the picker renders inside a map.
   const tiles = useTiles();
+  const t = useT();
   const [step, setStep] = useState<Step>('intro');
   const [moduleId, setModuleId] = useState<string>('base');
   const [extraModules, setExtraModules] = useState<Set<string>>(new Set());
@@ -537,26 +424,7 @@ export default function ChronossusSetupFlow({
                     can change this later in the ⚙ menu.
                   </p>
                   <div className="difficulty-list">
-                    {(
-                      [
-                        {
-                          id: 'virtual' as const,
-                          label: 'Its own deck (recommended)',
-                          detail:
-                            'The app keeps its own shuffled copy of both Adventure decks, ' +
-                            'draws for the Chronossus and shows you the card. Your physical ' +
-                            'decks are never touched, so the bot can’t deplete or reorder them.',
-                        },
-                        {
-                          id: 'shared' as const,
-                          label: 'Your physical decks',
-                          detail:
-                            'The Chronossus draws from the same decks you do. The app tells ' +
-                            'you its Power and which deck to draw 2 cards from, and you tell ' +
-                            'it which cards came up.',
-                        },
-                      ]
-                    ).map((o) => (
+                    {([{ id: 'virtual' as const }, { id: 'shared' as const }]).map((o) => (
                       <label
                         key={o.id}
                         className={`difficulty-opt ${adventureDeckMode === o.id ? 'on' : ''}`}
@@ -568,8 +436,8 @@ export default function ChronossusSetupFlow({
                           onChange={() => setAdventureDeckMode(o.id)}
                         />
                         <span className="difficulty-opt-text">
-                          <b>{o.label}</b>
-                          <span>{o.detail}</span>
+                          <b>{t(`ui.cxSetup.adventureDeck.${o.id}.label`)}</b>
+                          <span>{t(`ui.cxSetup.adventureDeck.${o.id}.detail`)}</span>
                         </span>
                       </label>
                     ))}
@@ -741,8 +609,8 @@ export default function ChronossusSetupFlow({
                             }
                           />
                           <span className="difficulty-opt-text">
-                            <b>{o.label}</b>
-                            <span>{o.detail}</span>
+                            <b>{t(`ui.cxSetup.diff.${o.key}.label`)}</b>
+                            <span>{t(`ui.cxSetup.diff.${o.key}.detail`)}</span>
                           </span>
                         </label>
 
