@@ -22,11 +22,58 @@
 // would believe they had reviewed everything.
 
 import { chromium } from 'playwright';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const ROOT = new URL('.', import.meta.url).pathname;
 const LOCALES = join(ROOT, 'src/i18n/locales');
+
+// --- `--pseudo`: a locale you can judge without speaking the language ----------
+//
+// Pseudolocalization. Every English string is accented so it stays readable, padded ~40%
+// longer, and wrapped in brackets. Nothing needs translating and no language knowledge is
+// required — you just LOOK at the app and three classes of bug are obvious on sight:
+//
+//   * a string still in plain English  -> it is hard-coded and no locale file can reach it
+//   * text overflowing or truncated    -> the layout cannot take a longer language
+//   * a sentence broken across brackets-> it was concatenated in code, so word order is
+//                                         frozen and a translator cannot fix it
+//
+// German runs 10-35% longer than English, so the padding is a realistic worst case rather
+// than a stunt. This is the run to do BEFORE handing a file to a translator.
+if (process.argv.includes('--pseudo')) {
+  const en = JSON.parse(readFileSync(join(LOCALES, 'en.json'), 'utf8'));
+  const MAP = {
+    a: 'á', b: 'ƀ', c: 'ç', d: 'ð', e: 'é', f: 'ƒ', g: 'ĝ', h: 'ĥ', i: 'í', j: 'ĵ', k: 'ķ',
+    l: 'ĺ', m: 'ɱ', n: 'ñ', o: 'ó', p: 'ƥ', q: 'ʠ', r: 'ŕ', s: 'š', t: 'ŧ', u: 'ú', v: 'ṽ',
+    w: 'ŵ', x: 'ẋ', y: 'ý', z: 'ž',
+    A: 'Á', B: 'Ɓ', C: 'Ç', D: 'Ð', E: 'É', F: 'Ƒ', G: 'Ĝ', H: 'Ĥ', I: 'Í', J: 'Ĵ', K: 'Ķ',
+    L: 'Ĺ', M: 'Ϻ', N: 'Ñ', O: 'Ó', P: 'Ƥ', Q: 'Ǫ', R: 'Ŕ', S: 'Š', T: 'Ŧ', U: 'Ú', V: 'Ṽ',
+    W: 'Ŵ', X: 'Ẋ', Y: 'Ý', Z: 'Ž',
+  };
+  // Placeholders, markup and link targets must survive untouched or the app breaks for a
+  // reason that has nothing to do with what we are testing.
+  const KEEP = /(\{\w+\}|\*\*|\*|\[|\]\([\w.-]+\)|\n)/;
+  const accent = (s) =>
+    s.split(KEEP).map((part, i) => (i % 2 ? part : [...part].map((c) => MAP[c] ?? c).join('')))
+      .join('');
+  // The padding must be BREAKABLE. A solid run of one character is a single unwrappable
+  // "word" wider than any container, so it manufactures overflow that no real language
+  // would cause — it reported the landing page as scrolling sideways when nothing was
+  // wrong. Short space-separated groups model a long language honestly.
+  const PAD = 'ẋẋẋẋ ẋẋẋ ẋẋẋẋẋ ẋẋẋ ẋẋẋẋ ẋẋẋẋẋẋ ẋẋẋ ẋẋẋẋ ẋẋẋẋẋ ẋẋẋ ẋẋẋẋ ẋẋẋẋẋẋ ';
+  const out = { $locale: { code: 'xx', name: 'Ƥšéúðó', officialRulebook: true } };
+  for (const [k, v] of Object.entries(en)) {
+    if (k === '$locale') continue;
+    const grow = Number(process.env.PSEUDO_PAD ?? 0.4);
+    const pad = PAD.repeat(8).slice(0, Math.max(1, Math.round(String(v).length * grow)));
+    out[k] = `⟦${accent(String(v))} ${pad}⟧`;
+  }
+  writeFileSync(join(LOCALES, 'xx.json'), JSON.stringify(out, null, 2) + '\n');
+  console.log(`wrote src/i18n/locales/xx.json (${Object.keys(out).length - 1} strings, +40% length)`);
+  console.log('now:  LANG_CODE=xx MODES=all node pw-i18n-review.mjs   (then delete xx.json)');
+  process.exit(0);
+}
 
 // --- `--markers`: write a locale whose values are their own keys ---------------
 if (process.argv.includes('--markers')) {
@@ -94,6 +141,40 @@ async function capture(page, dir, n, label) {
   const id = `${String(n).padStart(3, '0')}-${label.replace(/\W+/g, '-').slice(0, 60)}`;
   writeFileSync(join(dir, `${id}.txt`), await page.locator('body').innerText());
   await page.screenshot({ path: join(dir, `${id}.png`) });
+
+  // Layout faults a longer language causes. Reported rather than assumed: an overflowing
+  // button or a clipped line is the commonest thing a translation breaks, and it is
+  // invisible in the JSON. NOTE the evaluate is NOT wrapped in a silent catch — a detector
+  // that returns [] when it throws reports "none" for every screen, which reads exactly
+  // like a clean run.
+  // FAULT_SELFTEST forces every button to nowrap, which MUST make the detector report
+  // overflows. Without it, "layout faults: none" is indistinguishable from a detector
+  // that silently does nothing — which is exactly what happened the first time this was
+  // written (the code had failed to splice in at all, and every run said "none").
+  if (process.env.FAULT_SELFTEST) {
+    await page.addStyleTag({ content: 'button{white-space:nowrap!important;max-width:120px}' }).catch(() => {});
+    await page.waitForTimeout(80);
+  }
+  const faults = await page.evaluate(() => {
+    const out = [];
+    const name = (el) => `${el.tagName}${typeof el.className === 'string' && el.className ? '.' + el.className.trim().split(/\s+/).join('.') : ''}`;
+    for (const el of document.querySelectorAll('button, a, h1, h2, h3, th, td, label, span, p, li')) {
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const txt = (el.textContent || '').trim();
+      if (!txt || el.children.length > 2) continue;
+      const overX = el.scrollWidth - el.clientWidth > 1;
+      const overY = el.scrollHeight - el.clientHeight > 1;
+      const hidden = cs.overflow !== 'visible' && cs.overflow !== 'auto' && cs.overflow !== 'scroll';
+      if ((overX || overY) && hidden) out.push(`CLIPPED ${name(el)} — "${txt.slice(0, 60)}"`);
+      else if (overX && cs.whiteSpace.startsWith('nowrap')) out.push(`OVERFLOW ${name(el)} — "${txt.slice(0, 60)}"`);
+    }
+    // Horizontal page scroll is a layout break outright (see CLAUDE.md's responsive rule).
+    const sw = document.documentElement.scrollWidth;
+    if (sw > window.innerWidth + 1) out.push(`PAGE SCROLLS SIDEWAYS (${sw}px > ${window.innerWidth}px)`);
+    return [...new Set(out)];
+  });
+  if (faults.length) writeFileSync(join(dir, `${id}.faults`), faults.join('\n'));
   return id;
 }
 
@@ -109,6 +190,20 @@ async function closeDialog(page) {
   if (await x.count()) await x.click({ timeout: 2000 }).catch(() => {});
   else await page.keyboard.press('Escape').catch(() => {});
   await page.waitForTimeout(150);
+}
+
+/**
+ * The "go forward" control on whatever screen we are on, found STRUCTURALLY.
+ *
+ * The first version of this matched button text (`/Continue|Begin|Next/`) and therefore
+ * only worked in English — it drove the pseudolocale run into a wall on the very first
+ * screen. Classes do not change with language, so they are the selector of record and the
+ * text regex is a last resort.
+ */
+function advanceControl(page) {
+  return page
+    .locator('.phase-primary, .setup-actions .phase-primary, button.take-bot-action')
+    .first();
 }
 
 /** Walk one bot into the Action Rounds board, capturing every screen on the way. */
@@ -136,7 +231,10 @@ async function walkIn(page, dir, state, tag, name, mode) {
       }
     }
     await capture(page, dir, ++state.n, `${tag}-setup-${i}`);
-    const next = page.getByRole('button', { name: /Continue|Roll|Begin|Next|Draw|Place|Start/i }).first();
+    let next = advanceControl(page);
+    if (!(await next.count())) {
+      next = page.getByRole('button', { name: /Continue|Roll|Begin|Next|Draw|Place|Start/i }).first();
+    }
     if (!(await next.count())) break;
     await next.click({ timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(320);
@@ -150,13 +248,14 @@ async function walkIn(page, dir, state, tag, name, mode) {
 async function enableDebug(page) {
   await page.locator('.gear-btn').first().click({ timeout: 5000 }).catch(() => {});
   await page.waitForTimeout(300);
+  // The Debug row is the first menuitemcheckbox with a switch in it — matching its label
+  // would be language-dependent, which is exactly what this harness must not be.
   const items = page.getByRole('menuitemcheckbox');
   for (let i = 0; i < (await items.count()); i++) {
-    const label = (await items.nth(i).innerText()).toLowerCase();
-    if (/debug|settings\.debugmode/.test(label)) {
-      if ((await items.nth(i).getAttribute('aria-checked')) !== 'true') await items.nth(i).click().catch(() => {});
-      break;
-    }
+    const item = items.nth(i);
+    if (!(await item.locator('.sw').count())) continue;
+    if ((await item.getAttribute('aria-checked')) !== 'true') await item.click().catch(() => {});
+    break;
   }
   await page.keyboard.press('Escape').catch(() => {});
   await page.waitForTimeout(300);
@@ -176,7 +275,7 @@ async function sweepPhases(page, dir, state, name) {
     await clearModals(page);
     await capture(page, dir, ++state.n, `${name}-phase-${labels[i]}`);
     // A phase screen can hide a second screenful behind its own Continue.
-    const more = page.getByRole('button', { name: /Continue|Roll|Draw/i }).first();
+    const more = advanceControl(page);
     if (await more.count()) {
       await more.click({ timeout: 2500 }).catch(() => {});
       await page.waitForTimeout(350);
@@ -224,10 +323,15 @@ async function sweepTiles(page, dir, state, name) {
     if (!(await page.locator('.detail-panel, .cx-tile-dialog').count())) continue;
     await capture(page, dir, ++state.n, `${name}-${code}`);
     for (let st = 0; st < 3; st++) {
-      const step = page
-        .locator('.detail-panel, .cx-tile-dialog')
-        .getByRole('button', { name: /Confirm|Cannot|Continue|Roll|Yes|No/i })
+      let step = page
+        .locator('.detail-panel .start-turn, .detail-panel .gate-yes, .cx-tile-dialog .start-turn')
         .first();
+      if (!(await step.count())) {
+        step = page
+          .locator('.detail-panel, .cx-tile-dialog')
+          .getByRole('button', { name: /Confirm|Cannot|Continue|Roll|Yes|No/i })
+          .first();
+      }
       if (!(await step.count())) break;
       await step.click({ timeout: 2500 }).catch(() => {});
       await page.waitForTimeout(240);
@@ -253,10 +357,13 @@ async function sweepActions(page, dir, state, name) {
     await capture(page, dir, ++state.n, `${name}-action-${title}`);
     // Step the dialog forward a few times — each step is different wording.
     for (let s = 0; s < 4; s++) {
-      const step = page
-        .locator('.detail-panel')
-        .getByRole('button', { name: /Confirm|Cannot|Continue|Roll|Yes|No|Open|Available/i })
-        .first();
+      let step = page.locator('.detail-panel .start-turn, .detail-panel .gate-yes, .detail-panel .phase-primary').first();
+      if (!(await step.count())) {
+        step = page
+          .locator('.detail-panel')
+          .getByRole('button', { name: /Confirm|Cannot|Continue|Roll|Yes|No|Open|Available/i })
+          .first();
+      }
       if (!(await step.count())) break;
       await step.click({ timeout: 2500 }).catch(() => {});
       await page.waitForTimeout(250);
@@ -325,7 +432,6 @@ if (COVERAGE) {
   const all = JSON.parse(readFileSync(join(LOCALES, 'en.json'), 'utf8'));
   const keys = Object.keys(all).filter((k) => k !== '$locale');
   const seen = new Set();
-  const { readdirSync } = await import('node:fs');
   for (const f of readdirSync(tr.dir).filter((f) => f.endsWith('.txt'))) {
     for (const m of readFileSync(join(tr.dir, f), 'utf8').matchAll(/⟦([^⟧]+)⟧/g)) seen.add(m[1]);
   }
@@ -353,8 +459,48 @@ if (COVERAGE) {
   console.log(`coverage: ${seen.size}/${keys.length} keys -> ${join(OUT, 'coverage.md')}`);
 }
 
+// --- text that never went through the locale file ---------------------------------
+if (/^xx/.test(LANG)) {
+  const seen = new Map();
+  for (const f of readdirSync(tr.dir).filter((x) => x.endsWith('.txt'))) {
+    const body = readFileSync(join(tr.dir, f), 'utf8');
+    // Strip the pseudolocalized runs, then look at what English is left.
+    for (const line of body.replace(/⟦[^⟧]*⟧/g, '').split('\n')) {
+      const t = line.trim();
+      if (!t || t.length < 4) continue;
+      if (!/[A-Za-z]{3}/.test(t)) continue; // numbers, icons, dice faces
+      if (!seen.has(t)) seen.set(t, f.replace('.txt', ''));
+    }
+  }
+  const rows = [...seen].sort((a, b) => a[0].localeCompare(b[0]));
+  writeFileSync(join(OUT, 'untranslated.md'),
+    `# Text still in English under the pseudolocale\n\n` +
+    `Every translated string renders wrapped in \`⟦ ⟧\`. These lines were NOT, so each is\n` +
+    `either hard-coded in the JSX (no locale file can reach it) or genuine dynamic data\n` +
+    `(a player name, a number, a tile code). Work down the list and move the real strings\n` +
+    `into \`uiStrings.ts\`.\n\n` +
+    `**${rows.length} distinct lines.**\n\n` +
+    rows.map(([t, where]) => `- \`${t.replace(/`/g, "'").slice(0, 110)}\`  _(${where})_`).join('\n') + '\n');
+  console.log(`untranslated text: ${rows.length} distinct lines -> ${join(OUT, 'untranslated.md')}`);
+}
+
+// --- layout faults ----------------------------------------------------------------
+const faultFiles = readdirSync(tr.dir).filter((f) => f.endsWith('.faults'));
+const faultLines = faultFiles.flatMap((f) =>
+  readFileSync(join(tr.dir, f), 'utf8').split('\n').filter(Boolean).map((l) => `${f.replace('.faults','')}: ${l}`),
+);
+if (faultLines.length) {
+  writeFileSync(join(OUT, 'layout-faults.md'),
+    `# Layout faults in \`${LANG}\`\n\n` +
+    `Text that overflows, is clipped, or scrolls the page sideways. Each is a place the\n` +
+    `layout cannot take a longer language — fix the CSS, not the translation.\n\n` +
+    faultLines.map((l) => `- ${l}`).join('\n') + '\n');
+  console.log(`layout faults: ${faultLines.length} -> ${join(OUT, 'layout-faults.md')}`);
+} else {
+  console.log('layout faults: none');
+}
+
 // --- side-by-side report ----------------------------------------------------------
-const { readdirSync } = await import('node:fs');
 const shots = readdirSync(en.dir).filter((f) => f.endsWith('.png')).sort();
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
 const rows = shots
@@ -363,7 +509,12 @@ const rows = shots
     const other = existsSync(join(tr.dir, f)) ? f : null;
     const enTxt = existsSync(join(en.dir, `${base}.txt`)) ? readFileSync(join(en.dir, `${base}.txt`), 'utf8') : '';
     const trTxt = other && existsSync(join(tr.dir, `${base}.txt`)) ? readFileSync(join(tr.dir, `${base}.txt`), 'utf8') : '';
+    let faults = '';
+    try {
+      faults = readFileSync(join(tr.dir, `${base}.faults`), 'utf8').trim();
+    } catch { /* no faults on this screen */ }
     return `<section><h2>${esc(base.replace(/^\d+-/, ''))}</h2>
+  ${faults ? `<ul class="faults">${faults.split('\n').map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
   <div class="pair">
     <figure><figcaption>English</figcaption><img src="en/${f}" loading="lazy"><pre>${esc(enTxt)}</pre></figure>
     <figure><figcaption>${esc(LANG)}</figcaption>${other ? `<img src="${esc(LANG)}/${f}" loading="lazy">` : '<p class="missing">not captured</p>'}<pre>${esc(trTxt)}</pre></figure>
@@ -384,6 +535,8 @@ writeFileSync(
  img{width:100%;border:1px solid #8884;border-radius:6px}
  pre{white-space:pre-wrap;font-size:12px;background:#8881;padding:.6rem;border-radius:6px;max-height:22em;overflow:auto}
  .missing{color:#c33}
+ .faults{margin:.2rem 0 .8rem;padding:.5rem .5rem .5rem 1.6rem;background:#c3330f18;border-left:3px solid #c33;border-radius:4px}
+ .faults li{color:#c33;font-size:12px;font-family:ui-monospace,monospace}
 </style>
 <h1>Translation review — ${esc(LANG)}</h1>
 <p class="sub">${shots.length} screens, English vs ${esc(LANG)}. Screenshots show layout (watch for text that overflows its box); the text below each is what the app rendered.</p>

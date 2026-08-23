@@ -119,7 +119,10 @@
   text-align: left;
   padding: 0;
   gap: 0;
-  overflow: hidden;
+  /* `overflow: hidden` used to live here for the art's rounded corners, but it also
+     CLIPPED the card's own text: a description ~40% longer than the English one (German,
+     say) simply vanished past the bottom edge. The clipping belongs on the art, which is
+     the only child that needs it — caught by the pseudolocale run, 2026-08-23. */
   border-radius: 16px;
   border: 1px solid rgba(139, 92, 246, 0.35);
   background: #140f22;
@@ -141,6 +144,8 @@
   position: relative;
   flex: 0 0 42%;
   min-height: 200px;
+  overflow: hidden;
+  border-radius: 16px 0 0 16px;
 }
 .bot-card-art img {
   width: 100%;
@@ -168,6 +173,9 @@
 
 .bot-card-body {
   flex: 1 1 auto;
+  /* A flex item defaults to min-width:auto, so long unbroken text can push the card wider
+     than its grid and scroll the page sideways. */
+  min-width: 0;
   padding: 1.1rem 1.3rem;
   display: flex;
   flex-direction: column;

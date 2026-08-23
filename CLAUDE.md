@@ -198,6 +198,7 @@ SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THR
 SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 screens: text + layout geometry + screenshot
 node pw-i18n-diff.mjs <before> <after>   # compare two captures (text/layout strict, pixels budgeted)
 node pw-i18n-dropin.mjs                  # proves a dropped-in locale file works, then removes it
+node pw-i18n-review.mjs --pseudo         # fake +40% accented locale: finds hard-coded + clipped text
 LANG_CODE=de MODES=all node pw-i18n-review.mjs   # EN-vs-language capture of every screen + report.html
 LANG_CODE=de MODES=all SIDES=B node pw-i18n-review.mjs   # again for the B-side tiles
 COVERAGE=1 LANG_CODE=zz node pw-i18n-review.mjs  # with --markers first: which keys a run never showed
@@ -473,6 +474,14 @@ Keep it that way; a change that requires a second edit to add a language is a re
   why `pw-i18n-snapshot.mjs` also records **layout geometry** (every element and text-run box,
   quantised to 0.5px) and `pw-i18n-diff.mjs` compares text and layout strictly while budgeting
   pixels. A layout regression moves a box and fails; an antialiasing shift does not.
+- **The pseudolocale is how you test a translation you cannot read.** `--pseudo` writes a
+  locale that is accented, ~40% longer and bracketed; the run then reports `untranslated.md`
+  (text still in English = hard-coded, unreachable by any locale file) and
+  `layout-faults.md` (clipped / overflowing / sideways-scrolling). Two traps learned the
+  hard way: the padding must be **breakable** — a solid run of one character is an
+  unwrappable "word" that manufactures overflow no real language causes — and the harness
+  must navigate by **class, not by English button text**, or it cannot drive the very app
+  it is testing. `FAULT_SELFTEST=1` proves the detector can still fire.
 - **`pw-i18n-review.mjs` is how a translator sees their work.** It captures every reachable
   screen in English and the target language, side by side, into `report.html` — the text AND
   a screenshot, because the commonest translation bug is a longer string overflowing its

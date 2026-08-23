@@ -84,6 +84,31 @@ the most common translation bug, and it is invisible in a spreadsheet).
 - `LANG_CODE` is your file's code. Run it before you have translated much: untranslated
   keys show their English fallback, so the report doubles as a checklist.
 
+### Before you start: the pseudolocale run
+
+You do not need a translator — or any language — to find most of what a translation will
+break. `--pseudo` writes a fake locale where every string is accented, padded ~40% longer
+(a realistic German worst case) and wrapped in `⟦ ⟧`:
+
+```bash
+node pw-i18n-review.mjs --pseudo                       # writes src/i18n/locales/xx.json
+LANG_CODE=xx MODES=all SHOT_DIR=/tmp/pseudo node pw-i18n-review.mjs
+rm src/i18n/locales/xx.json
+```
+
+Then just look. Three bugs are obvious on sight, in any language:
+
+- **A string still in plain English** — it is hard-coded in the JSX and no locale file can
+  reach it. The run lists every one in `untranslated.md`, with the screen it was on.
+- **Text clipped or overflowing** — the layout cannot take a longer language.
+  `layout-faults.md` lists these; `PSEUDO_PAD=1.5` models a worse case.
+- **A sentence split across two `⟦ ⟧` blocks** — it was concatenated in code, so its word
+  order is frozen and no translator can fix it. Those need `<T>` and one key.
+
+`FAULT_SELFTEST=1` forces every button to `nowrap` and must produce a flood of faults —
+run it if a clean report ever looks too good, because a detector that silently does nothing
+reports "none" exactly like a healthy app does.
+
 ### Knowing what the report did NOT show you
 
 Some strings only appear deep in a game state a scripted walk cannot reach. The harness is
