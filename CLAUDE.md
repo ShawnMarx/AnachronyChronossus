@@ -161,6 +161,12 @@ centered left of Take Bot Action); **⚙ settings menu** (top-right) holds Histo
 and a "Log in (soon)" placeholder. **Debug OFF = play mode** (tap tiles → read-only rule
 panel only; dev controls hidden). Debug adds **Era −/+** and **Paradox (P) −/+** modifiers.
 
+**Debug controls** live in one shared `DebugBar` (jump-to-phase incl. End Game, Era,
+Paradox, Impact, End Actions, Warp tiles, Time Travel, Hypersync tiles, **Exosuits**). The
+Exosuits stepper exists so the out-of-figures state — where the bot passes instead of
+acting — is reachable by clicking; before it, `pw-pass.mjs` had to hand-edit the saved game.
+Prefer adding a stepper here over save-file surgery in a new harness.
+
 **Board overlays**: `BOARD_COUNTERS` badges (counts + resource/worker trackers, hover
 tooltips; building tooltips list per-tile VP); the Breakthroughs badge → per-shape
 popover; the **Time Travel marker** on its 7-spot track (0/2/4/6/8/10/12 VP); the
@@ -191,6 +197,9 @@ SHOT_DIR=/tmp node pw-chronobot-parity.mjs   # phase-screen Undo/History + roll 
 SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THROWS (BOT=chronobot)
 SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 before/after screens (text + pixels) for refactors
 node pw-i18n-dropin.mjs                  # proves a dropped-in locale file works, then removes it
+LANG_CODE=de MODES=all node pw-i18n-review.mjs   # EN-vs-language capture of every screen + report.html
+LANG_CODE=de MODES=all SIDES=B node pw-i18n-review.mjs   # again for the B-side tiles
+COVERAGE=1 LANG_CODE=zz node pw-i18n-review.mjs  # with --markers first: which keys a run never showed
 ```
 
 `pw-pass.mjs` reaches a state the UI has no control for: it edits the persisted save
@@ -452,6 +461,19 @@ Keep it that way; a change that requires a second edit to add a language is a re
   `usePhaseMeta()`. Fixing this properly is the `{key, params}` refactor in `TODO.md`.
 - `en.json` is **generated** — `UPDATE_LOCALES=1 npm test`. The suite also checks every other
   locale file for a valid header, no unknown keys, and `{placeholder}` parity with English.
+- **`pw-i18n-review.mjs` is how a translator sees their work.** It captures every reachable
+  screen in English and the target language, side by side, into `report.html` — the text AND
+  a screenshot, because the commonest translation bug is a longer string overflowing its
+  button. It reaches the Action dialogs by turning **Debug on and tapping each hotspot**:
+  `onTileClick` with `debug` sets the real `pending` flow, so a tap opens the full guided
+  dialog exactly as if the die had sent a marker there. `MODES=all` walks every module,
+  which is what covers `tile.*` (a tile's text only renders in a mode that places it).
+- **Report what the sweep missed.** `--markers` writes a locale of `⟦key⟧` markers and
+  `COVERAGE=1` then lists every key no screen displayed. A harness that silently shows two
+  thirds of the strings is worse than none — the translator would believe they reviewed
+  everything. This is also how the dead keys got found: `action.*.summary`/`.jit` (the
+  unbuilt guided runner) and the mode labels render nowhere, so they were pulled from the
+  surface rather than left for someone to translate blind.
 
 ## Conventions
 

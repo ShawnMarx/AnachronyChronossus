@@ -30,15 +30,14 @@ export const UI_STRINGS = {
   'settings.on': 'ON',
   'settings.off': 'OFF',
 
-  // --- Common controls ------------------------------------------------------
-  'common.continue': 'Continue',
-  'common.back': 'Back',
-  'common.cancel': 'Cancel',
-  'common.close': 'Close',
-  'common.undo': 'Undo',
-  'common.startYourTurn': 'Start Your Turn',
+  // --- The Action Rounds top bar --------------------------------------------
+  // Decorative glyphs (↶ ▶ ✓) stay in the JSX, not in the string: a translator cannot
+  // lose or mangle a glyph they never see, and the arrow means the same in every language.
   'common.takeBotAction': 'Take Bot Action',
+  'common.botPassed': 'Bot Passed',
   'common.youPass': 'You Pass',
+  'common.youPassed': 'You passed',
+  'common.undo': 'Undo',
 
   // --- History --------------------------------------------------------------
   'history.title': 'History',

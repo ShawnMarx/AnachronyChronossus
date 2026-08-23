@@ -12,6 +12,7 @@ import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const URL = process.argv[2] ?? 'http://localhost:5175/';
+const LANG = process.env.LANG_CODE ?? '';
 const OUT = process.env.SHOT_DIR ?? '/tmp/i18n-shot';
 mkdirSync(OUT, { recursive: true });
 
@@ -27,6 +28,9 @@ await page.addStyleTag({
 }).catch(() => {});
 // The app performs the bot's randomness, so an unseeded run diverges between captures
 // and every diff is noise. Pin Math.random to a fixed LCG before any app code runs.
+await page.addInitScript((code) => {
+  if (code) { try { localStorage.setItem('anachrony:lang', code); } catch { /* ignore */ } }
+}, LANG);
 await page.addInitScript(() => {
   let seed = 20260823;
   Math.random = () => {
@@ -83,7 +87,10 @@ async function dismissModal(label) {
 
 async function playBot(name, pick, modeLabel) {
   await page.goto(URL, { waitUntil: 'networkidle' });
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate((code) => {
+    localStorage.clear();
+    if (code) localStorage.setItem('anachrony:lang', code);
+  }, LANG);
   await page.goto(URL, { waitUntil: 'networkidle' });
   await wait(500);
   await snap(`${name}-landing`);

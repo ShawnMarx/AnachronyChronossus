@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "i18n:review": "node pw-i18n-review.mjs",
+    "i18n:markers": "node pw-i18n-review.mjs --markers"
   },
   "dependencies": {
     "react": "^19.2.7",

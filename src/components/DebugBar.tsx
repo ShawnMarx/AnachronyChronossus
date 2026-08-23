@@ -44,6 +44,15 @@ export interface DebugBarProps {
   timeTravel?: number;
   maxTimeTravel?: number;
   onTimeTravel?: (delta: number) => void;
+  /**
+   * Optional Exosuit-supply stepper. Stepping it to 0 is the only quick way into the
+   * out-of-figures state, where the bot passes instead of acting — the wording for that
+   * (and for a Failed Action) was previously only reachable by hand-editing the saved
+   * game, which is what `pw-pass.mjs` had to do.
+   */
+  exosuits?: number;
+  maxExosuits?: number;
+  onExosuits?: (delta: number) => void;
   /** Optional pending Solo Hypersync tile stepper (HFA modes only). */
   hypersyncTiles?: number;
   maxHypersyncTiles?: number;
@@ -73,6 +82,9 @@ export default function DebugBar(props: DebugBarProps) {
     hypersyncTiles,
     maxHypersyncTiles = 3,
     onHypersyncTiles,
+    exosuits,
+    maxExosuits,
+    onExosuits,
     extra,
   } = props;
 
@@ -127,6 +139,14 @@ export default function DebugBar(props: DebugBarProps) {
             {stepper('Paradoxes', paradoxes, onParadox, paradoxes > 0, paradoxes < 3)}
             {onWarpTiles != null &&
               stepper('Warp tiles', warpTiles ?? 0, onWarpTiles, (warpTiles ?? 0) > 0, true)}
+            {onExosuits != null &&
+              stepper(
+                'Exosuits',
+                exosuits ?? 0,
+                onExosuits,
+                (exosuits ?? 0) > 0,
+                (exosuits ?? 0) < (maxExosuits ?? 6),
+              )}
             {onTimeTravel != null &&
               stepper(
                 'Time Travel',

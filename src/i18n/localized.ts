@@ -11,7 +11,6 @@
 import { useMemo } from 'react';
 import { useI18n } from './I18nProvider';
 import { CHRONOSSUS_TILES, type ModularTile } from '../board/chronossusTiles';
-import { CHRONOSSUS_MODES, type ChronossusMode } from '../board/chronossusModes';
 import {
   CHRONOBOT_ACTIONS,
   type ChronobotActionDef,
@@ -47,14 +46,7 @@ export function localizeAction(def: ChronobotActionDef, t: T): ChronobotActionDe
   const out = { ...def };
   swap(out, 'label', def.label, t, `action.${def.id}.label`);
   swap(out, 'rule', def.rule, t, `action.${def.id}.rule`);
-  swap(out, 'summary', def.summary, t, `action.${def.id}.summary`);
-  swap(out, 'jit', def.jit, t, `action.${def.id}.jit`);
-  return out;
-}
-
-export function localizeMode(mode: ChronossusMode, t: T): ChronossusMode {
-  const out = { ...mode };
-  swap(out, 'label', mode.label, t, `mode.${mode.id}.label`);
+  // `summary` / `jit` are the unbuilt guided runner's copy — not published, not swapped.
   return out;
 }
 
@@ -102,15 +94,6 @@ export function useActions(): Record<ChronobotActionId, ChronobotActionDef> {
     for (const [id, def] of Object.entries(CHRONOBOT_ACTIONS)) {
       out[id as ChronobotActionId] = localizeAction(def, t);
     }
-    return out;
-  }, [t]);
-}
-
-export function useModes(): Record<string, ChronossusMode> {
-  const { t } = useI18n();
-  return useMemo(() => {
-    const out: Record<string, ChronossusMode> = {};
-    for (const [id, mode] of Object.entries(CHRONOSSUS_MODES)) out[id] = localizeMode(mode, t);
     return out;
   }, [t]);
 }

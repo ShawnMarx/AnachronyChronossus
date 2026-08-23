@@ -12,14 +12,8 @@ import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { englishMessages } from './surface';
 import { interpolate, isRulebookKey, lookup, type Locale } from './catalog';
-import {
-  localizeAction,
-  localizeMode,
-  localizePhaseMeta,
-  localizeTile,
-} from './localized';
+import { localizeAction, localizePhaseMeta, localizeTile } from './localized';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
-import { CHRONOSSUS_MODES } from '../board/chronossusModes';
 import { CHRONOBOT_ACTIONS } from '../engine/rules/chronobotActions';
 import { PHASE_META } from '../phases/phaseMeta';
 import { CHRONOSSUS_PHASE_META } from '../phases/chronossusPhaseMeta';
@@ -36,7 +30,6 @@ function requestedKeys(): string[] {
   };
   for (const tile of Object.values(CHRONOSSUS_TILES)) localizeTile(tile, spy);
   for (const def of Object.values(CHRONOBOT_ACTIONS)) localizeAction(def, spy);
-  for (const mode of Object.values(CHRONOSSUS_MODES)) localizeMode(mode, spy);
   for (const [phase, meta] of Object.entries(PHASE_META)) {
     if (meta) localizePhaseMeta(meta, phase, spy);
   }
@@ -58,9 +51,6 @@ describe('translatable surface', () => {
     for (const def of Object.values(CHRONOBOT_ACTIONS)) {
       expect(en[`action.${def.id}.rule`], def.id).toBe(def.rule);
     }
-    for (const mode of Object.values(CHRONOSSUS_MODES)) {
-      expect(en[`mode.${mode.id}.label`], mode.id).toBe(mode.label);
-    }
     for (const [phase, meta] of Object.entries(PHASE_META)) {
       if (meta) expect(en[`phase.${phase}.overview`], phase).toBe(meta.overview);
     }
@@ -71,8 +61,15 @@ describe('translatable surface', () => {
     expect(missing).toEqual([]);
   });
 
-  it('does not leak the Adventure card prose (never rendered, so never translated)', () => {
-    expect(Object.keys(en).some((k) => k.startsWith('adventure.'))).toBe(false);
+  it('publishes nothing the app cannot render', () => {
+    // Adventure card prose is never shown; `summary`/`jit` belong to the unbuilt guided
+    // runner; mode labels are written inline by the setup screen. A key here costs a
+    // translator real effort, so an unreachable one is a bug.
+    const dead = Object.keys(en).filter(
+      (k) => k.startsWith('adventure.') || k.startsWith('mode.') ||
+        /\.(summary|jit)$/.test(k),
+    );
+    expect(dead).toEqual([]);
   });
 
   it('classifies rulebook keys apart from the app’s own voice', () => {
@@ -149,7 +146,7 @@ describe('lookup and fallback', () => {
   });
 
   it('falls back to English per key, so a partial file is valid', () => {
-    expect(lookup(partial, en, 'ui.common.cancel')).toBe(en['ui.common.cancel']);
+    expect(lookup(partial, en, 'ui.common.youPass')).toBe(en['ui.common.youPass']);
   });
 
   it('falls back to the key itself rather than rendering nothing', () => {

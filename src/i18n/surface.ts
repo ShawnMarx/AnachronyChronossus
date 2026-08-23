@@ -15,6 +15,8 @@
 // NOT in the surface, deliberately:
 //   * `src/data/adventureCards.ts` — the card prose is never rendered. It was transcribed
 //     only to derive each card's bot outcome, which is data, not text.
+//   * `action.*.summary` / `.jit` (the unbuilt guided runner) and the mode labels — the
+//     setup screen writes its module names inline, so nothing reads `CHRONOSSUS_MODES.label`.
 //   * Rule constants nothing currently renders (`ENDGAME_TRIGGER_RULE`, `FAILED_ACTIONS`,
 //     the `QUANTUM_LOOPS_*` and most `DOOMSDAY_*` blocks). A key here costs a translator
 //     real effort, so only publish one the app can actually show; add it when a screen
@@ -31,7 +33,6 @@ import {
   PLAYER_SCORING_RULE,
 } from '../engine/rules/chronobotActions';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
-import { CHRONOSSUS_MODES } from '../board/chronossusModes';
 import { PHASE_META, ENDGAME_RULES } from '../phases/phaseMeta';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from '../phases/chronossusPhaseMeta';
 import { BLINK_RULE, CHRONOSSUS_PASSING_RULE } from '../engine/bots/chronossus';
@@ -60,8 +61,8 @@ export function englishMessages(): Messages {
   for (const def of Object.values(CHRONOBOT_ACTIONS)) {
     put(`action.${def.id}.label`, def.label);
     put(`action.${def.id}.rule`, def.rule);
-    put(`action.${def.id}.summary`, def.summary);
-    put(`action.${def.id}.jit`, def.jit);
+    // `summary` / `jit` belong to the guided game runner (src/App.tsx), which is not
+    // built — nothing renders them, so they are not published.
   }
 
   // --- Standalone Chronobot rule blocks -------------------------------------
@@ -82,9 +83,6 @@ export function englishMessages(): Messages {
     put(`tile.${tile.code}.rule`, tile.rule);
     put(`tile.${tile.code}.detail`, tile.detail);
   }
-
-  // --- Modes (module names as printed on the box) ---------------------------
-  for (const mode of Object.values(CHRONOSSUS_MODES)) put(`mode.${mode.id}.label`, mode.label);
 
   // --- Phase metadata (verbatim phase summaries) ----------------------------
   for (const [phase, meta] of Object.entries(PHASE_META)) {

@@ -74,7 +74,7 @@ import SetupFlow from './phases/SetupFlow';
 import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
-import { useI18n } from './i18n/I18nProvider';
+import { useI18n, useT } from './i18n/I18nProvider';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import {
   currentEraWarpTiles,
@@ -1397,6 +1397,17 @@ export default function BoardExplorer({
               0,
               Math.min(Chronobot.TIME_TRAVEL_VP.length - 1, s.chronobot.timeTravelTrack + d),
             ),
+          },
+        }))
+      }
+      exosuits={state.chronobot.exosuitsAvailable}
+      maxExosuits={6}
+      onExosuits={(d) =>
+        setState((s) => ({
+          ...s,
+          chronobot: {
+            ...s.chronobot,
+            exosuitsAvailable: Math.max(0, Math.min(6, s.chronobot.exosuitsAvailable + d)),
           },
         }))
       }
@@ -3469,6 +3480,7 @@ function StatsBar({
    */
   adventureDeck?: { mode: 'virtual' | 'shared'; onToggle: () => void } | null;
 }) {
+  const t = useT();
   // Warp is now tracked on the board (see the Warp-tile marker), not here.
   const stats: { label: string; value: string | number }[] = [];
   return (
@@ -3510,7 +3522,7 @@ function StatsBar({
                     : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
                 }
               >
-                {botPassed ? '✓ Bot Passed' : 'Take Bot Action'}
+                {botPassed ? `✓ ${t('ui.common.botPassed')}` : t('ui.common.takeBotAction')}
               </button>
             )}
             {botDie != null && (
@@ -3525,7 +3537,7 @@ function StatsBar({
                 disabled={!canPass || playerPassed}
                 title="Pass for the Action Rounds phase"
               >
-                {playerPassed ? '✓ You passed' : 'You Pass'}
+                {playerPassed ? `✓ ${t('ui.common.youPassed')}` : t('ui.common.youPass')}
               </button>
             )}
             <button

@@ -22,6 +22,7 @@ import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
 import { useAction, usePhaseMeta, useRule, useTile } from './i18n/localized';
+import { useT } from './i18n/I18nProvider';
 import {
   DetailPanel,
   AnchoredPopover,
@@ -785,6 +786,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Phase names / overviews / rules in the chosen language; falls through to the
   // English defaults in `phases/chronossusPhaseMeta.ts` for anything untranslated.
   const phaseMeta = usePhaseMeta(true);
+  const t = useT();
   const passingRule = useRule('rule.chronossusPassing', Chronossus.CHRONOSSUS_PASSING_RULE);
   const checkForImpactRule = useRule(
     'rule.doomsday.checkForImpact',
@@ -3301,7 +3303,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command marker`
                 }
               >
-                {bot.passed ? '✓ Bot Passed' : 'Take Bot Action'}
+                {bot.passed ? `✓ ${t('ui.common.botPassed')}` : t('ui.common.takeBotAction')}
               </button>
             )}
             {botDie != null && (
@@ -3316,7 +3318,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 disabled={state.playerPassed}
                 title="Pass for the Action Rounds phase"
               >
-                {state.playerPassed ? '✓ You passed' : 'You Pass'}
+                {state.playerPassed ? `✓ ${t('ui.common.youPassed')}` : t('ui.common.youPass')}
               </button>
             )}
             <button
@@ -3400,6 +3402,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               0,
               Math.min(Chronobot.TIME_TRAVEL_VP.length - 1, s.chronossus!.timeTravelTrack + d),
             ),
+          },
+        }))
+      }
+      exosuits={bot.exosuitsAvailable}
+      maxExosuits={6}
+      onExosuits={(d) =>
+        setState((s) => ({
+          ...s,
+          chronossus: {
+            ...s.chronossus!,
+            exosuitsAvailable: Math.max(0, Math.min(6, s.chronossus!.exosuitsAvailable + d)),
           },
         }))
       }

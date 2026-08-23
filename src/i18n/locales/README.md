@@ -60,6 +60,45 @@ That distinction is what `officialRulebook` controls:
 A fan translation of rule text is worse than English here: it reads plausibly and matches
 nothing the player can check.
 
+## Seeing your translation in the app
+
+You do not have to play the game to review your work. One command captures every screen
+the app can show, in **English and your language side by side**, and writes an HTML page
+you scroll through:
+
+```bash
+npm run dev                                    # in one terminal
+LANG_CODE=de MODES=all SHOT_DIR=/tmp/review node pw-i18n-review.mjs
+open /tmp/review/report.html
+```
+
+Each screen appears twice — a screenshot and the exact text the app rendered — so you can
+check two different things at once: whether the wording reads right, and whether it still
+**fits** (a longer string that overflows its button or wraps a dialog title under the ✕ is
+the most common translation bug, and it is invisible in a spreadsheet).
+
+- `MODES=all` walks every Chronossus module. Each module lays different modular tiles, and
+  a tile's rule text only appears in a module that places it — so this is what covers the
+  `tile.*` keys. Run it a second time with `SIDES=B` for the B-side tiles. Between them,
+  all 28 tiles are reachable. It takes several minutes; `MODES=Base` is the quick pass.
+- `LANG_CODE` is your file's code. Run it before you have translated much: untranslated
+  keys show their English fallback, so the report doubles as a checklist.
+
+### Knowing what the report did NOT show you
+
+Some strings only appear deep in a game state a scripted walk cannot reach. The harness is
+honest about this rather than letting you assume you saw everything:
+
+```bash
+node pw-i18n-review.mjs --markers              # writes a locale of ⟦key⟧ markers
+COVERAGE=1 MODES=all LANG_CODE=zz SHOT_DIR=/tmp/cov node pw-i18n-review.mjs
+cat /tmp/cov/coverage.md                       # keys seen, and every key not reached
+rm src/i18n/locales/zz.json
+```
+
+`coverage.md` lists exactly which keys never appeared. Review those in the JSON directly —
+you are reading them without context, so they deserve more care, not less.
+
 ## Keeping in step with the app
 
 `en.json` is **generated** from the catalogs — don't hand-edit it. When the game gains a

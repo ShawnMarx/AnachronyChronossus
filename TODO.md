@@ -15,6 +15,15 @@ committed and none are planned in-house.
       `doomsday.ts`, `pioneers.ts`, `chronossusHistory.ts`. Worth doing regardless of
       translation — it stops History freezing prose into `localStorage`, so a reworded
       instruction fixes old saves too, and the engine tests assert keys instead of sentences.
+- [ ] **Raise review coverage past ~47% (`MODES=Base`).** `pw-i18n-review.mjs` reports what
+      it missed in `coverage.md`; the known gaps and their routes:
+      `tile.*` needs `MODES=all` plus a second `SIDES=B` run (all 28 tiles are reachable —
+      verified against the mode matrix); `rule.blink` needs Fractures and
+      `rule.doomsday.checkForImpact` needs Doomsday; `rule.passing` /
+      `rule.chronossusPassing` need the bot's **final Time Travel then pass** sequence after
+      stepping Exosuits to 0 (the new debug stepper reaches the state — the harness just
+      does not yet drive the two turns that follow); `phase.actions.*` may render nowhere
+      (the Action Rounds "phase screen" is the board) — check before keeping the key.
 - [ ] **Remaining app-voice chrome.** `uiStrings.ts` covers the ⚙ menu, the 📖 boxes and the
       common controls. The setup flows, score screens and per-Action dialog bodies still
       hard-code their English; move them across as they are next touched rather than in one
