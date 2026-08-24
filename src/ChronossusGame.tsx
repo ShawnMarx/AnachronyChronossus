@@ -279,12 +279,17 @@ const PHASE_RAIL: Phase[] = [
 ];
 
 /** Format a cube list ("2 gold + 1 titanium") for the Remove-Anomaly prompt. */
-function describeCubes(cubes: Resource[]): string {
+function describeCubes(
+  cubes: Resource[],
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
   const counts: Partial<Record<Resource, number>> = {};
   for (const c of cubes) counts[c] = (counts[c] ?? 0) + 1;
   return Object.entries(counts)
-    .map(([r, c]) => `${c} ${r}`)
-    .join(' + ');
+    .map(([r, c]) =>
+      t('ui.dialog.anomaly.cubes', { n: c ?? 0, resource: t(`ui.pieceInline.${r}`) }),
+    )
+    .join(t('ui.dialog.anomaly.cubeJoin'));
 }
 
 function isConstructBuilding(a: string): boolean {
@@ -1751,7 +1756,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         : (CHRONOBOT_ACTIONS[action as ChronobotActionId]?.label ?? action),
     };
     setBlink({
-      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      spaceLabel: t(`blinkSpace.${sel.space}`),
       sameSpaceCount: sel.sameSpaceCount,
       rule: sel.rule,
       token: sel.token,
@@ -2150,11 +2155,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           const anomalyCount = bot.anomalyVps?.length ?? bot.anomalies;
           return {
             canRemove: anomalyCount >= 1 && discards != null,
-            discards: discards ? describeCubes(discards) : '',
-            reason:
+            discards: discards ? describeCubes(discards, t) : '',
+            reason: t(
               anomalyCount < 1
-                ? 'it has no Anomaly to remove'
-                : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+                ? 'ui.dialog.anomaly.reason.none'
+                : 'ui.dialog.anomaly.reason.cubes',
+            ),
           };
         })()}
         mineOrder={Chronobot.mineResourceOrder(bot)}
@@ -2171,12 +2177,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         placeDestination={(() => {
           const space = Chronossus.blinkSpaceOf(active.action, placementSpaceRef.current);
           if (!space) return null; // not a Capital Action space — the panel names the Action
-          if (space === 'world-council') return 'the World Council space';
+          if (space === 'world-council') return t('ui.cx.dest.worldCouncil');
           // Mine picks its space by the Resources it grants, not by reading down the
           // column — and the Blink check runs at its space gate, before the Resources are
           // named, so this points forward to that step rather than back at a choice made.
-          if (space === 'mine') return 'a Mine Action space (which one comes next, with the Resources)';
-          return `the topmost open ${Chronossus.BLINK_SPACE_LABEL[space]} Action space`;
+          if (space === 'mine') return t('ui.cx.dest.mine');
+          return t('ui.cx.dest.topmost', { space: t(`blinkSpace.${space}`) });
         })()}
         blink={blink}
         fluxDrawSrc={fluxDraw === 'core' ? FC_ICON : fluxDraw === 'casing' ? EFC_ICON : null}
@@ -2870,7 +2876,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       toLabel: 'Adventure (Adventure board)',
     };
     setBlink({
-      spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+      spaceLabel: t(`blinkSpace.${sel.space}`),
       sameSpaceCount: sel.sameSpaceCount,
       rule: sel.rule,
       token: sel.token,
@@ -3145,7 +3151,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           toLabel: `${Chronossus.chronossusActionLabel(pendingTile)} (Valley board)`,
         };
         setBlink({
-          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          spaceLabel: t(`blinkSpace.${sel.space}`),
           sameSpaceCount: sel.sameSpaceCount,
           rule: sel.rule,
           token: sel.token,
@@ -3201,7 +3207,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           toLabel: 'the Hypersync space',
         };
         setBlink({
-          spaceLabel: Chronossus.BLINK_SPACE_LABEL[sel.space],
+          spaceLabel: t(`blinkSpace.${sel.space}`),
           sameSpaceCount: sel.sameSpaceCount,
           rule: sel.rule,
           token: sel.token,

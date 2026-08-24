@@ -3,6 +3,8 @@
 // Action Rounds, then the view advances to Clean Up. Shared by both solo-bot
 // views (parameterized by `botName`).
 
+import { useT } from '../i18n/I18nProvider';
+
 export default function FirstPlayerPrompt({
   botName = 'Chronobot',
   onAnswer,
@@ -12,17 +14,18 @@ export default function FirstPlayerPrompt({
   onAnswer: (playerFirst: boolean) => void;
   onCancel: () => void;
 }) {
+  const t = useT();
   return (
     <div className="modal-overlay" onClick={onCancel}>
       <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
-        <h3>First Player next Era</h3>
-        <p>Does the {botName} control First Player (banner placed next to the World Council)?</p>
+        <h3>{t('ui.firstPlayer.title')}</h3>
+        <p>{t('ui.firstPlayer.ask', { bot: botName })}</p>
         <div className="fp-actions">
           <button className="phase-primary" onClick={() => onAnswer(false)}>
-            Yes
+            {t('ui.firstPlayer.yes')}
           </button>
           <button className="phase-secondary" onClick={() => onAnswer(true)}>
-            No
+            {t('ui.firstPlayer.no')}
           </button>
         </div>
       </div>

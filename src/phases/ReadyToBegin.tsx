@@ -3,6 +3,8 @@
 // Take Bot Action); otherwise you play first, then run the bot. Shared by both
 // solo-bot views (parameterized by `botName`).
 
+import { useT } from '../i18n/I18nProvider';
+
 export default function ReadyToBegin({
   firstPlayer,
   era,
@@ -16,24 +18,21 @@ export default function ReadyToBegin({
   onDismiss: () => void;
   onTakeBotAction: () => void;
 }) {
+  const t = useT();
   const botFirst = firstPlayer === 'bot';
   return (
     <div className="modal-overlay" onClick={onDismiss}>
       <div className="fp-dialog" onClick={(e) => e.stopPropagation()}>
-        <h3>Ready to begin — Era {era}</h3>
-        <p>
-          {botFirst
-            ? `The ${botName} is First Player this Era — it takes the first turn. Press “Take Bot Action” to roll the AI die and resolve it.`
-            : `You are First Player this Era. Take your turn on the Main board first, then press “Take Bot Action” for the ${botName}’s turn.`}
-        </p>
+        <h3>{t('ui.ready.title', { era })}</h3>
+        <p>{t(botFirst ? 'ui.ready.botFirst' : 'ui.ready.youFirst', { bot: botName })}</p>
         <div className="fp-actions">
           {botFirst ? (
             <button className="phase-primary" onClick={onTakeBotAction}>
-              Take Bot Action
+              {t('ui.common.takeBotAction')}
             </button>
           ) : (
             <button className="phase-primary" onClick={onDismiss}>
-              Your turn first — got it
+              {t('ui.ready.gotIt')}
             </button>
           )}
         </div>

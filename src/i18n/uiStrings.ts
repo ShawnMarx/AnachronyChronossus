@@ -576,6 +576,34 @@ export const UI_STRINGS = {
   'gameHistory.importedN': 'Imported {n} game.',
   'gameHistory.importedNPlural': 'Imported {n} games.',
   // --- Turn overview + phase header controls --------------------------------
+  // --- The Ready-to-begin splash and the First-Player prompt ----------------
+  'ready.title': 'Ready to begin — Era {era}',
+  'ready.botFirst':
+    'The {bot} is First Player this Era — it takes the first turn. Press “Take Bot ' +
+    'Action” to roll the AI die and resolve it.',
+  'ready.youFirst':
+    'You are First Player this Era. Take your turn on the Main board first, then press ' +
+    '“Take Bot Action” for the {bot}’s turn.',
+  'ready.gotIt': 'Your turn first — got it',
+  'firstPlayer.title': 'First Player next Era',
+  'firstPlayer.ask':
+    'Does the {bot} control First Player (banner placed next to the World Council)?',
+  'firstPlayer.yes': 'Yes',
+  'firstPlayer.no': 'No',
+
+  'turnBar.modesTitle': 'Modules in play',
+  'turnBar.difficultyTitle': 'Difficulty options',
+  'turnBar.difficultyNone': 'Standard game — none selected',
+  'turnBar.difficultyCount': 'Difficulty options ({n} selected)',
+  'turnBar.countLabel': 'Bot Actions',
+  'turnBar.popTitle': 'Era {era} · Phase {phase} · {countLabel} ',
+  'turnBar.popMin': ' / min {n}',
+  'turnBar.close': 'Close',
+  'turnBar.phaseEnds': '✓ Action Rounds Phase ends',
+  'turnBar.recentTurns': 'Recent bot turns',
+  'turnBar.turnN': 'Turn {n}',
+  'turnBar.botTurnRules': '{bot}’s turn',
+  'turnBar.passingRules': 'Passing & End of Actions',
   'turnBar.outsideActions':
     'Outside the Action Rounds — the counts and recent turns below are this Era so far.',
   'turnBar.undoTitle': 'Undo the last committed step',
@@ -1295,6 +1323,13 @@ export const UI_STRINGS = {
     'choice.',
   'cx.exp.allMarked': '✗ All of them already have one',
   'cx.valley.neitherOpen': '✗ No — neither is open',
+
+  // --- Where a placement / Blink lands (the panels name the space) ----------
+  // The History line keeps ENGLISH space names: it is persisted as a finished
+  // sentence, so a translated one would freeze in whatever language was active.
+  'cx.dest.worldCouncil': 'the World Council space',
+  'cx.dest.mine': 'a Mine Action space (which one comes next, with the Resources)',
+  'cx.dest.topmost': 'the topmost open {space} Action space',
 
   // --- Hypersync: the tile dialog -------------------------------------------
   'cx.hs.timeTravelTitle': 'Time Travel',

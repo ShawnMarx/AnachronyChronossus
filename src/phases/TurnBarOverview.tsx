@@ -9,6 +9,7 @@ import { useState } from 'react';
 import RulesBox from './RulesBox';
 import HistoryText from '../history/HistoryText';
 import type { HistoryEntry } from '../game/undo';
+import { useT } from '../i18n/I18nProvider';
 
 export interface TurnBarOverviewProps {
   botName: string;
@@ -50,9 +51,10 @@ export interface TurnBarOverviewProps {
  * which are the other half of "what game is this".
  */
 export function ModeList({ modes }: { modes: string[] }) {
+  const t = useT();
   return (
     <div className="eoa-difficulty">
-      <span className="eoa-diff-title">Modules in play</span>
+      <span className="eoa-diff-title">{t('ui.turnBar.modesTitle')}</span>
       <ul className="eoa-diff-list">
         {modes.map((m) => (
           <li key={m}>{m}</li>
@@ -69,13 +71,14 @@ export function ModeList({ modes }: { modes: string[] }) {
  * the same thing, and two hand-written versions drifted.
  */
 export function DifficultyList({ difficulty }: { difficulty: string[] }) {
+  const t = useT();
   const [showDifficulty, setShowDifficulty] = useState(false);
   return (
     <div className="eoa-difficulty">
       {difficulty.length === 0 ? (
         <>
-          <span className="eoa-diff-title">Difficulty options</span>
-          <span className="eoa-diff-none">Standard game — none selected</span>
+          <span className="eoa-diff-title">{t('ui.turnBar.difficultyTitle')}</span>
+          <span className="eoa-diff-none">{t('ui.turnBar.difficultyNone')}</span>
         </>
       ) : difficulty.length > 3 ? (
         <>
@@ -85,7 +88,8 @@ export function DifficultyList({ difficulty }: { difficulty: string[] }) {
             onClick={() => setShowDifficulty((s) => !s)}
             aria-expanded={showDifficulty}
           >
-            Difficulty options ({difficulty.length} selected) {showDifficulty ? '▾' : '▸'}
+            {t('ui.turnBar.difficultyCount', { n: difficulty.length })}{' '}
+            {showDifficulty ? '▾' : '▸'}
           </button>
           {showDifficulty && (
             <ul className="eoa-diff-list">
@@ -97,7 +101,7 @@ export function DifficultyList({ difficulty }: { difficulty: string[] }) {
         </>
       ) : (
         <>
-          <span className="eoa-diff-title">Difficulty options</span>
+          <span className="eoa-diff-title">{t('ui.turnBar.difficultyTitle')}</span>
           <ul className="eoa-diff-list">
             {difficulty.map((d) => (
               <li key={d}>{d}</li>
@@ -115,7 +119,7 @@ export default function TurnBarOverview({
   phaseNumber,
   actionsThisEra,
   minActions,
-  countLabel = 'Bot Actions',
+  countLabel,
   extraFlags,
   hint,
   canEnd,
@@ -127,14 +131,20 @@ export default function TurnBarOverview({
   passingRule,
   onClose,
 }: TurnBarOverviewProps) {
+  const t = useT();
   return (
     <div className="eoa-popover">
       <div className="eoa-pop-head">
         <span className="eoa-pop-title">
-          Era {era} · Phase {phaseNumber} · {countLabel} <b>{actionsThisEra}</b>
-          {minActions != null ? ` / min ${minActions}` : ''}
+          {t('ui.turnBar.popTitle', {
+            era,
+            phase: phaseNumber,
+            countLabel: countLabel ?? t('ui.turnBar.countLabel'),
+          })}
+          <b>{actionsThisEra}</b>
+          {minActions != null ? t('ui.turnBar.popMin', { n: minActions }) : ''}
         </span>
-        <button className="eoa-pop-close" onClick={onClose} aria-label="Close">
+        <button className="eoa-pop-close" onClick={onClose} aria-label={t('ui.turnBar.close')}>
           ×
         </button>
       </div>
@@ -146,7 +156,7 @@ export default function TurnBarOverview({
 
       {canEnd && (
         <div className="eoa-buttons">
-          <span className="eoa-end">✓ Action Rounds Phase ends</span>
+          <span className="eoa-end">{t('ui.turnBar.phaseEnds')}</span>
         </div>
       )}
 
@@ -156,7 +166,7 @@ export default function TurnBarOverview({
 
       {entries.length > 0 && (
         <div className="eoa-turns">
-          <span className="eoa-turns-title">Recent bot turns</span>
+          <span className="eoa-turns-title">{t('ui.turnBar.recentTurns')}</span>
           <ol className="eoa-turn-list">
             {/* The 3 most recent turns, with the same per-turn detail the History pane
                 shows — the overview is a shortcut to History, not a briefer version. */}
@@ -167,7 +177,7 @@ export default function TurnBarOverview({
                 <li key={entries.length - i} className="eoa-turn-row">
                   <span className="eoa-turn-n">
                     {e.die != null && <span className="bot-die eoa-turn-die">{e.die}</span>}
-                    Turn {entries.length - i}
+                    {t('ui.turnBar.turnN', { n: entries.length - i })}
                   </span>
                   <span className="eoa-turn-main">
                     <span className="eoa-turn-label">
@@ -193,14 +203,14 @@ export default function TurnBarOverview({
           active module's own rules, then passing. Same footer convention the Action and
           module dialogs follow. */}
       {turnRules && (
-        <RulesBox label={`${botName}'s turn`}>
+        <RulesBox label={t('ui.turnBar.botTurnRules', { bot: botName })}>
           <p>{turnRules}</p>
         </RulesBox>
       )}
 
       {extraRules}
 
-      <RulesBox label="Passing & End of Actions">
+      <RulesBox label={t('ui.turnBar.passingRules')}>
         {passingRule.split('\n\n').map((para, i) => (
           <p key={i}>{para}</p>
         ))}

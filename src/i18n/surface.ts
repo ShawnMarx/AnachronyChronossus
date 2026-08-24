@@ -40,6 +40,7 @@ import { PHASE_META, ENDGAME_RULES } from '../phases/phaseMeta';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from '../phases/chronossusPhaseMeta';
 import {
   BLINK_RULE,
+  BLINK_SPACE_LABEL,
   CHRONOSSUS_PASSING_RULE,
   HYPERSYNC_PARADOX_RULE,
 } from '../engine/bots/chronossus';
@@ -145,6 +146,10 @@ export function englishMessages(): Messages {
   // tracker joins the surface with it; `water` is the one piece with no tracker of its own.
   for (const c of BOARD_COUNTERS) put(`piece.${c.key}`, c.label);
   put('piece.water', 'Water');
+
+  // Capital Action space names, as the Blink panels and placement prompts say them.
+  // Derived from the engine map so a new space joins the surface with it.
+  for (const [key, label] of Object.entries(BLINK_SPACE_LABEL)) put(`blinkSpace.${key}`, label);
 
   // --- Phase metadata (verbatim phase summaries) ----------------------------
   for (const [phase, meta] of Object.entries(PHASE_META)) {
