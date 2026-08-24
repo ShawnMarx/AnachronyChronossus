@@ -4641,26 +4641,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       const impactThisEra = pick === 'impact-now' || pick === 'impact-occurred';
       body = (
         <>
-          <p className="phase-note">
-            Retrieve the Chronossus’s Exosuits along with your own.
-          </p>
+          <p className="phase-note">{t('ui.cx.cleanUp.retrieve')}</p>
           {impactCheckDue && (
             <>
               <p className="phase-note">
-                <b>Check for Impact.</b> Roll the two Trajectory dice and count their (+) and
-                (−) symbols together with the ones printed beside both trackers’ current
-                slots, then move the Impact tile accordingly.
+                <T k="ui.cx.cleanUp.checkForImpact" />
               </p>
               {botLocked && (
-                <p className="phase-note">
-                  The Chronossus’s own marker is already on its final slot — the tracks are
-                  locked and the Impact tile cannot move.
-                </p>
+                <p className="phase-note">{t('ui.cx.cleanUp.botLocked')}</p>
               )}
               <div className="place-prompt">
-                <p className="pp-instruct">
-                  Did any of these happen? Tap one if so — otherwise just end the Era.
-                </p>
+                <p className="pp-instruct">{t('ui.cx.cleanUp.didAnyHappen')}</p>
                 <div className="impact-toggles">
                   {IMPACT_CHECK_OPTIONS.map((o) => (
                     <button
@@ -4683,31 +4674,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               </div>
               {pick === 'earth-saved' && (
                 <p className="phase-note">
-                  The Impact is <b>never</b> resolved — there is no Evacuation and the game
-                  ends now. Score as usual.
+                  <T k="ui.cx.cleanUp.earthSavedNote" />
                 </p>
               )}
               {impactThisEra && (
                 <p className="phase-note">
-                  <b>The Impact occurs now</b> — resolve it using the usual procedure at the
-                  end of Era {era}. From Era {era + 1} on, the Chronossus powers up 2+X
-                  Exosuits (max 4) instead of 3+X (max 6).
+                  <T k="ui.cx.cleanUp.impactNow" params={{ era, next: era + 1 }} />
                 </p>
               )}
             </>
           )}
           {!doomsdayMode && era === postImpactEra - 1 && (
             <p className="phase-note">
-              <b>The Impact occurs now</b> — resolve it using the usual procedure at
-              the end of Era {era}. From Era {postImpactEra} on, the Chronossus powers
-              up 2+X Exosuits (max 4) instead of 3+X (max 6).
+              <T k="ui.cx.cleanUp.impactNow" params={{ era, next: postImpactEra }} />
             </p>
           )}
           {postImpact && (
-            <p className="phase-note">
-              Flip the Collapsing Capital tiles using the usual procedure, then check
-              for game end.
-            </p>
+            <p className="phase-note">{t('ui.cx.cleanUp.collapsing')}</p>
           )}
           {meta?.rules && <p className="phase-note">{meta.rules}</p>}
           {/* One exit for the whole screen: it carries whichever Check-for-Impact answer
@@ -4716,40 +4699,40 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               it only shows once an Impact Era is already recorded. */}
           {pick === 'earth-saved' ? (
             <button className="phase-primary" onClick={finishCleanUp}>
-              Earth is saved — Finish &amp; Score ▶
+              {t('ui.cx.cleanUp.earthSavedFinish')} ▶
             </button>
           ) : finalEra ? (
             <button className="phase-primary" onClick={finishCleanUp}>
-              Finish &amp; Score ▶
+              {t('ui.cleanUp.finishAndScore')} ▶
             </button>
           ) : postImpact ? (
             <div className="place-prompt">
               {/* Same inversion as the Chronobot's: the question's YES meant the game
                   was over, but the affirmative button said "Game continues". */}
               <p className="pp-instruct">
-                Flip the Collapsing Capital tiles. Are they now <b>all</b> flipped?
+                <T k="ui.cleanUp.allFlippedQ" />
               </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={endGameNow}>
-                  ✓ Yes — the game has ended, Finish &amp; Score
+                  {t('ui.cleanUp.endedYes')}
                 </button>
                 <button
                   className="pp-cannot"
                   onClick={() => setShowFirstPlayer(true)}
                 >
-                  ✗ No — the game continues, start Era {era + 1} ▶
+                  {t('ui.cleanUp.continuesNo', { era: era + 1 })} ▶
                 </button>
               </div>
             </div>
           ) : (
             <button className="phase-primary" onClick={finishCleanUp}>
-              End the Era — start Era {era + 1} ▶
+              {t('ui.cleanUp.endEra', { era: era + 1 })} ▶
             </button>
           )}
           {/* Verbatim rules last, under what the player has to act on — same as every
               other phase screen. */}
           {impactCheckDue && (
-            <RulesBox label="Doomsday — Check for Impact">
+            <RulesBox label={t('ui.cx.cleanUp.impactRulesLabel')}>
               {checkForImpactRule.split('\n\n').map((para, i) => (
                 <p key={i} style={{ whiteSpace: 'pre-line' }}>
                   {para}
@@ -4866,6 +4849,7 @@ function AdventureResultPanel({
   /** Opens the Exosuit Upgrade board pop-out, as the turn overview's Power chip does. */
   onShowUpgradeBoard: () => void;
 }) {
+  const t = useT();
   const boardTotal = breakdown.reduce((n, b) => n + b.power, 0);
   const slotBonus = result.powerBeforeRoll - boardTotal;
   const die = result.totalPower - result.powerBeforeRoll;
@@ -4878,8 +4862,8 @@ function AdventureResultPanel({
       {/* 1. Power before the roll. */}
       <div className="cx-adv-power">
         <span className="cx-adv-total">{result.powerBeforeRoll}</span>
-        <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-        <span className="cx-adv-label">Power before the roll</span>
+        <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon lg" />
+        <span className="cx-adv-label">{t('ui.cx.adv.powerBeforeRoll')}</span>
       </div>
       {/* Two numbers, not the whole per-slot breakdown: the Upgrade board's own total —
           as the same clickable Power chip the turn overview uses, so the board itself is
@@ -4889,17 +4873,20 @@ function AdventureResultPanel({
           type="button"
           className="cx-upgrade-btn"
           onClick={onShowUpgradeBoard}
-          title="Show the Chronossus's Exosuit Upgrade board and its current Power"
+          title={t('ui.cx.board.upgradeBtnTitle')}
         >
           <img src={POWER_ICON} alt="" aria-hidden="true" className="cx-power-icon" />
-          {boardTotal} Power
+          {t('ui.cx.adv.boardPower', { n: boardTotal })}
         </button>
-        {` ${slotBonus >= 0 ? '+' : '−'} ${Math.abs(slotBonus)} Path marker`}
+        {t('ui.cx.adv.pathMarker', {
+          sign: slotBonus >= 0 ? '+' : '−',
+          n: Math.abs(slotBonus),
+        })}
       </p>
 
       {/* 2. Which deck that Power picked. */}
       <p className="pp-instruct">
-        It draws <b>2 cards</b> from the <b>{result.deck}</b> deck.
+        <T k="ui.cx.adv.draws" params={{ deck: result.deck }} />
       </p>
 
       {/* 3. The two cards, the taken one highlighted. */}
@@ -4922,15 +4909,15 @@ function AdventureResultPanel({
       <div className="cx-adv-power">
         <img
           src={`/assets/solo/chronossus/adventure-die-${die}.png`}
-          alt={`Adventure die: ${die}`}
+          alt={t('ui.cx.adv.dieAlt', { n: die })}
           className="cx-adv-die lg"
         />
         <span className="cx-adv-total">{result.totalPower}</span>
-        <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-        <span className="cx-adv-label">Total Power</span>
+        <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon lg" />
+        <span className="cx-adv-label">{t('ui.cx.adv.totalPower')}</span>
       </div>
       <p className="cx-adv-brk">
-        {result.powerBeforeRoll} before the roll + {die} on the Adventure die
+        {t('ui.cx.adv.powerSum', { before: result.powerBeforeRoll, die })}
       </p>
 
       {/* 5. What it takes, what that gives it, and the rule that converted it. */}
@@ -4940,12 +4927,9 @@ function AdventureResultPanel({
               rejected one shows the "highest requirement it meets" pick — no need to
               restate either here. */}
           <p className="pp-instruct">
-            The Chronossus takes <b>{result.taken.name}</b>.
+            <T k="ui.cx.adv.takes" params={{ card: result.taken.name }} />
             {did.length ? (
-              <>
-                {' '}
-                It <b>{did.join(', ')}</b>.
-              </>
+              <T k="ui.cx.adv.takesAnd" params={{ what: did.join(', ') }} />
             ) : null}
           </p>
           {result.followUps.map((f) => (
@@ -4955,30 +4939,23 @@ function AdventureResultPanel({
           ))}
           {result.taken.bot.conversion && (
             <p className="pp-sub">
-              <b>Rule used:</b> {result.taken.bot.conversion}
+              <b>{t('ui.cx.adv.ruleUsed')}</b> {result.taken.bot.conversion}
             </p>
           )}
           {result.taken.bot.note && <p className="pp-sub">{result.taken.bot.note}</p>}
         </>
       ) : (
         <p className="pp-instruct">
-          The Chronossus meets <b>neither</b> card’s Power requirement — it gains{' '}
-          <b>1 VP</b> and both cards go to the bottom of their decks.
+          <T k="ui.cx.adv.neither" />
         </p>
       )}
 
       {/* 6. Step 2 of the Action. */}
       <p className="pp-instruct">
         {result.upgraded ? (
-          <>
-            <b>Power Upgrade:</b> the Chronossus moves 1 <b>{result.upgraded}</b> from its
-            board onto its Exosuit Upgrade board.
-          </>
+          <T k="ui.cx.adv.upgrade" params={{ resource: t(`piece.${result.upgraded}`) }} />
         ) : (
-          <>
-            <b>Power Upgrade:</b> the Chronossus has no Resource with a free slot, so it
-            places 1 <b>VP token</b> from the supply on its Exosuit Upgrade board instead.
-          </>
+          <T k="ui.cx.adv.upgradeToken" />
         )}
       </p>
       <button className="start-turn" onClick={onCommit}>
@@ -5130,6 +5107,7 @@ function CxTileDialog({
    *  DetailPanel, so a module dialog opens exactly where a board Action's does. */
   flow?: boolean;
 }) {
+  const t = useT();
   const code = family
     ? `${family}${tileSides?.[family] ?? 'A'}`
     : liveTileCode(action as keyof typeof TILE_ACTION_FAMILY, tileSides);
@@ -5145,11 +5123,12 @@ function CxTileDialog({
   // Action's rule box — collapsed mid-turn, expanded for a tap explanation (readOnly),
   // where the rulebook text IS the explanation.
   const [showRule, setShowRule] = useState(readOnly); // a tap explanation opens expanded
-  const [l, t, w, h] = panel;
+  // `top` rather than `t`: `t` is the translator throughout this file.
+  const [l, top, w, h] = panel;
   return (
     <div
       className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
-      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      style={flow ? undefined : { left: `${l}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label={tile.name}
     >
@@ -5220,60 +5199,56 @@ function CxTileDialog({
         <div className="place-prompt">
           {autoleap && (
             <p className="pp-sub">
-              <b>Autoleap:</b> the marker moved onto this tile, so its Action activates
-              now — then the Command marker advances one extra space.
+              <T k="ui.cx.tile.autoleap" />
             </p>
           )}
           {/* Guardians (C11): ask, decide, then instruct. */}
           {guardianGate && !readOnly && guardianGate.step === 'available' ? (
             <>
               <p className="pp-instruct">
-                Is a <b>Guardian</b> still available on the <b>Guardian board</b>?
+                <T k="ui.cx.guardian.availableAsk" />
               </p>
-              <p className="pp-sub">
-                The six Guardians are shared with you, so the app can’t see how many are
-                left. From this Era on they could be gone.
-              </p>
+              <p className="pp-sub">{t('ui.cx.guardian.availableSub')}</p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => guardianGate.onAvailable(true)}>
-                  ✓ Yes — one is available
+                  {t('ui.cx.guardian.yesAvailable')}
                 </button>
                 <button className="pp-cannot" onClick={() => guardianGate.onAvailable(false)}>
-                  ✗ None left — Failed Action (+{guardianGate.failVP} VP)
+                  {t('ui.cx.guardian.noneLeft', { vp: guardianGate.failVP })}
                 </button>
               </div>
             </>
           ) : guardianGate && !readOnly && guardianGate.step === 'world-council' ? (
             <>
               <p className="pp-instruct">
-                Is the <b>World Council Action space</b> open?
+                <T k="ui.cx.guardian.wcAsk" />
               </p>
-              <p className="pp-sub">
-                Don’t place anything yet — if it’s taken, the Chronossus spends a Worker
-                instead and places no Exosuit at all.
-              </p>
+              <p className="pp-sub">{t('ui.cx.guardian.wcSub')}</p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => guardianGate.onWorldCouncil(true)}>
-                  ✓ Yes — it’s open
+                  {t('ui.cx.guardian.wcYes')}
                 </button>
                 <button className="pp-cannot" onClick={() => guardianGate.onWorldCouncil(false)}>
-                  ✗ No — it’s taken
+                  {t('ui.cx.guardian.wcNo')}
                 </button>
               </div>
             </>
           ) : guardianGate && !readOnly && guardianGate.step === 'place' ? (
             <>
               <p className="pp-instruct">
-                Place the Chronossus’s{' '}
-                <b>{guardianGate.figure === 'guardian' ? 'Guardian' : 'Exosuit'}</b> on the{' '}
-                <b>World Council Action space</b> — it becomes the <b>First Player</b>. It
-                performs no Action there; instead it recruits the <b>leftmost available
-                Guardian</b> at no cost.
+                <T
+                  k="ui.cx.guardian.place"
+                  params={{
+                    figure: t(
+                      guardianGate.figure === 'guardian'
+                        ? 'ui.figure.guardian'
+                        : 'ui.figure.exosuit',
+                    ),
+                  }}
+                />
               </p>
               <p className="pp-instruct">
-                Put one of the Chronossus’s <b>Path markers</b> on an empty Guardian board
-                slot for it — that slot becomes this Guardian’s own Action space. (If its
-                Path markers run out, use an unused Path’s markers.)
+                <T k="ui.cx.guardian.placeMarker" />
               </p>
               <button className="start-turn" onClick={guardianGate.onCommit}>
                 {startLabel}
@@ -5282,17 +5257,17 @@ function CxTileDialog({
           ) : guardianGate && !readOnly && guardianGate.step === 'worker' ? (
             <>
               <p className="pp-instruct">
-                The Chronossus spends a <b>{guardianGate.worker}</b> and recruits the{' '}
-                <b>leftmost available Guardian</b> — no Exosuit is placed.
+                <T
+                  k="ui.cx.guardian.worker"
+                  params={{
+                    worker: guardianGate.worker ? t(`piece.${guardianGate.worker}`) : '',
+                  }}
+                />
               </p>
               <p className="pp-instruct">
-                Put one of the Chronossus’s <b>Path markers</b> on an empty Guardian board
-                slot for the new Guardian — that slot becomes its own Action space.
+                <T k="ui.cx.guardian.workerMarker" />
               </p>
-              <p className="pp-sub">
-                Worker priority: the one it has most of, then Scientist &gt; Engineer &gt;
-                Administrator &gt; Genius.
-              </p>
+              <p className="pp-sub">{t('ui.cx.guardian.workerPriority')}</p>
               <button className="start-turn" onClick={guardianGate.onCommit}>
                 {startLabel}
               </button>
@@ -5304,11 +5279,11 @@ function CxTileDialog({
                     spends a Worker instead, so it never was an Exosuit placement. */}
                 {guardianGate.impact
                   ? guardianGate.postImpact2VP
-                    ? 'The Impact has happened, so the Chronossus can no longer acquire Guardians — difficulty option: it scores 2 VP instead.'
-                    : `The Impact has happened, so the Chronossus can no longer acquire Guardians — Failed Action: +${guardianGate.failVP} VP.`
+                    ? t('ui.cx.guardian.failedImpact2Vp')
+                    : t('ui.cx.guardian.failedImpact', { vp: guardianGate.failVP })
                   : guardianGate.worker
-                    ? `Failed Action: +${guardianGate.failVP} VP.`
-                    : `It has no Workers left to spend on a Guardian — Failed Action: +${guardianGate.failVP} VP.`}
+                    ? t('ui.cx.guardian.failed', { vp: guardianGate.failVP })
+                    : t('ui.cx.guardian.failedNoWorkers', { vp: guardianGate.failVP })}
               </p>
               <button className="start-turn" onClick={guardianGate.onCommit}>
                 {startLabel}
@@ -5320,23 +5295,17 @@ function CxTileDialog({
           adventureGate && !readOnly && adventureGate.step === 'slot' ? (
             <>
               <p className="pp-instruct">
-                {adventureGate.placementHandled ? (
-                  <>
-                    The Chronossus performs an <b>Adventure</b> — put a <b>Path marker</b> on
-                    the topmost free <b>Power slot</b>. (Its figure is already on the hex
-                    pool.)
-                  </>
-                ) : (
-                  <>
-                    The Chronossus performs an <b>Adventure</b> — put an Exosuit onto the
-                    Adventure board’s <b>hex pool</b> and a <b>Path marker</b> on the topmost
-                    free <b>Power slot</b>.
-                  </>
-                )}
+                <T
+                  k={
+                    adventureGate.placementHandled
+                      ? 'ui.cx.adv.slotPlaced'
+                      : 'ui.cx.adv.slotPlace'
+                  }
+                />
               </p>
               {/* Same weight as the instruction above it — this IS the question the step
                   asks, not a footnote to it. */}
-              <p className="pp-instruct">Which Power slot did its Path marker go on?</p>
+              <p className="pp-instruct">{t('ui.cx.adv.slotAsk')}</p>
               <div className="pp-buttons cx-adv-slots">
                 {Chronossus.POWER_SLOTS.map((bonus) => (
                   <button
@@ -5351,7 +5320,7 @@ function CxTileDialog({
                   className="pp-cannot"
                   onClick={() => adventureGate.onSlot(Chronossus.NO_SLOT_PENALTY)}
                 >
-                  ✗ None free ({Chronossus.NO_SLOT_PENALTY})
+                  {t('ui.cx.adv.slotNone', { n: Chronossus.NO_SLOT_PENALTY })}
                 </button>
               </div>
             </>
@@ -5718,7 +5687,8 @@ function HypersyncDialog({
     'intro' | 'hexes' | 'targeted' | 'targeted-place' | 'roll' | 'timetravel'
   >(plan.canHypersync ? 'hexes' : 'intro');
   const [occupied, setOccupied] = useState<Set<number>>(new Set());
-  const [l, t, w, h] = panel;
+  // `top` rather than `t`: `t` is the translator throughout this file.
+  const [l, top, w, h] = panel;
 
   const toggleHex = (n: number) =>
     setOccupied((s) => {
@@ -5769,7 +5739,7 @@ function HypersyncDialog({
   return (
     <div
       className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
-      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      style={flow ? undefined : { left: `${l}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label={tile?.name ?? code}
     >
@@ -6148,11 +6118,12 @@ function HypersyncTilePrompt({
   /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
   flow?: boolean;
 }) {
-  const [l, t, w, h] = panel;
+  // `top` rather than `t`: `t` is the translator throughout this file.
+  const [l, top, w, h] = panel;
   return (
     <div
       className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
-      style={flow ? undefined : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }}
+      style={flow ? undefined : { left: `${l}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
       aria-label="Place a Solo Hypersync tile"
     >

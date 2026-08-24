@@ -1113,6 +1113,106 @@ export const UI_STRINGS = {
   'cx.powerUp.continueToWarp': 'Continue to Warp',
   'cx.powerUp.draw3': 'Draw 3 from the Energy Pool',
   'cx.warp.eraZeroTile': 'the Era Zero tile',
+
+  // --- Pioneers: the Adventure result panel ---------------------------------
+  // `gains` / `actions` / `followUps` / the card's conversion + note are produced by the
+  // engine from the Adventure card data and are NOT keyed — they need the message-
+  // descriptor refactor first (see TODO.md).
+  'cx.adv.powerBeforeRoll': 'Power before the roll',
+  'cx.tile.autoleap':
+    '**Autoleap:** the marker moved onto this tile, so its Action activates now — then ' +
+    'the Command marker advances one extra space.',
+
+  // --- Guardians (C11) ------------------------------------------------------
+  'cx.guardian.availableAsk': 'Is a **Guardian** still available on the **Guardian board**?',
+  'cx.guardian.availableSub':
+    'The six Guardians are shared with you, so the app can’t see how many are left. From ' +
+    'this Era on they could be gone.',
+  'cx.guardian.yesAvailable': '✓ Yes — one is available',
+  'cx.guardian.noneLeft': '✗ None left — Failed Action (+{vp} VP)',
+  'cx.guardian.wcAsk': 'Is the **World Council Action space** open?',
+  'cx.guardian.wcSub':
+    'Don’t place anything yet — if it’s taken, the Chronossus spends a Worker instead and ' +
+    'places no Exosuit at all.',
+  'cx.guardian.wcYes': '✓ Yes — it’s open',
+  'cx.guardian.wcNo': '✗ No — it’s taken',
+  'cx.guardian.place':
+    'Place the Chronossus’s **{figure}** on the **World Council Action space** — it ' +
+    'becomes the **First Player**. It performs no Action there; instead it recruits the ' +
+    '**leftmost available Guardian** at no cost.',
+  'cx.guardian.placeMarker':
+    'Put one of the Chronossus’s **Path markers** on an empty Guardian board slot for ' +
+    'it — that slot becomes this Guardian’s own Action space. (If its Path markers run ' +
+    'out, use an unused Path’s markers.)',
+  'cx.guardian.worker':
+    'The Chronossus spends a **{worker}** and recruits the **leftmost available ' +
+    'Guardian** — no Exosuit is placed.',
+  'cx.guardian.workerMarker':
+    'Put one of the Chronossus’s **Path markers** on an empty Guardian board slot for the ' +
+    'new Guardian — that slot becomes its own Action space.',
+  'cx.guardian.workerPriority':
+    'Worker priority: the one it has most of, then Scientist > Engineer > Administrator > ' +
+    'Genius.',
+  'cx.guardian.failedImpact2Vp':
+    'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
+    'difficulty option: it scores 2 VP instead.',
+  'cx.guardian.failedImpact':
+    'The Impact has happened, so the Chronossus can no longer acquire Guardians — Failed ' +
+    'Action: +{vp} VP.',
+  'cx.guardian.failed': 'Failed Action: +{vp} VP.',
+  'cx.guardian.failedNoWorkers':
+    'It has no Workers left to spend on a Guardian — Failed Action: +{vp} VP.',
+
+  // --- Pioneers: the Adventure slot question --------------------------------
+  'cx.adv.slotPlaced':
+    'The Chronossus performs an **Adventure** — put a **Path marker** on the topmost free ' +
+    '**Power slot**. (Its figure is already on the hex pool.)',
+  'cx.adv.slotPlace':
+    'The Chronossus performs an **Adventure** — put an Exosuit onto the Adventure board’s ' +
+    '**hex pool** and a **Path marker** on the topmost free **Power slot**.',
+  'cx.adv.slotAsk': 'Which Power slot did its Path marker go on?',
+  'cx.adv.slotNone': '✗ None free ({n})',
+  'cx.adv.boardPower': '{n} Power',
+  'cx.adv.pathMarker': ' {sign} {n} Path marker',
+  'cx.adv.draws': 'It draws **2 cards** from the **{deck}** deck.',
+  'cx.adv.dieAlt': 'Adventure die: {n}',
+  'cx.adv.totalPower': 'Total Power',
+  'cx.adv.powerSum': '{before} before the roll + {die} on the Adventure die',
+  'cx.adv.takes': 'The Chronossus takes **{card}**.',
+  'cx.adv.takesAnd': ' It **{what}**.',
+  'cx.adv.ruleUsed': 'Rule used:',
+  'cx.adv.neither':
+    'The Chronossus meets **neither** card’s Power requirement — it gains **1 VP** and ' +
+    'both cards go to the bottom of their decks.',
+  'cx.adv.upgrade':
+    '**Power Upgrade:** the Chronossus moves 1 **{resource}** from its board onto its ' +
+    'Exosuit Upgrade board.',
+  'cx.adv.upgradeToken':
+    '**Power Upgrade:** the Chronossus has no Resource with a free slot, so it places 1 ' +
+    '**VP token** from the supply on its Exosuit Upgrade board instead.',
+
+  // --- Chronossus Clean Up + Doomsday's Check for Impact --------------------
+  'cx.cleanUp.retrieve': 'Retrieve the Chronossus’s Exosuits along with your own.',
+  'cx.cleanUp.checkForImpact':
+    '**Check for Impact.** Roll the two Trajectory dice and count their (+) and (−) ' +
+    'symbols together with the ones printed beside both trackers’ current slots, then ' +
+    'move the Impact tile accordingly.',
+  'cx.cleanUp.botLocked':
+    'The Chronossus’s own marker is already on its final slot — the tracks are locked and ' +
+    'the Impact tile cannot move.',
+  'cx.cleanUp.didAnyHappen':
+    'Did any of these happen? Tap one if so — otherwise just end the Era.',
+  'cx.cleanUp.earthSavedNote':
+    'The Impact is **never** resolved — there is no Evacuation and the game ends now. ' +
+    'Score as usual.',
+  'cx.cleanUp.impactNow':
+    '**The Impact occurs now** — resolve it using the usual procedure at the end of Era ' +
+    '{era}. From Era {next} on, the Chronossus powers up 2+X Exosuits (max 4) instead of ' +
+    '3+X (max 6).',
+  'cx.cleanUp.collapsing':
+    'Flip the Collapsing Capital tiles using the usual procedure, then check for game end.',
+  'cx.cleanUp.earthSavedFinish': 'Earth is saved — Finish & Score',
+  'cx.cleanUp.impactRulesLabel': 'Doomsday — Check for Impact',
   'cx.warp.altTimelinesIntro':
     '**Alternate Timelines:** decide how many Resources and/or Workers **you** are ' +
     'warping **before** rolling for the Chronossus. Once you\'ve decided, roll below and ' +
