@@ -1183,6 +1183,14 @@ export const UI_STRINGS = {
 
   // --- Chronossus board overlays + the Exosuit badge pop-out ----------------
   'cx.board.soloBoardAlt': 'Chronossus solo board',
+  'cx.board.tileAlt': 'Modular tile {code}',
+  'cx.board.slotTitle': 'Modular tile slot {slot}',
+  'cx.board.tileTitle': 'Slot {slot} · {code}',
+  'cx.board.tileTitleDesc': 'Slot {slot} · {code} — {desc}',
+  // Add-on module names (the base modes live under `module.<id>`).
+  'extraModule.variable-anomalies': 'Variable Anomalies',
+  'extraModule.quantum-loops': 'Quantum Loops',
+  'extraModule.alternate-timelines': 'Alternate Timelines',
   'cx.phase.statusLabel': 'Chronossus Status',
 
   // --- Chronossus Power Up phase --------------------------------------------

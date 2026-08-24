@@ -9,7 +9,6 @@ import {
   DIFFICULTY_SWAP_TILES,
   DIFFICULTY_FRACTURES_C14,
   worldCouncilMandatory,
-  EXTRA_MODULE_LABELS,
 } from '../board/chronossusModes';
 import { Chronossus } from '../engine';
 import {
@@ -112,8 +111,8 @@ const MODULE_CONFIGS: ModuleConfig[] = [
 
 /** Step 2 — the optional add-on modules (multi-select; combine with any base mode). */
 interface ExtraModuleConfig {
+  /** Also the locale key: `ui.extraModule.<id>`. */
   id: string;
-  label: string;
   available: boolean;
   /** The physical expansion this add-on needs, when it needs one. */
   note?: string;
@@ -124,7 +123,7 @@ const EXTRA_MODULES: ExtraModuleConfig[] = [
   { id: Chronossus.EXTRA_MODULE_VARIABLE_ANOMALIES, available: true },
   { id: Chronossus.EXTRA_MODULE_QUANTUM_LOOPS, available: true },
   { id: Chronossus.EXTRA_MODULE_ALTERNATE_TIMELINES, available: true },
-].map((m) => ({ ...m, label: EXTRA_MODULE_LABELS[m.id] ?? m.id }));
+];
 
 /** Extra-module-specific difficulty options (Solo Opponents p.18's own
  *  "Increasing the Difficulty" bullets — only Alternate Timelines has one). */
@@ -524,7 +523,7 @@ export default function ChronossusSetupFlow({
                         }
                       />
                       <span className="difficulty-opt-text">
-                        <b>{m.label}</b>
+                        <b>{t(`ui.extraModule.${m.id}`)}</b>
                         {m.note && <span>{m.note}</span>}
                       </span>
                     </label>
@@ -535,7 +534,9 @@ export default function ChronossusSetupFlow({
               <ComingSoon
                 items={[
                   ...MODULE_CONFIGS.filter((m) => !m.available).map((m) => t(`ui.module.${m.id}`)),
-                  ...EXTRA_MODULES.filter((m) => !m.available).map((m) => m.label),
+                  ...EXTRA_MODULES.filter((m) => !m.available).map((m) =>
+                    t(`ui.extraModule.${m.id}`),
+                  ),
                 ]}
               />
 

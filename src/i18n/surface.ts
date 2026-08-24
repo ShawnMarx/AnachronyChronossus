@@ -35,6 +35,7 @@ import {
   CHRONOBOT_SETUP_RULE_BULLETS,
 } from '../engine/rules/chronobotActions';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
+import { TILE_DESC, TILE_INSTR_EN } from '../board/tileText';
 import { BOARD_COUNTERS } from '../board/chronobotHotspots';
 import { PHASE_META, ENDGAME_RULES } from '../phases/phaseMeta';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from '../phases/chronossusPhaseMeta';
@@ -150,6 +151,13 @@ export function englishMessages(): Messages {
   // Capital Action space names, as the Blink panels and placement prompts say them.
   // Derived from the engine map so a new space joins the surface with it.
   for (const [key, label] of Object.entries(BLINK_SPACE_LABEL)) put(`blinkSpace.${key}`, label);
+
+  // --- The app's own words for a modular tile --------------------------------
+  // `tile.*` above is the rulebook's text; these two are the app's own summaries — the
+  // Command-view one-liner and the expanded line in the tile's dialog. Derived from
+  // `tileText.ts`, so a new module's tile joins the surface with its branch.
+  for (const [action, text] of Object.entries(TILE_DESC)) put(`ui.tileDesc.${action}`, text);
+  for (const [key, text] of Object.entries(TILE_INSTR_EN)) put(key, text);
 
   // --- Phase metadata (verbatim phase summaries) ----------------------------
   for (const [phase, meta] of Object.entries(PHASE_META)) {

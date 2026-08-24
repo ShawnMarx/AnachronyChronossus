@@ -123,7 +123,7 @@ import {
   liveTileCode,
   tileEffect,
 } from './board/chronossusTiles';
-import { TILE_DESC, tileInstruction } from './board/tileText';
+import { tileDescription, tileInstruction } from './board/tileText';
 import {
   adventureCardArt,
   adventureDeckCards,
@@ -3748,7 +3748,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             />
 
               {CHRONOSSUS_ACTION_HOTSPOTS.map((h) => {
-                const [l, t] = positions[hsKey(h.id)] ?? HS_CENTER(h);
+                // `top` rather than `t`: `t` is the translator throughout this file.
+                const [l, top] = positions[hsKey(h.id)] ?? HS_CENTER(h);
                 const isActive = active?.id === h.id;
                 const sel = calibrate && selected === hsKey(h.id);
                 return (
@@ -3759,7 +3760,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     className={`hotspot ${outline || calibrate ? 'outlined' : ''} ${isActive ? 'active' : ''} ${sel ? 'cal-selected' : ''}`}
                     style={{
                       left: `${l}%`,
-                      top: `${t}%`,
+                      top: `${top}%`,
                       width: `${hsWidth}%`,
                       height: `${hsHeight}%`,
                     }}
@@ -3771,8 +3772,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                           }
                         : undefined
                     }
-                    title={CHRONOBOT_ACTIONS[h.action].label}
-                    aria-label={CHRONOBOT_ACTIONS[h.action].label}
+                    title={t(`action.${h.action}.label`)}
+                    aria-label={t(`action.${h.action}.label`)}
                   />
                 );
               })}
@@ -3792,7 +3793,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                           e.stopPropagation();
                           setSelected(p.key);
                         }}
-                        title={p.label ? `Modular tile slot ${p.label}` : p.key}
+                        title={
+                          p.label ? t('ui.cx.board.slotTitle', { slot: p.label }) : p.key
+                        }
                       >
                         {p.label ?? (selected === p.key ? '◎' : '·')}
                       </div>
@@ -3839,15 +3842,19 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 // Describe the tile actually sitting here in this mode, not the base-game
                 // tile the path data names for the slot.
                 const liveAction = tileActionAt(p.key);
-                const desc = liveAction ? TILE_DESC[liveAction] : undefined;
+                const desc = liveAction ? tileDescription(liveAction, t) : undefined;
                 return (
                   <img
                     key={k}
                     className={`cx-tile-art ${sel ? 'cal-selected' : ''}`}
                     src={`/assets/solo/chronossus/tiles/${code}.png`}
-                    alt={`Modular tile ${code}`}
+                    alt={t('ui.cx.board.tileAlt', { code })}
                     style={{ left: `${x}%`, top: `${y}%`, width: `${tileWidth}%` }}
-                    title={`Slot ${p.label} · ${code}${desc ? ` — ${desc}` : ''}`}
+                    title={
+                      desc
+                        ? t('ui.cx.board.tileTitleDesc', { slot: p.label ?? '', code, desc })
+                        : t('ui.cx.board.tileTitle', { slot: p.label ?? '', code })
+                    }
                     onClick={(e) => {
                       e.stopPropagation();
                       onTileArtClick(p);
@@ -5558,7 +5565,7 @@ function CxTileDialog({
           )}
             </>
           ) : (
-            <p className="pp-instruct">{tileInstruction(code)}</p>
+            <p className="pp-instruct">{tileInstruction(code, t)}</p>
           )}
           {!readOnly && !valleyGate && !guardianGate && !adventureGate && !experimentGate && (
             <button className="start-turn" onClick={onStart}>
