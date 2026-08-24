@@ -35,9 +35,14 @@ import {
   CHRONOBOT_SETUP_RULE_BULLETS,
 } from '../engine/rules/chronobotActions';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
+import { BOARD_COUNTERS } from '../board/chronobotHotspots';
 import { PHASE_META, ENDGAME_RULES } from '../phases/phaseMeta';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from '../phases/chronossusPhaseMeta';
-import { BLINK_RULE, CHRONOSSUS_PASSING_RULE } from '../engine/bots/chronossus';
+import {
+  BLINK_RULE,
+  CHRONOSSUS_PASSING_RULE,
+  HYPERSYNC_PARADOX_RULE,
+} from '../engine/bots/chronossus';
 import { DOOMSDAY_CHECK_FOR_IMPACT_RULE } from '../engine/bots/doomsday';
 import { UI_STRINGS } from './uiStrings';
 
@@ -78,6 +83,7 @@ export function englishMessages(): Messages {
   // --- Chronossus rule blocks -----------------------------------------------
   put('rule.blink', BLINK_RULE);
   put('rule.chronossusPassing', CHRONOSSUS_PASSING_RULE);
+  put('rule.hypersyncParadox', HYPERSYNC_PARADOX_RULE);
   put('rule.chronossusEndgame', CHRONOSSUS_ENDGAME_RULES);
   put('rule.doomsday.checkForImpact', DOOMSDAY_CHECK_FOR_IMPACT_RULE);
 
@@ -87,6 +93,14 @@ export function englishMessages(): Messages {
     put(`tile.${tile.code}.rule`, tile.rule);
     put(`tile.${tile.code}.detail`, tile.detail);
   }
+
+  // --- Game piece names -----------------------------------------------------
+  // The components themselves ("Neutronium", "Power Plant", "Genius") — one family, used
+  // by every place that names a piece: the board tracker tooltips, the Mine resource
+  // swatches and the Recruit Worker swatches. Derived from the board layout so a new
+  // tracker joins the surface with it; `water` is the one piece with no tracker of its own.
+  for (const c of BOARD_COUNTERS) put(`piece.${c.key}`, c.label);
+  put('piece.water', 'Water');
 
   // --- Phase metadata (verbatim phase summaries) ----------------------------
   for (const [phase, meta] of Object.entries(PHASE_META)) {

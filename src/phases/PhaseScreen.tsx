@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useT } from '../i18n/I18nProvider';
 
 const CHRONOBOT_HERO = '/assets/solo/chronobot-hero.jpg';
 
@@ -46,6 +47,7 @@ export default function PhaseScreen({
   heroAlt?: string;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const [tab, setTab] = useState<'phase' | 'status'>('phase');
 
   return (
@@ -56,14 +58,14 @@ export default function PhaseScreen({
             <button
               className="home-btn"
               onClick={onHome}
-              title="Back to the home screen"
-              aria-label="Back to the home screen"
+              title={t('ui.phaseScreen.home')}
+              aria-label={t('ui.phaseScreen.home')}
             >
               <img src="/favicon-512.png" alt="" />
             </button>
           )}
           <span className="phase-eyebrow">
-            Era {era} · Phase {phaseNumber}
+            {t('ui.phaseScreen.eyebrow', { era, phase: phaseNumber })}
           </span>
           <h1 className="phase-title">{phaseName}</h1>
         </div>
@@ -80,7 +82,7 @@ export default function PhaseScreen({
               className={tab === 'phase' ? 'on' : ''}
               onClick={() => setTab('phase')}
             >
-              Phase
+              {t('ui.phaseScreen.tabPhase')}
             </button>
             <button
               role="tab"
@@ -92,7 +94,7 @@ export default function PhaseScreen({
               title={statusLabel}
               aria-label={statusLabel}
             >
-              Board
+              {t('ui.phaseScreen.tabBoard')}
             </button>
           </div>
         )}

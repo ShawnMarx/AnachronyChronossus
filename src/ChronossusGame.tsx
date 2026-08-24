@@ -2059,8 +2059,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     activeMarker != null &&
     autoleapAt(activeMarker, nextStep(activeMarker, ui.markerSteps[activeMarker])) != null;
   const startLabel = nextMarkerIsAutoleap
-    ? '▶ Advance to Autoleap Action'
-    : '▶ Start Your Turn';
+    ? `▶ ${t('ui.dialog.advanceAutoleap')}`
+    : `▶ ${t('ui.dialog.startTurn')}`;
 
   // The action dialog. On mobile (flow=true) it renders in normal flow at the top
   // of the stage, pushing the board down; on desktop it's an absolute panel on the

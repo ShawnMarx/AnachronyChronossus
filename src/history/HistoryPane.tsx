@@ -5,6 +5,7 @@
 
 import type { HistoryEntry } from '../game/undo';
 import HistoryText from './HistoryText';
+import { useT } from '../i18n/I18nProvider';
 
 /**
  * Entering a phase commits "Era 1 · → Warp", and the phase's own result then commits
@@ -29,19 +30,20 @@ export default function HistoryPane({
   entries: HistoryEntry[];
   onClose: () => void;
 }) {
+  const t = useT();
   const rows = entries
     .filter((e, i) => !isSupersededPhaseEntry(e, entries[i + 1]))
     .reverse(); // newest first
   return (
     <div className="history-pane">
       <div className="history-head">
-        <h3>History</h3>
-        <button className="history-close" onClick={onClose} aria-label="Close history">
+        <h3>{t('ui.history.title')}</h3>
+        <button className="history-close" onClick={onClose} aria-label={t('ui.history.close')}>
           ×
         </button>
       </div>
       {rows.length === 0 ? (
-        <p className="history-empty">No turns taken yet.</p>
+        <p className="history-empty">{t('ui.history.empty')}</p>
       ) : (
         <ol className="history-list">
           {/* Numbered over the ROWS shown, not the raw stack — a filtered-out arrow
@@ -52,7 +54,7 @@ export default function HistoryPane({
               <span className="history-main">
                 <span className="history-label">
                   {e.die != null && (
-                    <span className="bot-die history-die" aria-label={`AI die ${e.die}`}>
+                    <span className="bot-die history-die" aria-label={t('ui.history.dieAria', { n: e.die })}>
                       {e.die}
                     </span>
                   )}

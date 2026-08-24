@@ -481,6 +481,27 @@ export const BLINK_SPACE_ORDER: BlinkSpace[] = [
  * VERBATIM Blink rules (Solo Opponents rulebook p. 12) — the check and the A/B selection
  * rules, shown as the collapsible rulebook box on every Blink-check step.
  */
+/**
+ * Hypersync's two Paradox-Phase rules, VERBATIM. They live in the Future Imperfect
+ * rulebook (p. 5), not the Solo Opponents one — which carries the module over wholesale
+ * (p. 17) and never touches the Paradox Phase. Published as `rule.hypersyncParadox`, so
+ * a locale only overrides it once that language's official Future Imperfect edition has
+ * been transcribed.
+ */
+export const HYPERSYNC_PARADOX_RULE =
+  'During the Paradox Phase, the presence of a Hypersync tile counts as a Warp tile when ' +
+  'checking for most Warp tiles per Timeline tile. Therefore, if a player has two Warp ' +
+  'tiles on a Timeline tile, while another has a single Warp tile and a Hypersync tile, ' +
+  'they both roll for Paradox.\n' +
+  '\n' +
+  'IMPORTANT: Just like in the base game, players that have zero Warp tiles on a Timeline ' +
+  'tile do not roll for a Paradox, even if they have a Hypersync tile present.\n' +
+  '\n' +
+  'Additionally, the player (or players) with the most total Hypersync tiles (across all ' +
+  'Timeline tiles) in play make one more Paradox roll, unless they have already received ' +
+  'an Anomaly during the current Paradox Phase. (If no player has any Hypersync tiles in ' +
+  'play, this roll is skipped.)';
+
 export const BLINK_RULE =
   'Whenever the Chronossus is about to take an Action with an Exosuit, perform the ' +
   'following check:\n' +

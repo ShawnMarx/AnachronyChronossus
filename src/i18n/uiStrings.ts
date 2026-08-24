@@ -27,6 +27,15 @@ export const UI_STRINGS = {
   'settings.resetGame': 'Reset Game',
   'settings.myHistory': 'My history',
   'settings.language': 'Language',
+  'settings.gear': 'Settings',
+  'settings.adventureDeck.virtualTitle':
+    'The app draws the bot’s Adventure cards from its own shuffled deck',
+  'settings.adventureDeck.physicalTitle':
+    'The bot draws from your physical Adventure decks; you name the cards',
+  'settings.overallStats': 'Overall stats',
+  'settings.signedInAs': 'Signed in as {name}',
+  'settings.signOut': 'Sign out ({name})',
+  'settings.logIn': 'Log in',
   'settings.on': 'ON',
   'settings.off': 'OFF',
 
@@ -124,6 +133,15 @@ export const UI_STRINGS = {
   'setup.diff.hexUnavailable.detail':
     'Base-game variant: cover the right World Council space with a Hex Unavailable tile. ' +
     '(This constrains your own board — the app changes nothing.)',
+  // Short forms of the same flags, shown on the Turn-overview difficulty chip. They are
+  // deliberately worded as "what is in force" rather than "what to choose", so they are
+  // their own keys and not a reuse of the setup labels above.
+  'setup.diffChip.rebootAdvance': 'Advance off Reboot immediately',
+  'setup.diffChip.noLeader': 'Play without your Leader power',
+  'setup.diffChip.botExtraTurn': 'One extra Chronobot turn after you pass',
+  'setup.diffChip.minActions6': 'Minimum Actions raised to 6',
+  'setup.diffChip.hexUnavailable': 'Right World Council space covered (Hex Unavailable)',
+
   'setup.app.title': 'Setup for this app',
   'setup.app.intro':
     'Set up a 2-player game, with the Chronobot as one of the players. There’s no need for ' +
@@ -256,6 +274,14 @@ export const UI_STRINGS = {
   // --- The turn log ---------------------------------------------------------
   'history.title': 'History',
   'history.empty': 'No turns taken yet.',
+  'history.close': 'Close history',
+  'history.dieAria': 'AI die {n}',
+
+  // --- The phase-screen frame -----------------------------------------------
+  'phaseScreen.home': 'Back to the home screen',
+  'phaseScreen.eyebrow': 'Era {era} · Phase {phase}',
+  'phaseScreen.tabPhase': 'Phase',
+  'phaseScreen.tabBoard': 'Board',
 
   // --- Saved-game history screen --------------------------------------------
   'gameHistory.title': 'Your game history',
@@ -285,6 +311,399 @@ export const UI_STRINGS = {
   'gameHistory.err.import': 'Import failed — try again.',
   'gameHistory.importedN': 'Imported {n} game.',
   'gameHistory.importedNPlural': 'Imported {n} games.',
+  // --- Turn overview + phase header controls --------------------------------
+  'turnBar.outsideActions':
+    'Outside the Action Rounds — the counts and recent turns below are this Era so far.',
+  'turnBar.undoTitle': 'Undo the last committed step',
+  'turnBar.historyTitle': 'Turn history',
+  'turnBar.turn': 'Turn',
+  'turnBar.chipTitle': 'Turn tracker — pass status & recent bot turns',
+  'turnBar.chipTitleActions': 'Turn tracker — pass status, minimum Actions & recent bot turns',
+
+  // --- The Action Rounds top bar (titles + aria) ----------------------------
+  'topBar.home': 'Back to the home screen',
+  'topBar.botPassedTitle': 'The Chronobot has passed for this Era',
+  'topBar.takeActionTitle': 'Roll the AI die (faces {faces}) and activate that Command token',
+  'topBar.dieAria': 'AI die shows {n}',
+  'topBar.passTitle': 'Pass for the Action Rounds phase',
+  'topBar.undoTitle': 'Undo the last step (restores the same die roll)',
+
+  // --- Non-Action phase bodies (Chronobot) ----------------------------------
+  'phaseBody.endBanner': '✓ Everyone has passed — the Action Rounds Phase is complete.',
+  'phaseBody.continueToCleanUp': 'Continue to Clean Up',
+  'phaseBody.continue': 'Continue',
+  'phaseBody.preparation':
+    'No changes for the Chronobot this phase — set up the Era as normal, then continue.',
+  'phaseBody.powerup':
+    "Power up **{n}** of the Chronobot's Exosuits (Eras 1–4 → 6, Eras 5–7 → 4). Collect " +
+    'those Exosuits to place when the app prompts you; it neither gains nor spends Energy ' +
+    'Cores or Water.',
+  'cleanUp.retrieve': "Retrieve the Chronobot's Exosuits along with your own.",
+  'cleanUp.impact':
+    '**The Impact occurs now** — resolve it using the usual procedure at the end of Era 4. ' +
+    'From Era 5 on, the Chronobot powers up 4 Exosuits instead of 6.',
+  'cleanUp.collapsing':
+    'Flip using the usual procedure the Collapsing Capital tiles, then check for game end.',
+  'cleanUp.finishAndScore': 'Finish & Score',
+  'cleanUp.allFlippedQ': 'Flip the Collapsing Capital tiles. Are they now **all** flipped?',
+  'cleanUp.endedYes': '✓ Yes — the game has ended, Finish & Score',
+  'cleanUp.continuesNo': '✗ No — the game continues, start Era {era}',
+  'cleanUp.endEra': 'End the Era — start Era {era}',
+
+  // --- Paradox phase (shared by both bots) ----------------------------------
+  'paradoxPhase.intro':
+    'The {bot} rolls for Paradoxes on each past Timeline tile where it has the most (or ' +
+    'tied-most) Warp tiles. It keeps checking until it gains an Anomaly.',
+  'paradoxPhase.hypersyncNote':
+    '**Hypersync:** a Hypersync tile counts as a Warp tile when deciding who has the most ' +
+    'Warp tiles on a Timeline tile — but a tile with **zero** Warp tiles never rolls, even ' +
+    'with a Hypersync tile present.',
+  'paradoxPhase.paradoxAlt': 'Paradox',
+  'paradoxPhase.ask':
+    'Does the {bot} still have the most (or tied-most) Warp tiles on a past Timeline ' +
+    'tile{hypersync}? Keep rolling for each such tile.',
+  'paradoxPhase.hypersyncCount': ' (Hypersync tiles count)',
+  'paradoxPhase.rollsUsed': '{asked} of up to {max} roll this phase.',
+  'paradoxPhase.rollsUsedPlural': '{asked} of up to {max} rolls this phase.',
+  'paradoxPhase.yes': 'Yes — it ties or leads (roll)',
+  'paradoxPhase.no': 'No — done',
+  'paradoxPhase.noShort': 'No',
+  'paradoxPhase.hypersyncExtra':
+    '**Hypersync — extra Paradox roll.** The player(s) with the most total Hypersync tiles ' +
+    'in play make one more Paradox roll. Does the {bot} have the most (or tied-most) total ' +
+    'Hypersync tiles in play (it has **{n}**)?',
+  'paradoxPhase.noWarpHypersync':
+    'The {bot} has no Warp tiles on the Timeline — its Warp-tile Paradox checks are skipped.',
+  'paradoxPhase.noWarp':
+    'The {bot} has no Warp tiles on the Timeline — it rolls no Paradoxes this phase.',
+  'paradoxPhase.continueToPowerUp': 'Continue to Power Up',
+  'paradoxPhase.paradoxes': 'Paradoxes',
+  'paradoxPhase.anomalies': 'Anomalies',
+  'paradoxPhase.warpTiles': 'Warp tiles',
+  'paradoxPhase.hypersync': 'Hypersync',
+  'paradoxPhase.hypersyncRulesLabel': 'Hypersync in the Paradox Phase',
+  'paradoxPhase.hypersyncCite': 'Future Imperfect rulebook, p. 5',
+
+  // --- Score screen (Chronobot) ---------------------------------------------
+  'score.title': 'Final Score — Era {era}',
+  'score.close': 'Close',
+  'score.botVp': 'Chronobot VP',
+  'score.yourScore': 'Your score',
+  'score.modeNumber': 'Number',
+  'score.modeTally': 'Tally sheet',
+  'score.numberPlaceholder': 'Enter your total VP',
+  'score.clearField': 'Clear {field}',
+  'score.clear': 'Clear',
+  'score.yourTotal': 'Your total:',
+  'score.tallyDone': 'Done — use this total',
+  'score.win': '🎉 You win! (more points than the Chronobot)',
+  'score.lose': 'You lose — the Chronobot has at least as many points.',
+  'score.loginToSave': 'Log in to save this game to your history.',
+  'score.loginAndSave': 'Log in & save',
+  'score.enterToSave': 'Enter your score above to save this game to your history.',
+  'score.saving': 'Saving…',
+  'score.saved': '✓ Saved to your history',
+  'score.saveFailed': "Couldn't save automatically.",
+  'score.logIn': 'Log in',
+  'score.retry': 'Retry',
+  'score.rulesLabel': 'End Game scoring',
+  'score.newGame': 'New Game',
+  'score.err.expired':
+    'Your login session expired. This game is saved on this device and will upload once ' +
+    'you log in.',
+  'score.err.rejected':
+    "You're still logged in, but the history service rejected the save. This game is " +
+    "saved on this device and will upload once that's fixed.",
+  'score.err.unreachable':
+    "Couldn't reach your history service. This game is saved on this device and will " +
+    'upload next time.',
+
+  // --- Action dialogs (shared by both bots; {bot} is the opponent's name) ----
+  // Every bold run marks a board location or component the player has to act on, so
+  // these render through `<T>` and stay one key each.
+  'dialog.close': 'Close',
+  'figure.exosuit': 'Exosuit',
+  'figure.guardian': 'Guardian',
+  'dialog.startTurn': 'Start Your Turn',
+  'dialog.advanceAutoleap': 'Advance to Autoleap Action',
+  'dialog.space.construct': 'Construct',
+  'dialog.space.research': 'Research',
+  'dialog.rule.construct': 'Construct',
+  'dialog.mechRulesCta': '📖 Placing the {bot}’s Exosuit',
+
+  // Placement gate
+  'dialog.mech.place':
+    'Place the {bot}’s {figure} on the topmost available **{space}** Action space (or a ' +
+    'World Council space if none are free).',
+  'dialog.mech.askOpen': 'Is a **{space}** Action space open (not World Council)?',
+  'dialog.mech.askOpenPlace':
+    'Is a **{space}** Action space open (not World Council)? Place the {bot}’s {figure} ' +
+    'on the topmost one.',
+  'dialog.mech.blinkFirst':
+    'Don’t place anything yet — the {bot} Blink-checks first, and a Blink moves an ' +
+    'Exosuit it already has on the board instead.',
+  'dialog.mech.coreNoBlink':
+    'Put an Energy Core from the supply into that Exosuit. (No Blink is possible, so it ' +
+    'places as usual.)',
+  'dialog.mech.confirmPlaced': '✓ Confirm placed',
+  'dialog.mech.yesCheckBlink': '✓ Yes — check for Blink',
+  'dialog.mech.yesPlacedThere': '✓ Yes — placed there',
+  'dialog.mech.noneOpen': '✗ No — none open',
+  'dialog.mech.cannotPlace': '✗ Cannot place',
+
+  // Guardians: the Guardian-board fallback
+  'dialog.guardian.instruct':
+    'No Action space was open, so the {bot} places a **Guardian** on the **Guardian ' +
+    'board**, on an open space marked with one of its **Path markers** — and performs the ' +
+    'Action from there.',
+  'dialog.guardian.sub':
+    'It doesn’t matter which of its marked spaces you use. This is **not** a Failed ' +
+    'Action, so it takes no +1 VP.',
+  'dialog.guardian.confirm': '✓ Placed on the Guardian board',
+
+  // World Council overflow
+  'dialog.wc.ask': 'No **{space}** space was open. Is the **World Council** space open?',
+  'dialog.wc.askPlace':
+    'No **{space}** space was open. Is the **World Council** space open? Place the ' +
+    '{bot}’s {figure} there instead.',
+  'dialog.wc.subBlink':
+    'It still performs the Action from there. Nothing to place yet — the Blink check ' +
+    'comes first.',
+  'dialog.wc.subCore':
+    'It still performs the Action from there. Put an Energy Core from the supply into ' +
+    'that Exosuit.',
+  'dialog.wc.yesBlink': '✓ Yes — check for Blink',
+  'dialog.wc.yesPlaced': '✓ Yes — placed on World Council',
+  'dialog.wc.no': '✗ No — nothing open',
+
+  // Construct
+  'dialog.construct.superproject':
+    'Take the **highest-VP Superproject** (oldest if tied). Tap its printed VP (3–8).',
+  'dialog.construct.building':
+    'Take the higher-VP **{building}** (secondary stack if tied). Tap its printed VP ' +
+    '(1–4) — then discard it.',
+
+  // Mine
+  'dialog.mine.ask': '**Is there one or more Mining Action space available?**',
+  'dialog.mine.blinkSub':
+    'Nothing to place yet — the Blink check comes first, and a Blink moves an Exosuit ' +
+    'the {bot} already has on the board into that space instead.',
+  'dialog.mine.yesBlink': '✓ Yes — check for Blink',
+  'dialog.mine.yesOpen': '✓ Yes — a Mining space is open',
+  'dialog.mine.no': '✗ No open Mining space',
+  'dialog.mine.place':
+    'Place the {bot}’s Exosuit in an open **Mine** space granting the best 2 Resources by ' +
+    'priority order below, based on lacking-first. Give it those **2 Resources** ' +
+    '(pre-selected; adjust to match the space — click a cube twice for **×2**), then ' +
+    '**discard those 2 Resource cubes from the board**.',
+  'dialog.mine.find':
+    'Find the open **Mine** space granting the best 2 Resources by priority order below, ' +
+    'based on lacking-first. Give it those **2 Resources** (pre-selected; adjust to match ' +
+    'the space — click a cube twice for **×2**), then **discard those 2 Resource cubes ' +
+    'from the board**.',
+
+  // Recruit
+  'dialog.recruit.instruct':
+    'Recruit the highest-priority **Worker** the {bot} lacks by the priority order below ' +
+    '(missing-first); if that type isn’t available, take the next available one. Pick the ' +
+    'recruited Worker (+1 VP) — then discard its Worker tile from the board.',
+
+  // Recruit Genius / Research
+  'dialog.genius.ask':
+    'Is a **Genius** available to recruit **and** an open Recruit Action space (or World ' +
+    'Council space)? If so, the {bot} recruits a Genius. If not, it performs a Research ' +
+    'action instead.',
+  'dialog.genius.yes': '✓ Yes — recruit a Genius',
+  'dialog.genius.no': '✗ No — Research instead',
+  'dialog.genius.recruitPlaced':
+    'The {bot} recruits a **Genius** from that Recruit space, removing it from the board. ' +
+    'The bot gains 1 VP.',
+  'dialog.genius.recruitPlace':
+    'Place the {bot}’s Exosuit on the topmost available **Recruit** Action space (or a ' +
+    'World Council space if full) and recruit a **Genius**, removing it from the board. ' +
+    'The bot gains 1 VP.',
+
+  // Research
+  'dialog.research.rolled':
+    'The shape die rolled **{shape}** — the {bot} keeps a **{shape}** Breakthrough.',
+  'dialog.research.newShape':
+    'Difficulty: the {bot} takes a Breakthrough shape it doesn\'t already have (or has ' +
+    'the fewest of) — a **{shape}** Breakthrough.',
+
+  // Reboot
+  'dialog.reboot': 'Reboot: {bot} does nothing.',
+
+  // Time Travel
+  'dialog.timeTravel.fromEra':
+    'Remove one of the {bot}’s **Warp tiles** from **{tile}** — the past tile where it ' +
+    'has the most (oldest if tied).',
+  'dialog.timeTravel.anyPast':
+    'Remove one of the {bot}’s **Warp tiles** from the past Timeline tile where it has ' +
+    'the most (oldest if tied).',
+  'dialog.timeTravel.failCurrentEra':
+    'Failed Action: the {bot}’s only Warp tiles are on the **current Era’s Timeline ' +
+    'tile**, which Time Travel may not take from — it takes **+{vp} VP** instead (no ' +
+    'Exosuit placed).',
+  'dialog.timeTravel.failNone':
+    'Failed Action: the {bot} has **no Warp tiles** on the Timeline, so it cannot Time ' +
+    'Travel — it takes **+{vp} VP** instead (no Exosuit placed).',
+
+  // Remove Anomaly
+  'dialog.anomaly.instruct':
+    'The {bot} discards **{discards}** and removes **1 Anomaly** from its board.',
+  'dialog.anomaly.sub': 'Remove Anomaly places no Exosuit.',
+  // The discard list reads mid-sentence ("discards **2 titanium + 1 gold**"), so these
+  // are the piece names in running text rather than the capitalised `piece.*` labels.
+  'dialog.anomaly.cubes': '{n} {resource}',
+  'dialog.anomaly.cubeJoin': ' + ',
+  'dialog.anomaly.reason.none': 'it has no Anomaly to remove',
+  'dialog.anomaly.reason.cubes': 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+  'pieceInline.neutronium': 'neutronium',
+  'pieceInline.titanium': 'titanium',
+  'pieceInline.gold': 'gold',
+  'pieceInline.uranium': 'uranium',
+  'pieceInline.water': 'water',
+  'dialog.anomaly.fail':
+    'Failed Action: {reason} — the {bot} takes +{vp} VP instead (no Exosuit placed).',
+
+  // --- Simple Command View --------------------------------------------------
+  'scv.title': 'What Chronobot might do next',
+  'scv.rowTitle': 'Show the {action} rules',
+  'scv.dieLabel': 'AI die faces',
+  'scv.rulesLabel': 'How the AI die moves the tokens',
+  'scv.toggleHide': 'Simple Command View — click to hide',
+  'scv.toggleShow': 'Simple Command View — click to show',
+  'scv.hide': 'Hide',
+  'scv.show': 'Show',
+
+  // --- The Chronobot VP breakdown (pill popover + score screen) -------------
+  'vp.tokenVP': 'Token VP',
+  'vp.tokenVP.tip': 'Everything except Buildings, Time Travel & Breakthroughs',
+  'vp.buildingVP': 'Building VP',
+  'vp.buildingVP.tip': 'From Construct actions (Buildings & Superprojects)',
+  'vp.timeTravel': 'Time Travel',
+  'vp.timeTravel.tip': "From the Time Travel marker's track position (0/2/4/…/12)",
+  'vp.breakthroughs': 'Breakthroughs (1 each)',
+  'vp.breakthroughs.tip': '1 VP per Breakthrough',
+  'vp.breakthroughSets': 'Breakthrough sets (+2 each)',
+  'vp.breakthroughSets.tip': '+2 VP per complete shape set (one of each)',
+  'vp.anomalies': 'Anomalies (−3 each)',
+  'vp.anomalies.tip': '−3 VP per remaining Anomaly',
+  'vp.total': 'Total',
+  'vp.botTurns': 'Bot turns taken',
+  'vp.pillTitle': 'Click for the full VP breakdown',
+  'vp.pillUnit': 'VP',
+  'vp.popoverTitle': 'Chronobot VP',
+
+  // --- The player's own score tally -----------------------------------------
+  'tally.buildings': 'Buildings',
+  'tally.anomalies': 'Anomalies',
+  'tally.superprojects': 'Superprojects',
+  'tally.timeTravel': 'Time Travel',
+  'tally.morale': 'Morale',
+  'tally.vpTokens': 'Victory Point tokens',
+  'tally.endgame': 'Endgame Conditions',
+  'tally.breakthroughs': 'Breakthroughs (×1 each)',
+  'tally.breakthroughSets': 'Breakthrough sets (×2 each)',
+  'tally.timelinePenalties': 'Timeline penalties (−)',
+
+  // --- The bot's pass decision, in words ------------------------------------
+  'passDecision.continue':
+    'The bot alternates turns with you and only passes once either you have passed and it ' +
+    'has taken at least its minimum of {min} turns, or it has used all its Exosuits and ' +
+    'taken one additional Time Travel action.',
+  'passDecision.continueExtra':
+    'Difficulty: the Chronobot takes one additional turn after you passed — roll the AI ' +
+    'die for it.',
+  'passDecision.mustContinueMin':
+    'The Chronobot is out of Exosuits but has not taken {min} Actions yet — it keeps ' +
+    'taking turns (Time Travel / Reboot) until it reaches {min}.',
+  'passDecision.timeTravelThenPass':
+    'The Chronobot is out of Exosuits — it takes a final Time Travel Action (if able), ' +
+    'then passes.',
+  'passDecision.pass': 'The Chronobot passes for this Era.',
+
+  // --- Warp phase (shared by both bots; {bot} is the opponent's name) --------
+  'warpPhase.tileLabel': 'the current Timeline tile',
+  'warpPhase.orderBotFirst':
+    'Warping occurs in player order. The {bot} is First Player this Era, so it Warps ' +
+    'first — roll for it below, then place your own 0–2 Warp tiles as normal.',
+  'warpPhase.orderYouFirst':
+    'Warping occurs in player order. You are First Player this Era, so place your own ' +
+    '0–2 Warp tiles first, then roll for the {bot}.',
+  'warpPhase.roll': "Roll for the {bot}'s Warp",
+  'warpPhase.tileAlt': '{bot} Warp tile',
+  'warpPhase.none': 'The {bot} rolled no Paradoxes — it places no Warp tiles this phase.',
+  'warpPhase.placed':
+    'The {bot} rolled {n} Paradox — place {n} Warp tile for it on {tile}. Any tiles will ' +
+    'do; the {bot} gains nothing from them.',
+  'warpPhase.placedPlural':
+    'The {bot} rolled {n} Paradoxes — place {n} Warp tiles for it on {tile}. Any tiles ' +
+    'will do; the {bot} gains nothing from them.',
+
+  // --- The Paradox die ------------------------------------------------------
+  'paradoxDie.altBlank': 'Paradox die: blank',
+  'paradoxDie.altOne': 'Paradox die: one Paradox',
+  'paradoxDie.altDouble': 'Paradox die: double Paradox',
+  'paradoxDie.rolled': 'Rolled {n} Paradox',
+  'paradoxDie.rolledPlural': 'Rolled {n} Paradoxes',
+
+  // --- Board markers (alt text + tooltips) ----------------------------------
+  'board.timeTravelMarkerAlt': 'Time Travel marker',
+  'board.commandTokenAlt': 'Command token {n}',
+  'board.warpTileAlt': 'Chronobot Warp tile',
+  'board.warpTitle':
+    'Chronobot Warp tiles on the Timeline: {n} — tap for the past / current Era split',
+  'board.soloBoardAlt': 'Chronobot solo board',
+
+  // --- Reset ----------------------------------------------------------------
+  'reset.confirm': 'Start a new game? This clears the current Chronobot game and its history.',
+
+  // --- Board tracker tooltips -----------------------------------------------
+  // `{label}` is the tracker's own name, itself translatable as `counter.<key>`.
+  'counterTip.superproject': '{label} ×{count} — VP: {vps}',
+  'counterTip.superprojectEmpty': '{label}: 0',
+  'counterTip.building': '{label} ×{count} — VP: {vps} (max 3 of a type)',
+  'counterTip.buildingEmpty': '{label}: 0 (max 3 of a type)',
+  'counterTip.breakthrough': '{label}: {count} — click for per-shape counts',
+  'counterTip.mech':
+    '{label}: {count} powered Exosuit available · {deployed} deployed on board',
+  'counterTip.mechPlural':
+    '{label}: {count} powered Exosuits available · {deployed} deployed on board',
+  'counterTip.anomaly': '{label}: {count} (max 3)',
+  'counterTip.cubes': '{label}: {count} cube',
+  'counterTip.cubesPlural': '{label}: {count} cubes',
+  'counterTip.plain': '{label}: {count}',
+
+  // --- Shared Action panels (both bots) -------------------------------------
+  // The bold runs mark board locations the player has to act on, so these render
+  // through `<T>` and stay ONE key each — a translator moves the location name to
+  // wherever their grammar needs it.
+  'panel.warp.total': '**{n}** Warp tile on the Timeline',
+  'panel.warp.totalPlural': '**{n}** Warp tiles on the Timeline',
+  'panel.warp.past': 'Past Timeline tiles',
+  'panel.warp.current': 'Era {era} (current) tile',
+  'panel.warp.tiles': '{n} tile',
+  'panel.warp.tilesPlural': '{n} tiles',
+  'panel.blink.fluxAlt': 'Flux Core drawn',
+  'panel.blink.fluxDrawn': 'Drawn from the Flux Pool — Blink activated.',
+  'panel.blink.instruct':
+    'Move its Exosuit from **{from}** (bottom-most space) to **{to}**, and return that ' +
+    'Exosuit’s Energy Core to the supply.',
+  'panel.blink.confirm': '✓ Confirm moved',
+  'panel.blink.rulesCta': '📖 Blink',
+  'panel.place.casingAlt': 'Empty Flux Casing drawn',
+  'panel.place.casingDrawn': 'Drawn from the Flux Pool — no Blink.',
+  'panel.place.noFigures':
+    'No Blink, and the bot has **no Exosuit left to place** — so it **passes** for the ' +
+    'Era. Nothing goes on **{destination}**, and its Command token does not advance.',
+  'panel.place.instruct':
+    'Place one of its **available powered Exosuits** on **{destination}**, and put an ' +
+    'Energy Core from the supply into it.',
+  'panel.place.instructOffBoard':
+    'Place one of its **available powered Exosuits** on **{destination}**.',
+  'panel.place.continuePasses': '✓ Continue — it passes',
+  'panel.place.confirm': '✓ Confirm placed',
 } as const satisfies Record<string, string>;
 
 export type UiKey = keyof typeof UI_STRINGS;

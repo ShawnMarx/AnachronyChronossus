@@ -75,6 +75,7 @@ import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
 import { useI18n, useT } from './i18n/I18nProvider';
+import T from './i18n/Trans';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import {
   currentEraWarpTiles,
@@ -137,18 +138,24 @@ export function WarpTileBreakdown({
   bot: { warpTilesOnTimeline: number; warpTilesByEra?: Record<number, number> };
   era: number;
 }) {
+  const t = useT();
   const byEra = bot.warpTilesByEra;
   const past = pastWarpTiles(bot, era);
   const current = currentEraWarpTiles(bot, era);
-  const tiles = (n: number) => `${n} tile${n === 1 ? '' : 's'}`;
+  const tiles = (n: number) =>
+    t(n === 1 ? 'ui.panel.warp.tiles' : 'ui.panel.warp.tilesPlural', { n });
   return (
     <div className="cx-warp-pop">
       <div className="cx-warp-total">
-        <b>{bot.warpTilesOnTimeline}</b> Warp tile{bot.warpTilesOnTimeline === 1 ? '' : 's'} on
-        the Timeline
+        <T
+          k={
+            bot.warpTilesOnTimeline === 1 ? 'ui.panel.warp.total' : 'ui.panel.warp.totalPlural'
+          }
+          params={{ n: bot.warpTilesOnTimeline }}
+        />
       </div>
       <div className="cx-warp-row">
-        <span>Past Timeline tiles</span>
+        <span>{t('ui.panel.warp.past')}</span>
         <b>{past}</b>
       </div>
       {byEra && (
@@ -165,7 +172,7 @@ export function WarpTileBreakdown({
         </ul>
       )}
       <div className="cx-warp-row">
-        <span>Era {era} (current) tile</span>
+        <span>{t('ui.panel.warp.current', { era })}</span>
         <b>{current}</b>
       </div>
     </div>
@@ -185,23 +192,26 @@ export function BlinkPanel({
   destination: string;
   onConfirm: () => void;
 }) {
+  const t = useT();
   return (
     <div className="place-prompt">
       {fluxDrawSrc && (
         <div className="flux-draw">
-          <img src={fluxDrawSrc} alt="Flux Core drawn" />
-          <span>Drawn from the Flux Pool — Blink activated.</span>
+          <img src={fluxDrawSrc} alt={t('ui.panel.blink.fluxAlt')} />
+          <span>{t('ui.panel.blink.fluxDrawn')}</span>
         </div>
       )}
       {/* The selection rule is folded into the instruction rather than explained beside
           it — the verbatim box below carries the rulebook's own wording. */}
       <p className="pp-instruct">
-        Move its Exosuit from <b>{blink.spaceLabel}</b> (bottom-most space) to{' '}
-        <b>{destination}</b>, and return that Exosuit’s Energy Core to the supply.
+        <T
+          k="ui.panel.blink.instruct"
+          params={{ from: blink.spaceLabel, to: destination }}
+        />
       </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onConfirm}>
-          ✓ Confirm moved
+          {t('ui.panel.blink.confirm')}
         </button>
       </div>
     </div>
@@ -214,12 +224,13 @@ export function BlinkPanel({
  * box of its own.
  */
 export function BlinkRuleBlock() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const blinkRule = useRule('rule.blink', Chronossus.BLINK_RULE);
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((o) => !o)}>
-        📖 Blink {open ? '▾' : '▸'}
+        {t('ui.panel.blink.rulesCta')} {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -276,29 +287,30 @@ export function PlaceExosuitPanel({
   offBoard?: boolean;
   onContinue: () => void;
 }) {
+  const t = useT();
   return (
     <div className="place-prompt">
       {drewCasing && fluxDrawSrc && (
         <div className="flux-draw">
-          <img src={fluxDrawSrc} alt="Empty Flux Casing drawn" />
-          <span>Drawn from the Flux Pool — no Blink.</span>
+          <img src={fluxDrawSrc} alt={t('ui.panel.place.casingAlt')} />
+          <span>{t('ui.panel.place.casingDrawn')}</span>
         </div>
       )}
-      {noFigures ? (
-        <p className="pp-instruct">
-          No Blink, and the bot has <b>no Exosuit left to place</b> — so it{' '}
-          <b>passes</b> for the Era. Nothing goes on <b>{destination}</b>, and its Command
-          token does not advance.
-        </p>
-      ) : (
-        <p className="pp-instruct">
-          Place one of its <b>available powered Exosuits</b> on <b>{destination}</b>
-          {offBoard ? '.' : ', and put an Energy Core from the supply into it.'}
-        </p>
-      )}
+      <p className="pp-instruct">
+        <T
+          k={
+            noFigures
+              ? 'ui.panel.place.noFigures'
+              : offBoard
+                ? 'ui.panel.place.instructOffBoard'
+                : 'ui.panel.place.instruct'
+          }
+          params={{ destination }}
+        />
+      </p>
       <div className="pp-buttons">
         <button className="pp-confirm" onClick={onContinue}>
-          {noFigures ? '✓ Continue — it passes' : '✓ Confirm placed'}
+          {t(noFigures ? 'ui.panel.place.continuePasses' : 'ui.panel.place.confirm')}
         </button>
       </div>
     </div>
@@ -363,6 +375,26 @@ const DIFFICULTY_LABEL: Record<string, string> = {
   [Chronobot.DIFFICULTY_MIN_ACTIONS_6]: 'Minimum Actions raised to 6',
   [Chronobot.DIFFICULTY_HEX_UNAVAILABLE]: 'Right World Council space covered (Hex Unavailable)',
 };
+
+/** The locale key for each flag, in step with `DIFFICULTY_LABEL`. */
+const DIFFICULTY_LABEL_KEY: Record<string, string> = {
+  [Chronobot.DIFFICULTY_REBOOT_ADVANCE]: 'ui.setup.diffChip.rebootAdvance',
+  [Chronobot.DIFFICULTY_NO_LEADER]: 'ui.setup.diffChip.noLeader',
+  [Chronobot.DIFFICULTY_BOT_EXTRA_TURN]: 'ui.setup.diffChip.botExtraTurn',
+  [Chronobot.DIFFICULTY_MIN_ACTIONS_6]: 'ui.setup.diffChip.minActions6',
+  [Chronobot.DIFFICULTY_HEX_UNAVAILABLE]: 'ui.setup.diffChip.hexUnavailable',
+};
+
+/**
+ * One difficulty flag as a label. `translate` is optional for the same reason the
+ * Chronossus's version takes one: the persisted paths (the history service's difficulty
+ * column, the BG Stats notes) call it without one and must keep English, while the
+ * on-screen chip passes `useT()`.
+ */
+function chronobotDifficultyLabel(flag: string, translate?: (key: string) => string): string {
+  const key = DIFFICULTY_LABEL_KEY[flag];
+  return (key && translate?.(key)) || DIFFICULTY_LABEL[flag] || flag;
+}
 
 /**
  * Summarize a Paradox-phase die roll from the pre→post Chronobot state: the
@@ -492,14 +524,19 @@ export function clearSavedChronobot(): void {
 }
 
 /** Describe a Resource-cube discard list, e.g. "2 titanium + 1 gold". */
-function describeCubes(cubes: Resource[]): string {
+function describeCubes(
+  cubes: Resource[],
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
   const order: Resource[] = ['neutronium', 'titanium', 'gold', 'uranium', 'water'];
   const counts = new Map<Resource, number>();
   for (const c of cubes) counts.set(c, (counts.get(c) ?? 0) + 1);
   return order
     .filter((r) => counts.has(r))
-    .map((r) => `${counts.get(r)} ${r}`)
-    .join(' + ');
+    .map((r) =>
+      t('ui.dialog.anomaly.cubes', { n: counts.get(r) ?? 0, resource: t(`ui.pieceInline.${r}`) }),
+    )
+    .join(t('ui.dialog.anomaly.cubeJoin'));
 }
 
 /** Cropped icon per Breakthrough shape (only the shape matters to the Chronobot). */
@@ -583,45 +620,48 @@ function counterTooltip(
   bot: ChronobotState,
   c: (typeof BOARD_COUNTERS)[number],
   era: number,
+  t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
   const count = counterValue(bot, c.key);
+  // The tracker's own name is translatable too, so the sentence takes it as a param
+  // rather than concatenating the English from the layout catalog.
+  const label = t(`piece.${c.key}`);
   if (c.key === 'superproject') {
     const vps = bot.superprojectVps;
     return vps.length
-      ? `${c.label} ×${count} — VP: ${vps.join(', ')}`
-      : `${c.label}: 0`;
+      ? t('ui.counterTip.superproject', { label, count, vps: vps.join(', ') })
+      : t('ui.counterTip.superprojectEmpty', { label });
   }
   if ((BUILDING_KEYS as readonly string[]).includes(c.key)) {
     const vps = bot.buildingVps[c.key as (typeof BUILDING_KEYS)[number]];
     return vps.length
-      ? `${c.label} ×${count} — VP: ${vps.join(', ')} (max 3 of a type)`
-      : `${c.label}: 0 (max 3 of a type)`;
+      ? t('ui.counterTip.building', { label, count, vps: vps.join(', ') })
+      : t('ui.counterTip.buildingEmpty', { label });
   }
   switch (c.key) {
     case 'breakthrough':
-      return `${c.label}: ${count} — click for per-shape counts`;
+      return t('ui.counterTip.breakthrough', { label, count });
     case 'mech': {
       // Placed this Era = powered (set at Power Up) − still available.
       const deployed = Math.max(0, Chronobot.chronobotPoweredExosuits(era) - count);
-      return (
-        `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available` +
-        ` · ${deployed} deployed on board`
-      );
+      return t(count === 1 ? 'ui.counterTip.mech' : 'ui.counterTip.mechPlural', {
+        label,
+        count,
+        deployed,
+      });
     }
     case 'anomaly':
-      return `${c.label}: ${count} (max 3)`;
+      return t('ui.counterTip.anomaly', { label, count });
     case 'neutronium':
     case 'uranium':
     case 'gold':
     case 'titanium':
-      return `${c.label}: ${count} cube${count === 1 ? '' : 's'}`;
-    case 'genius':
-    case 'administrator':
-    case 'engineer':
-    case 'scientist':
-      return `${c.label}: ${count}`;
+      return t(count === 1 ? 'ui.counterTip.cubes' : 'ui.counterTip.cubesPlural', {
+        label,
+        count,
+      });
     default:
-      return `${c.label}: ${count}`;
+      return t('ui.counterTip.plain', { label, count });
   }
 }
 
@@ -645,6 +685,10 @@ export default function BoardExplorer({
   onHome,
   readOnly = false,
 }: { onHome?: () => void; readOnly?: boolean } = {}) {
+  const t = useT();
+  // Action labels, translated. The raw catalog is still used where a label is PERSISTED
+  // (a History turn label), which must stay in the language it was written in.
+  const actionDefs = useActions();
   // Rehydrate a saved game once on mount (null → fresh game).
   const [persisted] = useState(loadPersisted);
   const [state, setState] = useState<GameState>(
@@ -1014,9 +1058,7 @@ export default function BoardExplorer({
   // "Reset Game" — confirm, clear saved state, and start a brand-new game.
   const reset = () => {
     if (
-      !window.confirm(
-        'Start a new game? This clears the current Chronobot game and its history.',
-      )
+      !window.confirm(t('ui.reset.confirm'))
     ) {
       return;
     }
@@ -1601,11 +1643,12 @@ export default function BoardExplorer({
           const discards = Chronobot.chooseRemoveAnomalyDiscards(bot);
           return {
             canRemove: bot.anomalies >= 1 && discards != null,
-            discards: discards ? describeCubes(discards) : '',
-            reason:
+            discards: discards ? describeCubes(discards, t) : '',
+            reason: t(
               bot.anomalies < 1
-                ? 'it has no Anomaly to remove'
-                : 'it lacks 2 Resource cubes (or a Neutronium) to spend',
+                ? 'ui.dialog.anomaly.reason.none'
+                : 'ui.dialog.anomaly.reason.cubes',
+            ),
           };
         })()}
         mineOrder={Chronobot.mineResourceOrder(bot)}
@@ -1648,7 +1691,7 @@ export default function BoardExplorer({
         >
           <img
             src="/assets/solo/board-chronobot.jpg"
-            alt="Chronobot solo board"
+            alt={t('ui.board.soloBoardAlt')}
             className="board"
           />
 
@@ -1660,7 +1703,7 @@ export default function BoardExplorer({
               h.rect[0] + h.rect[2] / 2,
               h.rect[1] + h.rect[3] / 2,
             ];
-            const def = CHRONOBOT_ACTIONS[h.action];
+            const def = actionDefs[h.action];
             const isActive = active?.id === h.id;
             const sel = calibrate && selected === hotspotKey(h.id);
             return (
@@ -1704,7 +1747,7 @@ export default function BoardExplorer({
                 key={c.key}
                 className={`count-badge ${sel ? 'cal-selected' : ''} ${tappable ? 'clickable' : ''}`}
                 style={{ left: `${x}%`, top: `${y}%` }}
-                title={calibrate ? c.label : counterTooltip(bot, c, state.era)}
+                title={calibrate ? c.label : counterTooltip(bot, c, state.era, t)}
                 onClick={
                   tappable
                     ? (e) => {
@@ -1727,7 +1770,7 @@ export default function BoardExplorer({
                 )}
                 {open && c.key !== 'breakthrough' && (
                   <BadgePopover rect={tappedRect} variant="text">
-                    {counterTooltip(bot, c, state.era)}
+                    {counterTooltip(bot, c, state.era, t)}
                   </BadgePopover>
                 )}
               </div>
@@ -1767,7 +1810,7 @@ export default function BoardExplorer({
                 return (
                   <img
                     src="/assets/solo/timetravel-marker.png"
-                    alt="Time Travel marker"
+                    alt={t('ui.board.timeTravelMarkerAlt')}
                     className="tt-marker"
                     style={{ left: `${x}%`, top: `${y}%`, width: `${markerWidth}%` }}
                   />
@@ -1803,7 +1846,7 @@ export default function BoardExplorer({
                   <img
                     key={tk}
                     src={COMMAND_MARKER_IMG[tk]}
-                    alt={`Command token ${tk}`}
+                    alt={t('ui.board.commandTokenAlt', { n: tk })}
                     className={`cmd-marker ${activeToken === tk ? 'active' : ''}`}
                     style={{
                       left: `${x + dx}%`,
@@ -1826,7 +1869,7 @@ export default function BoardExplorer({
                 title={
                   calibrate
                     ? undefined
-                    : `Chronobot Warp tiles on the Timeline: ${bot.warpTilesOnTimeline} — tap for the past / current Era split`
+                    : t('ui.board.warpTitle', { n: bot.warpTilesOnTimeline })
                 }
                 onClick={
                   calibrate
@@ -1841,7 +1884,7 @@ export default function BoardExplorer({
                 <img
                   className="warp-img"
                   src="/assets/solo/warp-tile.png"
-                  alt="Chronobot Warp tile"
+                  alt={t('ui.board.warpTileAlt')}
                 />
                 <span className="warp-count">{bot.warpTilesOnTimeline}</span>
                 {/* Time Travel only takes from a PAST Timeline tile, so the total on its
@@ -1947,16 +1990,17 @@ export default function BoardExplorer({
           // would answer a question the player has not reached yet.
           hint={
             !isActionsPhase
-              ? 'Outside the Action Rounds — the counts and recent turns below are this Era so far.'
+              ? t('ui.turnBar.outsideActions')
               : (passMsg ??
                 describeDecision(
                   Chronobot.botPassDecision(state),
                   Chronobot.chronobotMinActions(state),
+                  t,
                 ))
           }
           canEnd={isActionsPhase && Chronobot.actionRoundsCanEnd(state)}
           turnRules={phaseMeta.actions?.rules}
-          difficulty={state.config.difficulty.map((f) => DIFFICULTY_LABEL[f] ?? f)}
+          difficulty={state.config.difficulty.map((f) => chronobotDifficultyLabel(f, t))}
           entries={undoStack.filter(
             (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
           )}
@@ -2047,16 +2091,16 @@ export default function BoardExplorer({
                 className="undo-btn cx-undo-btn"
                 onClick={undo}
                 disabled={undoStack.length === 0}
-                title="Undo the last committed step"
+                title={t('ui.turnBar.undoTitle')}
               >
-                ↶ Undo
+                ↶ {t('ui.common.undo')}
               </button>
               {/* History is otherwise reachable only from the Action Rounds board, so a
                   phase's own entries (a Warp placement, a Paradox roll) looked unlogged. */}
               <button
                 className={`stat-pill status-chip ${showPhaseHistory ? 'on' : ''}`}
                 onClick={() => setShowPhaseHistory((v) => !v)}
-                title="Turn history"
+                title={t('ui.turnBar.historyTitle')}
                 aria-pressed={showPhaseHistory}
               >
                 🕑
@@ -2066,10 +2110,10 @@ export default function BoardExplorer({
               <button
                 className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
                 onClick={() => setShowStatus((v) => !v)}
-                title="Turn tracker — pass status & recent bot turns"
+                title={t('ui.turnBar.chipTitle')}
                 aria-pressed={showStatus}
               >
-                Turn <b>{bot.actionsThisEra}</b>
+                {t('ui.turnBar.turn')} <b>{bot.actionsThisEra}</b>
               </button>
               <RulesButton onClick={() => setModeRules(true)} />
             </>
@@ -2142,9 +2186,9 @@ export default function BoardExplorer({
         )}
       {canEndActions && !showFirstPlayer && (
         <div className="end-phase-banner">
-          <span>✓ Everyone has passed — the Action Rounds Phase is complete.</span>
+          <span>{t('ui.phaseBody.endBanner')}</span>
           <button className="phase-primary" onClick={endActions}>
-            Continue to Clean Up ▶
+            {t('ui.phaseBody.continueToCleanUp')} ▶
           </button>
         </div>
       )}
@@ -2168,21 +2212,17 @@ function PhaseBody({
   meta: PhaseMeta;
   onAdvance: () => void;
 }) {
+  const t = useT();
   const phase = state.phase;
   const powered = Chronobot.chronobotPoweredExosuits(state.era);
   return (
     <>
       {phase === 'preparation' && (
-        <p className="phase-note">
-          No changes for the Chronobot this phase — set up the Era as normal, then
-          continue.
-        </p>
+        <p className="phase-note">{t('ui.phaseBody.preparation')}</p>
       )}
       {phase === 'powerup' && (
         <p className="phase-note">
-          Power up <b>{powered}</b> of the Chronobot's Exosuits (Eras 1–4 → 6,
-          Eras 5–7 → 4). Collect those Exosuits to place when the app prompts you;
-          it neither gains nor spends Energy Cores or Water.
+          <T k="ui.phaseBody.powerup" params={{ n: powered }} />
         </p>
       )}
       {meta.rules && (
@@ -2191,7 +2231,7 @@ function PhaseBody({
         </RulesBox>
       )}
       <button className="phase-primary" onClick={onAdvance}>
-        Continue ▶
+        {t('ui.phaseBody.continue')} ▶
       </button>
     </>
   );
@@ -2213,25 +2253,20 @@ function CleanUpPhaseBody({
   onNextEra: () => void;
   onEndGame: () => void;
 }) {
+  const t = useT();
   const era = state.era;
   const postImpact = era === 5 || era === 6;
   const finalEra = era >= Chronobot.MAX_ERA;
   return (
     <>
-      <p className="phase-note">
-        Retrieve the Chronobot's Exosuits along with your own.
-      </p>
+      <p className="phase-note">{t('ui.cleanUp.retrieve')}</p>
       {era === 4 && (
         <p className="phase-note">
-          <b>The Impact occurs now</b> — resolve it using the usual procedure at the
-          end of Era 4. From Era 5 on, the Chronobot powers up 4 Exosuits instead of 6.
+          <T k="ui.cleanUp.impact" />
         </p>
       )}
       {postImpact && (
-        <p className="phase-note">
-          Flip using the usual procedure the Collapsing Capital tiles, then check
-          for game end.
-        </p>
+        <p className="phase-note">{t('ui.cleanUp.collapsing')}</p>
       )}
       {meta.rules && (
         <RulesBox label={meta.name}>
@@ -2240,7 +2275,7 @@ function CleanUpPhaseBody({
       )}
       {finalEra ? (
         <button className="phase-primary" onClick={onEndGame}>
-          Finish &amp; Score ▶
+          {t('ui.cleanUp.finishAndScore')} ▶
         </button>
       ) : postImpact ? (
         <div className="place-prompt">
@@ -2249,20 +2284,20 @@ function CleanUpPhaseBody({
               affirmative button, so answering the question as asked chose the opposite of
               what it said. The buttons now ARE the two answers, in that order. */}
           <p className="pp-instruct">
-            Flip the Collapsing Capital tiles. Are they now <b>all</b> flipped?
+            <T k="ui.cleanUp.allFlippedQ" />
           </p>
           <div className="pp-buttons">
             <button className="pp-confirm" onClick={onEndGame}>
-              ✓ Yes — the game has ended, Finish &amp; Score
+              {t('ui.cleanUp.endedYes')}
             </button>
             <button className="pp-cannot" onClick={onNextEra}>
-              ✗ No — the game continues, start Era {era + 1} ▶
+              {t('ui.cleanUp.continuesNo', { era: era + 1 })} ▶
             </button>
           </div>
         </div>
       ) : (
         <button className="phase-primary" onClick={onNextEra}>
-          End the Era — start Era {era + 1} ▶
+          {t('ui.cleanUp.endEra', { era: era + 1 })} ▶
         </button>
       )}
     </>
@@ -2281,13 +2316,20 @@ function CleanUpPhaseBody({
  * different statements.
  */
 export function ParadoxDieFace({ n, size = 44 }: { n: number; size?: number }) {
+  const t = useT();
   const face = n === 0 ? 0 : n === 2 ? 2 : 1;
   return (
     <img
       className="paradox-die-face"
       src={`/assets/solo/paradox-die-${face}.png`}
-      alt={`Paradox die: ${n === 0 ? 'blank' : n === 2 ? 'double Paradox' : 'one Paradox'}`}
-      title={`Rolled ${n} Paradox${n === 1 ? '' : 'es'}`}
+      alt={t(
+        n === 0
+          ? 'ui.paradoxDie.altBlank'
+          : n === 2
+            ? 'ui.paradoxDie.altDouble'
+            : 'ui.paradoxDie.altOne',
+      )}
+      title={t(n === 1 ? 'ui.paradoxDie.rolled' : 'ui.paradoxDie.rolledPlural', { n })}
       style={{ width: size, height: size }}
     />
   );
@@ -2333,7 +2375,7 @@ export function WarpPhaseBody({
   beforeCommit,
   intro,
   extraRules,
-  tileLabel = 'the current Timeline tile',
+  tileLabel,
 }: {
   state: GameState;
   meta: PhaseMeta;
@@ -2375,6 +2417,8 @@ export function WarpPhaseBody({
    */
   beforeCommit?: ReactNode;
 }) {
+  const t = useT();
+  const tile = tileLabel ?? t('ui.warpPhase.tileLabel');
   const [localRolled, setLocalRolled] = useState<number | null>(null);
   const controlled = onRoll != null;
   const rolled = controlled ? (roll ?? null) : localRolled;
@@ -2384,10 +2428,9 @@ export function WarpPhaseBody({
     <>
       {intro === undefined ? (
         <p className="phase-note">
-          Warping occurs in player order.{' '}
-          {botFirst
-            ? `The ${botName} is First Player this Era, so it Warps first — roll for it below, then place your own 0–2 Warp tiles as normal.`
-            : `You are First Player this Era, so place your own 0–2 Warp tiles first, then roll for the ${botName}.`}
+          {t(botFirst ? 'ui.warpPhase.orderBotFirst' : 'ui.warpPhase.orderYouFirst', {
+            bot: botName,
+          })}
         </p>
       ) : (
         intro
@@ -2395,7 +2438,7 @@ export function WarpPhaseBody({
 
       {rolled == null ? (
         <button className="phase-primary" onClick={doRoll}>
-          Roll for the {botName}'s Warp
+          {t('ui.warpPhase.roll', { bot: botName })}
         </button>
       ) : (
         <>
@@ -2412,21 +2455,25 @@ export function WarpPhaseBody({
                     key={i}
                     className="warp-roll-tile"
                     src={warpTileSrc}
-                    alt={i === 0 ? `${botName} Warp tile` : ''}
+                    alt={i === 0 ? t('ui.warpPhase.tileAlt', { bot: botName }) : ''}
                   />
                 ))}
               </span>
             )}
             <p className="phase-note">
               {rolled === 0
-                ? `The ${botName} rolled no Paradoxes — it places no Warp tiles this phase.`
-                : `The ${botName} rolled ${rolled} Paradox${rolled > 1 ? 'es' : ''} — place ${rolled} Warp tile${rolled > 1 ? 's' : ''} for it on ${tileLabel}. Any tiles will do; the ${botName} gains nothing from them.`}
+                ? t('ui.warpPhase.none', { bot: botName })
+                : t(rolled === 1 ? 'ui.warpPhase.placed' : 'ui.warpPhase.placedPlural', {
+                    bot: botName,
+                    n: rolled,
+                    tile,
+                  })}
             </p>
           </div>
           {beforeCommit}
           {followUp ?? (
             <button className="phase-primary" onClick={() => onCommit(rolled)}>
-              Continue ▶
+              {t('ui.phaseBody.continue')} ▶
             </button>
           )}
         </>
@@ -2516,6 +2563,7 @@ export function ParadoxPhaseBody({
    */
   pastTiles?: number;
 }) {
+  const t = useT();
   const [asked, setAsked] = useState(0);
   const [stopped, setStopped] = useState(false);
   // The player clicked "No / Done" — the bot no longer leads or ties any tile.
@@ -2567,15 +2615,10 @@ export function ParadoxPhaseBody({
   // the reference material they only consult to double-check.
   return (
     <>
-      <p className="phase-note">
-        The {botName} rolls for Paradoxes on each past Timeline tile where it has the
-        most (or tied-most) Warp tiles. It keeps checking until it gains an Anomaly.
-      </p>
+      <p className="phase-note">{t('ui.paradoxPhase.intro', { bot: botName })}</p>
       {hypersyncTiles != null && (
         <p className="phase-note">
-          <b>Hypersync:</b> a Hypersync tile counts as a Warp tile when deciding who has
-          the most Warp tiles on a Timeline tile — but a tile with <b>zero</b> Warp tiles
-          never rolls, even with a Hypersync tile present.
+          <T k="ui.paradoxPhase.hypersyncNote" />
         </p>
       )}
 
@@ -2595,7 +2638,7 @@ export function ParadoxPhaseBody({
                       key={k}
                       className="warp-roll-tile"
                       src={icons.paradox}
-                      alt={k === 0 ? 'Paradox' : ''}
+                      alt={k === 0 ? t('ui.paradoxPhase.paradoxAlt') : ''}
                     />
                   ))}
                 </span>
@@ -2611,38 +2654,42 @@ export function ParadoxPhaseBody({
       ) : !done ? (
         <div className="place-prompt">
           <p className="pp-instruct">
-            Does the {botName} still have the most (or tied-most) Warp tiles on a past
-            Timeline tile{hypersyncTiles != null ? ' (Hypersync tiles count)' : ''}? Keep
-            rolling for each such tile.
+            {t('ui.paradoxPhase.ask', {
+              bot: botName,
+              hypersync: hypersyncTiles != null ? t('ui.paradoxPhase.hypersyncCount') : '',
+            })}
           </p>
           {maxChecks > 0 && (
             <p className="pp-sub">
-              {asked} of up to {maxChecks} roll{maxChecks === 1 ? '' : 's'} this phase.
+              {t(
+                maxChecks === 1 ? 'ui.paradoxPhase.rollsUsed' : 'ui.paradoxPhase.rollsUsedPlural',
+                { asked, max: maxChecks },
+              )}
             </p>
           )}
           <div className="pp-buttons">
             <button className="pp-confirm" onClick={answerYes}>
-              Yes — it ties or leads (roll)
+              {t('ui.paradoxPhase.yes')}
             </button>
             <button className="pp-cannot" onClick={answerNo}>
-              No — done
+              {t('ui.paradoxPhase.no')}
             </button>
           </div>
         </div>
       ) : hypersyncEligible && !hsAsked ? (
         <div className="place-prompt">
           <p className="pp-instruct">
-            <b>Hypersync — extra Paradox roll.</b> The player(s) with the most total
-            Hypersync tiles in play make one more Paradox roll. Does the {botName} have
-            the most (or tied-most) total Hypersync tiles in play (it has{' '}
-            <b>{hypersyncTiles}</b>)?
+            <T
+              k="ui.paradoxPhase.hypersyncExtra"
+              params={{ bot: botName, n: hypersyncTiles ?? 0 }}
+            />
           </p>
           <div className="pp-buttons">
             <button className="pp-confirm" onClick={hsAnswerYes}>
-              Yes — it ties or leads (roll)
+              {t('ui.paradoxPhase.yes')}
             </button>
             <button className="pp-cannot" onClick={hsAnswerNo}>
-              No
+              {t('ui.paradoxPhase.noShort')}
             </button>
           </div>
         </div>
@@ -2650,12 +2697,16 @@ export function ParadoxPhaseBody({
         <>
           {noWarp && asked === 0 && (
             <p className="phase-note">
-              The {botName} has no Warp tiles on the Timeline
-              {hypersyncTiles != null ? ' — its Warp-tile Paradox checks are skipped' : ' — it rolls no Paradoxes this phase'}.
+              {t(
+                hypersyncTiles != null
+                  ? 'ui.paradoxPhase.noWarpHypersync'
+                  : 'ui.paradoxPhase.noWarp',
+                { bot: botName },
+              )}
             </p>
           )}
           <button className="phase-primary" onClick={onAdvance}>
-            Continue to Power Up ▶
+            {t('ui.paradoxPhase.continueToPowerUp')} ▶
           </button>
         </>
       )}
@@ -2666,26 +2717,26 @@ export function ParadoxPhaseBody({
         <span>
           <img src={icons.paradox} alt="" />
           <span>
-            Paradoxes <b>{bot.paradoxes}</b>/3
+            {t('ui.paradoxPhase.paradoxes')} <b>{bot.paradoxes}</b>/3
           </span>
         </span>
         <span>
           <img src={icons.anomaly} alt="" />
           <span>
-            Anomalies <b>{bot.anomalies}</b>/3
+            {t('ui.paradoxPhase.anomalies')} <b>{bot.anomalies}</b>/3
           </span>
         </span>
         <span>
           <img src={icons.warp} alt="" />
           <span>
-            Warp tiles <b>{bot.warpTilesOnTimeline}</b>
+            {t('ui.paradoxPhase.warpTiles')} <b>{bot.warpTilesOnTimeline}</b>
           </span>
         </span>
         {hypersyncTiles != null && (
           <span>
             <img src={icons.hypersync} alt="" />
             <span>
-              Hypersync <b>{hypersyncTiles}</b>
+              {t('ui.paradoxPhase.hypersync')} <b>{hypersyncTiles}</b>
             </span>
           </span>
         )}
@@ -2703,29 +2754,28 @@ export function ParadoxPhaseBody({
           Hypersync Future Actions module and Chronossus base rules apply, unless noted
           below" — and its notes never touch the Paradox Phase). Verbatim so the player
           can check the majority + extra-roll prompts against the source. */}
-      {hypersyncTiles != null && (
-        <RulesBox label="Hypersync in the Paradox Phase">
-          <p>
-            During the Paradox Phase, the presence of a Hypersync tile counts as a Warp
-            tile when checking for most Warp tiles per Timeline tile. Therefore, if a
-            player has two Warp tiles on a Timeline tile, while another has a single Warp
-            tile and a Hypersync tile, they both roll for Paradox.
-          </p>
-          <p>
-            <b>IMPORTANT:</b> Just like in the base game, players that have zero Warp
-            tiles on a Timeline tile do not roll for a Paradox, even if they have a
-            Hypersync tile present.
-          </p>
-          <p>
-            Additionally, the player (or players) with the most total Hypersync tiles
-            (across all Timeline tiles) in play make one more Paradox roll, unless they
-            have already received an Anomaly during the current Paradox Phase. (If no
-            player has any Hypersync tiles in play, this roll is skipped.)
-          </p>
-          <p className="rules-cite">Future Imperfect rulebook, p. 5</p>
-        </RulesBox>
-      )}
+      {hypersyncTiles != null && <HypersyncParadoxRules />}
     </>
+  );
+}
+
+/**
+ * Hypersync's two Paradox-Phase rules, verbatim. The text is a rule constant so a locale
+ * only overrides it from that language's OFFICIAL Future Imperfect edition — the same gate
+ * every other 📖 box uses. "IMPORTANT:" is bold in the book, so the paragraph carries the
+ * `**…**` markup `<T>`-style rendering would give it; here it is a plain rule block, and
+ * the emphasis rides in the transcription itself.
+ */
+function HypersyncParadoxRules() {
+  const t = useT();
+  const rule = useRule('rule.hypersyncParadox', Chronossus.HYPERSYNC_PARADOX_RULE);
+  return (
+    <RulesBox label={t('ui.paradoxPhase.hypersyncRulesLabel')}>
+      {rule.split(/\n\s*\n/).map((para, i) => (
+        <p key={i}>{para}</p>
+      ))}
+      <p className="rules-cite">{t('ui.paradoxPhase.hypersyncCite')}</p>
+    </RulesBox>
   );
 }
 
@@ -2733,38 +2783,39 @@ export function ParadoxPhaseBody({
 function describeDecision(
   d: ReturnType<typeof Chronobot.botPassDecision>,
   min: number,
+  t: (key: string, params?: Record<string, string | number>) => string,
 ): string {
   switch (d) {
     case 'continue':
-      return `The bot alternates turns with you and only passes once either you have passed and it has taken at least its minimum of ${min} turns, or it has used all its Exosuits and taken one additional Time Travel action.`;
+      return t('ui.passDecision.continue', { min });
     case 'continue-extra':
-      return 'Difficulty: the Chronobot takes one additional turn after you passed — roll the AI die for it.';
+      return t('ui.passDecision.continueExtra');
     case 'must-continue-min3':
-      return `The Chronobot is out of Exosuits but has not taken ${min} Actions yet — it keeps taking turns (Time Travel / Reboot) until it reaches ${min}.`;
+      return t('ui.passDecision.mustContinueMin', { min });
     case 'time-travel-then-pass':
-      return 'The Chronobot is out of Exosuits — it takes a final Time Travel Action (if able), then passes.';
+      return t('ui.passDecision.timeTravelThenPass');
     case 'pass':
-      return 'The Chronobot passes for this Era.';
+      return t('ui.passDecision.pass');
   }
 }
 
 /** Player score tally categories (rulebook). Timeline penalties subtract. */
 const TALLY_FIELDS: {
+  /** Also the locale key: `ui.tally.<key>`. */
   key: string;
-  label: string;
   mult: number;
   sub?: boolean;
 }[] = [
-  { key: 'buildings', label: 'Buildings', mult: 1 },
-  { key: 'anomalies', label: 'Anomalies', mult: 1 },
-  { key: 'superprojects', label: 'Superprojects', mult: 1 },
-  { key: 'timeTravel', label: 'Time Travel', mult: 1 },
-  { key: 'morale', label: 'Morale', mult: 1 },
-  { key: 'vpTokens', label: 'Victory Point tokens', mult: 1 },
-  { key: 'endgame', label: 'Endgame Conditions', mult: 1 },
-  { key: 'breakthroughs', label: 'Breakthroughs (×1 each)', mult: 1 },
-  { key: 'breakthroughSets', label: 'Breakthrough sets (×2 each)', mult: 2 },
-  { key: 'timelinePenalties', label: 'Timeline penalties (−)', mult: 1, sub: true },
+  { key: 'buildings', mult: 1 },
+  { key: 'anomalies', mult: 1 },
+  { key: 'superprojects', mult: 1 },
+  { key: 'timeTravel', mult: 1 },
+  { key: 'morale', mult: 1 },
+  { key: 'vpTokens', mult: 1 },
+  { key: 'endgame', mult: 1 },
+  { key: 'breakthroughs', mult: 1 },
+  { key: 'breakthroughSets', mult: 2 },
+  { key: 'timelinePenalties', mult: 1, sub: true },
 ];
 
 /** Final score screen: bot tally + turns, and the player's score (number or tally). */
@@ -2777,6 +2828,7 @@ function ScoreScreen({
   onClose: () => void;
   onNewGame: () => void;
 }) {
+  const t = useT();
   const playerScoringRule = useRule('rule.playerScoring', PLAYER_SCORING_RULE);
   const endgameRules = useRule('rule.endgame', ENDGAME_RULES);
   const bot = state.chronobot;
@@ -2864,10 +2916,10 @@ function ScoreScreen({
       const lapsed = expired && !stillLoggedIn;
       setSaveErr(
         lapsed
-          ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
+          ? t('ui.score.err.expired')
           : expired
-            ? "You're still logged in, but the history service rejected the save. This game is saved on this device and will upload once that's fixed."
-            : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
+            ? t('ui.score.err.rejected')
+            : t('ui.score.err.unreachable'),
       );
       setSaveExpired(lapsed);
       setSaveState('error');
@@ -2890,8 +2942,8 @@ function ScoreScreen({
     <div className="modal-overlay">
       <div className="score-screen" onClick={(e) => e.stopPropagation()}>
         <div className="score-head">
-          <h2>Final Score — Era {state.era}</h2>
-          <button className="dp-close" onClick={onClose} aria-label="Close">
+          <h2>{t('ui.score.title', { era: state.era })}</h2>
+          <button className="dp-close" onClick={onClose} aria-label={t('ui.score.close')}>
             ×
           </button>
         </div>
@@ -2900,7 +2952,7 @@ function ScoreScreen({
         <div className="score-bot">
           <div className="score-total">
             <span className="score-total-num">{s.total}</span>
-            <span className="score-total-label">Chronobot VP</span>
+            <span className="score-total-label">{t('ui.score.botVp')}</span>
           </div>
           <ScoreBreakdown score={s} botTurns={bot.totalActions} />
         </div>
@@ -2908,13 +2960,13 @@ function ScoreScreen({
         {/* Player score */}
         <div className="score-player">
           <div className="score-player-head">
-            <h3>Your score</h3>
+            <h3>{t('ui.score.yourScore')}</h3>
             <div className="score-mode">
               <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
-                Number
+                {t('ui.score.modeNumber')}
               </button>
               <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
-                Tally sheet
+                {t('ui.score.modeTally')}
               </button>
             </div>
           </div>
@@ -2923,7 +2975,7 @@ function ScoreScreen({
             <input
               className="score-num-input"
               type="number"
-              placeholder="Enter your total VP"
+              placeholder={t('ui.score.numberPlaceholder')}
               value={num}
               onChange={(e) => setNum(e.target.value)}
             />
@@ -2933,7 +2985,7 @@ function ScoreScreen({
               <div className="tally-grid">
                 {TALLY_FIELDS.map((f) => (
                   <div key={f.key} className="tally-row">
-                    <span>{f.label}</span>
+                    <span>{t(`ui.tally.${f.key}`)}</span>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -2950,8 +3002,8 @@ function ScoreScreen({
                     <button
                       type="button"
                       className="tally-clear"
-                      aria-label={`Clear ${f.label}`}
-                      title="Clear"
+                      aria-label={t('ui.score.clearField', { field: t(`ui.tally.${f.key}`) })}
+                      title={t('ui.score.clear')}
                       disabled={tally[f.key] == null}
                       onClick={() =>
                         setTally((t) => {
@@ -2967,11 +3019,11 @@ function ScoreScreen({
                 ))}
               </div>
               <div className="tally-total">
-                Your total: <b>{tallyTotal}</b>
+                {t('ui.score.yourTotal')} <b>{tallyTotal}</b>
               </div>
               {!tallyDone && (
                 <button className="tally-done" onClick={() => setTallyDone(true)}>
-                  Done — use this total
+                  {t('ui.score.tallyDone')}
                 </button>
               )}
             </>
@@ -2980,9 +3032,7 @@ function ScoreScreen({
 
         {result && (
           <div className={`score-result ${result}`}>
-            {result === 'win'
-              ? '🎉 You win! (more points than the Chronobot)'
-              : 'You lose — the Chronobot has at least as many points.'}
+            {t(result === 'win' ? 'ui.score.win' : 'ui.score.lose')}
           </div>
         )}
 
@@ -2991,10 +3041,10 @@ function ScoreScreen({
         {!user && !authLoading && result != null && (
           <div className="score-save score-login">
             <span className="score-login-msg">
-              Log in to save this game to your history.
+              {t('ui.score.loginToSave')}
             </span>
             <button className="score-save-retry" onClick={loginAndSave}>
-              Log in &amp; save
+              {t('ui.score.loginAndSave')}
             </button>
           </div>
         )}
@@ -3004,23 +3054,25 @@ function ScoreScreen({
         {user && saveState === 'idle' && (playerScore == null || Number.isNaN(playerScore)) && (
           <div className="score-save">
             <span className="score-save-wait">
-              Enter your score above to save this game to your history.
+              {t('ui.score.enterToSave')}
             </span>
           </div>
         )}
 
         {user && saveState !== 'idle' && (
           <div className="score-save">
-            {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}
+            {saveState === 'saving' && (
+              <span className="score-save-ok">{t('ui.score.saving')}</span>
+            )}
             {saveState === 'saved' && (
-              <span className="score-save-ok">✓ Saved to your history</span>
+              <span className="score-save-ok">{t('ui.score.saved')}</span>
             )}
             {saveState === 'error' && (
               <span className="score-save-err">
-                {saveErr || "Couldn't save automatically."}{' '}
+                {saveErr || t('ui.score.saveFailed')}{' '}
                 {saveExpired && (
                   <button className="score-save-retry" onClick={login}>
-                    Log in
+                    {t('ui.score.logIn')}
                   </button>
                 )}{' '}
                 <button
@@ -3031,7 +3083,7 @@ function ScoreScreen({
                     setSaveState('idle'); // re-arms the auto-save effect
                   }}
                 >
-                  Retry
+                  {t('ui.score.retry')}
                 </button>
               </span>
             )}
@@ -3040,17 +3092,17 @@ function ScoreScreen({
 
         {/* Verbatim rules last, as on every other screen. */}
         <div className="score-rules">
-          <RulesBox label="End Game scoring">
+          <RulesBox label={t('ui.score.rulesLabel')}>
             <p>{endgameRules}</p>
           </RulesBox>
         </div>
 
         <div className="score-actions">
           <button className="modal-no" onClick={onClose}>
-            Close
+            {t('ui.score.close')}
           </button>
           <button className="modal-yes" onClick={onNewGame}>
-            ⟳ New Game
+            ⟳ {t('ui.score.newGame')}
           </button>
         </div>
 
@@ -3333,29 +3385,30 @@ function ScoreBreakdown({
   /** Optional: total Actions the bot has taken (informational; not scored). */
   botTurns?: number;
 }) {
+  const t = useT();
   return (
     <ul className="score-breakdown">
-      <li title="Everything except Buildings, Time Travel & Breakthroughs">
-        <span>Token VP</span><b>{score.tokenVP}</b>
+      <li title={t('ui.vp.tokenVP.tip')}>
+        <span>{t('ui.vp.tokenVP')}</span><b>{score.tokenVP}</b>
       </li>
-      <li title="From Construct actions (Buildings & Superprojects)">
-        <span>Building VP</span><b>{score.buildingVP}</b>
+      <li title={t('ui.vp.buildingVP.tip')}>
+        <span>{t('ui.vp.buildingVP')}</span><b>{score.buildingVP}</b>
       </li>
-      <li title="From the Time Travel marker's track position (0/2/4/…/12)">
-        <span>Time Travel</span><b>{score.timeTravelVP}</b>
+      <li title={t('ui.vp.timeTravel.tip')}>
+        <span>{t('ui.vp.timeTravel')}</span><b>{score.timeTravelVP}</b>
       </li>
-      <li title="1 VP per Breakthrough">
-        <span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b>
+      <li title={t('ui.vp.breakthroughs.tip')}>
+        <span>{t('ui.vp.breakthroughs')}</span><b>{score.breakthroughVP}</b>
       </li>
-      <li title="+2 VP per complete shape set (one of each)">
-        <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
+      <li title={t('ui.vp.breakthroughSets.tip')}>
+        <span>{t('ui.vp.breakthroughSets')}</span><b>{score.shapeSetBonus}</b>
       </li>
-      <li className={score.anomalyVP < 0 ? 'score-neg' : ''} title="−3 VP per remaining Anomaly">
-        <span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b>
+      <li className={score.anomalyVP < 0 ? 'score-neg' : ''} title={t('ui.vp.anomalies.tip')}>
+        <span>{t('ui.vp.anomalies')}</span><b>{score.anomalyVP}</b>
       </li>
-      <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
+      <li className="score-sum"><span>{t('ui.vp.total')}</span><b>{score.total}</b></li>
       {botTurns != null && (
-        <li className="score-turns"><span>Bot turns taken</span><b>{botTurns}</b></li>
+        <li className="score-turns"><span>{t('ui.vp.botTurns')}</span><b>{botTurns}</b></li>
       )}
     </ul>
   );
@@ -3367,6 +3420,7 @@ function ScoreBreakdown({
  * the total. The total matches the End-Game score exactly.
  */
 function VpPill({ bot }: { bot: ChronobotState }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   // Anchor rect of the pill, captured on open so the portaled popover (below)
   // sits right under the bar and clamps on screen — like the tracker popovers.
@@ -3376,8 +3430,8 @@ function VpPill({ bot }: { bot: ChronobotState }) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest('.vp-pill-wrap') && !t.closest('.vp-popover')) setOpen(false);
+      const el = e.target as HTMLElement;
+      if (!el.closest('.vp-pill-wrap') && !el.closest('.vp-popover')) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', onDown);
@@ -3401,18 +3455,18 @@ function VpPill({ bot }: { bot: ChronobotState }) {
         type="button"
         className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
         onClick={toggle}
-        title="Click for the full VP breakdown"
+        title={t('ui.vp.pillTitle')}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
         <span className="vp-caret">{open ? '▾' : '▸'}</span>
         <span className="vp-seg">
-          <b>{score.total}</b> VP
+          <b>{score.total}</b> {t('ui.vp.pillUnit')}
         </span>
       </button>
       {open && (
         <AnchoredPopover rect={rect} className="vp-popover">
-          <div className="vp-popover-title">Chronobot VP</div>
+          <div className="vp-popover-title">{t('ui.vp.popoverTitle')}</div>
           <ScoreBreakdown score={score} botTurns={bot.totalActions} />
         </AnchoredPopover>
       )}
@@ -3490,8 +3544,8 @@ function StatsBar({
           <button
             className="home-btn"
             onClick={onHome}
-            title="Back to the home screen"
-            aria-label="Back to the home screen"
+            title={t('ui.topBar.home')}
+            aria-label={t('ui.topBar.home')}
           >
             <img src="/favicon-512.png" alt="" />
           </button>
@@ -3518,15 +3572,15 @@ function StatsBar({
                 disabled={!canTakeAction}
                 title={
                   botPassed
-                    ? 'The Chronobot has passed for this Era'
-                    : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command token`
+                    ? t('ui.topBar.botPassedTitle')
+                    : t('ui.topBar.takeActionTitle', { faces: AI_DIE_FACES.join(',') })
                 }
               >
                 {botPassed ? `✓ ${t('ui.common.botPassed')}` : t('ui.common.takeBotAction')}
               </button>
             )}
             {botDie != null && (
-              <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
+              <span className="bot-die" aria-label={t('ui.topBar.dieAria', { n: botDie })}>
                 {botDie}
               </span>
             )}
@@ -3535,7 +3589,7 @@ function StatsBar({
                 className="you-pass"
                 onClick={onPlayerPass}
                 disabled={!canPass || playerPassed}
-                title="Pass for the Action Rounds phase"
+                title={t('ui.topBar.passTitle')}
               >
                 {playerPassed ? `✓ ${t('ui.common.youPassed')}` : t('ui.common.youPass')}
               </button>
@@ -3544,18 +3598,18 @@ function StatsBar({
               className="undo-btn"
               onClick={onUndo}
               disabled={!canUndo}
-              title="Undo the last step (restores the same die roll)"
+              title={t('ui.topBar.undoTitle')}
             >
-              ↶ Undo
+              ↶ {t('ui.common.undo')}
             </button>
           </div>
           <button
             className={`stat-pill status-chip turn-chip ${statusOpen ? 'on' : ''}`}
             onClick={onToggleStatus}
-            title="Turn tracker — pass status, minimum Actions & recent bot turns"
+            title={t('ui.turnBar.chipTitleActions')}
             aria-pressed={statusOpen}
           >
-            Turn <b>{bot.actionsThisEra}</b>
+            {t('ui.turnBar.turn')} <b>{bot.actionsThisEra}</b>
           </button>
         </div>
       )}
@@ -3625,13 +3679,14 @@ function SimpleCommandView({
     });
   });
 
+  const t = useT();
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   const actions = useActions();
   const scvPhaseMeta = usePhaseMeta();
 
   const content = (
     <>
-      <div className="scv-title">What Chronobot might do next</div>
+      <div className="scv-title">{t('ui.scv.title')}</div>
       <div className="scv-grid">
         {rows.map((r) => (
           <button
@@ -3641,14 +3696,14 @@ function SimpleCommandView({
             }`}
             key={`${r.path}-${r.index}`}
             onClick={() => onShowRules(r.action)}
-            title={`Show the ${actions[r.action].label} rules`}
+            title={t('ui.scv.rowTitle', { action: actions[r.action].label })}
           >
             <div className="scv-markers">
               {r.stack.map((tk) => (
                 <img
                   key={tk}
                   src={COMMAND_MARKER_IMG[tk]}
-                  alt={`Command token ${tk}`}
+                  alt={t('ui.board.commandTokenAlt', { n: tk })}
                   className={`scv-marker ${activeToken === tk ? 'active' : ''}`}
                 />
               ))}
@@ -3661,7 +3716,7 @@ function SimpleCommandView({
         ))}
       </div>
       <div className="scv-die">
-        <span className="scv-die-label">AI die faces</span>
+        <span className="scv-die-label">{t('ui.scv.dieLabel')}</span>
         <div className="scv-die-faces">
           {AI_DIE_FACES.map((f, i) => (
             <span key={i} className="scv-die-face">
@@ -3670,7 +3725,7 @@ function SimpleCommandView({
           ))}
         </div>
       </div>
-      <RulesBox label="How the AI die moves the tokens">
+      <RulesBox label={t('ui.scv.rulesLabel')}>
         <p>{scvPhaseMeta.actions?.rules}</p>
       </RulesBox>
     </>
@@ -3691,10 +3746,10 @@ function SimpleCommandView({
           stop(e);
           onToggleShown();
         }}
-        title={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
-        aria-label={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
+        title={t(shown ? 'ui.scv.toggleHide' : 'ui.scv.toggleShow')}
+        aria-label={t(shown ? 'ui.scv.toggleHide' : 'ui.scv.toggleShow')}
       >
-        {shown ? '◂ Hide' : '▸ Show'}
+        {shown ? `◂ ${t('ui.scv.hide')}` : `▸ ${t('ui.scv.show')}`}
       </button>
       {shown && (
         <div
@@ -3771,7 +3826,7 @@ export function SettingsMenu({
       <button
         className={`gear-btn ${debug ? 'debug-on' : ''} ${open ? 'on' : ''}`}
         onClick={() => setOpen((o) => !o)}
-        title="Settings"
+        title={t('ui.settings.gear')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -3811,8 +3866,8 @@ export function SettingsMenu({
               aria-checked={adventureDeck.mode === 'virtual'}
               title={
                 adventureDeck.mode === 'virtual'
-                  ? 'The app draws the bot’s Adventure cards from its own shuffled deck'
-                  : 'The bot draws from your physical Adventure decks; you name the cards'
+                  ? t('ui.settings.adventureDeck.virtualTitle')
+                  : t('ui.settings.adventureDeck.physicalTitle')
               }
             >
               <span>{t('ui.settings.botAdventureDeck')}</span>
@@ -3910,7 +3965,7 @@ export function SettingsMenu({
                   }}
                   role="menuitem"
                 >
-                  📊 Overall stats
+                  📊 {t('ui.settings.overallStats')}
                 </button>
               )}
             </>
@@ -3920,12 +3975,12 @@ export function SettingsMenu({
               👤 …
             </button>
           ) : user ? (
-            <button className="settings-item" onClick={logout} role="menuitem" title={`Signed in as ${user.username}`}>
-              👤 Sign out ({user.username})
+            <button className="settings-item" onClick={logout} role="menuitem" title={t('ui.settings.signedInAs', { name: user.username })}>
+              👤 {t('ui.settings.signOut', { name: user.username })}
             </button>
           ) : (
             <button className="settings-item" onClick={login} role="menuitem">
-              👤 Log in
+              👤 {t('ui.settings.logIn')}
             </button>
           )}
         </div>
@@ -3936,12 +3991,23 @@ export function SettingsMenu({
   );
 }
 
-/** Short name of the Main-board Action space this action targets. */
-function spaceLabel(action: ChronobotActionId): string {
-  if (action.startsWith('construct')) return 'Construct';
+/**
+ * Short name of the Main-board Action space this action targets. `translate` is optional
+ * for the same reason `chronobotDifficultyLabel`'s is: a persisted string keeps English.
+ */
+function spaceLabel(
+  action: ChronobotActionId,
+  translate?: (key: string) => string,
+): string {
+  if (action.startsWith('construct')) {
+    return translate?.('ui.dialog.space.construct') ?? 'Construct';
+  }
   // The Recruit-Genius-Research mech gate is only reached via the Research fallback.
-  if (action === 'recruit-genius-research') return 'Research';
-  return CHRONOBOT_ACTIONS[action].label;
+  if (action === 'recruit-genius-research') {
+    return translate?.('ui.dialog.space.research') ?? 'Research';
+  }
+  const def = CHRONOBOT_ACTIONS[action];
+  return translate?.(`action.${def.id}.label`) ?? def.label;
 }
 
 export function DetailPanel({
@@ -3984,7 +4050,7 @@ export function DetailPanel({
   onClose,
   flow = false,
   botName = 'Chronobot',
-  startLabel = '▶ Start Your Turn',
+  startLabel,
   researchNewShape = false,
   figure = 'exosuit',
 }: {
@@ -4081,10 +4147,12 @@ export function DetailPanel({
    */
   figure?: 'exosuit' | 'guardian';
 }) {
+  const t = useT();
   const def = useAction(hotspot.action);
   /** What to call the piece being placed — a Guardian is an Exosuit type of its own. */
-  const figureLabel = figure === 'guardian' ? 'Guardian' : 'Exosuit';
-  const [l, t, w, h] = hotspot.panel ?? DEFAULT_PANEL;
+  const figureLabel = t(figure === 'guardian' ? 'ui.figure.guardian' : 'ui.figure.exosuit');
+  // `top` rather than `t`: `t` is the translator throughout this file.
+  const [l, top, w, h] = hotspot.panel ?? DEFAULT_PANEL;
   const [showMech, setShowMech] = useState(false);
   // In play mode the rule opens expanded (mech placement stays collapsed).
   const [showRule, setShowRule] = useState(readOnly);
@@ -4094,11 +4162,15 @@ export function DetailPanel({
   // Swap the bot's name into any displayed rulebook/verbatim text when this is
   // not the Chronobot (no-op for the default). Keeps the rule copy on-theme.
   const sub = (s: string) => (botName === 'Chronobot' ? s : s.replace(/Chronobot/g, botName));
+  const start = startLabel ?? `▶ ${t('ui.dialog.startTurn')}`;
+  const space = spaceLabel(hotspot.action, t);
   const paragraphs = def.rule.split('\n\n').map(sub);
   const buildingLabel = def.label.replace('Construct — ', '');
   const isSuperproject = hotspot.action === 'construct-superproject';
   // No "rules" suffix: the 📖 icon already says what the box is.
-  const ruleLabel = hotspot.action.startsWith('construct') ? 'Construct' : def.label;
+  const ruleLabel = hotspot.action.startsWith('construct')
+    ? t('ui.dialog.rule.construct')
+    : def.label;
   const failedInstr = result.find((ins) => /fail/i.test(ins.id));
 
   return (
@@ -4107,7 +4179,7 @@ export function DetailPanel({
       style={
         flow
           ? undefined
-          : { left: `${l}%`, top: `${t}%`, width: `${w}%`, height: `${h}%` }
+          : { left: `${l}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }
       }
       role="dialog"
       aria-label={def.label}
@@ -4117,7 +4189,7 @@ export function DetailPanel({
           <ActionIcon action={hotspot.action} size={92} />
           <h2>{def.label}</h2>
         </div>
-        <button className="dp-close" onClick={onClose} aria-label="Close">
+        <button className="dp-close" onClick={onClose} aria-label={t('ui.dialog.close')}>
           ×
         </button>
       </div>
@@ -4133,39 +4205,36 @@ export function DetailPanel({
         {pending === 'mech' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              {fractures ? (
-                <>
-                  Is a <b>{spaceLabel(hotspot.action)}</b> Action space open (not World
-                  Council)?
-                  {!blinkCheck && (
-                    <> Place the {botName}’s {figureLabel} on the topmost one.</>
-                  )}
-                </>
-              ) : (
-                <>
-                  Place the {botName}’s {figureLabel} on the topmost available{' '}
-                  <b>{spaceLabel(hotspot.action)}</b> Action space (or a World Council
-                  space if none are free).
-                </>
-              )}
+              <T
+                k={
+                  !fractures
+                    ? 'ui.dialog.mech.place'
+                    : blinkCheck
+                      ? 'ui.dialog.mech.askOpen'
+                      : 'ui.dialog.mech.askOpenPlace'
+                }
+                params={{ bot: botName, figure: figureLabel, space }}
+              />
             </p>
             {fractures && (
               <p className="pp-sub">
                 {blinkCheck
-                  ? `Don’t place anything yet — the ${botName} Blink-checks first, and a Blink moves an Exosuit it already has on the board instead.`
-                  : 'Put an Energy Core from the supply into that Exosuit. (No Blink is possible, so it places as usual.)'}
+                  ? t('ui.dialog.mech.blinkFirst', { bot: botName })
+                  : t('ui.dialog.mech.coreNoBlink')}
               </p>
             )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onConfirmPlace}>
-                {!fractures
-                  ? '✓ Confirm placed'
-                  : blinkCheck
-                    ? '✓ Yes — check for Blink'
-                    : '✓ Yes — placed there'}
+                {t(
+                  !fractures
+                    ? 'ui.dialog.mech.confirmPlaced'
+                    : blinkCheck
+                      ? 'ui.dialog.mech.yesCheckBlink'
+                      : 'ui.dialog.mech.yesPlacedThere',
+                )}
               </button>
               <button className="pp-cannot" onClick={onCannotPlace}>
-                {fractures ? '✗ No — none open' : '✗ Cannot place'}
+                {t(fractures ? 'ui.dialog.mech.noneOpen' : 'ui.dialog.mech.cannotPlace')}
               </button>
             </div>
           </div>
@@ -4176,17 +4245,14 @@ export function DetailPanel({
         {pending === 'guardianSpace' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              No Action space was open, so the {botName} places a <b>Guardian</b> on the{' '}
-              <b>Guardian board</b>, on an open space marked with one of its{' '}
-              <b>Path markers</b> — and performs the Action from there.
+              <T k="ui.dialog.guardian.instruct" params={{ bot: botName }} />
             </p>
             <p className="pp-sub">
-              It doesn’t matter which of its marked spaces you use. This is <b>not</b> a
-              Failed Action, so it takes no +1 VP.
+              <T k="ui.dialog.guardian.sub" />
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onGuardianSpace}>
-                ✓ Placed on the Guardian board
+                {t('ui.dialog.guardian.confirm')}
               </button>
             </div>
           </div>
@@ -4196,22 +4262,20 @@ export function DetailPanel({
         {pending === 'worldCouncil' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              No <b>{spaceLabel(hotspot.action)}</b> space was open. Is the{' '}
-              <b>World Council</b> space open?
-              {!blinkCheck && <> Place the {botName}’s {figureLabel} there instead.</>}
+              <T
+                k={blinkCheck ? 'ui.dialog.wc.ask' : 'ui.dialog.wc.askPlace'}
+                params={{ bot: botName, figure: figureLabel, space }}
+              />
             </p>
             <p className="pp-sub">
-              It still performs the Action from there.{' '}
-              {blinkCheck
-                ? 'Nothing to place yet — the Blink check comes first.'
-                : 'Put an Energy Core from the supply into that Exosuit.'}
+              {t(blinkCheck ? 'ui.dialog.wc.subBlink' : 'ui.dialog.wc.subCore')}
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onWorldCouncilYes}>
-                {blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed on World Council'}
+                {t(blinkCheck ? 'ui.dialog.wc.yesBlink' : 'ui.dialog.wc.yesPlaced')}
               </button>
               <button className="pp-cannot" onClick={onWorldCouncilNo}>
-                ✗ No — nothing open
+                {t('ui.dialog.wc.no')}
               </button>
             </div>
           </div>
@@ -4222,13 +4286,13 @@ export function DetailPanel({
           <BlinkPanel
             blink={blink}
             fluxDrawSrc={fluxDrawSrc}
-            destination={placeDestination ?? spaceLabel(hotspot.action)}
+            destination={placeDestination ?? space}
             onConfirm={onConfirmBlink}
           />
         )}
         {pending === 'fluxCasing' && (
           <PlaceExosuitPanel
-            destination={placeDestination ?? spaceLabel(hotspot.action)}
+            destination={placeDestination ?? space}
             fluxDrawSrc={fluxDrawSrc}
             drewCasing
             noFigures={outOfFigures}
@@ -4241,17 +4305,14 @@ export function DetailPanel({
         {pending === 'buildingVP' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              {isSuperproject ? (
-                <>
-                  Take the <b>highest-VP Superproject</b> (oldest if tied). Tap its
-                  printed VP (3–8).
-                </>
-              ) : (
-                <>
-                  Take the higher-VP <b>{buildingLabel}</b> (secondary stack if
-                  tied). Tap its printed VP (1–4) — then discard it.
-                </>
-              )}
+              <T
+                k={
+                  isSuperproject
+                    ? 'ui.dialog.construct.superproject'
+                    : 'ui.dialog.construct.building'
+                }
+                params={{ building: buildingLabel }}
+              />
             </p>
             <div className="vp-digits">
               {(isSuperproject ? [3, 4, 5, 6, 7, 8] : [1, 2, 3, 4]).map((n) => (
@@ -4266,7 +4327,7 @@ export function DetailPanel({
             </div>
             {selectedVP != null && (
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             )}
           </div>
@@ -4276,20 +4337,17 @@ export function DetailPanel({
         {pending === 'mineOpen' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              <b>Is there one or more Mining Action space available?</b>
+              <T k="ui.dialog.mine.ask" />
             </p>
             {blinkCheck && (
-              <p className="pp-sub">
-                Nothing to place yet — the Blink check comes first, and a Blink moves an
-                Exosuit the {botName} already has on the board into that space instead.
-              </p>
+              <p className="pp-sub">{t('ui.dialog.mine.blinkSub', { bot: botName })}</p>
             )}
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onMineHasSpace}>
-                {blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — a Mining space is open'}
+                {t(blinkCheck ? 'ui.dialog.mine.yesBlink' : 'ui.dialog.mine.yesOpen')}
               </button>
               <button className="pp-cannot" onClick={onMineNoSpace}>
-                ✗ No open Mining space
+                {t('ui.dialog.mine.no')}
               </button>
             </div>
           </div>
@@ -4302,11 +4360,10 @@ export function DetailPanel({
               {/* With Fractures the Blink check has already run (it belongs to the
                   "is a Mining space open?" gate), so the Exosuit is on its way there —
                   this step only names WHICH Mine space it lands in. */}
-              {placementHandled ? 'Find the' : `Place the ${botName}’s Exosuit in an`} open{' '}
-              <b>Mine</b> space granting the best 2 Resources by priority order below, based
-              on lacking-first. Give it those <b>2 Resources</b> (pre-selected; adjust to
-              match the space — click a cube twice for <b>×2</b>), then{' '}
-              <b>discard those 2 Resource cubes from the board</b>.
+              <T
+                k={placementHandled ? 'ui.dialog.mine.find' : 'ui.dialog.mine.place'}
+                params={{ bot: botName }}
+              />
             </p>
             <div className="resource-picks">
               {mineOrder.map((r, i) => (
@@ -4322,7 +4379,7 @@ export function DetailPanel({
             </div>
             {selectedResources.length === 2 && (
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             )}
           </div>
@@ -4332,10 +4389,7 @@ export function DetailPanel({
         {pending === 'recruitWorker' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Recruit the highest-priority <b>Worker</b> the {botName} lacks by
-              the priority order below (missing-first); if that type isn’t
-              available, take the next available one. Pick the recruited Worker
-              (+1 VP) — then discard its Worker tile from the board.
+              <T k="ui.dialog.recruit.instruct" params={{ bot: botName }} />
             </p>
             <div className="resource-picks worker-picks">
               {workerOrder.map((w, i) => (
@@ -4351,7 +4405,7 @@ export function DetailPanel({
             </div>
             {selectedWorker && (
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             )}
           </div>
@@ -4361,16 +4415,14 @@ export function DetailPanel({
         {pending === 'geniusQuestion' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              Is a <b>Genius</b> available to recruit <b>and</b> an open Recruit
-              Action space (or World Council space)? If so, the {botName}
-              recruits a Genius. If not, it performs a Research action instead.
+              <T k="ui.dialog.genius.ask" params={{ bot: botName }} />
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={onGeniusYes}>
-                ✓ Yes — recruit a Genius
+                {t('ui.dialog.genius.yes')}
               </button>
               <button className="pp-alt" onClick={onGeniusNo}>
-                ✗ No — Research instead
+                {t('ui.dialog.genius.no')}
               </button>
             </div>
           </div>
@@ -4380,24 +4432,20 @@ export function DetailPanel({
         {pending === 'geniusRecruit' && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              {placementHandled ? (
-                <>
-                  The {botName} recruits a <b>Genius</b> from that Recruit space, removing it
-                  from the board. The bot gains 1 VP.
-                </>
-              ) : (
-                <>
-                  Place the {botName}’s Exosuit on the topmost available <b>Recruit</b> Action
-                  space (or a World Council space if full) and recruit a <b>Genius</b>,
-                  removing it from the board. The bot gains 1 VP.
-                </>
-              )}
+              <T
+                k={
+                  placementHandled
+                    ? 'ui.dialog.genius.recruitPlaced'
+                    : 'ui.dialog.genius.recruitPlace'
+                }
+                params={{ bot: botName }}
+              />
             </p>
             <div className="resource-picks worker-picks">
               <WorkerSwatch worker="genius" selected onClick={() => {}} />
             </div>
             <button className="start-turn" onClick={onStartTurn}>
-              {startLabel}
+              {start}
             </button>
           </div>
         )}
@@ -4406,17 +4454,14 @@ export function DetailPanel({
         {pending === 'research' && rolledShape && (
           <div className="place-prompt">
             <p className="pp-instruct">
-              {researchNewShape ? (
-                <>
-                  Difficulty: the {botName} takes a Breakthrough shape it doesn't already
-                  have (or has the fewest of) — a <b>{rolledShape}</b> Breakthrough.
-                </>
-              ) : (
-                <>
-                  The shape die rolled <b>{rolledShape}</b> — the {botName} keeps a{' '}
-                  <b>{rolledShape}</b> Breakthrough.
-                </>
-              )}
+              <T
+                k={
+                  researchNewShape
+                    ? 'ui.dialog.research.newShape'
+                    : 'ui.dialog.research.rolled'
+                }
+                params={{ bot: botName, shape: rolledShape }}
+              />
             </p>
             <div className="shape-roll">
               {/* The die face rolled, then the Breakthrough it takes — two statements. */}
@@ -4432,7 +4477,7 @@ export function DetailPanel({
               </div>
             </div>
             <button className="start-turn" onClick={onStartTurn}>
-              {startLabel}
+              {start}
             </button>
           </div>
         )}
@@ -4440,9 +4485,9 @@ export function DetailPanel({
         {/* Reboot — the Chronobot does nothing. */}
         {pending === 'reboot' && (
           <div className="place-prompt">
-            <p className="pp-instruct">Reboot: {botName} does nothing.</p>
+            <p className="pp-instruct">{t('ui.dialog.reboot', { bot: botName })}</p>
             <button className="start-turn" onClick={onStartTurn}>
-              {startLabel}
+              {start}
             </button>
           </div>
         )}
@@ -4455,39 +4500,37 @@ export function DetailPanel({
           (timeTravel.canTravel ? (
             <div className="place-prompt">
               <p className="pp-instruct">
-                Remove one of the {botName}’s <b>Warp tiles</b> from{' '}
-                {timeTravel.fromEra != null ? (
-                  <>
-                    <b>{warpTileLabel(timeTravel.fromEra)}</b> — the past tile where it has
-                    the most (oldest if tied).
-                  </>
-                ) : (
-                  <>the past Timeline tile where it has the most (oldest if tied).</>
-                )}
+                <T
+                  k={
+                    timeTravel.fromEra != null
+                      ? 'ui.dialog.timeTravel.fromEra'
+                      : 'ui.dialog.timeTravel.anyPast'
+                  }
+                  params={{
+                    bot: botName,
+                    tile:
+                      timeTravel.fromEra != null ? warpTileLabel(timeTravel.fromEra) : '',
+                  }}
+                />
               </p>
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             </div>
           ) : (
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
-                Failed Action:{' '}
-                {timeTravel.onlyCurrentEra ? (
-                  <>
-                    the {botName}’s only Warp tiles are on the{' '}
-                    <b>current Era’s Timeline tile</b>, which Time Travel may not take from
-                  </>
-                ) : (
-                  <>
-                    the {botName} has <b>no Warp tiles</b> on the Timeline, so it cannot
-                    Time Travel
-                  </>
-                )}{' '}
-                — it takes <b>+{failVP} VP</b> instead (no Exosuit placed).
+                <T
+                  k={
+                    timeTravel.onlyCurrentEra
+                      ? 'ui.dialog.timeTravel.failCurrentEra'
+                      : 'ui.dialog.timeTravel.failNone'
+                  }
+                  params={{ bot: botName, vp: failVP }}
+                />
               </p>
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             </div>
           ))}
@@ -4497,22 +4540,27 @@ export function DetailPanel({
           (removeAnomaly.canRemove ? (
             <div className="place-prompt">
               <p className="pp-instruct">
-                The {botName} discards <b>{removeAnomaly.discards}</b> and removes{' '}
-                <b>1 Anomaly</b> from its board.
+                <T
+                  k="ui.dialog.anomaly.instruct"
+                  params={{ bot: botName, discards: removeAnomaly.discards }}
+                />
               </p>
-              <p className="pp-sub">Remove Anomaly places no Exosuit.</p>
+              <p className="pp-sub">{t('ui.dialog.anomaly.sub')}</p>
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             </div>
           ) : (
             <div className="place-prompt failed-note">
               <p className="pp-instruct">
-                Failed Action: {removeAnomaly.reason} — the {botName} takes +{failVP} VP
-                instead (no Exosuit placed).
+                {t('ui.dialog.anomaly.fail', {
+                  bot: botName,
+                  reason: removeAnomaly.reason,
+                  vp: failVP,
+                })}
               </p>
               <button className="start-turn" onClick={onStartTurn}>
-                {startLabel}
+                {start}
               </button>
             </div>
           ))}
@@ -4527,7 +4575,7 @@ export function DetailPanel({
         {/* Once the bot's action has resolved, hand control back to the player. */}
         {!pending && result.length > 0 && (
           <button className="start-turn" onClick={onStartTurn}>
-            {startLabel}
+            {start}
           </button>
         )}
 
@@ -4564,11 +4612,12 @@ function MechRules({
   onToggle: () => void;
   botName?: string;
 }) {
+  const t = useT();
   const mechPlacement = useRuleLines('rule.mechPlacement', MECH_PLACEMENT);
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={onToggle}>
-        📖 Placing the {botName}’s Exosuit {open ? '▾' : '▸'}
+        {t('ui.dialog.mechRulesCta', { bot: botName })} {open ? '▾' : '▸'}
       </button>
       {open && (
         <ul>
@@ -4583,13 +4632,16 @@ function MechRules({
   );
 }
 
-/** Display metadata per Resource: label + cropped cube art (transparent PNG). */
-const RESOURCE_META: Record<Resource, { label: string; img?: string }> = {
-  neutronium: { label: 'Neutronium', img: '/assets/solo/resources/neutronium.png' },
-  uranium: { label: 'Uranium', img: '/assets/solo/resources/uranium.png' },
-  gold: { label: 'Gold', img: '/assets/solo/resources/gold.png' },
-  titanium: { label: 'Titanium', img: '/assets/solo/resources/titanium.png' },
-  water: { label: 'Water' },
+/**
+ * Cropped cube art per Resource (transparent PNG). The NAME is not here: every piece the
+ * app names comes from the shared `piece.<key>` family, so "Neutronium" is translated once
+ * and the tracker tooltip and this swatch say the same word.
+ */
+const RESOURCE_IMG: Partial<Record<Resource, string>> = {
+  neutronium: '/assets/solo/resources/neutronium.png',
+  uranium: '/assets/solo/resources/uranium.png',
+  gold: '/assets/solo/resources/gold.png',
+  titanium: '/assets/solo/resources/titanium.png',
 };
 
 /** A selectable Resource cube. `count` is how many are picked (0, 1 or 2). */
@@ -4602,7 +4654,7 @@ function ResourceSwatch({
   count: number;
   onClick: () => void;
 }) {
-  const meta = RESOURCE_META[resource];
+  const t = useT();
   return (
     <button
       type="button"
@@ -4611,20 +4663,20 @@ function ResourceSwatch({
       aria-pressed={count > 0}
     >
       <span className="resource-cube-wrap">
-        <img className="resource-cube" src={meta.img} alt="" />
+        <img className="resource-cube" src={RESOURCE_IMG[resource]} alt="" />
         {count === 2 && <span className="cube-x2">×2</span>}
       </span>
-      <span className="resource-name">{meta.label}</span>
+      <span className="resource-name">{t(`piece.${resource}`)}</span>
     </button>
   );
 }
 
-/** Display metadata per Worker: label + cropped figure art (transparent PNG). */
-const WORKER_META: Record<Worker, { label: string; img: string }> = {
-  genius: { label: 'Genius', img: '/assets/solo/workers/genius.png' },
-  administrator: { label: 'Administrator', img: '/assets/solo/workers/administrator.png' },
-  engineer: { label: 'Engineer', img: '/assets/solo/workers/engineer.png' },
-  scientist: { label: 'Scientist', img: '/assets/solo/workers/scientist.png' },
+/** Cropped figure art per Worker; the name comes from `piece.<key>` (see `RESOURCE_IMG`). */
+const WORKER_IMG: Record<Worker, string> = {
+  genius: '/assets/solo/workers/genius.png',
+  administrator: '/assets/solo/workers/administrator.png',
+  engineer: '/assets/solo/workers/engineer.png',
+  scientist: '/assets/solo/workers/scientist.png',
 };
 
 /** A selectable Worker figure (single-select). */
@@ -4637,7 +4689,7 @@ function WorkerSwatch({
   selected: boolean;
   onClick: () => void;
 }) {
-  const meta = WORKER_META[worker];
+  const t = useT();
   return (
     <button
       type="button"
@@ -4645,8 +4697,8 @@ function WorkerSwatch({
       onClick={onClick}
       aria-pressed={selected}
     >
-      <img className="worker-fig" src={meta.img} alt="" />
-      <span className="resource-name">{meta.label}</span>
+      <img className="worker-fig" src={WORKER_IMG[worker]} alt="" />
+      <span className="resource-name">{t(`piece.${worker}`)}</span>
     </button>
   );
 }
