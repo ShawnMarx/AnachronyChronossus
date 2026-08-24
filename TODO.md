@@ -27,10 +27,20 @@ committed and none are planned in-house.
 - [~] **Remaining app-voice chrome — the sweep a real translator needs.** ~4,300 words were
       hard-coded in `.tsx`. **Done 2026-08-23:** `Landing.tsx`, `SetupFlow.tsx`,
       `RulesFrame.tsx`, `HistoryScreen.tsx` and all 23 Chronossus difficulty options — app-voice
-      translatable words went 167 → 1,609. **Remaining ~3,175 words:** `ChronossusGame.tsx`
-      ~1,379, `ChronossusSetupFlow.tsx` ~1,165 (the per-module setup prose),
-      `BoardExplorer.tsx` ~613, `AdminStats.tsx` ~18. No blocker — just volume, and it is
-      prose so it needs reading rather than scripting. Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
+      translatable words went 167 → 1,609. **Done 2026-08-24:** `BoardExplorer.tsx` (the whole
+      Chronobot play view), plus `PhaseScreen.tsx` and `HistoryPane.tsx`, which the pseudolocale
+      run turned up. Piece names ("Neutronium", "Genius") are now ONE `piece.<key>` family
+      derived from `BOARD_COUNTERS`, shared by the tracker tooltips and the Mine/Recruit
+      swatches; Hypersync's Paradox rules moved out of inline JSX into
+      `HYPERSYNC_PARADOX_RULE` / `rule.hypersyncParadox`, behind the `officialRulebook` gate.
+      **Remaining ~2,562 words:** `ChronossusGame.tsx` ~1,379, `ChronossusSetupFlow.tsx`
+      ~1,165 (the per-module setup prose), `AdminStats.tsx` ~18. No blocker — just volume, and
+      it is prose so it needs reading rather than scripting.
+      Deliberately NOT swept: the debug bar and calibrate mode (dev-only), and any string
+      that gets persisted — History labels/effects, the history service's difficulty column,
+      the BG Stats notes. Where a display path and a persisted path share a helper, the
+      helper takes an optional `translate` and English is the default
+      (`chronobotDifficultyLabel`, `spaceLabel`, `chronossusDifficultyLabel`). Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
       link or bold run: keep it as ONE key so the translator can move the link where their
       grammar needs it. Verify each file with
       `node pw-i18n-diff.mjs <before> <after>` — text and layout must match exactly; a small
