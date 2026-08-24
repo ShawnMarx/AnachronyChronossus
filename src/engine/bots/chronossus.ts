@@ -113,6 +113,7 @@ export {
   BIG_DECK_THRESHOLD,
   type AdventureInput,
   type AdventureResult,
+  type PowerPart,
 } from './pioneers';
 import {
   chooseRecruitWorker,

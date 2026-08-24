@@ -23,6 +23,7 @@ import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
 import { useAction, usePhaseMeta, useRule, useTile } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
+import T from './i18n/Trans';
 import {
   DetailPanel,
   AnchoredPopover,
@@ -206,24 +207,12 @@ interface ChronossusUi {
  */
 const IMPACT_CHECK_OPTIONS: {
   outcome: Chronossus.CheckForImpactOutcome;
-  label: string;
-  detail: string;
+  /** Locale key stem: `ui.cx.impactCheck.<key>.label` / `.detail`. */
+  key: string;
 }[] = [
-  {
-    outcome: 'earth-saved',
-    label: '“Save Earth” reached its topmost slot',
-    detail: 'Earth is saved: the Impact never happens and the game ends now',
-  },
-  {
-    outcome: 'impact-now',
-    label: '“Seal Fate” reached its bottommost slot',
-    detail: 'the Impact resolves immediately',
-  },
-  {
-    outcome: 'impact-occurred',
-    label: 'The Impact occurred',
-    detail: 'the Impact tile was reached at the end of this Era',
-  },
+  { outcome: 'earth-saved', key: 'earthSaved' },
+  { outcome: 'impact-now', key: 'impactNow' },
+  { outcome: 'impact-occurred', key: 'impactOccurred' },
 ];
 
 const emptyCxUi = (): ChronossusUi => ({
@@ -303,14 +292,15 @@ function isConstructBuilding(a: string): boolean {
 }
 
 /** One-line status hint for the Turn popover (the Chronossus pass model). */
-function chronossusTurnHint(bot: ChronossusState): string {
-  if (bot.passed) return 'The Chronossus has passed for this Era.';
+function chronossusTurnHint(
+  bot: ChronossusState,
+  t: (key: string) => string,
+): string {
+  if (bot.passed) return t('ui.cx.pass.passed');
   // A Guardian is an Exosuit, so "out of Exosuits" means out of both — it just has to
   // COUNT them (`placeableFigures`), not name them separately.
-  if (Chronossus.placeableFigures(bot) <= 0) {
-    return 'The Chronossus is out of Exosuits — it passes the next time it would place one (Time Travel / Reboot still resolve).';
-  }
-  return 'The Chronossus alternates turns with you. It passes once it is out of Exosuits and would place one; when you have both passed, the Action Rounds Phase ends.';
+  if (Chronossus.placeableFigures(bot) <= 0) return t('ui.cx.pass.outOfFigures');
+  return t('ui.cx.pass.alternates');
 }
 
 // ---- Calibration keys ----------------------------------------------------
@@ -364,11 +354,12 @@ const FAMILY_TO_TILE_ACTION: Record<string, ChronossusTileActionId> = {
  *  Hypersync Action falls back to a normal Time Travel Action. Resolved at render (not
  *  at module scope) so the chosen language reaches it. */
 function TimeTravelRuleBlock() {
+  const t = useT();
   const TIME_TRAVEL_RULE = useAction('time-travel').rule;
   return (
     <div className="hs-tt-rule">
       <p className="dp-rule">
-        <b>Time Travel Action (the fallback):</b>
+        <b>{t('ui.cx.rules.timeTravelFallback')}</b>
       </p>
       {TIME_TRAVEL_RULE.split('\n').map((line, i) =>
         line ? (
@@ -383,12 +374,13 @@ function TimeTravelRuleBlock() {
 
 /** Collapsible "Time Travel rules ▸" — matches the printed-action rules toggle. */
 function TimeTravelRuleBlockCollapsible() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const TIME_TRAVEL_RULE = useAction('time-travel').rule;
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 Time Travel {open ? '▾' : '▸'}
+        {t('ui.cx.rules.timeTravelCta')} {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -412,11 +404,12 @@ const AUTOLEAP_RULE =
 
 /** Collapsible "Autoleap rules ▸" — shown on Autoleap tiles' dialogs. */
 function AutoleapRuleBlockCollapsible() {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 Autoleap {open ? '▾' : '▸'}
+        {t('ui.cx.rules.autoleapCta')} {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -444,38 +437,75 @@ const SHAPE_ORDER: BreakthroughShape[] = ['circle', 'triangle', 'square'];
 const BUILDING_KEYS = ['factory', 'lab', 'powerplant', 'support'] as const;
 
 /** Popover text for a tracker badge (the same info as the Chronobot's tooltips). */
-function counterInfo(bot: ChronossusState, c: BoardCounter): string {
+function counterInfo(
+  bot: ChronossusState,
+  c: BoardCounter,
+  t: (key: string, params?: Record<string, string | number>) => string,
+): string {
   const count = counterValue(bot, c.key);
+  // The tracker's own name is translatable too (`piece.<key>`), so the sentence takes it
+  // as a param rather than concatenating the English from the layout catalog.
+  const label = t(`piece.${c.key}`);
   if (c.key === 'superproject') {
     return bot.superprojectVps.length
-      ? `${c.label} ×${count} — VP: ${bot.superprojectVps.join(', ')}`
-      : `${c.label}: 0`;
+      ? t('ui.counterTip.superproject', {
+          label,
+          count,
+          vps: bot.superprojectVps.join(', '),
+        })
+      : t('ui.counterTip.superprojectEmpty', { label });
   }
   if ((BUILDING_KEYS as readonly string[]).includes(c.key)) {
     const vps = bot.buildingVps[c.key as (typeof BUILDING_KEYS)[number]];
     return vps.length
-      ? `${c.label} ×${count} — VP: ${vps.join(', ')} (max 3 of a type)`
-      : `${c.label}: 0 (max 3 of a type)`;
+      ? t('ui.counterTip.building', { label, count, vps: vps.join(', ') })
+      : t('ui.counterTip.buildingEmpty', { label });
   }
   switch (c.key) {
     case 'mech': {
       const guardians = bot.guardians?.powered ?? 0;
-      return guardians > 0
-        ? `${c.label}: ${count} to place — ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${guardians} Guardian${guardians === 1 ? '' : 's'}`
-        : `${c.label}: ${count} powered Exosuit${count === 1 ? '' : 's'} available`;
+      if (guardians > 0) {
+        // Named separately here because the player has to pick up two different
+        // miniatures; everywhere else the two are one combined count.
+        return t('ui.counterTip.cxMechGuardians', {
+          label,
+          count,
+          exosuits: t(
+            bot.exosuitsAvailable === 1
+              ? 'ui.counterTip.cxExosuitsOne'
+              : 'ui.counterTip.cxExosuitsMany',
+            { n: bot.exosuitsAvailable },
+          ),
+          guardians: t(
+            guardians === 1 ? 'ui.counterTip.cxGuardiansOne' : 'ui.counterTip.cxGuardiansMany',
+            { n: guardians },
+          ),
+        });
+      }
+      return t(count === 1 ? 'ui.counterTip.cxMech' : 'ui.counterTip.cxMechPlural', {
+        label,
+        count,
+      });
     }
     case 'anomaly':
       // Variable Anomalies: list each held tile's VP, same pattern as buildings.
       return bot.anomalyVps
         ? bot.anomalyVps.length
-          ? `${c.label} ×${count} — VP: ${bot.anomalyVps.join(', ')} (max 3)`
-          : `${c.label}: 0 (max 3)`
-        : `${c.label}: ${count} (max 3)`;
+          ? t('ui.counterTip.cxAnomalyVps', {
+              label,
+              count,
+              vps: bot.anomalyVps.join(', '),
+            })
+          : t('ui.counterTip.cxAnomalyEmpty', { label })
+        : t('ui.counterTip.anomaly', { label, count });
     case 'neutronium':
     case 'uranium':
     case 'gold':
     case 'titanium':
-      return `${c.label}: ${count} cube${count === 1 ? '' : 's'}`;
+      return t(count === 1 ? 'ui.counterTip.cubes' : 'ui.counterTip.cubesPlural', {
+        label,
+        count,
+      });
     case 'genius':
     case 'administrator':
     case 'engineer':
@@ -484,11 +514,16 @@ function counterInfo(bot: ChronossusState, c: BoardCounter): string {
       // their own — but the column should say when one of its Workers is an Operator.
       const ops = bot.operatorSlots?.[c.key] ?? 0;
       return ops > 0
-        ? `${c.label}: ${count} (${ops} ${ops === 1 ? 'is an Operator' : 'are Operators'})`
-        : `${c.label}: ${count}`;
+        ? t(
+            ops === 1
+              ? 'ui.counterTip.cxWorkerOperators'
+              : 'ui.counterTip.cxWorkerOperatorsPlural',
+            { label, count, n: ops },
+          )
+        : t('ui.counterTip.plain', { label, count });
     }
     default:
-      return `${c.label}: ${count}`;
+      return t('ui.counterTip.plain', { label, count });
   }
 }
 
@@ -569,14 +604,16 @@ function CxExosuit({
 }) {
   // Guardians are Exosuits the bot places (last), so they belong in the same number —
   // a separate chip made the player add two counts to know what it can still do.
+  const t = useT();
   return (
     <span className="cx-exosuit">
-      <img src={EXOSUIT_ICON} alt="Powered Exosuits" style={{ height: size }} />
-      {count + guardians} Exo
+      <img src={EXOSUIT_ICON} alt={t('ui.cx.exosuitAlt')} style={{ height: size }} />
+      {count + guardians} {t('ui.cx.exoUnit')}
       {guardians > 0 && (
         <span className="cx-exo-guardians">
-          {' '}
-          (inc {guardians} Guardian{guardians === 1 ? '' : 's'})
+          {t(guardians === 1 ? 'ui.cx.exoIncGuardian' : 'ui.cx.exoIncGuardians', {
+            n: guardians,
+          })}
         </span>
       )}
     </span>
@@ -599,6 +636,7 @@ function CxUpgradeBoardPopout({
   bot: ChronossusState;
   onClose: () => void;
 }) {
+  const t = useT();
   const [showTokenCount, setShowTokenCount] = useState(false);
   const p = bot.pioneers;
   if (!p) return null;
@@ -613,13 +651,13 @@ function CxUpgradeBoardPopout({
         className="cx-upgrade-modal"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
-        aria-label="Chronossus Exosuit Upgrade board"
+        aria-label={t('ui.cx.upgrade.dialogAria')}
       >
         <div className="dp-head">
           <div className="dp-title">
-            <h2>Exosuit Upgrade board</h2>
+            <h2>{t('ui.cx.upgrade.title')}</h2>
           </div>
-          <button className="dp-close" onClick={onClose} aria-label="Close">
+          <button className="dp-close" onClick={onClose} aria-label={t('ui.cx.upgrade.close')}>
             &times;
           </button>
         </div>
@@ -627,7 +665,7 @@ function CxUpgradeBoardPopout({
           <div className="cx-upgrade-art">
             <img
               src={`/assets/solo/chronossus/upgrade-board-${p.boardSide}.jpg`}
-              alt={`Chronossus Exosuit Upgrade board, ${p.boardSide} side`}
+              alt={t('ui.cx.upgrade.artAlt', { side: p.boardSide })}
             />
             {/* A filled slot gets its Resource cube laid over the printed placeholder, so
                 the pop-out reads like the physical board rather than a list. */}
@@ -638,8 +676,14 @@ function CxUpgradeBoardPopout({
                 style={{ left: `${slot.x}%`, top: `${slot.y}%` }}
                 title={
                   p.upgraded[slot.resource]
-                    ? `${slot.resource}: upgraded (+${slot.power} Power)`
-                    : `${slot.resource}: empty (+${slot.power} Power when filled)`
+                    ? t('ui.cx.upgrade.slotFilled', {
+                        resource: t(`piece.${slot.resource}`),
+                        power: slot.power,
+                      })
+                    : t('ui.cx.upgrade.slotEmpty', {
+                        resource: t(`piece.${slot.resource}`),
+                        power: slot.power,
+                      })
                 }
               >
                 {p.upgraded[slot.resource] && (
@@ -655,14 +699,23 @@ function CxUpgradeBoardPopout({
                 onClick={() => setShowTokenCount((v) => !v)}
                 title={
                   showTokenCount
-                    ? `${p.vpTokens} VP token${p.vpTokens === 1 ? '' : 's'} on the board`
-                    : `+${tokenPower} Power from its VP tokens — tap for the token count`
+                    ? t(
+                        p.vpTokens === 1
+                          ? 'ui.cx.upgrade.tokensCount'
+                          : 'ui.cx.upgrade.tokensCountPlural',
+                        { n: p.vpTokens },
+                      )
+                    : t('ui.cx.upgrade.tokensPower', { n: tokenPower })
                 }
-                aria-label={`VP tokens: ${p.vpTokens}, worth ${tokenPower} Power`}
+                aria-label={t('ui.cx.upgrade.tokensAria', {
+                  n: p.vpTokens,
+                  power: tokenPower,
+                })}
               >
                 {showTokenCount ? (
                   <>
-                    {p.vpTokens} <span className="cx-upgrade-tokens-unit">VP</span>
+                    {p.vpTokens}{' '}
+                    <span className="cx-upgrade-tokens-unit">{t('ui.cx.upgrade.vpUnit')}</span>
                   </>
                 ) : (
                   <>
@@ -678,29 +731,33 @@ function CxUpgradeBoardPopout({
           <div className="cx-upgrade-side">
             <p className="cx-upgrade-total">
               <b>{total}</b>
-              <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
+              <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon lg" />
             </p>
             <ul className="cx-upgrade-rows">
               {breakdown.map((b) => (
-                <li key={b.label}>
-                  <span>{b.label}</span>
+                <li key={b.key}>
+                  <span>{t(b.key, b.params)}</span>
                   <b>+{b.power}</b>
                 </li>
               ))}
             </ul>
             <p className="cx-upgrade-note">
-              At <b>{Chronossus.BIG_DECK_THRESHOLD}</b> or more Power — including the Path
-              marker&rsquo;s bonus, before the die — it draws from the <b>10+</b> Adventure
-              deck.
+              <T k="ui.cx.upgrade.threshold" params={{ n: Chronossus.BIG_DECK_THRESHOLD }} />
             </p>
             {p.vpTokens > 0 && (
               <p className="cx-upgrade-note">
-                Its {p.vpTokens} VP token{p.vpTokens === 1 ? '' : 's'} add Power but are{' '}
-                <b>not</b> VP, unless that difficulty option is on.
+                <T
+                  k={
+                    p.vpTokens === 1
+                      ? 'ui.cx.upgrade.tokenNote'
+                      : 'ui.cx.upgrade.tokenNotePlural'
+                  }
+                  params={{ n: p.vpTokens }}
+                />
               </p>
             )}
             <p className="cx-upgrade-note">
-              Adventures completed: <b>{p.adventures}</b>.
+              <T k="ui.cx.upgrade.adventures" params={{ n: p.adventures }} />
             </p>
           </div>
         </div>
@@ -712,14 +769,15 @@ function CxUpgradeBoardPopout({
 /** The Chronossus Energy Pool shown with its component icons + counts
  *  (Energy Core ×N / Exhausted Energy Core ×N), e.g. the "EC5 / EEC3" display. */
 function CxEnergyPool({ pool, size = 20 }: { pool: EnergyPool; size?: number }) {
+  const t = useT();
   return (
     <span className="cx-energy-pool">
-      <span className="cx-energy" title="Energy Cores in the Energy Pool">
-        <img src={EC_ICON} alt="Energy Cores" style={{ height: size }} />
+      <span className="cx-energy" title={t('ui.cx.energy.energizedTitle')}>
+        <img src={EC_ICON} alt={t('ui.cx.energy.energizedAlt')} style={{ height: size }} />
         <b>{pool.energized}</b>
       </span>
-      <span className="cx-energy" title="Exhausted Energy Cores in the Energy Pool">
-        <img src={EEC_ICON} alt="Exhausted Energy Cores" style={{ height: size }} />
+      <span className="cx-energy" title={t('ui.cx.energy.exhaustedTitle')}>
+        <img src={EEC_ICON} alt={t('ui.cx.energy.exhaustedAlt')} style={{ height: size }} />
         <b>{pool.exhausted}</b>
       </span>
     </span>
@@ -738,21 +796,19 @@ function CxFluxPool({
   pool: NonNullable<ChronossusState['fluxPool']>;
   size?: number;
 }) {
+  const t = useT();
   return (
     <span className="cx-energy-pool">
-      <span className="cx-energy" title="Flux Cores in the Flux Pool — each one is a Blink">
-        <img src={FC_ICON} alt="Flux Cores" style={{ height: size }} />
+      <span className="cx-energy" title={t('ui.cx.flux.coresTitle')}>
+        <img src={FC_ICON} alt={t('ui.cx.flux.coresAlt')} style={{ height: size }} />
         <b>{pool.cores}</b>
       </span>
-      <span className="cx-energy" title="Empty Flux Casings still in the Flux Pool">
-        <img src={EFC_ICON} alt="Empty Flux Casings" style={{ height: size }} />
+      <span className="cx-energy" title={t('ui.cx.flux.casingsTitle')}>
+        <img src={EFC_ICON} alt={t('ui.cx.flux.casingsAlt')} style={{ height: size }} />
         <b>{pool.casings}</b>
       </span>
       {pool.setAside > 0 && (
-        <span
-          className="cx-energy cx-flux-aside"
-          title="Empty Flux Casings set aside this Era — they return to the pool in Clean Up"
-        >
+        <span className="cx-energy cx-flux-aside" title={t('ui.cx.flux.asideTitle')}>
           <span aria-hidden>⊘</span>
           <b>{pool.setAside}</b>
         </span>
@@ -3284,7 +3340,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const topBar = (
     <div className="stats-bar cx-statsbar">
       <div className="stats-left">
-        <button className="home-btn" onClick={onHome} title="Back to the home screen" aria-label="Home">
+        <button
+          className="home-btn"
+          onClick={onHome}
+          title={t('ui.topBar.home')}
+          aria-label={t('ui.topBar.homeAria')}
+        >
           <img src="/favicon-512.png" alt="" />
         </button>
       </div>
@@ -3299,15 +3360,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 disabled={bot.passed}
                 title={
                   bot.passed
-                    ? 'The Chronossus has passed for this Era'
-                    : `Roll the AI die (faces ${AI_DIE_FACES.join(',')}) and activate that Command marker`
+                    ? t('ui.topBar.cxBotPassedTitle')
+                    : t('ui.topBar.cxTakeActionTitle', { faces: AI_DIE_FACES.join(',') })
                 }
               >
                 {bot.passed ? `✓ ${t('ui.common.botPassed')}` : t('ui.common.takeBotAction')}
               </button>
             )}
             {botDie != null && (
-              <span className="bot-die" aria-label={`AI die shows ${botDie}`}>
+              <span className="bot-die" aria-label={t('ui.topBar.dieAria', { n: botDie })}>
                 {botDie}
               </span>
             )}
@@ -3316,7 +3377,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 className="you-pass"
                 onClick={playerPass}
                 disabled={state.playerPassed}
-                title="Pass for the Action Rounds phase"
+                title={t('ui.topBar.passTitle')}
               >
                 {state.playerPassed ? `✓ ${t('ui.common.youPassed')}` : t('ui.common.youPass')}
               </button>
@@ -3325,18 +3386,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               className="undo-btn"
               onClick={undoTurn}
               disabled={!canUndo || actionInProgress}
-              title="Undo the last committed turn"
+              title={t('ui.topBar.cxUndoTitle')}
             >
-              ↶ Undo
+              ↶ {t('ui.common.undo')}
             </button>
           </div>
           <button
             className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
             onClick={() => setShowStatus((v) => !v)}
-            title="Turn tracker — pass status & recent bot turns"
+            title={t('ui.turnBar.chipTitle')}
             aria-pressed={showStatus}
           >
-            Turn <b>{turnsThisEra}</b>
+            {t('ui.turnBar.turn')} <b>{turnsThisEra}</b>
           </button>
         </div>
       )}
@@ -3447,7 +3508,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               era={state.era}
               phaseNumber={PHASE_NUMBER[state.phase] ?? '—'}
               actionsThisEra={turnsThisEra}
-              countLabel="Bot Turns"
+              countLabel={t('ui.cx.flag.countLabel')}
               extraFlags={
                 <TapFlagRow>
                   <span className="cx-exo-stack">
@@ -3455,8 +3516,21 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       className="cx-exosuit-flag"
                       hint={
                         (bot.guardians?.powered ?? 0) > 0
-                          ? `Figures it can still place this Era: ${bot.exosuitsAvailable} normal Exosuit${bot.exosuitsAvailable === 1 ? '' : 's'} and ${bot.guardians!.powered} Guardian${bot.guardians!.powered === 1 ? '' : 's'}. Guardians power up first and are placed last, and each has its own Action space on the Guardian board.`
-                          : 'Powered Exosuits available this Era'
+                          ? t('ui.cx.flag.exosuitsGuardians', {
+                              exosuits: t(
+                                bot.exosuitsAvailable === 1
+                                  ? 'ui.counterTip.cxExosuitsOne'
+                                  : 'ui.counterTip.cxExosuitsMany',
+                                { n: bot.exosuitsAvailable },
+                              ),
+                              guardians: t(
+                                bot.guardians!.powered === 1
+                                  ? 'ui.counterTip.cxGuardiansOne'
+                                  : 'ui.counterTip.cxGuardiansMany',
+                                { n: bot.guardians!.powered },
+                              ),
+                            })
+                          : t('ui.cx.flag.exosuits')
                       }
                     >
                       <CxExosuit
@@ -3470,14 +3544,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   </span>
                   <TapFlag
                     className="cx-energy-flag"
-                    hint="Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores"
+                    hint={t('ui.cx.flag.energyPool')}
                   >
                     <CxEnergyPool pool={bot.energyPool} size={18} />
                   </TapFlag>
                   {fracturesMode && bot.fluxPool && (
                     <TapFlag
                       className="cx-energy-flag"
-                      hint="Flux Pool — Flux Cores / Empty Flux Casings, and any Casings set aside this Era (they return in Clean Up). A drawn Flux Core makes the Chronossus Blink."
+                      hint={t('ui.cx.flag.fluxPool')}
                     >
                       <CxFluxPool pool={bot.fluxPool} size={18} />
                     </TapFlag>
@@ -3490,17 +3564,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       className="cx-energy-flag"
                       onClick={() => setShowUpgradeBoard(true)}
                       hint={
-                        `Exosuit Upgrade board (${bot.pioneers.boardSide} side) — ` +
-                        Chronossus.powerBreakdown(bot)
-                          .map((b) => `${b.power} ${b.label}`)
-                          .join(' + ') +
-                        `. At ${Chronossus.BIG_DECK_THRESHOLD}+ Power (with the Path-marker ` +
-                        'bonus) it draws from the 10+ Adventure deck. Tap to open the board.'
+                        t('ui.cx.upgrade.flagHint', {
+                          side: bot.pioneers.boardSide,
+                          n: Chronossus.BIG_DECK_THRESHOLD,
+                          breakdown: Chronossus.powerBreakdown(bot)
+                            .map((b) =>
+                              t('ui.cx.upgrade.flagPart', {
+                                power: b.power,
+                                label: t(b.key, b.params),
+                              }),
+                            )
+                            .join(t('ui.cx.upgrade.flagJoin')),
+                        })
                       }
                     >
                       <span className="cx-tech-ops">
                         <b>{Chronossus.boardPower(bot)}</b>
-                        <img src={POWER_ICON} alt="Power" className="cx-power-icon" />
+                        <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon" />
                       </span>
                     </TapFlag>
                   )}
@@ -3509,10 +3589,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {fracturesMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Technology cards it holds (3 VP each at the end)"
+                      hint={t('ui.cx.flag.tech')}
                     >
                       <span className="cx-tech-ops">
-                        <b>{bot.technologies ?? 0}</b> Tech
+                        <b>{bot.technologies ?? 0}</b> {t('ui.cx.flag.techUnit')}
                       </span>
                     </TapFlag>
                   )}
@@ -3523,11 +3603,15 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {guardiansMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint="Guardians powered up this Era / Guardians it has. They are permanent — each keeps a Path marker on its own Guardian board slot — and every Era it powers up as many of them as it can before its own Exosuits. A gap means it has a Guardian it could not power up."
+                      hint={t('ui.cx.flag.guardians')}
                     >
                       <span className="cx-tech-ops">
                         <b>{bot.guardians?.powered ?? 0}</b>/{bot.guardians?.owned ?? 0}{' '}
-                        Guardian{(bot.guardians?.owned ?? 0) === 1 ? '' : 's'}
+                        {t(
+                          (bot.guardians?.owned ?? 0) === 1
+                            ? 'ui.cx.flag.guardianUnit'
+                            : 'ui.cx.flag.guardianUnitPlural',
+                        )}
                       </span>
                     </TapFlag>
                   )}
@@ -3538,27 +3622,33 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {doomsdayMode && bot.doomsday && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint={
-                        `The Chronossus moves the ${
-                          bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'
-                        } tracker (the one opposing yours), now on slot ${
-                          bot.doomsday.botSlot
-                        } of 10. Landing there is worth ${Chronossus.botVpAt(
-                          bot.doomsday.botSlot,
-                        )} VP — it takes BOTH Paths' printed values, unlike you` +
-                        (Chronossus.tracksLocked({
-                          impactOccurred: doomsdayPostImpact,
-                          botTracker: bot.doomsday.botTracker,
-                          botSlot: bot.doomsday.botSlot,
-                          playerTrackerFinal: bot.doomsday.playerTrackerFinal,
-                        })
-                          ? '. The tracks are locked — Experiments still score, but nothing moves.'
-                          : '.')
-                      }
+                      hint={t('ui.cx.flag.doomsday', {
+                        track: t(
+                          bot.doomsday.botTracker === 'save-earth'
+                            ? 'ui.track.saveEarth'
+                            : 'ui.track.sealFate',
+                        ),
+                        slot: bot.doomsday.botSlot,
+                        vp: Chronossus.botVpAt(bot.doomsday.botSlot),
+                        locked: t(
+                          Chronossus.tracksLocked({
+                            impactOccurred: doomsdayPostImpact,
+                            botTracker: bot.doomsday.botTracker,
+                            botSlot: bot.doomsday.botSlot,
+                            playerTrackerFinal: bot.doomsday.playerTrackerFinal,
+                          })
+                            ? 'ui.cx.flag.doomsdayLocked'
+                            : 'ui.cx.flag.doomsdayEnd',
+                        ),
+                      })}
                     >
                       <span className="cx-tech-ops">
                         <b>
-                          {bot.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate'}
+                          {t(
+                            bot.doomsday.botTracker === 'save-earth'
+                              ? 'ui.track.saveEarth'
+                              : 'ui.track.sealFate',
+                          )}
                         </b>{' '}
                         {/* No Experiment count: an Experiment's VP arrives as VP tokens
                             when the card is claimed, so there is nothing left to track
@@ -3570,13 +3660,17 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   {hypersyncMode && (
                     <TapFlag
                       className="cx-hypersync-flag"
-                      hint={`Pending Solo Hypersync tiles (max one per Era, 3 total). Hypersync placed this Era: ${
-                        bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N — the no-space fallback is still open'
-                      }`}
+                      hint={t('ui.cx.flag.hypersync', {
+                        placed: t(
+                          bot.hypersyncTiles.includes(state.era)
+                            ? 'ui.cx.flag.hypersyncYes'
+                            : 'ui.cx.flag.hypersyncNo',
+                        ),
+                      })}
                     >
                       <img
                         src="/assets/solo/chronossus/hypersync-solo-tile.png"
-                        alt="Hypersync tiles"
+                        alt={t('ui.cx.flag.hypersyncAlt')}
                         width={18}
                         height={18}
                       />
@@ -3589,35 +3683,26 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               // it would answer a question the player has not reached yet.
               hint={
                 isActionsPhase
-                  ? chronossusTurnHint(bot)
-                  : 'Outside the Action Rounds — the counts and recent turns below are this Era so far.'
+                  ? chronossusTurnHint(bot, t)
+                  : t('ui.turnBar.outsideActions')
               }
               canEnd={isActionsPhase && bothPassed}
               turnRules={phaseMeta.actions?.rules}
               extraRules={
                 guardiansMode ? (
-                  <RulesBox label="Guardians of the Council">
+                  <RulesBox label={t('ui.cx.rules.guardiansLabel')}>
                     <p>
-                      <b>3 POWER UP PHASE:</b> The Chronossus first powers up as many
-                      Guardians as it can, then it powers up its own Exosuits (e.g. if it
-                      needs to power up 4 Exosuits and has 2 Guardians, it will power up
-                      both of them and 2 of its own).
+                      <T k="ui.cx.rules.guardiansPowerUp" />
                     </p>
                     <p>
-                      <b>GAMEPLAY CHANGES:</b> When deciding which Exosuit to place, the
-                      Chronossus places Guardians last. If it wants to take a Capital Action
-                      (Research, Recruit, Construct) and there are no Action spaces
-                      remaining (including the World Council Action space), it places a
-                      Guardian (if it has any) on the reserved Guardian Action space and
-                      performs the Capital Action. This means the Action is not a Failed
-                      Action, so it does not take 1 VP.
+                      <T k="ui.cx.rules.guardiansGameplay" />
                     </p>
                   </RulesBox>
                 ) : undefined
               }
               modes={selectedModeLabels(state.config)}
               difficulty={state.config.difficulty.map((f) =>
-                chronossusDifficultyLabel(f, state.config.difficultyValues),
+                chronossusDifficultyLabel(f, state.config.difficultyValues, t),
               )}
               entries={thisEraEntries}
               passingRule={passingRule}
@@ -3944,7 +4029,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     )}
                     {open && c.key !== 'breakthrough' && c.key !== 'mech' && (
                       <BadgePopover rect={tappedRect} variant="text">
-                        {counterInfo(bot, c)}
+                        {counterInfo(bot, c, t)}
                       </BadgePopover>
                     )}
                   </div>
@@ -4558,7 +4643,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                         {pick === o.outcome ? '✓' : ''}
                       </span>
                       <span>
-                        <b>{o.label}</b> — {o.detail}
+                        <b>{t(`ui.cx.impactCheck.${o.key}.label`)}</b> —{' '}
+                        {t(`ui.cx.impactCheck.${o.key}.detail`)}
                       </span>
                     </button>
                   ))}
@@ -4743,7 +4829,7 @@ function AdventureResultPanel({
   onShowUpgradeBoard,
 }: {
   result: AdventureResult;
-  breakdown: { label: string; power: number }[];
+  breakdown: Chronossus.PowerPart[];
   startLabel: string;
   onCommit: () => void;
   /** Opens the Exosuit Upgrade board pop-out, as the turn overview's Power chip does. */
@@ -4958,7 +5044,7 @@ function CxTileDialog({
    */
   adventureGate?: {
     step: 'slot' | 'blink' | 'casing' | 'shared-draw' | 'result';
-    breakdown: { label: string; power: number }[];
+    breakdown: Chronossus.PowerPart[];
     result: AdventureResult | null;
     /** Shared-deck mode: the deck to draw from, and the cards to pick between. */
     sharedDeck: AdventureDeck | null;

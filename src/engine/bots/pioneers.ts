@@ -73,18 +73,32 @@ export function boardPower(bot: ChronossusState): number {
 }
 
 /** A readable breakdown of `boardPower`, for the dialog and the badge pop-out. */
-export function powerBreakdown(bot: ChronossusState): { label: string; power: number }[] {
+/**
+ * One line of the Power sum. The label is a locale KEY plus its params rather than a
+ * finished sentence — the engine is UI-agnostic and must not decide what language the
+ * board's Power breakdown reads in. The view renders it through `t()`.
+ */
+export interface PowerPart {
+  key: string;
+  params?: Record<string, string | number>;
+  power: number;
+}
+
+export function powerBreakdown(bot: ChronossusState): PowerPart[] {
   const p = bot.pioneers;
   if (!p) return [];
-  const parts: { label: string; power: number }[] = [
-    { label: `Upgrade board ${p.boardSide} side`, power: BASE_POWER[p.boardSide] },
+  const parts: PowerPart[] = [
+    { key: 'ui.cx.power.board', params: { side: p.boardSide }, power: BASE_POWER[p.boardSide] },
   ];
   for (const s of UPGRADE_SLOTS) {
-    if (p.upgraded[s.resource]) parts.push({ label: s.resource, power: s.power });
+    if (p.upgraded[s.resource]) {
+      parts.push({ key: `piece.${s.resource}`, power: s.power });
+    }
   }
   if (p.vpTokens > 0) {
     parts.push({
-      label: `${p.vpTokens} VP token${p.vpTokens === 1 ? '' : 's'}`,
+      key: p.vpTokens === 1 ? 'ui.cx.power.vpToken' : 'ui.cx.power.vpTokens',
+      params: { n: p.vpTokens },
       power: p.vpTokens * VP_TOKEN_POWER[p.boardSide],
     });
   }

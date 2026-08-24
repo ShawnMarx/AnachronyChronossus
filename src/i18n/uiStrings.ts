@@ -591,6 +591,11 @@ export const UI_STRINGS = {
   'topBar.dieAria': 'AI die shows {n}',
   'topBar.passTitle': 'Pass for the Action Rounds phase',
   'topBar.undoTitle': 'Undo the last step (restores the same die roll)',
+  'topBar.homeAria': 'Home',
+  'topBar.cxBotPassedTitle': 'The Chronossus has passed for this Era',
+  'topBar.cxTakeActionTitle':
+    'Roll the AI die (faces {faces}) and activate that Command marker',
+  'topBar.cxUndoTitle': 'Undo the last committed turn',
 
   // --- Non-Action phase bodies (Chronobot) ----------------------------------
   'phaseBody.endBanner': '✓ Everyone has passed — the Action Rounds Phase is complete.',
@@ -938,6 +943,19 @@ export const UI_STRINGS = {
   'counterTip.cubes': '{label}: {count} cube',
   'counterTip.cubesPlural': '{label}: {count} cubes',
   'counterTip.plain': '{label}: {count}',
+  // Chronossus-only variants of the same tooltips.
+  'counterTip.cxMech': '{label}: {count} powered Exosuit available',
+  'counterTip.cxMechPlural': '{label}: {count} powered Exosuits available',
+  'counterTip.cxMechGuardians':
+    '{label}: {count} to place — {exosuits} and {guardians}',
+  'counterTip.cxExosuitsOne': '{n} normal Exosuit',
+  'counterTip.cxExosuitsMany': '{n} normal Exosuits',
+  'counterTip.cxGuardiansOne': '{n} Guardian',
+  'counterTip.cxGuardiansMany': '{n} Guardians',
+  'counterTip.cxAnomalyVps': '{label} ×{count} — VP: {vps} (max 3)',
+  'counterTip.cxAnomalyEmpty': '{label}: 0 (max 3)',
+  'counterTip.cxWorkerOperators': '{label}: {count} ({n} is an Operator)',
+  'counterTip.cxWorkerOperatorsPlural': '{label}: {count} ({n} are Operators)',
 
   // --- Shared Action panels (both bots) -------------------------------------
   // The bold runs mark board locations the player has to act on, so these render
@@ -983,6 +1001,117 @@ export const UI_STRINGS = {
   'adminStats.colGames': 'Games',
   'adminStats.colWins': 'Wins',
   'adminStats.colWinRate': 'Win rate',
+  // --- Chronossus: pass model + Doomsday's Check-for-Impact answers ----------
+  'cx.pass.passed': 'The Chronossus has passed for this Era.',
+  'cx.pass.outOfFigures':
+    'The Chronossus is out of Exosuits — it passes the next time it would place one ' +
+    '(Time Travel / Reboot still resolve).',
+  'cx.pass.alternates':
+    'The Chronossus alternates turns with you. It passes once it is out of Exosuits and ' +
+    'would place one; when you have both passed, the Action Rounds Phase ends.',
+  'cx.impactCheck.earthSaved.label': '“Save Earth” reached its topmost slot',
+  'cx.impactCheck.earthSaved.detail':
+    'Earth is saved: the Impact never happens and the game ends now',
+  'cx.impactCheck.impactNow.label': '“Seal Fate” reached its bottommost slot',
+  'cx.impactCheck.impactNow.detail': 'the Impact resolves immediately',
+  'cx.impactCheck.impactOccurred.label': 'The Impact occurred',
+  'cx.impactCheck.impactOccurred.detail':
+    'the Impact tile was reached at the end of this Era',
+
+  // --- Chronossus: the collapsible rule blocks -------------------------------
+  'cx.rules.timeTravelFallback': 'Time Travel Action (the fallback):',
+
+  // --- Pioneers: the Exosuit Upgrade board ----------------------------------
+  'cx.power.board': 'Upgrade board {side} side',
+  'cx.power.vpToken': '{n} VP token',
+  'cx.power.vpTokens': '{n} VP tokens',
+  'cx.upgrade.dialogAria': 'Chronossus Exosuit Upgrade board',
+  'cx.upgrade.title': 'Exosuit Upgrade board',
+  'cx.upgrade.close': 'Close',
+  'cx.upgrade.artAlt': 'Chronossus Exosuit Upgrade board, {side} side',
+  'cx.upgrade.slotFilled': '{resource}: upgraded (+{power} Power)',
+  'cx.upgrade.slotEmpty': '{resource}: empty (+{power} Power when filled)',
+  'cx.upgrade.tokensCount': '{n} VP token on the board',
+  'cx.upgrade.tokensCountPlural': '{n} VP tokens on the board',
+  'cx.upgrade.tokensPower': '+{n} Power from its VP tokens — tap for the token count',
+  'cx.upgrade.tokensAria': 'VP tokens: {n}, worth {power} Power',
+  'cx.upgrade.vpUnit': 'VP',
+  'cx.upgrade.powerAlt': 'Power',
+  'cx.upgrade.threshold':
+    'At **{n}** or more Power — including the Path marker’s bonus, before the die — it ' +
+    'draws from the **10+** Adventure deck.',
+  'cx.upgrade.tokenNote':
+    'Its {n} VP token adds Power but is **not** VP, unless that difficulty option is on.',
+  'cx.upgrade.tokenNotePlural':
+    'Its {n} VP tokens add Power but are **not** VP, unless that difficulty option is on.',
+  'cx.upgrade.adventures': 'Adventures completed: **{n}**.',
+  'cx.upgrade.flagHint':
+    'Exosuit Upgrade board ({side} side) — {breakdown}. At {n}+ Power (with the ' +
+    'Path-marker bonus) it draws from the 10+ Adventure deck. Tap to open the board.',
+  'cx.upgrade.flagPart': '{power} {label}',
+  'cx.upgrade.flagJoin': ' + ',
+
+  // --- Chronossus pools + chips ---------------------------------------------
+  'cx.exosuitAlt': 'Powered Exosuits',
+
+  // --- Chronossus turn-overview chips ---------------------------------------
+  'cx.flag.exosuits': 'Powered Exosuits available this Era',
+  'cx.flag.exosuitsGuardians':
+    'Figures it can still place this Era: {exosuits} and {guardians}. Guardians power up ' +
+    'first and are placed last, and each has its own Action space on the Guardian board.',
+  'cx.flag.energyPool': 'Energy Pool — non-exhausted Energy Cores / Exhausted Energy Cores',
+  'cx.flag.fluxPool':
+    'Flux Pool — Flux Cores / Empty Flux Casings, and any Casings set aside this Era ' +
+    '(they return in Clean Up). A drawn Flux Core makes the Chronossus Blink.',
+  'cx.flag.tech': 'Technology cards it holds (3 VP each at the end)',
+  'cx.flag.techUnit': 'Tech',
+  'cx.flag.guardians':
+    'Guardians powered up this Era / Guardians it has. They are permanent — each keeps a ' +
+    'Path marker on its own Guardian board slot — and every Era it powers up as many of ' +
+    'them as it can before its own Exosuits. A gap means it has a Guardian it could not ' +
+    'power up.',
+  'cx.flag.guardianUnit': 'Guardian',
+  'cx.flag.guardianUnitPlural': 'Guardians',
+  'cx.flag.doomsday':
+    'The Chronossus moves the {track} tracker (the one opposing yours), now on slot ' +
+    '{slot} of 10. Landing there is worth {vp} VP — it takes BOTH Paths’ printed values, ' +
+    'unlike you{locked}',
+  'cx.flag.doomsdayLocked':
+    '. The tracks are locked — Experiments still score, but nothing moves.',
+  'cx.flag.doomsdayEnd': '.',
+  'cx.flag.hypersync':
+    'Pending Solo Hypersync tiles (max one per Era, 3 total). Hypersync placed this Era: {placed}',
+  'cx.flag.hypersyncYes': 'Y',
+  'cx.flag.hypersyncNo': 'N — the no-space fallback is still open',
+  'cx.flag.hypersyncAlt': 'Hypersync tiles',
+  'cx.flag.countLabel': 'Bot Turns',
+  'cx.rules.guardiansLabel': 'Guardians of the Council',
+  'cx.rules.guardiansPowerUp':
+    '**3 POWER UP PHASE:** The Chronossus first powers up as many Guardians as it can, ' +
+    'then it powers up its own Exosuits (e.g. if it needs to power up 4 Exosuits and has ' +
+    '2 Guardians, it will power up both of them and 2 of its own).',
+  'cx.rules.guardiansGameplay':
+    '**GAMEPLAY CHANGES:** When deciding which Exosuit to place, the Chronossus places ' +
+    'Guardians last. If it wants to take a Capital Action (Research, Recruit, Construct) ' +
+    'and there are no Action spaces remaining (including the World Council Action space), ' +
+    'it places a Guardian (if it has any) on the reserved Guardian Action space and ' +
+    'performs the Capital Action. This means the Action is not a Failed Action, so it ' +
+    'does not take 1 VP.',
+  'cx.exoUnit': 'Exo',
+  'cx.exoIncGuardian': ' (inc {n} Guardian)',
+  'cx.exoIncGuardians': ' (inc {n} Guardians)',
+  'cx.energy.energizedTitle': 'Energy Cores in the Energy Pool',
+  'cx.energy.energizedAlt': 'Energy Cores',
+  'cx.energy.exhaustedTitle': 'Exhausted Energy Cores in the Energy Pool',
+  'cx.energy.exhaustedAlt': 'Exhausted Energy Cores',
+  'cx.flux.coresTitle': 'Flux Cores in the Flux Pool — each one is a Blink',
+  'cx.flux.coresAlt': 'Flux Cores',
+  'cx.flux.casingsTitle': 'Empty Flux Casings still in the Flux Pool',
+  'cx.flux.casingsAlt': 'Empty Flux Casings',
+  'cx.flux.asideTitle':
+    'Empty Flux Casings set aside this Era — they return to the pool in Clean Up',
+  'cx.rules.timeTravelCta': '📖 Time Travel',
+  'cx.rules.autoleapCta': '📖 Autoleap',
 } as const satisfies Record<string, string>;
 
 export type UiKey = keyof typeof UI_STRINGS;
