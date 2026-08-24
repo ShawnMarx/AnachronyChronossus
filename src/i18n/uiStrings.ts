@@ -1085,6 +1085,81 @@ export const UI_STRINGS = {
   'cx.flag.hypersyncNo': 'N — the no-space fallback is still open',
   'cx.flag.hypersyncAlt': 'Hypersync tiles',
   'cx.flag.countLabel': 'Bot Turns',
+
+  // --- Chronossus board overlays + the Exosuit badge pop-out ----------------
+  'cx.board.soloBoardAlt': 'Chronossus solo board',
+  'cx.phase.statusLabel': 'Chronossus Status',
+
+  // --- Chronossus Power Up phase --------------------------------------------
+  'cx.powerUp.drew': 'Drew {n}:',
+  'cx.powerUp.backToPool': 'Back to the pool:',
+  'cx.powerUp.oneReturns': 'One Exhausted Energy Core returns',
+  'cx.powerUp.eecAlt': 'Exhausted Energy Core',
+  'cx.powerUp.nothing': 'nothing',
+  'cx.powerUp.restRemoved': '(the rest are removed from the game)',
+  'cx.powerUp.poolNow': 'Pool now:',
+  'cx.powerUp.poweredGuardians':
+    'Powered up **{total}** in total — **{guardians}**{exosuits}. It powers up as many ' +
+    'Guardians as it can first. Set these aside ready to place on the board for this Era.',
+  'cx.powerUp.guardiansOne': ' Guardian',
+  'cx.powerUp.guardiansMany': ' Guardians',
+  'cx.powerUp.andExosuits': ' and **{n}** normal Exosuit',
+  'cx.powerUp.andExosuitsPlural': ' and **{n}** normal Exosuits',
+  'cx.powerUp.wholeNumber': ' (its whole number)',
+  'cx.powerUp.powered':
+    'Powered up **{n}** Exosuit. Set these aside ready to place on the board for this Era.',
+  'cx.powerUp.poweredPlural':
+    'Powered up **{n}** Exosuits. Set these aside ready to place on the board for this Era.',
+  'cx.powerUp.continueToWarp': 'Continue to Warp',
+  'cx.powerUp.draw3': 'Draw 3 from the Energy Pool',
+  'cx.warp.eraZeroTile': 'the Era Zero tile',
+  'cx.warp.altTimelinesIntro':
+    '**Alternate Timelines:** decide how many Resources and/or Workers **you** are ' +
+    'warping **before** rolling for the Chronossus. Once you\'ve decided, roll below and ' +
+    'place the tiles in turn order as usual.',
+  'cx.warp.rulesLabel': 'Warp',
+  'cx.warp.citeP9': 'Solo Opponents rulebook, p. 9',
+  'cx.warp.citeP18': 'Solo Opponents rulebook, p. 18',
+  'cx.warp.altTimelinesLabel': 'Alternate Timelines',
+  'cx.warp.quantumLoopsLabel': 'Quantum Loops',
+  'cx.warp.quantumLead': 'Quantum Loops:',
+  'cx.warp.quantumRemoves':
+    'the Chronossus rolled {n} — remove the Quantum Loop card **farthest from the draw ' +
+    'deck** from play. It never returns a card, so this one is gone **permanently**.{vp}',
+  'cx.warp.quantumVp': ' It receives {n} VP for the removal.',
+  'cx.warp.quantumNone':
+    'the Chronossus rolled {n} — **no card is removed**. A card only goes on a roll of {faces}.',
+  'cx.warp.quantumFaces45': '4 or 5',
+  'cx.warp.quantumFaces4': '4',
+  'cx.warp.altAsk':
+    'Alternate Timelines: how many of the Chronossus’s {n} newly placed Warp tile landed ' +
+    'on a **positive**-effect Timeline space?',
+  'cx.warp.altAskPlural':
+    'Alternate Timelines: how many of the Chronossus’s {n} newly placed Warp tiles landed ' +
+    'on a **positive**-effect Timeline space?',
+  'cx.warp.altSub':
+    'It ignores negative/penalty spaces entirely — nothing to report for those. Each ' +
+    'positive one scores it {vp} VP.',
+  'cx.phase.heroAlt': 'Chronossus',
+  'cx.phase.paradoxFractures':
+    'Paradox phase – Players who strained the Timeline with Warping roll for Paradoxes. ' +
+    'With Fractures of Time it is played in Era 1 as well, since the Era Zero tile is ' +
+    'already in the past.',
+  'cx.board.timeTravelMarkerAlt': 'Time Travel marker',
+  'cx.board.warpTileAlt': 'Chronossus Warp tile',
+  'cx.board.upgradeBtnTitle':
+    "Show the Chronossus's Exosuit Upgrade board and its current Power",
+  'cx.mechPop.figures': '{n} powered figure to place',
+  'cx.mechPop.figuresPlural': '{n} powered figures to place',
+  'cx.mechPop.normalExosuits': 'Normal Exosuits',
+  'cx.mechPop.guardians': 'Guardians',
+  'cx.mechPop.guardiansPowered': '{powered}/{owned} powered',
+  'cx.mechPop.available': '{n} powered Exosuit available',
+  'cx.mechPop.availablePlural': '{n} powered Exosuits available',
+  'cx.mechPop.energyPool': 'Energy Pool',
+  'cx.mechPop.hypersyncPlaced': 'Hypersync placed',
+  'cx.mechPop.yes': 'Y',
+  'cx.mechPop.no': 'N',
   'cx.rules.guardiansLabel': 'Guardians of the Council',
   'cx.rules.guardiansPowerUp':
     '**3 POWER UP PHASE:** The Chronossus first powers up as many Guardians as it can, ' +

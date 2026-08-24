@@ -54,6 +54,15 @@ import {
   CX_SETUP_QUANTUM_LOOPS_RULE,
   CX_DOOMSDAY_TRACKER_RULE,
 } from '../engine/rules/chronossusSetupRules';
+import {
+  CX_ALT_TIMELINES_WARP_RULE,
+  CX_ALT_TIMELINES_SCORING_RULE,
+  CX_ALT_TIMELINES_DIFFICULTY_RULE,
+  CX_QUANTUM_LOOPS_WARP_RULE,
+  CX_QUANTUM_LOOPS_ACTION_RULE,
+  CX_QUANTUM_LOOPS_REMOVE_ON_5_RULE,
+  CX_QUANTUM_LOOPS_2VP_RULE,
+} from '../engine/rules/chronossusModuleRules';
 import { UI_STRINGS } from './uiStrings';
 
 /** A flat translation map: dotted key -> text. */
@@ -106,6 +115,15 @@ export function englishMessages(): Messages {
   put('rule.cxSetup.hypersync', CX_SETUP_HYPERSYNC_RULE);
   put('rule.cxSetup.quantumLoops', CX_SETUP_QUANTUM_LOOPS_RULE);
   put('rule.cxSetup.doomsdayTracker', CX_DOOMSDAY_TRACKER_RULE);
+
+  // --- Module rules shown on the phase screens ------------------------------
+  put('rule.cx.altTimelines.warp', CX_ALT_TIMELINES_WARP_RULE);
+  put('rule.cx.altTimelines.scoring', CX_ALT_TIMELINES_SCORING_RULE);
+  put('rule.cx.altTimelines.difficulty', CX_ALT_TIMELINES_DIFFICULTY_RULE);
+  put('rule.cx.quantumLoops.warp', CX_QUANTUM_LOOPS_WARP_RULE);
+  put('rule.cx.quantumLoops.action', CX_QUANTUM_LOOPS_ACTION_RULE);
+  put('rule.cx.quantumLoops.removeOn5', CX_QUANTUM_LOOPS_REMOVE_ON_5_RULE);
+  put('rule.cx.quantumLoops.twoVp', CX_QUANTUM_LOOPS_2VP_RULE);
 
   // --- Modular Action tiles (verbatim Appendix, pp. 20-21) ------------------
   for (const tile of Object.values(CHRONOSSUS_TILES)) {

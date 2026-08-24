@@ -3737,7 +3737,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           >
             <img
               src="/assets/solo/board-chronossus.jpg"
-              alt="Chronossus solo board"
+              alt={t('ui.cx.board.soloBoardAlt')}
               className="board"
             />
 
@@ -3941,7 +3941,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       e.stopPropagation();
                       setShowUpgradeBoard(true);
                     }}
-                    title="Show the Chronossus's Exosuit Upgrade board and its current Power"
+                    title={t('ui.cx.board.upgradeBtnTitle')}
                   >
                     <img src={POWER_ICON} alt="" aria-hidden="true" className="cx-power-icon" />
                     {Chronossus.boardPower(bot)}
@@ -3987,32 +3987,45 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                           {(bot.guardians?.powered ?? 0) > 0 ? (
                             <>
                               <div>
-                                {bot.exosuitsAvailable + bot.guardians!.powered} powered
-                                figure
-                                {bot.exosuitsAvailable + bot.guardians!.powered === 1
-                                  ? ''
-                                  : 's'}{' '}
-                                to place
+                                {t(
+                                  bot.exosuitsAvailable + bot.guardians!.powered === 1
+                                    ? 'ui.cx.mechPop.figures'
+                                    : 'ui.cx.mechPop.figuresPlural',
+                                  { n: bot.exosuitsAvailable + bot.guardians!.powered },
+                                )}
                               </div>
                               <div className="cx-mech-pop-energy">
-                                <span className="cx-mech-pop-label">Normal Exosuits</span>
+                                <span className="cx-mech-pop-label">
+                                  {t('ui.cx.mechPop.normalExosuits')}
+                                </span>
                                 <span>{bot.exosuitsAvailable}</span>
                               </div>
                               <div className="cx-mech-pop-energy">
-                                <span className="cx-mech-pop-label">Guardians</span>
+                                <span className="cx-mech-pop-label">
+                                  {t('ui.cx.mechPop.guardians')}
+                                </span>
                                 <span>
-                                  {bot.guardians!.powered}/{bot.guardians!.owned} powered
+                                  {t('ui.cx.mechPop.guardiansPowered', {
+                                    powered: bot.guardians!.powered,
+                                    owned: bot.guardians!.owned,
+                                  })}
                                 </span>
                               </div>
                             </>
                           ) : (
                             <div>
-                              {bot.exosuitsAvailable} powered Exosuit
-                              {bot.exosuitsAvailable === 1 ? '' : 's'} available
+                              {t(
+                                bot.exosuitsAvailable === 1
+                                  ? 'ui.cx.mechPop.available'
+                                  : 'ui.cx.mechPop.availablePlural',
+                                { n: bot.exosuitsAvailable },
+                              )}
                             </div>
                           )}
                           <div className="cx-mech-pop-energy">
-                            <span className="cx-mech-pop-label">Energy Pool</span>
+                            <span className="cx-mech-pop-label">
+                              {t('ui.cx.mechPop.energyPool')}
+                            </span>
                             <CxEnergyPool pool={bot.energyPool} size={24} />
                           </div>
                           {/* What matters here is THIS Era: a tile can be placed only once
@@ -4020,8 +4033,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                               running pending total lives on the turn-overview chip. */}
                           {hypersyncMode && (
                             <div className="cx-mech-pop-energy">
-                              <span className="cx-mech-pop-label">Hypersync placed</span>
-                              <span>{bot.hypersyncTiles.includes(state.era) ? 'Y' : 'N'}</span>
+                              <span className="cx-mech-pop-label">
+                                {t('ui.cx.mechPop.hypersyncPlaced')}
+                              </span>
+                              <span>
+                                {t(
+                                  bot.hypersyncTiles.includes(state.era)
+                                    ? 'ui.cx.mechPop.yes'
+                                    : 'ui.cx.mechPop.no',
+                                )}
+                              </span>
                             </div>
                           )}
                         </div>
@@ -4076,7 +4097,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                     return (
                       <img
                         src="/assets/solo/timetravel-marker.png"
-                        alt="Time Travel marker"
+                        alt={t('ui.cx.board.timeTravelMarkerAlt')}
                         className="tt-marker"
                         style={{ left: `${x}%`, top: `${y}%`, width: `${ttWidth}%` }}
                       />
@@ -4106,7 +4127,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       }
                     }}
                   >
-                    <img className="warp-img" src="/assets/solo/chronossus/warp-tile.png" alt="Chronossus Warp tile" />
+                    <img className="warp-img" src="/assets/solo/chronossus/warp-tile.png" alt={t('ui.cx.board.warpTileAlt')} />
                     <span className="warp-count">{bot.warpTilesOnTimeline}</span>
                     {/* Time Travel may only take a tile off a PAST Timeline tile, so the
                         total on its own doesn't say what the bot can actually do — the
@@ -4219,9 +4240,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           )}
           {bothPassed && !showFirstPlayer && (
             <div className="end-phase-banner">
-              <span>✓ Everyone has passed — the Action Rounds Phase is complete.</span>
+              <span>{t('ui.phaseBody.endBanner')}</span>
               <button className="phase-primary" onClick={endActions}>
-                Continue to Clean Up ▶
+                {t('ui.phaseBody.continueToCleanUp')} ▶
               </button>
             </div>
           )}
@@ -4302,14 +4323,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // is already in the past), so the stock "Skipped in the first Era" line would lie.
     overview:
       state.phase === 'paradox' && fracturesMode
-        ? 'Paradox phase – Players who strained the Timeline with Warping roll for ' +
-          'Paradoxes. With Fractures of Time it is played in Era 1 as well, since the ' +
-          'Era Zero tile is already in the past.'
+        ? t('ui.cx.phase.paradoxFractures')
         : meta?.overview,
     onHome,
     hero: HERO,
-    statusLabel: 'Chronossus Status',
-    heroAlt: 'Chronossus',
+    statusLabel: t('ui.cx.phase.statusLabel'),
+    heroAlt: t('ui.cx.phase.heroAlt'),
     headerRight: (
       <>
         <CxVpPill score={score} totalActions={bot.totalActions} />
@@ -4319,14 +4338,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           className="undo-btn cx-undo-btn"
           onClick={undoTurn}
           disabled={!canUndo}
-          title="Undo the last committed step"
+          title={t('ui.turnBar.undoTitle')}
         >
-          ↶ Undo
+          ↶ {t('ui.common.undo')}
         </button>
         <button
           className={`stat-pill status-chip ${showPhaseHistory ? 'on' : ''}`}
           onClick={() => setShowPhaseHistory((v) => !v)}
-          title="Turn history"
+          title={t('ui.turnBar.historyTitle')}
           aria-pressed={showPhaseHistory}
         >
           🕑
@@ -4336,10 +4355,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
         <button
           className={`stat-pill status-chip turn-chip ${showStatus ? 'on' : ''}`}
           onClick={() => setShowStatus((v) => !v)}
-          title="Turn tracker — pass status & recent bot turns"
+          title={t('ui.turnBar.chipTitle')}
           aria-pressed={showStatus}
         >
-          Turn <b>{turnsThisEra}</b>
+          {t('ui.turnBar.turn')} <b>{turnsThisEra}</b>
         </button>
         <RulesButton onClick={() => setModeRules(true)} />
       </>
@@ -4358,7 +4377,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               <div className="cx-drawn">
                 <div className="cx-drawn-row">
                   <span className="cx-drawn-label">
-                    Drew {lastDraw.energized + lastDraw.exhausted}:
+                    {t('ui.cx.powerUp.drew', {
+                      n: lastDraw.energized + lastDraw.exhausted,
+                    })}
                   </span>
                   <CxEnergyPool
                     pool={{ energized: lastDraw.energized, exhausted: lastDraw.exhausted }}
@@ -4366,21 +4387,23 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                   />
                 </div>
                 <div className="cx-drawn-row">
-                  <span className="cx-drawn-label">Back to the pool:</span>
+                  <span className="cx-drawn-label">{t('ui.cx.powerUp.backToPool')}</span>
                   {lastDraw.exhausted > 0 ? (
-                    <span className="cx-energy" title="One Exhausted Energy Core returns">
-                      <img src={EEC_ICON} alt="Exhausted Energy Core" style={{ height: 24 }} />
+                    <span className="cx-energy" title={t('ui.cx.powerUp.oneReturns')}>
+                      <img
+                        src={EEC_ICON}
+                        alt={t('ui.cx.powerUp.eecAlt')}
+                        style={{ height: 24 }}
+                      />
                       <b>1</b>
                     </span>
                   ) : (
-                    <span className="cx-drawn-none">nothing</span>
+                    <span className="cx-drawn-none">{t('ui.cx.powerUp.nothing')}</span>
                   )}
-                  <span className="cx-drawn-note">
-                    (the rest are removed from the game)
-                  </span>
+                  <span className="cx-drawn-note">{t('ui.cx.powerUp.restRemoved')}</span>
                 </div>
                 <div className="cx-drawn-row">
-                  <span className="cx-drawn-label">Pool now:</span>
+                  <span className="cx-drawn-label">{t('ui.cx.powerUp.poolNow')}</span>
                   <CxEnergyPool pool={bot.energyPool} size={24} />
                 </div>
                 <p className="cx-user-action">
@@ -4392,36 +4415,50 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                       to be told which pieces to pull — they're different miniatures. */}
                   {(bot.guardians?.powered ?? 0) > 0 ? (
                     <span>
-                      Powered up{' '}
-                      <b>{bot.guardians!.powered + bot.exosuitsAvailable}</b> in total —{' '}
-                      <b>{bot.guardians!.powered}</b> Guardian
-                      {bot.guardians!.powered === 1 ? '' : 's'}
-                      {bot.exosuitsAvailable > 0 ? (
-                        <>
-                          {' '}
-                          and <b>{bot.exosuitsAvailable}</b> normal Exosuit
-                          {bot.exosuitsAvailable === 1 ? '' : 's'}
-                        </>
-                      ) : (
-                        ' (its whole number)'
-                      )}
-                      . It powers up as many Guardians as it can first. Set these aside
-                      ready to place on the board for this Era.
+                      <T
+                        k="ui.cx.powerUp.poweredGuardians"
+                        params={{
+                          total: bot.guardians!.powered + bot.exosuitsAvailable,
+                          guardians:
+                            bot.guardians!.powered +
+                            t(
+                              bot.guardians!.powered === 1
+                                ? 'ui.cx.powerUp.guardiansOne'
+                                : 'ui.cx.powerUp.guardiansMany',
+                            ),
+                          exosuits:
+                            bot.exosuitsAvailable > 0
+                              ? t(
+                                  bot.exosuitsAvailable === 1
+                                    ? 'ui.cx.powerUp.andExosuits'
+                                    : 'ui.cx.powerUp.andExosuitsPlural',
+                                  { n: bot.exosuitsAvailable },
+                                )
+                              : t('ui.cx.powerUp.wholeNumber'),
+                        }}
+                      />
                     </span>
                   ) : (
                     <span>
-                      Powered up <b>{bot.exosuitsAvailable}</b> Exosuit
-                      {bot.exosuitsAvailable === 1 ? '' : 's'}. Set these aside ready to
-                      place on the board for this Era.
+                      <T
+                        k={
+                          bot.exosuitsAvailable === 1
+                            ? 'ui.cx.powerUp.powered'
+                            : 'ui.cx.powerUp.poweredPlural'
+                        }
+                        params={{ n: bot.exosuitsAvailable }}
+                      />
                     </span>
                   )}
                 </p>
               </div>
-              <button className="phase-primary" onClick={() => goPhase('warp')}>Continue to Warp ▶</button>
+              <button className="phase-primary" onClick={() => goPhase('warp')}>
+                {t('ui.cx.powerUp.continueToWarp')} ▶
+              </button>
             </>
           ) : (
             <button className="phase-primary" onClick={drawAndPowerUp}>
-              Draw 3 from the Energy Pool
+              {t('ui.cx.powerUp.draw3')}
             </button>
           )}
         </>
@@ -4444,7 +4481,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           warpTileSrc="/assets/solo/chronossus/warp-tile.png"
           roll={ui.warpRoll}
           onRoll={rollWarp}
-          tileLabel={eraZero ? 'the Era Zero tile' : undefined}
+          tileLabel={eraZero ? t('ui.cx.warp.eraZeroTile') : undefined}
           // Alternate Timelines replaces the base turn-order instruction: the decision
           // has to be made BEFORE the roll, whoever is First Player (p.18).
           intro={
@@ -4453,9 +4490,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             // since it changes the ORDER you act in and that is nowhere else on screen.
             eraZero && !altTimelines ? null : altTimelines ? (
               <p className="phase-note">
-                <b>Alternate Timelines:</b> decide how many Resources and/or Workers{' '}
-                <b>you</b> are warping <b>before</b> rolling for the Chronossus. Once
-                you've decided, roll below and place the tiles in turn order as usual.
+                <T k="ui.cx.warp.altTimelinesIntro" />
               </p>
             ) : undefined
           }
@@ -4464,58 +4499,46 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
               {/* Era Zero's own box carries the Fractures rule; the Chronossus's normal
                   Warp rule still applies to it, so show that one too. */}
               {eraZero && (
-                <RulesBox label="Warp">
+                <RulesBox label={t('ui.cx.warp.rulesLabel')}>
                   <p>{phaseMeta.warp!.rules}</p>
-                  <p className="rules-cite">Solo Opponents rulebook, p. 9</p>
+                  <p className="rules-cite">{t('ui.cx.warp.citeP9')}</p>
                 </RulesBox>
               )}
               {altTimelines && (
-                <RulesBox label="Alternate Timelines">
+                <RulesBox label={t('ui.cx.warp.altTimelinesLabel')}>
                   <p>
-                    <b>WARP PHASE:</b> In the Warp Phase, you must decide how many
-                    Resources and/or Workers to warp first, then roll for the Chronossus.
-                    Place the tiles in turn order, as usual.
+                    <T k="rule.cx.altTimelines.warp" />
                   </p>
                   <p>
-                    It ignores penalties (red spaces), and it receives 2 VPs instead of
-                    any positive rewards. You resolve both positive and negative effects
-                    as normal.
+                    <T k="rule.cx.altTimelines.scoring" />
                   </p>
                   {altTimelinesPerSpace === 3 && (
                     <p>
-                      <b>INCREASING THE DIFFICULTY:</b> The Chronossus scores 3 VPs per
-                      positive effect.
+                      <T k="rule.cx.altTimelines.difficulty" />
                     </p>
                   )}
-                  <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+                  <p className="rules-cite">{t('ui.cx.warp.citeP18')}</p>
                 </RulesBox>
               )}
               {quantumLoops && (
-                <RulesBox label="Quantum Loops">
+                <RulesBox label={t('ui.cx.warp.quantumLoopsLabel')}>
                   <p>
-                    <b>WARP PHASE:</b> In each Warp Phase, when the Chronossus places at
-                    least one warp tile, roll the AI die. On a roll of 4, remove the Quantum
-                    Loop card farthest from the draw deck from play.
+                    <T k="rule.cx.quantumLoops.warp" />
                   </p>
                   <p>
-                    <b>ACTION ROUNDS PHASE:</b> The Chronossus does not actually interact
-                    with Quantum Loops. It never “returns” them, thus cards removed during
-                    the Warp Phase are permanently removed. When you return a card, add it
-                    back to the row of Quantum Loop cards farthest from the draw deck.
+                    <T k="rule.cx.quantumLoops.action" />
                   </p>
                   {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_REMOVE_ON_5) && (
                     <p>
-                      <b>INCREASING THE DIFFICULTY:</b> Also remove a Quantum Loop card on a
-                      roll of 5.
+                      <T k="rule.cx.quantumLoops.removeOn5" />
                     </p>
                   )}
                   {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_2VP) && (
                     <p>
-                      <b>INCREASING THE DIFFICULTY:</b> When removing a Quantum Loop card,
-                      the Chronossus receives 2 VPs.
+                      <T k="rule.cx.quantumLoops.twoVp" />
                     </p>
                   )}
-                  <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+                  <p className="rules-cite">{t('ui.cx.warp.citeP18')}</p>
                 </RulesBox>
               )}
             </>
@@ -4525,27 +4548,35 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             // screen before the player answers anything else — one screen, one commit.
             quantumLoops && (ui.warpRoll ?? 0) > 0 && ui.quantumRoll != null ? (
               <div className="warp-roll-result quantum-check">
-                <span className="bot-die" aria-label={`AI die shows ${ui.quantumRoll}`}>
+                <span className="bot-die" aria-label={t('ui.topBar.dieAria', { n: ui.quantumRoll })}>
                   {ui.quantumRoll}
                 </span>
                 <p className="phase-note">
-                  <b>Quantum Loops:</b>{' '}
+                  <b>{t('ui.cx.warp.quantumLead')}</b>{' '}
                   {quantumOutcome.removes ? (
-                    <>
-                      the Chronossus rolled {ui.quantumRoll} — remove the Quantum Loop card{' '}
-                      <b>farthest from the draw deck</b> from play. It never returns a card,
-                      so this one is gone <b>permanently</b>.
-                      {quantumOutcome.vp ? ` It receives ${quantumOutcome.vp} VP for the removal.` : ''}
-                    </>
+                    <T
+                      k="ui.cx.warp.quantumRemoves"
+                      params={{
+                        n: ui.quantumRoll,
+                        vp: quantumOutcome.vp
+                          ? t('ui.cx.warp.quantumVp', { n: quantumOutcome.vp })
+                          : '',
+                      }}
+                    />
                   ) : (
-                    <>
-                      the Chronossus rolled {ui.quantumRoll} — <b>no card is removed</b>. A
-                      card only goes on a roll of{' '}
-                      {state.config.difficulty.includes(Chronossus.DIFFICULTY_QL_REMOVE_ON_5)
-                        ? '4 or 5'
-                        : '4'}
-                      .
-                    </>
+                    <T
+                      k="ui.cx.warp.quantumNone"
+                      params={{
+                        n: ui.quantumRoll,
+                        faces: t(
+                          state.config.difficulty.includes(
+                            Chronossus.DIFFICULTY_QL_REMOVE_ON_5,
+                          )
+                            ? 'ui.cx.warp.quantumFaces45'
+                            : 'ui.cx.warp.quantumFaces4',
+                        ),
+                      }}
+                    />
                   )}
                 </p>
               </div>
@@ -4558,13 +4589,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             altTimelines && (ui.warpRoll ?? 0) > 0 ? (
               <div className="place-prompt">
                 <p className="pp-instruct">
-                  Alternate Timelines: how many of the Chronossus’s {ui.warpRoll}{' '}
-                  newly placed Warp tile{ui.warpRoll === 1 ? '' : 's'} landed on a{' '}
-                  <b>positive</b>-effect Timeline space?
+                  <T
+                    k={ui.warpRoll === 1 ? 'ui.cx.warp.altAsk' : 'ui.cx.warp.altAskPlural'}
+                    params={{ n: ui.warpRoll ?? 0 }}
+                  />
                 </p>
                 <p className="pp-sub">
-                  It ignores negative/penalty spaces entirely — nothing to report for
-                  those. Each positive one scores it {altTimelinesPerSpace} VP.
+                  {t('ui.cx.warp.altSub', { vp: altTimelinesPerSpace })}
                 </p>
                 <div className="vp-digits">
                   {Array.from({ length: (ui.warpRoll ?? 0) + 1 }, (_, n) => n).map((n) => (
