@@ -5,8 +5,10 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-22): every module AND add-on is implemented, the repo is PUBLIC, and
-> saved history works in both environments for the first time.**
+> **Status (2026-08-23): every module AND add-on is implemented, the repo is PUBLIC, saved
+> history works in both environments, and a translation layer ships — adding a language is
+> one dropped-in locale file (`src/i18n/locales/README.md`), with the app's own voice
+> translatable and verbatim rulebook text gated behind an `officialRulebook` flag.**
 > Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
 > Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth, **Doomsday**
 > and — as of today — **Quantum Loops** are all built. Doomsday was archived 2026-08-21 to

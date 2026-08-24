@@ -47,6 +47,46 @@ changes, the untranslated default label is gone, rule text stays English with th
 notice, the choice survives a reload — then deletes the file. `pw-nostorage.mjs` still passes
 for both bots, so the new language preference did not break the degraded-storage guarantee.
 
+**Then the tooling a real translator needs.** `pw-i18n-review.mjs` captures every reachable
+screen in English and a target language, side by side, into `report.html` — text AND screenshot,
+because the commonest translation bug is a longer string overflowing its button. The way in is
+Debug: `onTileClick` with debug on sets the real `pending` flow, so tapping a board hotspot opens
+the full guided dialog exactly as if the die had sent a marker there, turning a combinatorial
+problem into a loop. It reports what it MISSED (`coverage.md`, from a `⟦key⟧` marker locale) —
+14% for the old screen walk, 47% now — rather than letting a partial sweep read as completeness.
+That measurement immediately found dead surface: `action.*.summary`/`.jit` (the unbuilt guided
+runner) and the mode labels render nowhere, so 38 keys came back out (206 → 167).
+
+**`--pseudo` is how you test a translation you cannot read.** A locale that is accented, ~40%
+longer and bracketed; anything still in plain English is hard-coded, anything clipped is a layout
+that cannot take a longer language. Three defects surfaced building it, all in the harness rather
+than the app: it navigated by English button text (so it could not drive the very thing it
+tests — now selects on classes), the fault detector had failed to splice in at all and was
+reporting "none" for every screen (now `FAULT_SELFTEST=1` forces 201 faults, so "none" means
+something), and the padding was one unbreakable token that manufactured overflow no real language
+causes. One genuine app fix survived: `.bot-card` was clipping its own description behind
+`overflow: hidden`.
+
+**The chrome sweep began.** ~4,300 words of English were hard-coded in `.tsx`, invisible to any
+locale file. Done: `Landing.tsx`, `SetupFlow.tsx`, `RulesFrame.tsx`, `HistoryScreen.tsx` and all
+23 Chronossus difficulty options (extracted by script, not by hand, so no wording could drift).
+App-voice translatable words went **167 → 1,609**. `<T>` (`src/i18n/Trans.tsx`) renders
+`**bold**`, `*italic*` and `[label](name)` links so a sentence containing a link stays ONE key —
+split into `…before`/`…after` fragments it looks tidy in the JSON and is unusable, because word
+order moves between languages. Remaining: ~3,175 words in `ChronossusGame.tsx`,
+`ChronossusSetupFlow.tsx` and `BoardExplorer.tsx`.
+
+**Verification had to change, and that is the interesting part.** Moving a string into a locale
+file coalesces JSX text nodes (`in{' '}<a>` becomes one run) and the browser reshapes it by a
+hair: identical `innerHTML`, identical layout, ~180 antialiasing pixels on one line. Byte-equal
+screenshots stop being achievable for a provably invisible change, and a check nobody can pass
+gets ignored. So `pw-i18n-snapshot.mjs` now also records **layout geometry** — every element and
+text-run box, quantised to 0.5px — and `pw-i18n-diff.mjs` compares text and layout strictly while
+budgeting pixels. Every batch this session verified clean under it.
+
+A throwaway machine-drafted Spanish locale was run end to end to prove the whole path (0 layout
+faults across 130 screens) and published as a review artifact; it was **not** committed.
+
 ## 2026-08-22 — The repo goes public, the history that never saved, and a playtest sweep
 
 **Saved games have never worked in production, and it was not this app.** A save from a

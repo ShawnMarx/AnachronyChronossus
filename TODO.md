@@ -24,11 +24,13 @@ committed and none are planned in-house.
       stepping Exosuits to 0 (the new debug stepper reaches the state — the harness just
       does not yet drive the two turns that follow); `phase.actions.*` may render nowhere
       (the Action Rounds "phase screen" is the board) — check before keeping the key.
-- [~] **Remaining app-voice chrome — the sweep a real translator needs.** ~3,500 words were
-      hard-coded in `.tsx`; `Landing.tsx` (60) is done. Remaining, by size:
-      `ChronossusGame.tsx` ~1,379, `ChronossusSetupFlow.tsx` ~1,165, `BoardExplorer.tsx` ~613,
-      `SetupFlow.tsx` ~221, `RulesFrame.tsx` ~33, `HistoryScreen.tsx` ~29. No blocker — just
-      volume. Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
+- [~] **Remaining app-voice chrome — the sweep a real translator needs.** ~4,300 words were
+      hard-coded in `.tsx`. **Done 2026-08-23:** `Landing.tsx`, `SetupFlow.tsx`,
+      `RulesFrame.tsx`, `HistoryScreen.tsx` and all 23 Chronossus difficulty options — app-voice
+      translatable words went 167 → 1,609. **Remaining ~3,175 words:** `ChronossusGame.tsx`
+      ~1,379, `ChronossusSetupFlow.tsx` ~1,165 (the per-module setup prose),
+      `BoardExplorer.tsx` ~613, `AdminStats.tsx` ~18. No blocker — just volume, and it is
+      prose so it needs reading rather than scripting. Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
       link or bold run: keep it as ONE key so the translator can move the link where their
       grammar needs it. Verify each file with
       `node pw-i18n-diff.mjs <before> <after>` — text and layout must match exactly; a small
