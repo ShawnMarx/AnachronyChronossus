@@ -173,6 +173,270 @@ export const UI_STRINGS = {
     'The Chronossus draws from the same decks you do. The app tells you its Power and which ' +
     'deck to draw 2 cards from, and you tell it which cards came up.',
 
+  // --- Chronossus setup flow ------------------------------------------------
+  'cxSetup.eyebrow.new': 'New Game',
+  'cxSetup.eyebrow.modules': 'Modules',
+  'cxSetup.eyebrow.doomsday': 'Doomsday',
+  'cxSetup.eyebrow.difficulty': 'Difficulty',
+  'cxSetup.eyebrow.setup': 'Setup',
+  'cxSetup.title.intro': 'The Chronossus',
+  'cxSetup.title.modules': 'Select a Module',
+  'cxSetup.title.path': 'Choose Your Path',
+  'cxSetup.title.difficulty': 'Increasing the Difficulty',
+  'cxSetup.title.setup': 'Setup Instructions',
+  'cxSetup.home': 'Back to the home screen',
+  'cxSetup.heroAlt': 'Chronossus',
+  'cxSetup.continue': 'Continue',
+  'cxSetup.back': 'Back',
+  'cxSetup.beginEra1': 'Begin Era 1',
+  'cxSetup.comingSoon': 'Coming soon ({n})',
+  'cxSetup.flavor':
+    'When the Path of Unity appeared in our present, altering the course of history, ' +
+    'their audacity caused a massive dissonance in the Space-Time Continuum that could ' +
+    'not remain unanswered by the cosmos.\n' +
+    '\n' +
+    'From the deepest, darkest recesses of the universe, an ancient and ruthless menace ' +
+    'emerged. The Chronossus, the Destroyer of Worlds, has awakened with only one ' +
+    'purpose: to eliminate the dissonance and consume all broken timelines, including ours.',
+
+  // Module picker
+  'cxSetup.modules.note':
+    '**Base** is the app designer’s suggested start. The app itself handles the extra ' +
+    'bookkeeping and complexity of the other modules, giving you a more complete opponent ' +
+    'as they come online across the game modes.',
+  'cxSetup.modules.pioneersDeck':
+    '**Pioneers — where the Chronossus’s Adventure cards come from.** You can change this ' +
+    'later in the ⚙ menu.',
+  'cxSetup.modules.extras': 'Optional add-on modules (combine with any base mode above):',
+  'cxSetup.modules.buildings':
+    'The Interlocking buildings and Neutronide buildings are supported and require no ' +
+    'additional components or adjustments to the rules.',
+
+  // Module names. Expansion titles, so a locale uses the names on that language's boxes.
+  'module.base': 'Base',
+  'module.fractures': 'Fractures of Time',
+  'module.doomsday': 'Doomsday',
+  'module.pioneers': 'Pioneers of New Earth',
+  'module.guardians': 'Guardians of the Council',
+  'module.hypersync': 'Hypersync Future Actions',
+  'module.fractures+pioneers': 'Fractures of Time + Pioneers of New Earth',
+  'module.fractures+hypersync': 'Fractures of Time + Hypersync Future Actions',
+  'module.guardians+hypersync': 'Guardians of the Council + Hypersync Future Actions',
+  'module.guardians+pioneers': 'Guardians of the Council + Pioneers of New Earth',
+
+  // Doomsday's Path screen
+  'cxSetup.path.note':
+    'Doomsday gives each Path a side of the Doomsday track. Tell the app which one you ' +
+    'are playing and it takes the other for the Chronossus — that holds for the whole game.',
+  'cxSetup.path.harmony': 'Path of Harmony',
+  'cxSetup.path.dominance': 'Path of Dominance',
+  'cxSetup.path.salvation': 'Path of Salvation',
+  'cxSetup.path.progress': 'Path of Progress',
+  'cxSetup.path.detail':
+    'You control the **{track}** tracker, moving it {direction} the track. The Chronossus ' +
+    'takes the **{botTrack}** tracker.',
+  'cxSetup.path.up': 'up',
+  'cxSetup.path.down': 'down',
+  'cxSetup.path.bothTokens':
+    'You will move **both** physical tokens during the game. The app tracks where the ' +
+    'Chronossus’s marker sits so it knows the VP its Experiments earn, and tells you when ' +
+    'to advance it — and you will read both trackers’ (+)/(−) symbols yourself for the ' +
+    'Trajectory roll each Clean Up.',
+  'cxSetup.path.rulesLabel': 'Doomsday — the Chronossus’s tracker',
+
+  // Doomsday track + Path names, used in the setup prose
+  'track.saveEarth': 'Save Earth',
+  'track.sealFate': 'Seal Fate',
+  'path.harmony': 'Harmony',
+  'path.dominance': 'Dominance',
+  'path.salvation': 'Salvation',
+  'path.progress': 'Progress',
+
+  // Difficulty screen
+  'cxSetup.difficulty.note':
+    'Select one or more options to increase the difficulty against the Chronossus, or ' +
+    'play with none for the standard game.',
+  'cxSetup.tileFlip.head': 'Slot {slot} · {code} — {name}',
+  'cxSetup.tileFlip.alt': '{name} ({code})',
+  'cxSetup.tileFlip.toB': 'A side ▸ flip to B',
+  'cxSetup.tileFlip.toA': 'B side ▸ flip to A',
+
+  // --- Chronossus setup: the app's own instructions -------------------------
+  // The bullets that only appear for a given module sit with it, so a translator sees
+  // the module's block together.
+  'cxSetup.app.title': 'Setup for this app',
+  // Labels on the verbatim 📖 setup boxes. The BODIES are rule text (`rule.cxSetup.*`).
+  'cxSetup.rules.base': 'Setup',
+  'cxSetup.rules.fractures': 'Fractures of Time — setup',
+  'cxSetup.rules.guardians': 'Guardians of the Council — setup',
+  'cxSetup.rules.pioneers': 'Pioneers of New Earth — setup',
+  'cxSetup.rules.doomsday': 'Doomsday — setup',
+  'cxSetup.rules.hypersync': 'Hypersync Future Actions — setup',
+  'cxSetup.rules.quantumLoops': 'Quantum Loops — setup',
+  'cxSetup.rules.hypersyncTilesAlt': 'Solo Hypersync setup tiles',
+  // Solo Objective card names, as printed on the cards.
+  'objectiveCard.technologyCards': 'Technology Cards',
+  'objectiveCard.fluxOnTrack': 'Flux on Track',
+  'objectiveCard.guardians': 'Guardians',
+  'objectiveCard.successfulAdventures': 'Successful Adventures',
+  'objectiveCard.completedExperiments': 'Completed Experiments',
+  // How a run of card names is joined mid-sentence.
+  'cxSetup.app.cardSep': ', ',
+  'cxSetup.app.cardLast': ' and ',
+  'cxSetup.app.intro':
+    'Set up a 2-player game with the Chronossus as one of the players. There’s no need ' +
+    'for the Chronossus board — this app tracks it for you.',
+  'cxSetup.app.figures':
+    'The Chronossus receives its 6 Exosuits and 8 Warp tiles. It does not receive any ' +
+    'Starting Assets or Workers.',
+  'cxSetup.app.endgameCards': 'Leave all Endgame Condition cards in the box.',
+  'cxSetup.app.addObjectives': 'Add the {cards} Solo Objective card from your module to the deck, then ',
+  'cxSetup.app.addObjectivesPlural':
+    'Add the {cards} Solo Objective cards from your modules to the deck, then ',
+  'cxSetup.app.shuffleLower': 'shuffle',
+  'cxSetup.app.shuffleUpper': 'Shuffle',
+  'cxSetup.app.revealing': '{shuffle} all Solo Objective cards, revealing {n}{note}. Return the rest to the box.',
+  'cxSetup.app.difficultyChosen': ' (difficulty option selected)',
+  'cxSetup.app.noFocus': 'The Chronossus does not use a Focus marker.',
+  'cxSetup.app.banner':
+    'Place the Chronossus’s Banner on the First Player spot; it is the First Player in ' +
+    'the 1st Era. You receive 1 additional Water (for being the second player).',
+  'cxSetup.app.playerBoard':
+    'You may still choose to use either the “A” or the “B” side of your Player board.',
+  'cxSetup.app.worldCouncilRequired':
+    '**Cover the right World Council space** with a Hex Unavailable tile (required for ' +
+    'this mode).',
+  'cxSetup.app.worldCouncilOption':
+    '**Cover the right World Council space** with a Hex Unavailable tile (difficulty ' +
+    'option selected).',
+  'cxSetup.app.vpNote':
+    'This app tracks **all** of the Chronossus’s VP for you and explains each Action’s ' +
+    'rules as it takes them. Building VP is counted as tiles are discarded, rather than ' +
+    'placed on the bot’s board. Be ready to place Exosuits and Warp tiles to the board ' +
+    'and discard pieces for the bot as prompted.',
+  'cxSetup.app.objectivesNote':
+    'In addition to your points collected during the game, you score points for the ' +
+    'highest level you reached on each Solo Objective. The bot doesn’t score for Solo ' +
+    'Objectives.',
+
+  // Guardians bullets in the base list
+  'cxSetup.app.guardians.board':
+    'Set up the **Guardian board** as for a 2-player game, and keep the Chronossus’s ' +
+    '**Path markers** to hand — when it acquires a Guardian you place one on an empty ' +
+    'Guardian board slot, and that slot becomes that Guardian’s own Action space. (Solo ' +
+    'Path markers aren’t meant to be limited; if they run out, use an unused Path’s markers.)',
+  'cxSetup.app.guardians.tracked':
+    'The app tracks how many Guardians the Chronossus owns and how many are powered up; ' +
+    'you place and retrieve the miniatures as prompted.',
+  'cxSetup.app.guardians.starting':
+    '**Give the Chronossus 1 Guardian now** and place one of its Path markers on an empty ' +
+    'Guardian board slot (difficulty option selected).',
+
+  // Per-module app-voice setup sections
+  'cxSetup.mod.fractures.title': 'Fractures of Time setup',
+  'cxSetup.mod.fractures.eraZero':
+    'Set up the Timeline with the **Era Zero** tile and its own face-up Superproject. ' +
+    'Straight after setup the app runs a one-off **Era Zero Warp Phase** — no other ' +
+    'phases — with the Warp tiles going on that tile. Era 1 then runs as usual, ' +
+    'including its Paradox phase (normally skipped in the first Era).',
+  'cxSetup.mod.fractures.timeline':
+    'The Timeline is **shorter**: three Eras pre-Impact and two post-Impact. The Impact ' +
+    'happens in **Era 3**’s Clean Up and the game ends after **Era 5**.',
+  'cxSetup.mod.fractures.valley':
+    'Set up the **Valley board** as if it was a 2-player game. The app names the Valley ' +
+    'Action the Chronossus takes; you place its Exosuit there (or on the Valley Capital ' +
+    'space if no Valley Action space is free).',
+  'cxSetup.mod.fractures.cores':
+    'Keep **cardboard energized cores** to hand — or any alternative marker — to show ' +
+    'which of the Chronossus’s Exosuits are ready to Blink: whenever it places an Exosuit ' +
+    'on the Main board, put an Energy Core from the supply into that Exosuit.',
+  'cxSetup.mod.fractures.fluxPool':
+    'No need for the physical **Flux Pool** container — the app holds its 1 Flux Core + ' +
+    '3 Empty Flux Casings and draws from it for you{extra}.',
+  'cxSetup.mod.fractures.extraFlux': ' (+{n} extra Flux Core, difficulty option selected)',
+  'cxSetup.mod.fractures.extraFluxPlural':
+    ' (+{n} extra Flux Cores, difficulty option selected)',
+  'cxSetup.mod.fractures.noDevice':
+    'The Chronossus does not use a Fracture Device, never rolls the Flux or Glitch dice, ' +
+    'and never receives Glitches.',
+  'cxSetup.mod.fractures.playerGlitch':
+    '**Roll the Glitch die and place that Glitch for yourself**, on top of your two ' +
+    'starting Glitches (difficulty option selected).',
+
+  'cxSetup.mod.guardians.title': 'Guardians of the Council setup',
+  'cxSetup.mod.guardians.board':
+    'Set up the Guardian board as for a 2-player game, and cover the right World Council ' +
+    'Action space with a Hex Unavailable tile (as noted in the Guardians of the Council ' +
+    'rules for 2 players).',
+  'cxSetup.mod.guardians.markers':
+    'Keep the Chronossus’s Path markers to hand for the Guardian board.',
+
+  'cxSetup.mod.pioneers.title': 'Pioneers of New Earth setup',
+  'cxSetup.mod.pioneers.board': 'Place the Adventure board next to the Main board.',
+  'cxSetup.mod.pioneers.upgrade':
+    'Give the Chronossus its Exosuit Upgrade board, **{side}** side up.',
+  'cxSetup.mod.pioneers.ownDeck':
+    'The app keeps the Chronossus’s **own copy** of both Adventure decks — shuffle your ' +
+    'two decks and place them on the Adventure board for yourself only. The bot never ' +
+    'draws from them.',
+  'cxSetup.mod.pioneers.sharedDeck':
+    'Shuffle the 5+ and 10+ Adventure decks onto the Adventure board. The Chronossus ' +
+    'draws from these **same decks**, and you tell the app which cards it drew.',
+  'cxSetup.mod.pioneers.markers':
+    'Keep the Chronossus’s Path markers to hand for the Adventure board’s Power slots.',
+
+  'cxSetup.mod.doomsday.title': 'Doomsday setup',
+  'cxSetup.mod.doomsday.board':
+    'Set up the **Doomsday board**, the Experiment cards and the Impact tile as for a ' +
+    '2-player game — including the {stack}.',
+  'cxSetup.mod.doomsday.stackPlanned':
+    'face-up Level 2 stack of the Planned Experiments variant',
+  'cxSetup.mod.doomsday.stackNoPlanned':
+    'face-down Level 2 stack (you chose to play without the Planned Experiments variant)',
+  'cxSetup.mod.doomsday.path':
+    'Your Path (**{path}**) puts you on the **{playerTrack}** track — that is the tracker ' +
+    '**you** advance for your own Experiments. The Chronossus scores on the **{botTrack}** ' +
+    'track, always the opposing one.',
+  'cxSetup.mod.doomsday.bothTokens':
+    '**You move both physical tokens.** The app tracks where the Chronossus’s marker ' +
+    'sits — that is how it knows the VP each of its Experiments earns — and tells you ' +
+    'when to advance it. You will need both trackers’ positions yourself each Clean Up, ' +
+    'to read the (+) and (−) symbols for the Trajectory roll.',
+  'cxSetup.mod.doomsday.markers':
+    'Keep the Chronossus’s **Path markers** to hand for the Experiments.',
+  'cxSetup.mod.doomsday.seedMarkers':
+    'Place **{n}** of the Chronossus’s Path markers on future Experiments now (difficulty ' +
+    'option selected).',
+  'cxSetup.mod.doomsday.checkImpact':
+    '**You run Check for Impact yourself** each Clean Up — the app never rolls the ' +
+    'Trajectory dice or tracks the Impact tile. It prompts you at the right moment and ' +
+    'asks what happened.',
+
+  'cxSetup.mod.quantumLoops.title': 'Quantum Loops setup',
+  'cxSetup.mod.quantumLoops.module':
+    'Set up the **Quantum Loops module** as for a 2-player game — the card offer, the ' +
+    'draw deck and the Quantum Warp tiles are unchanged.',
+  'cxSetup.mod.quantumLoops.row':
+    'Keep the Quantum Loop cards in a **row**, adding new ones **closest to the draw ' +
+    'deck**. That order is what the Chronossus reads: it always removes the card ' +
+    '**farthest from the draw deck**. When you return a card of your own, add it back ' +
+    'farthest from the deck too.',
+  'cxSetup.mod.quantumLoops.check':
+    'The app rolls the check for you each Warp Phase in which the Chronossus places a ' +
+    'Warp tile, and tells you whether a card leaves play. It never takes or returns a ' +
+    'card itself, so anything it removes is gone **permanently**.',
+  'cxSetup.mod.quantumLoops.leak':
+    'If you gain the **“Cosmic Data Leak”** card, draw 2 unused Solo Objectives and put ' +
+    'them into play.',
+
+  'cxSetup.mod.hypersync.title': 'Hypersync Future Actions setup',
+  'cxSetup.mod.hypersync.board':
+    'Use the 2-player side of the Hypersync board, and cover the right World Council ' +
+    'Action space on the Main board with a Hex Unavailable tile (as noted in the ' +
+    'Hypersync rules for 2 players).',
+  'cxSetup.mod.hypersync.tiles':
+    'Place the Solo Hypersync tiles next to the Chronossus board.',
+
   // --- Chronossus setup: difficulty options ---------------------------------
   'cxSetup.diff.altTimelines3vp.label': 'Alternate Timelines: 3 VP per positive effect',
   'cxSetup.diff.altTimelines3vp.detail': 'The Chronossus scores 3 VPs per positive effect instead of 2.',
@@ -704,6 +968,21 @@ export const UI_STRINGS = {
     'Place one of its **available powered Exosuits** on **{destination}**.',
   'panel.place.continuePasses': '✓ Continue — it passes',
   'panel.place.confirm': '✓ Confirm placed',
+  // --- Admin stats (admin-only modal) ---------------------------------------
+  'adminStats.title': 'Overall stats',
+  'adminStats.close': 'Close',
+  'adminStats.loading': 'Loading…',
+  'adminStats.err': 'Could not load stats (admin only).',
+  'adminStats.games': 'Games',
+  'adminStats.winRate': 'Player win rate',
+  'adminStats.wins': 'Player wins',
+  'adminStats.players': 'Players',
+  'adminStats.byDifficulty': 'By difficulty',
+  'adminStats.none': 'No games recorded yet.',
+  'adminStats.colDifficulty': 'Difficulty',
+  'adminStats.colGames': 'Games',
+  'adminStats.colWins': 'Wins',
+  'adminStats.colWinRate': 'Win rate',
 } as const satisfies Record<string, string>;
 
 export type UiKey = keyof typeof UI_STRINGS;

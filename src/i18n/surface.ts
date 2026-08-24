@@ -44,6 +44,16 @@ import {
   HYPERSYNC_PARADOX_RULE,
 } from '../engine/bots/chronossus';
 import { DOOMSDAY_CHECK_FOR_IMPACT_RULE } from '../engine/bots/doomsday';
+import {
+  CX_SETUP_RULE,
+  CX_SETUP_FRACTURES_RULE,
+  CX_SETUP_GUARDIANS_RULE,
+  CX_SETUP_PIONEERS_RULE,
+  CX_SETUP_DOOMSDAY_RULE,
+  CX_SETUP_HYPERSYNC_RULE,
+  CX_SETUP_QUANTUM_LOOPS_RULE,
+  CX_DOOMSDAY_TRACKER_RULE,
+} from '../engine/rules/chronossusSetupRules';
 import { UI_STRINGS } from './uiStrings';
 
 /** A flat translation map: dotted key -> text. */
@@ -86,6 +96,16 @@ export function englishMessages(): Messages {
   put('rule.hypersyncParadox', HYPERSYNC_PARADOX_RULE);
   put('rule.chronossusEndgame', CHRONOSSUS_ENDGAME_RULES);
   put('rule.doomsday.checkForImpact', DOOMSDAY_CHECK_FOR_IMPACT_RULE);
+
+  // --- Chronossus setup, verbatim (one block per module) --------------------
+  put('rule.cxSetup.base', CX_SETUP_RULE);
+  put('rule.cxSetup.fractures', CX_SETUP_FRACTURES_RULE);
+  put('rule.cxSetup.guardians', CX_SETUP_GUARDIANS_RULE);
+  put('rule.cxSetup.pioneers', CX_SETUP_PIONEERS_RULE);
+  put('rule.cxSetup.doomsday', CX_SETUP_DOOMSDAY_RULE);
+  put('rule.cxSetup.hypersync', CX_SETUP_HYPERSYNC_RULE);
+  put('rule.cxSetup.quantumLoops', CX_SETUP_QUANTUM_LOOPS_RULE);
+  put('rule.cxSetup.doomsdayTracker', CX_DOOMSDAY_TRACKER_RULE);
 
   // --- Modular Action tiles (verbatim Appendix, pp. 20-21) ------------------
   for (const tile of Object.values(CHRONOSSUS_TILES)) {

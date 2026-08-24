@@ -7,16 +7,18 @@
 import { useEffect, useState } from 'react';
 import './HistoryScreen.css';
 import { adminStats, type AdminStats as Stats } from '../data/gameData';
+import { useT } from '../i18n/I18nProvider';
 
 export default function AdminStats({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     adminStats()
       .then(setStats)
-      .catch(() => setError('Could not load stats (admin only).'));
-  }, []);
+      .catch(() => setError(t('ui.adminStats.err')));
+  }, [t]);
 
   const pct = (n: number) => `${Math.round(n * 100)}%`;
 
@@ -24,47 +26,47 @@ export default function AdminStats({ onClose }: { onClose: () => void }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="history-screen" onClick={(e) => e.stopPropagation()}>
         <div className="history-head">
-          <h2>Overall stats</h2>
-          <button className="dp-close" onClick={onClose} aria-label="Close">
+          <h2>{t('ui.adminStats.title')}</h2>
+          <button className="dp-close" onClick={onClose} aria-label={t('ui.adminStats.close')}>
             ×
           </button>
         </div>
 
         {error && <p className="history-err">{error}</p>}
-        {!stats && !error && <p className="history-empty">Loading…</p>}
+        {!stats && !error && <p className="history-empty">{t('ui.adminStats.loading')}</p>}
 
         {stats && (
           <>
             <div className="stats-cards">
               <div className="stats-card">
                 <span className="stats-num">{stats.games}</span>
-                <span className="stats-lbl">Games</span>
+                <span className="stats-lbl">{t('ui.adminStats.games')}</span>
               </div>
               <div className="stats-card">
                 <span className="stats-num">{pct(stats.win_rate)}</span>
-                <span className="stats-lbl">Player win rate</span>
+                <span className="stats-lbl">{t('ui.adminStats.winRate')}</span>
               </div>
               <div className="stats-card">
                 <span className="stats-num">{stats.wins}</span>
-                <span className="stats-lbl">Player wins</span>
+                <span className="stats-lbl">{t('ui.adminStats.wins')}</span>
               </div>
               <div className="stats-card">
                 <span className="stats-num">{stats.distinct_users}</span>
-                <span className="stats-lbl">Players</span>
+                <span className="stats-lbl">{t('ui.adminStats.players')}</span>
               </div>
             </div>
 
-            <h3 className="stats-sub">By difficulty</h3>
+            <h3 className="stats-sub">{t('ui.adminStats.byDifficulty')}</h3>
             {Object.keys(stats.by_difficulty).length === 0 ? (
-              <p className="history-empty">No games recorded yet.</p>
+              <p className="history-empty">{t('ui.adminStats.none')}</p>
             ) : (
               <table className="history-table">
                 <thead>
                   <tr>
-                    <th>Difficulty</th>
-                    <th>Games</th>
-                    <th>Wins</th>
-                    <th>Win rate</th>
+                    <th>{t('ui.adminStats.colDifficulty')}</th>
+                    <th>{t('ui.adminStats.colGames')}</th>
+                    <th>{t('ui.adminStats.colWins')}</th>
+                    <th>{t('ui.adminStats.colWinRate')}</th>
                   </tr>
                 </thead>
                 <tbody>

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import RulesBox from './RulesBox';
-import { useTiles } from '../i18n/localized';
+import { useTiles, useRule } from '../i18n/localized';
 import { useT } from '../i18n/I18nProvider';
+import T from '../i18n/Trans';
 import { UI_STRINGS } from '../i18n/uiStrings';
 import {
   getMode,
@@ -11,6 +12,16 @@ import {
   EXTRA_MODULE_LABELS,
 } from '../board/chronossusModes';
 import { Chronossus } from '../engine';
+import {
+  CX_SETUP_RULE,
+  CX_SETUP_FRACTURES_RULE,
+  CX_SETUP_GUARDIANS_RULE,
+  CX_SETUP_PIONEERS_RULE,
+  CX_SETUP_DOOMSDAY_RULE,
+  CX_SETUP_HYPERSYNC_RULE,
+  CX_SETUP_QUANTUM_LOOPS_RULE,
+  CX_DOOMSDAY_TRACKER_RULE,
+} from '../engine/rules/chronossusSetupRules';
 
 const HERO = '/assets/solo/chronossus-hero.jpg';
 const TILE_ART = (code: string) => `/assets/solo/chronossus/tiles/${code}.png`;
@@ -53,20 +64,13 @@ const MODE_DIFFICULTY: Record<string, DifficultyOption[]> = {
   ],
 };
 
-// Step 1 — intro flavor (verbatim, Solo Opponents rulebook p. 7).
-const FLAVOR =
-  'When the Path of Unity appeared in our present, altering the course of ' +
-  'history, their audacity caused a massive dissonance in the Space-Time ' +
-  'Continuum that could not remain unanswered by the cosmos.\n\n' +
-  'From the deepest, darkest recesses of the universe, an ancient and ruthless ' +
-  'menace emerged. The Chronossus, the Destroyer of Worlds, has awakened with ' +
-  'only one purpose: to eliminate the dissonance and consume all broken ' +
-  'timelines, including ours.';
+// Step 1's intro flavor (verbatim, Solo Opponents rulebook p. 7) lives in
+// `ui.cxSetup.flavor`, alongside the Chronobot's.
 
 /** Step 2 — the single-select module configurations (only Base is available). */
 interface ModuleConfig {
+  /** Also the locale key: `ui.module.<id>`. */
   id: string;
-  label: string;
   available: boolean;
 }
 /**
@@ -74,32 +78,36 @@ interface ModuleConfig {
  * base "shuffle and reveal" step rather than one bullet per module — the player searches
  * the Solo Objective deck once.
  */
-/** Doomsday: the Path names, for the setup text. */
-const PATH_LABEL: Record<Chronossus.PlayerPath, string> = {
-  harmony: 'Harmony',
-  dominance: 'Dominance',
-  salvation: 'Salvation',
-  progress: 'Progress',
+/** Doomsday: the locale key for each Path name, used in the setup text. */
+const PATH_LABEL_KEY: Record<Chronossus.PlayerPath, string> = {
+  harmony: 'ui.path.harmony',
+  dominance: 'ui.path.dominance',
+  salvation: 'ui.path.salvation',
+  progress: 'ui.path.progress',
 };
 
+// The card names come from `ui.objectiveCard.*` so they read as they do on that
+// language's cards.
 const MODULE_OBJECTIVE_CARDS: [string, string[]][] = [
-  ['fractures', ['Technology Cards', 'Flux on Track']],
-  ['guardians', ['Guardians']],
-  ['pioneers', ['Successful Adventures']],
-  ['doomsday', ['Completed Experiments']],
+  ['fractures', ['technologyCards', 'fluxOnTrack']],
+  ['guardians', ['guardians']],
+  ['pioneers', ['successfulAdventures']],
+  ['doomsday', ['completedExperiments']],
 ];
 
+// The name of each configuration comes from `ui.module.<id>` — expansion titles, so a
+// locale can use the names printed on that language's boxes.
 const MODULE_CONFIGS: ModuleConfig[] = [
-  { id: 'base', label: 'Base', available: true },
-  { id: 'fractures', label: 'Fractures of Time', available: true },
-  { id: 'doomsday', label: 'Doomsday', available: true },
-  { id: 'pioneers', label: 'Pioneers of New Earth', available: true },
-  { id: 'guardians', label: 'Guardians of the Council', available: true },
-  { id: 'hypersync', label: 'Hypersync Future Actions', available: true },
-  { id: 'fractures+pioneers', label: 'Fractures of Time + Pioneers of New Earth', available: true },
-  { id: 'fractures+hypersync', label: 'Fractures of Time + Hypersync Future Actions', available: true },
-  { id: 'guardians+hypersync', label: 'Guardians of the Council + Hypersync Future Actions', available: true },
-  { id: 'guardians+pioneers', label: 'Guardians of the Council + Pioneers of New Earth', available: true },
+  { id: 'base', available: true },
+  { id: 'fractures', available: true },
+  { id: 'doomsday', available: true },
+  { id: 'pioneers', available: true },
+  { id: 'guardians', available: true },
+  { id: 'hypersync', available: true },
+  { id: 'fractures+pioneers', available: true },
+  { id: 'fractures+hypersync', available: true },
+  { id: 'guardians+hypersync', available: true },
+  { id: 'guardians+pioneers', available: true },
 ];
 
 /** Step 2 — the optional add-on modules (multi-select; combine with any base mode). */
@@ -218,12 +226,46 @@ export interface ChronossusSetupResult {
   doomsdayPlayerPath: Chronossus.PlayerPath;
 }
 
+/**
+ * One verbatim setup block. Paragraphs split on a blank line; a single newline inside a
+ * paragraph is a line break, which is what the base block's bullet list needs.
+ */
+function SetupRules({
+  label,
+  ruleKey,
+  fallback,
+  children,
+}: {
+  label: string;
+  ruleKey: string;
+  fallback: string;
+  children?: React.ReactNode;
+}) {
+  const text = useRule(ruleKey, fallback);
+  return (
+    <RulesBox label={label} showPreamble>
+      {text.split(/\n\s*\n/).map((para, i) => (
+        <p key={i}>
+          {para.split('\n').map((line, j) => (
+            <Fragment key={j}>
+              {j > 0 && <br />}
+              {line}
+            </Fragment>
+          ))}
+        </p>
+      ))}
+      {children}
+    </RulesBox>
+  );
+}
+
 /** A collapsible "Coming soon" list of not-yet-available modules / options. */
 function ComingSoon({ items }: { items: string[] }) {
+  const t = useT();
   if (items.length === 0) return null;
   return (
     <details className="coming-soon">
-      <summary>Coming soon ({items.length})</summary>
+      <summary>{t('ui.cxSetup.comingSoon', { n: items.length })}</summary>
       <ul>
         {items.map((label) => (
           <li key={label}>{label}</li>
@@ -283,12 +325,29 @@ export default function ChronossusSetupFlow({
   const objectiveCards = MODULE_OBJECTIVE_CARDS.filter(([id]) => moduleId?.includes(id)).flatMap(
     ([, cards]) => cards,
   );
+  // One markup run rather than a JSX list: `<T>` renders the `**…**`, so the whole
+  // sentence stays a single key and a translator can move the list within it.
+  const objectiveCardList = objectiveCards
+    .map((key) => `**“${t(`ui.objectiveCard.${key}`)}”**`)
+    .reduce(
+      (acc, name, i) =>
+        i === 0
+          ? name
+          : acc +
+            t(
+              i === objectiveCards.length - 1
+                ? 'ui.cxSetup.app.cardLast'
+                : 'ui.cxSetup.app.cardSep',
+            ) +
+            name,
+      '',
+    );
   const modeSlots = getMode(moduleId, [...difficulty]).slots;
   // Doomsday: Harmony and Dominance interact with "Save Earth", Salvation and Progress with
   // "Seal Fate" — and the Chronossus always takes the opposing one (Solo Opponents p.14).
-  const playerTrackerName =
-    Chronossus.botTrackerFor(doomsdayPlayerPath) === 'seal-fate' ? 'Save Earth' : 'Seal Fate';
-  const botTrackerName = playerTrackerName === 'Save Earth' ? 'Seal Fate' : 'Save Earth';
+  const playerSavesEarth = Chronossus.botTrackerFor(doomsdayPlayerPath) === 'seal-fate';
+  const playerTrackerName = t(playerSavesEarth ? 'ui.track.saveEarth' : 'ui.track.sealFate');
+  const botTrackerName = t(playerSavesEarth ? 'ui.track.sealFate' : 'ui.track.saveEarth');
 
   const toggleTileSide = (family: string) =>
     setTileSides((s) => {
@@ -311,26 +370,28 @@ export default function ChronossusSetupFlow({
       doomsdayPlayerPath,
     });
 
-  const eyebrow =
+  const eyebrow = t(
     step === 'intro'
-      ? 'New Game'
+      ? 'ui.cxSetup.eyebrow.new'
       : step === 'modules'
-        ? 'Modules'
+        ? 'ui.cxSetup.eyebrow.modules'
         : step === 'path'
-          ? 'Doomsday'
+          ? 'ui.cxSetup.eyebrow.doomsday'
           : step === 'difficulty'
-            ? 'Difficulty'
-            : 'Setup';
-  const title =
+            ? 'ui.cxSetup.eyebrow.difficulty'
+            : 'ui.cxSetup.eyebrow.setup',
+  );
+  const title = t(
     step === 'intro'
-      ? 'The Chronossus'
+      ? 'ui.cxSetup.title.intro'
       : step === 'modules'
-        ? 'Select a Module'
+        ? 'ui.cxSetup.title.modules'
         : step === 'path'
-          ? 'Choose Your Path'
+          ? 'ui.cxSetup.title.path'
           : step === 'difficulty'
-            ? 'Increasing the Difficulty'
-            : 'Setup Instructions';
+            ? 'ui.cxSetup.title.difficulty'
+            : 'ui.cxSetup.title.setup',
+  );
 
   return (
     <div className="phase-screen">
@@ -340,8 +401,8 @@ export default function ChronossusSetupFlow({
             <button
               className="home-btn"
               onClick={onHome}
-              title="Back to the home screen"
-              aria-label="Back to the home screen"
+              title={t('ui.cxSetup.home')}
+              aria-label={t('ui.cxSetup.home')}
             >
               <img src="/favicon-512.png" alt="" />
             </button>
@@ -356,7 +417,7 @@ export default function ChronossusSetupFlow({
           className="phase-hero"
           style={{ backgroundImage: `url(${HERO})` }}
           role="img"
-          aria-label="Chronossus"
+          aria-label={t('ui.cxSetup.heroAlt')}
         />
         <div className="phase-body">
           {/* ---- Step 1: Intro ------------------------------------------- */}
@@ -364,14 +425,16 @@ export default function ChronossusSetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-primary" onClick={() => setStep('modules')}>
-                  Continue ▶
+                  {t('ui.cxSetup.continue')} ▶
                 </button>
               </div>
-              {FLAVOR.split('\n\n').map((para, i) => (
-                <p key={i} className="setup-flavor">
-                  {para}
-                </p>
-              ))}
+              {t('ui.cxSetup.flavor')
+                .split(/\n\s*\n/)
+                .map((para, i) => (
+                  <p key={i} className="setup-flavor">
+                    {para}
+                  </p>
+                ))}
             </>
           )}
 
@@ -380,7 +443,7 @@ export default function ChronossusSetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('intro')}>
-                  ◀ Back
+                  ◀ {t('ui.cxSetup.back')}
                 </button>
                 <button
                   className="phase-primary"
@@ -390,13 +453,11 @@ export default function ChronossusSetupFlow({
                     setStep(moduleId.includes('doomsday') ? 'path' : 'difficulty')
                   }
                 >
-                  Continue ▶
+                  {t('ui.cxSetup.continue')} ▶
                 </button>
               </div>
               <p className="phase-note">
-                <b>Base</b> is the app designer’s suggested start. The app itself handles
-                the extra bookkeeping and complexity of the other modules, giving you a
-                more complete opponent as they come online across the game modes.
+                <T k="ui.cxSetup.modules.note" />
               </p>
               <div className="difficulty-list">
                 {MODULE_CONFIGS.filter((m) => m.available).map((m) => (
@@ -411,7 +472,7 @@ export default function ChronossusSetupFlow({
                       onChange={() => setModuleId(m.id)}
                     />
                     <span className="difficulty-opt-text">
-                      <b>{m.label}</b>
+                      <b>{t(`ui.module.${m.id}`)}</b>
                     </span>
                   </label>
                 ))}
@@ -420,8 +481,7 @@ export default function ChronossusSetupFlow({
               {moduleId.includes('pioneers') && (
                 <>
                   <p className="phase-note">
-                    <b>Pioneers — where the Chronossus’s Adventure cards come from.</b> You
-                    can change this later in the ⚙ menu.
+                    <T k="ui.cxSetup.modules.pioneersDeck" />
                   </p>
                   <div className="difficulty-list">
                     {([{ id: 'virtual' as const }, { id: 'shared' as const }]).map((o) => (
@@ -445,9 +505,7 @@ export default function ChronossusSetupFlow({
                 </>
               )}
 
-              <p className="phase-note">
-                Optional add-on modules (combine with any base mode above):
-              </p>
+              <p className="phase-note">{t('ui.cxSetup.modules.extras')}</p>
               <div className="difficulty-list">
                 {EXTRA_MODULES.filter((m) => m.available).map((m) => {
                   const on = extraModules.has(m.id);
@@ -476,15 +534,12 @@ export default function ChronossusSetupFlow({
 
               <ComingSoon
                 items={[
-                  ...MODULE_CONFIGS.filter((m) => !m.available).map((m) => m.label),
+                  ...MODULE_CONFIGS.filter((m) => !m.available).map((m) => t(`ui.module.${m.id}`)),
                   ...EXTRA_MODULES.filter((m) => !m.available).map((m) => m.label),
                 ]}
               />
 
-              <p className="phase-note">
-                The Interlocking buildings and Neutronide buildings are supported and
-                require no additional components or adjustments to the rules.
-              </p>
+              <p className="phase-note">{t('ui.cxSetup.modules.buildings')}</p>
             </>
           )}
 
@@ -494,24 +549,20 @@ export default function ChronossusSetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('modules')}>
-                  ◀ Back
+                  ◀ {t('ui.cxSetup.back')}
                 </button>
                 <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                  Continue ▶
+                  {t('ui.cxSetup.continue')} ▶
                 </button>
               </div>
-              <p className="phase-note">
-                Doomsday gives each Path a side of the Doomsday track. Tell the app which one
-                you are playing and it takes the other for the Chronossus — that holds for the
-                whole game.
-              </p>
+              <p className="phase-note">{t('ui.cxSetup.path.note')}</p>
               <div className="difficulty-list">
                 {(
                   [
-                    { id: 'harmony' as const, label: 'Path of Harmony', track: 'Save Earth' },
-                    { id: 'dominance' as const, label: 'Path of Dominance', track: 'Save Earth' },
-                    { id: 'salvation' as const, label: 'Path of Salvation', track: 'Seal Fate' },
-                    { id: 'progress' as const, label: 'Path of Progress', track: 'Seal Fate' },
+                    { id: 'harmony' as const, saves: true },
+                    { id: 'dominance' as const, saves: true },
+                    { id: 'salvation' as const, saves: false },
+                    { id: 'progress' as const, saves: false },
                   ]
                 ).map((o) => (
                   <label
@@ -525,44 +576,39 @@ export default function ChronossusSetupFlow({
                       onChange={() => setDoomsdayPlayerPath(o.id)}
                     />
                     <span className="difficulty-opt-text">
-                      <b>{o.label}</b>
+                      <b>{t(`ui.cxSetup.path.${o.id}`)}</b>
                       <span>
-                        You control the <b>{o.track}</b> tracker, moving it{' '}
-                        {o.track === 'Save Earth' ? 'up' : 'down'} the track. The Chronossus
-                        takes the <b>{o.track === 'Save Earth' ? 'Seal Fate' : 'Save Earth'}</b>{' '}
-                        tracker.
+                        <T
+                          k="ui.cxSetup.path.detail"
+                          params={{
+                            track: t(o.saves ? 'ui.track.saveEarth' : 'ui.track.sealFate'),
+                            direction: t(o.saves ? 'ui.cxSetup.path.up' : 'ui.cxSetup.path.down'),
+                            botTrack: t(o.saves ? 'ui.track.sealFate' : 'ui.track.saveEarth'),
+                          }}
+                        />
                       </span>
                     </span>
                   </label>
                 ))}
               </div>
               <p className="phase-note">
-                You will move <b>both</b> physical tokens during the game. The app tracks where
-                the Chronossus’s marker sits so it knows the VP its Experiments earn, and tells
-                you when to advance it — and you will read both trackers’ (+)/(−) symbols
-                yourself for the Trajectory roll each Clean Up.
+                <T k="ui.cxSetup.path.bothTokens" />
               </p>
               <div className="setup-actions">
                 <button className="phase-secondary" onClick={() => setStep('modules')}>
-                  ◀ Back
+                  ◀ {t('ui.cxSetup.back')}
                 </button>
                 <button className="phase-primary" onClick={() => setStep('difficulty')}>
-                  Continue ▶
+                  {t('ui.cxSetup.continue')} ▶
                 </button>
               </div>
 
               {/* Verbatim rules last, under what the player has to act on. */}
-              <RulesBox label="Doomsday — the Chronossus’s tracker" showPreamble>
-                <p>
-                  If it successfully took an Experiment and the Doomsday tracks aren’t yet
-                  locked, it moves its preferred marker (Seal Fate or Save Earth), taking any
-                  printed VP on it—regardless of which Path that VP belongs to. The
-                  Chronossus’s preferred marker is always the opposing one to yours. For
-                  example, if you are playing as the Path of Harmony, thus interacting with
-                  the Save Earth marker, it will move the Seal Fate marker on its turn as if
-                  it was the Path of Salvation.
-                </p>
-              </RulesBox>
+              <SetupRules
+                label={t('ui.cxSetup.path.rulesLabel')}
+                ruleKey="rule.cxSetup.doomsdayTracker"
+                fallback={CX_DOOMSDAY_TRACKER_RULE}
+              />
             </>
           )}
 
@@ -573,16 +619,13 @@ export default function ChronossusSetupFlow({
                   className="phase-secondary"
                   onClick={() => setStep(moduleId.includes('doomsday') ? 'path' : 'modules')}
                 >
-                  ◀ Back
+                  ◀ {t('ui.cxSetup.back')}
                 </button>
                 <button className="phase-primary" onClick={() => setStep('setup')}>
-                  Continue ▶
+                  {t('ui.cxSetup.continue')} ▶
                 </button>
               </div>
-              <p className="phase-note">
-                Select one or more options to increase the difficulty against the
-                Chronossus, or play with none for the standard game.
-              </p>
+              <p className="phase-note">{t('ui.cxSetup.difficulty.note')}</p>
               <div className="difficulty-list">
                 {[
                   ...DIFFICULTY_OPTIONS,
@@ -648,12 +691,19 @@ export default function ChronossusSetupFlow({
                                 <img
                                   className="tile-flip-art"
                                   src={TILE_ART(code)}
-                                  alt={`${tile?.name ?? code} (${code})`}
+                                  alt={t('ui.cxSetup.tileFlip.alt', {
+                                    name: tile?.name ?? code,
+                                    code,
+                                  })}
                                 />
                                 <div className="tile-flip-text">
                                   <div className="tile-flip-head">
                                     <b>
-                                      Slot {slot.slot} · {code} — {tile?.name}
+                                      {t('ui.cxSetup.tileFlip.head', {
+                                        slot: slot.slot,
+                                        code,
+                                        name: tile?.name ?? code,
+                                      })}
                                     </b>
                                     <button
                                       type="button"
@@ -661,7 +711,11 @@ export default function ChronossusSetupFlow({
                                       onClick={() => toggleTileSide(slot.family)}
                                       aria-pressed={side === 'B'}
                                     >
-                                      {side === 'B' ? 'B side ▸ flip to A' : 'A side ▸ flip to B'}
+                                      {t(
+                                        side === 'B'
+                                          ? 'ui.cxSetup.tileFlip.toA'
+                                          : 'ui.cxSetup.tileFlip.toB',
+                                      )}
                                     </button>
                                   </div>
                                   <p>{tile?.rule}</p>
@@ -683,140 +737,116 @@ export default function ChronossusSetupFlow({
             <>
               <div className="setup-actions setup-actions-top">
                 <button className="phase-secondary" onClick={() => setStep('difficulty')}>
-                  ◀ Back
+                  ◀ {t('ui.cxSetup.back')}
                 </button>
                 <button className="phase-primary" onClick={begin}>
-                  Begin Era 1 ▶
+                  {t('ui.cxSetup.beginEra1')} ▶
                 </button>
               </div>
               <div className="setup-modified">
-                <h3>Setup for this app</h3>
-                <p>
-                  Set up a 2-player game with the Chronossus as one of the players.
-                  There’s no need for the Chronossus board — this app tracks it for you.
-                </p>
+                <h3>{t('ui.cxSetup.app.title')}</h3>
+                <p>{t('ui.cxSetup.app.intro')}</p>
                 <ul>
+                  <li>{t('ui.cxSetup.app.figures')}</li>
                   <li>
-                    The Chronossus receives its 6 Exosuits and 8 Warp tiles. It does not
-                    receive any Starting Assets or Workers.
-                  </li>
-                  <li>
-                    Leave all Endgame Condition cards in the box.{' '}
+                    {t('ui.cxSetup.app.endgameCards')}{' '}
                     {objectiveCards.length > 0 && (
-                      <>
-                        Add the{' '}
-                        {objectiveCards.map((card, i) => (
-                          <span key={card}>
-                            {i > 0 && (i === objectiveCards.length - 1 ? ' and ' : ', ')}
-                            <b>“{card}”</b>
-                          </span>
-                        ))}{' '}
-                        Solo Objective card{objectiveCards.length === 1 ? '' : 's'} from your
-                        module{objectiveCards.length === 1 ? '' : 's'} to the deck, then{' '}
-                      </>
+                      <T
+                        k={
+                          objectiveCards.length === 1
+                            ? 'ui.cxSetup.app.addObjectives'
+                            : 'ui.cxSetup.app.addObjectivesPlural'
+                        }
+                        params={{ cards: objectiveCardList }}
+                      />
                     )}
-                    {objectiveCards.length > 0 ? 'shuffle' : 'Shuffle'} all Solo Objective
-                    cards, revealing {objectiveCount}
-                    {fewerObjectives ? ' (difficulty option selected)' : ''}. Return the
-                    rest to the box.
+                    <T
+                      k="ui.cxSetup.app.revealing"
+                      params={{
+                        shuffle: t(
+                          objectiveCards.length > 0
+                            ? 'ui.cxSetup.app.shuffleLower'
+                            : 'ui.cxSetup.app.shuffleUpper',
+                        ),
+                        n: objectiveCount,
+                        note: fewerObjectives ? t('ui.cxSetup.app.difficultyChosen') : '',
+                      }}
+                    />
                   </li>
-                  <li>The Chronossus does not use a Focus marker.</li>
+                  <li>{t('ui.cxSetup.app.noFocus')}</li>
                   {/* Fractures' own steps live in its module section below, like every
                       other module's — this list is the base setup. */}
                   {moduleId?.includes('guardians') && (
                     <>
                       <li>
-                        Set up the <b>Guardian board</b> as for a 2-player game, and keep the
-                        Chronossus’s <b>Path markers</b> to hand — when it acquires a
-                        Guardian you place one on an empty Guardian board slot, and that slot
-                        becomes that Guardian’s own Action space. (Solo Path markers aren’t
-                        meant to be limited; if they run out, use an unused Path’s markers.)
+                        <T k="ui.cxSetup.app.guardians.board" />
                       </li>
-                      <li>
-                        The app tracks how many Guardians the Chronossus owns and how many
-                        are powered up; you place and retrieve the miniatures as prompted.
-                      </li>
+                      <li>{t('ui.cxSetup.app.guardians.tracked')}</li>
                       {startingGuardian && (
                         <li>
-                          <b>Give the Chronossus 1 Guardian now</b> and place one of its Path
-                          markers on an empty Guardian board slot (difficulty option selected).
+                          <T k="ui.cxSetup.app.guardians.starting" />
                         </li>
                       )}
                     </>
                   )}
-                  <li>
-                    Place the Chronossus’s Banner on the First Player spot; it is the
-                    First Player in the 1st Era. You receive 1 additional Water (for being
-                    the second player).
-                  </li>
-                  <li>
-                    You may still choose to use either the “A” or the “B” side of your
-                    Player board.
-                  </li>
+                  <li>{t('ui.cxSetup.app.banner')}</li>
+                  <li>{t('ui.cxSetup.app.playerBoard')}</li>
                   {(blockWorldCouncil || mandatoryWorldCouncil) && (
                     <li>
-                      <b>Cover the right World Council space</b> with a Hex Unavailable
-                      tile{mandatoryWorldCouncil ? ' (required for this mode).' : ' (difficulty option selected).'}
+                      <T
+                        k={
+                          mandatoryWorldCouncil
+                            ? 'ui.cxSetup.app.worldCouncilRequired'
+                            : 'ui.cxSetup.app.worldCouncilOption'
+                        }
+                      />
                     </li>
                   )}
                 </ul>
                 <p>
-                  This app tracks <b>all</b> of the Chronossus’s VP for you and explains
-                  each Action’s rules as it takes them. Building VP is counted as tiles
-                  are discarded, rather than placed on the bot’s board. Be ready to place
-                  Exosuits and Warp tiles to the board and discard pieces for the bot as
-                  prompted.
+                  <T k="ui.cxSetup.app.vpNote" />
                 </p>
-                <p>
-                  In addition to your points collected during the game, you score points
-                  for the highest level you reached on each Solo Objective. The bot
-                  doesn’t score for Solo Objectives.
-                </p>
+                <p>{t('ui.cxSetup.app.objectivesNote')}</p>
               </div>
 
               {/* Visible per-mode setup steps (below the app rules) — the verbatim
                   Hypersync setup MINUS the tile-layout line the app handles for you. */}
               {moduleId?.includes('fractures') && (
                 <div className="setup-modified">
-                  <h3>Fractures of Time setup</h3>
+                  <h3>{t('ui.cxSetup.mod.fractures.title')}</h3>
                   <ul>
                     <li>
-                      Set up the Timeline with the <b>Era Zero</b> tile and its own
-                      face-up Superproject. Straight after setup the app runs a one-off{' '}
-                      <b>Era Zero Warp Phase</b> — no other phases — with the Warp tiles
-                      going on that tile. Era 1 then runs as usual, including its Paradox
-                      phase (normally skipped in the first Era).
+                      <T k="ui.cxSetup.mod.fractures.eraZero" />
                     </li>
                     <li>
-                      The Timeline is <b>shorter</b>: three Eras pre-Impact and two
-                      post-Impact. The Impact happens in <b>Era 3</b>’s Clean Up and the
-                      game ends after <b>Era 5</b>.
+                      <T k="ui.cxSetup.mod.fractures.timeline" />
                     </li>
                     <li>
-                      Set up the <b>Valley board</b> as if it was a 2-player game. The app
-                      names the Valley Action the Chronossus takes; you place its Exosuit
-                      there (or on the Valley Capital space if no Valley Action space is
-                      free).
+                      <T k="ui.cxSetup.mod.fractures.valley" />
                     </li>
                     <li>
-                      Keep <b>cardboard energized cores</b> to hand — or any alternative
-                      marker — to show which of the Chronossus’s Exosuits are ready to
-                      Blink: whenever it places an Exosuit on the Main board, put an Energy
-                      Core from the supply into that Exosuit.
+                      <T k="ui.cxSetup.mod.fractures.cores" />
                     </li>
                     <li>
-                      No need for the physical <b>Flux Pool</b> container — the app holds
-                      its 1 Flux Core + 3 Empty Flux Casings and draws from it for you
-                      {extraFlux > 0 ? ` (+${extraFlux} extra Flux Core${extraFlux === 1 ? '' : 's'}, difficulty option selected)` : ''}.
+                      <T
+                        k="ui.cxSetup.mod.fractures.fluxPool"
+                        params={{
+                          extra:
+                            extraFlux > 0
+                              ? t(
+                                  extraFlux === 1
+                                    ? 'ui.cxSetup.mod.fractures.extraFlux'
+                                    : 'ui.cxSetup.mod.fractures.extraFluxPlural',
+                                  { n: extraFlux },
+                                )
+                              : '',
+                        }}
+                      />
                     </li>
-                    <li>
-                      The Chronossus does not use a Fracture Device, never rolls the Flux
-                      or Glitch dice, and never receives Glitches.
-                    </li>
+                    <li>{t('ui.cxSetup.mod.fractures.noDevice')}</li>
                     {playerGlitch && (
                       <li>
-                        <b>Roll the Glitch die and place that Glitch for yourself</b>, on
-                        top of your two starting Glitches (difficulty option selected).
+                        <T k="ui.cxSetup.mod.fractures.playerGlitch" />
                       </li>
                     )}
                   </ul>
@@ -825,93 +855,89 @@ export default function ChronossusSetupFlow({
 
               {moduleId?.includes('guardians') && (
                 <div className="setup-modified">
-                  <h3>Guardians of the Council setup</h3>
+                  <h3>{t('ui.cxSetup.mod.guardians.title')}</h3>
                   <ul>
-                    <li>
-                      Set up the Guardian board as for a 2-player game, and cover the right
-                      World Council Action space with a Hex Unavailable tile (as noted in the
-                      Guardians of the Council rules for 2 players).
-                    </li>
-                    <li>Keep the Chronossus’s Path markers to hand for the Guardian board.</li>
+                    <li>{t('ui.cxSetup.mod.guardians.board')}</li>
+                    <li>{t('ui.cxSetup.mod.guardians.markers')}</li>
                   </ul>
                 </div>
               )}
 
               {moduleId?.includes('pioneers') && (
                 <div className="setup-modified">
-                  <h3>Pioneers of New Earth setup</h3>
+                  <h3>{t('ui.cxSetup.mod.pioneers.title')}</h3>
                   <ul>
-                    <li>Place the Adventure board next to the Main board.</li>
+                    <li>{t('ui.cxSetup.mod.pioneers.board')}</li>
                     <li>
-                      Give the Chronossus its Exosuit Upgrade board,{' '}
-                      <b>
-                        {difficulty.has(Chronossus.DIFFICULTY_PIONEERS_BOARD_B) ? 'B' : 'A'}
-                      </b>{' '}
-                      side up.
+                      <T
+                        k="ui.cxSetup.mod.pioneers.upgrade"
+                        params={{
+                          side: difficulty.has(Chronossus.DIFFICULTY_PIONEERS_BOARD_B)
+                            ? 'B'
+                            : 'A',
+                        }}
+                      />
                     </li>
-                    {adventureDeckMode === 'virtual' ? (
-                      <li>
-                        The app keeps the Chronossus’s <b>own copy</b> of both Adventure
-                        decks — shuffle your two decks and place them on the Adventure board
-                        for yourself only. The bot never draws from them.
-                      </li>
-                    ) : (
-                      <li>
-                        Shuffle the 5+ and 10+ Adventure decks onto the Adventure board. The
-                        Chronossus draws from these <b>same decks</b>, and you tell the app
-                        which cards it drew.
-                      </li>
-                    )}
                     <li>
-                      Keep the Chronossus’s Path markers to hand for the Adventure board’s
-                      Power slots.
+                      <T
+                        k={
+                          adventureDeckMode === 'virtual'
+                            ? 'ui.cxSetup.mod.pioneers.ownDeck'
+                            : 'ui.cxSetup.mod.pioneers.sharedDeck'
+                        }
+                      />
                     </li>
+                    <li>{t('ui.cxSetup.mod.pioneers.markers')}</li>
                   </ul>
                 </div>
               )}
 
               {moduleId?.includes('doomsday') && (
                 <div className="setup-modified">
-                  <h3>Doomsday setup</h3>
+                  <h3>{t('ui.cxSetup.mod.doomsday.title')}</h3>
                   <ul>
                     <li>
-                      Set up the <b>Doomsday board</b>, the Experiment cards and the Impact
-                      tile as for a 2-player game — including the{' '}
-                      {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED)
-                        ? 'face-down Level 2 stack (you chose to play without the Planned Experiments variant)'
-                        : 'face-up Level 2 stack of the Planned Experiments variant'}
-                      .
+                      <T
+                        k="ui.cxSetup.mod.doomsday.board"
+                        params={{
+                          stack: t(
+                            difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_NO_PLANNED)
+                              ? 'ui.cxSetup.mod.doomsday.stackNoPlanned'
+                              : 'ui.cxSetup.mod.doomsday.stackPlanned',
+                          ),
+                        }}
+                      />
                     </li>
                     <li>
-                      Your Path (<b>{PATH_LABEL[doomsdayPlayerPath]}</b>) puts you on the{' '}
-                      <b>{playerTrackerName}</b> track — that is the tracker{' '}
-                      <b>you</b> advance for your own Experiments. The Chronossus scores on
-                      the <b>{botTrackerName}</b> track, always the opposing one.
+                      <T
+                        k="ui.cxSetup.mod.doomsday.path"
+                        params={{
+                          path: t(PATH_LABEL_KEY[doomsdayPlayerPath]),
+                          playerTrack: playerTrackerName,
+                          botTrack: botTrackerName,
+                        }}
+                      />
                     </li>
                     <li>
-                      <b>You move both physical tokens.</b> The app tracks where the
-                      Chronossus’s marker sits — that is how it knows the VP each of its
-                      Experiments earns — and tells you when to advance it. You will need
-                      both trackers’ positions yourself each Clean Up, to read the (+) and
-                      (−) symbols for the Trajectory roll.
+                      <T k="ui.cxSetup.mod.doomsday.bothTokens" />
                     </li>
                     <li>
-                      Keep the Chronossus’s <b>Path markers</b> to hand for the Experiments.
+                      <T k="ui.cxSetup.mod.doomsday.markers" />
                     </li>
                     {difficulty.has(Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS) && (
                       <li>
-                        Place{' '}
-                        <b>
-                          {difficultyValues[Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS] ?? 1}
-                        </b>{' '}
-                        of the Chronossus’s Path markers on future Experiments now
-                        (difficulty option selected).
+                        <T
+                          k="ui.cxSetup.mod.doomsday.seedMarkers"
+                          params={{
+                            n:
+                              difficultyValues[Chronossus.DIFFICULTY_DOOMSDAY_SEED_MARKERS] ??
+                              1,
+                          }}
+                        />
                       </li>
                     )}
                     <li>
-                      <b>You run Check for Impact yourself</b> each Clean Up — the app never
-                      rolls the Trajectory dice or tracks the Impact tile. It prompts you at
-                      the right moment and asks what happened.
+                      <T k="ui.cxSetup.mod.doomsday.checkImpact" />
                     </li>
                   </ul>
                 </div>
@@ -919,28 +945,19 @@ export default function ChronossusSetupFlow({
 
               {extraModules.has(Chronossus.EXTRA_MODULE_QUANTUM_LOOPS) && (
                 <div className="setup-modified">
-                  <h3>Quantum Loops setup</h3>
+                  <h3>{t('ui.cxSetup.mod.quantumLoops.title')}</h3>
                   <ul>
                     <li>
-                      Set up the <b>Quantum Loops module</b> as for a 2-player game — the
-                      card offer, the draw deck and the Quantum Warp tiles are unchanged.
+                      <T k="ui.cxSetup.mod.quantumLoops.module" />
                     </li>
                     <li>
-                      Keep the Quantum Loop cards in a <b>row</b>, adding new ones{' '}
-                      <b>closest to the draw deck</b>. That order is what the Chronossus
-                      reads: it always removes the card <b>farthest from the draw deck</b>.
-                      When you return a card of your own, add it back farthest from the deck
-                      too.
+                      <T k="ui.cxSetup.mod.quantumLoops.row" />
                     </li>
                     <li>
-                      The app rolls the check for you each Warp Phase in which the Chronossus
-                      places a Warp tile, and tells you whether a card leaves play. It never
-                      takes or returns a card itself, so anything it removes is gone{' '}
-                      <b>permanently</b>.
+                      <T k="ui.cxSetup.mod.quantumLoops.check" />
                     </li>
                     <li>
-                      If you gain the <b>“Cosmic Data Leak”</b> card, draw 2 unused Solo
-                      Objectives and put them into play.
+                      <T k="ui.cxSetup.mod.quantumLoops.leak" />
                     </li>
                   </ul>
                 </div>
@@ -948,156 +965,76 @@ export default function ChronossusSetupFlow({
 
               {moduleId?.includes('hypersync') && (
                 <div className="setup-modified">
-                  <h3>Hypersync Future Actions setup</h3>
+                  <h3>{t('ui.cxSetup.mod.hypersync.title')}</h3>
                   <ul>
-                    <li>
-                      Use the 2-player side of the Hypersync board, and cover the right
-                      World Council Action space on the Main board with a Hex Unavailable
-                      tile (as noted in the Hypersync rules for 2 players).
-                    </li>
-                    <li>Place the Solo Hypersync tiles next to the Chronossus board.</li>
+                    <li>{t('ui.cxSetup.mod.hypersync.board')}</li>
+                    <li>{t('ui.cxSetup.mod.hypersync.tiles')}</li>
                   </ul>
                 </div>
               )}
 
               {/* Verbatim rulebook setup last, under the app's own instructions —
                   reference material sits below what the player has to act on. */}
-              <RulesBox label="Setup" showPreamble>
-                <p>
-                  Set up a 2-player game with the Chronossus as one of the players. In
-                  addition to using the Chronossus’s side of the Solo board, the
-                  following changes need to be made during set-up:
-                </p>
-                <p>
-                  • The Chronossus receives its 6 Exosuits and 8 Warp tiles. It does not
-                  receive any Starting Assets or Workers.
-                  <br />• Leave all Endgame Condition cards in the box and shuffle all
-                  Solo Objective cards, revealing 3. Return the rest to the box.
-                  <br />• Place the Chronossus board next to the Main board, and place the
-                  4 Command tokens on the 4 marked positions. The Chronossus does not use
-                  a Focus marker.
-                  <br />• Place the Action tiles (marked side up) on the empty spaces of
-                  the Chronossus board: C01A, C02A, C03A. (Suggested for your first game;
-                  later you may assign them randomly.)
-                  <br />• Fill the Chronossus’s Energy Pool container with 5 Energy Core
-                  tokens and 5 Exhausted Energy Core tokens.
-                  <br />• Place the Chronossus’s Banner on the First Player spot; it is
-                  the First Player in the 1st Era. You receive 1 additional Water (for
-                  being the second player).
-                  <br />• You may still choose to use either the “A” or the “B” side of
-                  your Player board.
-                  <br />• For a more challenging game, cover the right World Council space
-                  with a Hex Unavailable tile.
-                </p>
-              </RulesBox>
+              <SetupRules
+                label={t('ui.cxSetup.rules.base')}
+                ruleKey="rule.cxSetup.base"
+                fallback={CX_SETUP_RULE}
+              />
 
               {/* Per-mode setup additions (verbatim). Each module drops its own
                   section here on top of the base setup above. */}
               {moduleId?.includes('fractures') && (
-                <RulesBox label="Fractures of Time — setup" showPreamble>
-                  <p>Setup the Valley board as if it was a 2-Player game.</p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C04A, C05A and C06A.
-                  </p>
-                  <p>
-                    You will need a second container, referred to as the “Flux Pool.” At
-                    setup, add 1 Flux Core and all 3 Empty Flux Casing tokens to it.
-                  </p>
-                  <p>The Chronossus does not use a Fracture Device.</p>
-                  <p>
-                    Add the “Technology Cards” and “Flux on Track” Solo Objective cards to
-                    the deck before drawing.
-                  </p>
-                </RulesBox>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.fractures')}
+                  ruleKey="rule.cxSetup.fractures"
+                  fallback={CX_SETUP_FRACTURES_RULE}
+                />
               )}
 
               {moduleId?.includes('guardians') && (
-                <RulesBox label="Guardians of the Council — setup" showPreamble>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C02A to the (I) empty space, C11A
-                    to the (II) empty space. Leave C03A in play.
-                  </p>
-                  <p>Add the “Guardians” Solo Objective card to the Solo Objective deck.</p>
-                  <p>
-                    Cover the right World Council Action space with a Hex Unavailable tile
-                    (as noted in the Guardians of the Council rules for 2 players).
-                  </p>
-                </RulesBox>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.guardians')}
+                  ruleKey="rule.cxSetup.guardians"
+                  fallback={CX_SETUP_GUARDIANS_RULE}
+                />
               )}
 
               {moduleId?.includes('pioneers') && (
-                <RulesBox label="Pioneers of New Earth — setup" showPreamble>
-                  <p>
-                    This requires the Classic Expansion Pack to play. All of the Pioneers of
-                    New Earth module and Chronossus base rules apply, unless noted below.
-                  </p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C03A to the (I) empty space, C09A
-                    to the (II) empty space, C02A to the (III) empty space. C10A replaces the
-                    printed “Recruit Genius or Research” Action space.
-                  </p>
-                  <p>
-                    Add the “Successful Adventures” Solo Objective card to the Solo Objective
-                    deck.
-                  </p>
-                  <p>Give it the Chronossus Exosuit Upgrade board with the “A” side up.</p>
-                </RulesBox>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.pioneers')}
+                  ruleKey="rule.cxSetup.pioneers"
+                  fallback={CX_SETUP_PIONEERS_RULE}
+                />
               )}
 
               {moduleId?.includes('doomsday') && (
-                <RulesBox label="Doomsday — setup" showPreamble>
-                  <p>
-                    This requires the Classic Expansion Pack to play. All of the Doomsday
-                    module and the Chronossus base rules apply, unless noted below. We suggest
-                    using the “Planned Experiments” variant the first few times you play this
-                    against the Chronossus.
-                  </p>
-                  <p>
-                    Place the following Action tiles (with the marked sides face up) on the
-                    empty spaces of the Chronossus board: C07A to the (I) empty space, C08A to
-                    the (II) empty space. Leave C03A in play.
-                  </p>
-                  <p>
-                    Add the “Completed Experiments” Solo Objective card to the Solo Objective
-                    deck.
-                  </p>
-                </RulesBox>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.doomsday')}
+                  ruleKey="rule.cxSetup.doomsday"
+                  fallback={CX_SETUP_DOOMSDAY_RULE}
+                />
               )}
 
               {moduleId?.includes('hypersync') && (
-                <RulesBox label="Hypersync Future Actions — setup" showPreamble>
-                  <p>
-                    Use the 2-player side of the Hypersync board, and cover the right World
-                    Council Action space on the Main board with a Hex Unavailable tile (as
-                    noted in the Hypersync rules for 2 players).
-                  </p>
-                  <p>
-                    Replace C01A with C12A. Leave C02A and C03A in play. Cover the Time
-                    Travel Action space with C13A.
-                  </p>
-                  <p>Place the Solo Hypersync tiles next to the Chronossus board.</p>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.hypersync')}
+                  ruleKey="rule.cxSetup.hypersync"
+                  fallback={CX_SETUP_HYPERSYNC_RULE}
+                >
                   <img
                     className="setup-tiles-img"
                     src="/assets/solo/chronossus/hypersync-solo-setup-tiles.png"
-                    alt="Solo Hypersync setup tiles"
+                    alt={t('ui.cxSetup.rules.hypersyncTilesAlt')}
                   />
-                </RulesBox>
+                </SetupRules>
               )}
 
               {extraModules.has(Chronossus.EXTRA_MODULE_QUANTUM_LOOPS) && (
-                <RulesBox label="Quantum Loops — setup" showPreamble>
-                  <p>
-                    This requires the Future Imperfect expansion to play. All of the Quantum
-                    Loops module and Chronossus base rules apply, unless noted below.
-                  </p>
-                  <p>
-                    No changes at Setup. Keep the Quantum Loop cards in a row, adding new ones
-                    closest to the draw deck.
-                  </p>
-                </RulesBox>
+                <SetupRules
+                  label={t('ui.cxSetup.rules.quantumLoops')}
+                  ruleKey="rule.cxSetup.quantumLoops"
+                  fallback={CX_SETUP_QUANTUM_LOOPS_RULE}
+                />
               )}
             </>
           )}
