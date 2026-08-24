@@ -44,3 +44,20 @@ export const CX_QUANTUM_LOOPS_REMOVE_ON_5_RULE =
 export const CX_QUANTUM_LOOPS_2VP_RULE =
   '**INCREASING THE DIFFICULTY:** When removing a Quantum Loop card, the Chronossus ' +
   'receives 2 VPs.';
+
+/** Variable Anomalies — CHANGES AT SETUP (Solo Opponents p. 18). */
+export const CX_VARIABLE_ANOMALIES_SETUP_RULE =
+  '**CHANGES AT SETUP:** The Chronossus ignores all unique effects of the Anomalies and ' +
+  'does not receive an Anomaly Remover tile.';
+
+/** Variable Anomalies — RECEIVING ANOMALIES (Solo Opponents p. 18). */
+export const CX_VARIABLE_ANOMALIES_RECEIVING_RULE =
+  '**RECEIVING ANOMALIES:** When receiving Anomalies, the Chronossus will select one ' +
+  'that will allow it to retrieve a Warp tile. If both or neither do, it will select the ' +
+  'one with the smaller VP penalty.';
+
+/** Targeted Hypersync — the difficulty option's own rule (Solo Opponents p. 17). */
+export const CX_TARGETED_HYPERSYNC_RULE =
+  'Instead of randomly selecting a Hypersync Action space to take, the Chronossus takes ' +
+  'the one corresponding to one of your pending Hypersync tiles. If you have more than ' +
+  'one, it takes the one furthest in the past.';

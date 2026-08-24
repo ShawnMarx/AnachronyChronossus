@@ -62,6 +62,9 @@ import {
   CX_QUANTUM_LOOPS_ACTION_RULE,
   CX_QUANTUM_LOOPS_REMOVE_ON_5_RULE,
   CX_QUANTUM_LOOPS_2VP_RULE,
+  CX_VARIABLE_ANOMALIES_SETUP_RULE,
+  CX_VARIABLE_ANOMALIES_RECEIVING_RULE,
+  CX_TARGETED_HYPERSYNC_RULE,
 } from '../engine/rules/chronossusModuleRules';
 import { UI_STRINGS } from './uiStrings';
 
@@ -124,6 +127,9 @@ export function englishMessages(): Messages {
   put('rule.cx.quantumLoops.action', CX_QUANTUM_LOOPS_ACTION_RULE);
   put('rule.cx.quantumLoops.removeOn5', CX_QUANTUM_LOOPS_REMOVE_ON_5_RULE);
   put('rule.cx.quantumLoops.twoVp', CX_QUANTUM_LOOPS_2VP_RULE);
+  put('rule.cx.variableAnomalies.setup', CX_VARIABLE_ANOMALIES_SETUP_RULE);
+  put('rule.cx.variableAnomalies.receiving', CX_VARIABLE_ANOMALIES_RECEIVING_RULE);
+  put('rule.cx.targetedHypersync', CX_TARGETED_HYPERSYNC_RULE);
 
   // --- Modular Action tiles (verbatim Appendix, pp. 20-21) ------------------
   for (const tile of Object.values(CHRONOSSUS_TILES)) {

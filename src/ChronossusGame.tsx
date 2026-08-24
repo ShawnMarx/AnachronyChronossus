@@ -5332,48 +5332,46 @@ function CxTileDialog({
                 <span className="cx-adv-total">
                   {adventureGate.totalPower - adventureGate.die}
                 </span>
-                <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-                <span className="cx-adv-label">Power before the roll</span>
+                <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon lg" />
+                <span className="cx-adv-label">{t('ui.cx.adv.powerBeforeRoll')}</span>
               </div>
               <p className="pp-instruct">
-                Draw <b>2 cards</b> from the <b>{adventureGate.sharedDeck}</b> deck for the
-                Chronossus to evaluate.
+                <T k="ui.cx.adv.sharedDraw" params={{ deck: adventureGate.sharedDeck ?? '' }} />
               </p>
               <div className="cx-adv-power">
                 <img
                   src={`/assets/solo/chronossus/adventure-die-${adventureGate.die}.png`}
-                  alt={`Adventure die: ${adventureGate.die}`}
+                  alt={t('ui.cx.adv.dieAlt', { n: adventureGate.die })}
                   className="cx-adv-die lg"
                 />
                 <span className="cx-adv-total">{adventureGate.totalPower}</span>
-                <img src={POWER_ICON} alt="Power" className="cx-power-icon lg" />
-                <span className="cx-adv-label">Total Power</span>
+                <img src={POWER_ICON} alt={t('ui.cx.upgrade.powerAlt')} className="cx-power-icon lg" />
+                <span className="cx-adv-label">{t('ui.cx.adv.totalPower')}</span>
               </div>
               <p className="cx-adv-brk">
-                {adventureGate.totalPower - adventureGate.die} before the roll +{' '}
-                {adventureGate.die} on the Adventure die
+                {t('ui.cx.adv.powerSum', {
+                  before: adventureGate.totalPower - adventureGate.die,
+                  die: adventureGate.die,
+                })}
               </p>
               <p className="pp-sub">
-                It takes the one with the <b>highest Power requirement it meets</b> — pick
-                that card below. The other goes to the bottom of the deck.
+                <T k="ui.cx.adv.sharedPickSub" />
               </p>
               <select
                 className="cx-adv-select"
                 value={adventureGate.sharedPicked[0] ?? ''}
                 onChange={(e) => adventureGate.onSharedPick(e.target.value)}
               >
-                <option value="">Which card does it take?</option>
-                <option value="none">
-                  Neither — it meets no requirement (+1 VP)
-                </option>
+                <option value="">{t('ui.cx.adv.sharedPickPlaceholder')}</option>
+                <option value="none">{t('ui.cx.adv.sharedPickNone')}</option>
                 {adventureGate.sharedChoices.map((c) => (
                   <option
                     key={c.id}
                     value={c.id}
                     disabled={adventureGate.totalPower < c.power}
                   >
-                    {c.name} — {c.power} Power
-                    {adventureGate.totalPower < c.power ? ' (not met)' : ''}
+                    {t('ui.cx.adv.sharedOption', { name: c.name, power: c.power })}
+                    {adventureGate.totalPower < c.power ? t('ui.cx.adv.sharedNotMet') : ''}
                   </option>
                 ))}
               </select>
@@ -5383,7 +5381,7 @@ function CxTileDialog({
                   disabled={adventureGate.sharedPicked.length === 0}
                   onClick={adventureGate.onSharedConfirm}
                 >
-                  ✓ Confirm
+                  {t('ui.cx.adv.confirm')}
                 </button>
               </div>
             </>
@@ -5398,8 +5396,10 @@ function CxTileDialog({
           ) : valleyGate && !readOnly && valleyGate.step === 'assimilate' ? (
             <>
               <p className="pp-instruct">
-                The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
-                takes a <b>Technology card</b>, preferring the secondary stack.
+                <T
+                  k="ui.cx.valley.assimilateTech"
+                  params={{ shape: valleyGate.assimilateShape ?? '' }}
+                />
               </p>
               {valleyGate.assimilateShape && (
                 <div className="shape-roll">
@@ -5408,18 +5408,20 @@ function CxTileDialog({
                   <ShapeDieFace shape={valleyGate.assimilateShape} />
                 </div>
               )}
-              <p className="pp-sub">It is worth 3 VP at the end of the game.</p>
+              <p className="pp-sub">{t('ui.cx.valley.techWorth')}</p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={valleyGate.onAssimilateContinue}>
-                  ✓ Confirm taken
+                  {t('ui.cx.valley.confirmTaken')}
                 </button>
               </div>
             </>
           ) : valleyGate && !readOnly && valleyGate.step === 'operators' ? (
             <>
               <p className="pp-instruct">
-                The shape die rolled <b>{valleyGate.assimilateShape}</b> — the Chronossus
-                recruits an <b>Operator</b>. Are there any left in the <b>Valley</b>?
+                <T
+                  k="ui.cx.valley.assimilateOperator"
+                  params={{ shape: valleyGate.assimilateShape ?? '' }}
+                />
               </p>
               {valleyGate.assimilateShape && (
                 <div className="shape-roll">
@@ -5431,20 +5433,20 @@ function CxTileDialog({
               {/* The Chronossus's Worker collection is app-tracked, so the only physical
                   action is taking the Operator out of the Valley. */}
               <p className="pp-sub">
-                If so, discard one <b>Operator</b> from the Valley.
+                <T k="ui.cx.valley.discardOperator" />
               </p>
               <div className="pp-buttons">
                 <button
                   className="pp-confirm"
                   onClick={() => valleyGate.onOperatorsAnswer(true)}
                 >
-                  ✓ Yes — it takes an Operator
+                  {t('ui.cx.valley.operatorYes')}
                 </button>
                 <button
                   className="pp-cannot"
                   onClick={() => valleyGate.onOperatorsAnswer(false)}
                 >
-                  ✗ None left — Failed Action (+1 VP)
+                  {t('ui.cx.valley.operatorNone')}
                 </button>
               </div>
             </>
@@ -5453,29 +5455,30 @@ function CxTileDialog({
               {/* One question for both spaces: the Valley Capital space is the automatic
                   fallback (p.11), so what matters is whether EITHER is open. */}
               <p className="pp-instruct">
-                Is an <b>{valleySpaceName}</b> Action space — or the{' '}
-                <b>Valley Capital Action space</b> — open on the <b>Valley board</b>?
-                {!valleyGate.blinkCheck && (
-                  <> Place the Chronossus’s Exosuit on the <b>topmost</b> available{' '}
-                    {valleySpaceName} space, or on the Valley Capital space if no{' '}
-                    {valleySpaceName} space is open.</>
-                )}
+                <T
+                  k={
+                    valleyGate.blinkCheck
+                      ? 'ui.cx.valley.spaceAsk'
+                      : 'ui.cx.valley.spaceAskPlace'
+                  }
+                  params={{ space: valleySpaceName }}
+                />
               </p>
               {/* No Energy Core line: the core marks an Exosuit that could Blink, and one
                   on the Valley board never can. */}
               {valleyGate.blinkCheck && (
-                <p className="pp-sub">
-                  Don’t place anything yet — the Chronossus Blink-checks first, and a Blink
-                  moves an Exosuit it already has on the Main board onto the Valley space
-                  instead.
-                </p>
+                <p className="pp-sub">{t('ui.cx.valley.blinkSub')}</p>
               )}
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => valleyGate.onPlace('action')}>
-                  {valleyGate.blinkCheck ? '✓ Yes — check for Blink' : '✓ Yes — placed there'}
+                  {t(
+                    valleyGate.blinkCheck
+                      ? 'ui.dialog.mech.yesCheckBlink'
+                      : 'ui.dialog.mech.yesPlacedThere',
+                  )}
                 </button>
                 <button className="pp-cannot" onClick={valleyGate.onNoSpace}>
-                  ✗ No — neither is open
+                  {t('ui.cx.valley.neitherOpen')}
                 </button>
               </div>
               {/* No effect blurb here: the gate is only asking about the space. What the
@@ -5491,64 +5494,58 @@ function CxTileDialog({
                   shared hex pool that can never be full, so there is nothing to check. */}
               <div className="place-prompt exp-place">
                 <p className="pp-instruct">
-                  Place one of the Chronossus’s <b>Exosuits</b> on the{' '}
-                  <b>Experiment Action space</b>.
+                  <T k="ui.cx.exp.place" />
                 </p>
               </div>
               {experimentGate.step === 'marked' ? (
             <>
               <p className="pp-instruct">
-                <b>Step 1 — Execute Experiment.</b> Is there a{' '}
-                <b>Level {experimentGate.level} Experiment</b> on the Timeline with one of the
-                Chronossus’s <b>Path markers</b> on it?
+                <T k="ui.cx.exp.step1" params={{ level: experimentGate.level }} />
               </p>
+              {/* Stated, not asked: every Level 1 Experiment is 2 VP and every Level 2 is
+                  3, so the level on this tile already settles it. */}
               <p className="pp-sub">
-                If more than one, it takes the <b>leftmost</b> — and discards the Path marker.
-                {/* Stated, not asked: every Level 1 Experiment is 2 VP and every Level 2 is
-                    3, so the level on this tile already settles it. */}{' '}
-                Every Level {experimentGate.level} Experiment scores{' '}
-                <b>{Chronossus.EXPERIMENT_VP[experimentGate.level]} VP</b>
-                {experimentGate.locked ? (
-                  <>
-                    , and the Doomsday tracks are locked so its{' '}
-                    <b>{experimentGate.trackerLabel}</b> marker will not move.
-                  </>
-                ) : (
-                  <>
-                    , then it moves its <b>{experimentGate.trackerLabel}</b> marker one step
-                    {experimentGate.nextSlotVp > 0
-                      ? `, scoring the ${experimentGate.nextSlotVp} VP printed there.`
-                      : ' (no VP printed there).'}
-                  </>
-                )}
+                <T
+                  k="ui.cx.exp.step1Sub"
+                  params={{
+                    level: experimentGate.level,
+                    vp: Chronossus.EXPERIMENT_VP[experimentGate.level],
+                    tracker: experimentGate.locked
+                      ? t('ui.cx.exp.trackerLocked', {
+                          tracker: experimentGate.trackerLabel,
+                        })
+                      : experimentGate.nextSlotVp > 0
+                        ? t('ui.cx.exp.trackerMovesVp', {
+                            tracker: experimentGate.trackerLabel,
+                            vp: experimentGate.nextSlotVp,
+                          })
+                        : t('ui.cx.exp.trackerMovesNoVp', {
+                            tracker: experimentGate.trackerLabel,
+                          }),
+                  }}
+                />
               </p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => experimentGate.onMarked(true)}>
-                  ✓ Yes — it takes one
+                  {t('ui.cx.exp.markedYes')}
                 </button>
                 <button className="pp-cannot" onClick={() => experimentGate.onMarked(false)}>
-                  ✗ None — skip this step
+                  {t('ui.cx.exp.markedNo')}
                 </button>
               </div>
             </>
           ) : (
             <>
               <p className="pp-instruct">
-                <b>Step 2 — Prepare for Experimentation.</b> Place one of the Chronossus’s{' '}
-                <b>Path markers</b> on a face-up Experiment that does not already have one —
-                a <b>Level 1 before a Level 2</b>, and the <b>furthest in the past</b> to
-                break a tie.
+                <T k="ui.cx.exp.step2" />
               </p>
-              <p className="pp-sub">
-                Never the Experiment under the next Era. Your Focus marker has no effect on
-                this choice.
-              </p>
+              <p className="pp-sub">{t('ui.cx.exp.step2Sub')}</p>
               <div className="pp-buttons">
                 <button className="pp-confirm" onClick={() => experimentGate.onPrepare(true)}>
                   {startLabel}
                 </button>
                 <button className="pp-cannot" onClick={() => experimentGate.onPrepare(false)}>
-                  ✗ All of them already have one
+                  {t('ui.cx.exp.allMarked')}
                 </button>
               </div>
             </>
@@ -5675,6 +5672,7 @@ function HypersyncDialog({
   /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
   flow?: boolean;
 }) {
+  const t = useT();
   const tile = useTile(code);
   const plan = Chronossus.hypersyncPlan(bot, era);
   // Same past-tile rule as the Action itself: tiles placed this Era don't count.
@@ -5750,16 +5748,16 @@ function HypersyncDialog({
               <img
                 className="cx-tile-dialog-art"
                 src="/assets/solo/actions/time-travel.png"
-                alt="Time Travel"
+                alt={t('ui.cx.hs.timeTravelTitle')}
               />
-              <h2>Time Travel</h2>
+              <h2>{t('ui.cx.hs.timeTravelTitle')}</h2>
             </>
           ) : (
             <>
               <img
                 className="cx-tile-dialog-art"
                 src={`/assets/solo/chronossus/tiles/${code}.png`}
-                alt={`${tile?.name ?? code} tile (${code})`}
+                alt={t('ui.cx.hs.tileAlt', { name: tile?.name ?? code, code })}
               />
               <h2>{tile?.name ?? code}</h2>
             </>
@@ -5775,30 +5773,34 @@ function HypersyncDialog({
             {plan.canHypersync ? (
               <>
                 <p className="pp-instruct">
-                  The Chronossus has {plan.pendingCount} pending Hypersync tile
-                  {plan.pendingCount === 1 ? '' : 's'} (furthest in the past: Era{' '}
-                  {plan.oldestTileEra}) and an available Exosuit. Check which Hypersync
-                  hex spaces are open on your board.
+                  {t(plan.pendingCount === 1 ? 'ui.cx.hs.intro' : 'ui.cx.hs.introPlural', {
+                    n: plan.pendingCount,
+                    era: plan.oldestTileEra ?? 0,
+                  })}
                 </p>
                 <button className="start-turn" onClick={() => setStep('hexes')}>
-                  ▶ Check Hypersync hexes
+                  {t('ui.cx.hs.checkHexes')}
                 </button>
               </>
             ) : (
               <>
                 <p className="pp-instruct">
-                  No pending Hypersync Action is available
-                  {plan.pendingCount === 0 && !plan.hasExosuit
-                    ? ' (no retrievable tile in a prior Era, and no available Exosuit)'
-                    : plan.pendingCount === 0
-                      ? ' (no retrievable Hypersync tile in a prior Era)'
-                      : ' (no available Exosuit)'}
-                  . The Chronossus performs a normal Time Travel Action instead
-                  {canTimeTravel
-                    ? ''
-                    : bot.warpTilesOnTimeline > 0
-                      ? ', but its only Warp tiles are on the current Era’s Timeline tile, so it is a Failed Action'
-                      : ', but no Warp tiles remain, so it is a Failed Action'}.
+                  {t('ui.cx.hs.noAction', {
+                    why: t(
+                      plan.pendingCount === 0 && !plan.hasExosuit
+                        ? 'ui.cx.hs.whyNeither'
+                        : plan.pendingCount === 0
+                          ? 'ui.cx.hs.whyNoTile'
+                          : 'ui.cx.hs.whyNoExosuit',
+                    ),
+                    fallback: canTimeTravel
+                      ? ''
+                      : t(
+                          bot.warpTilesOnTimeline > 0
+                            ? 'ui.cx.hs.fallbackCurrentEra'
+                            : 'ui.cx.hs.fallbackNoTiles',
+                        ),
+                  })}
                 </p>
                 <button
                   className="start-turn"
@@ -5806,16 +5808,16 @@ function HypersyncDialog({
                     canTimeTravel ? setStep('timetravel') : onResolve({ code, outcome: 'failed' })
                   }
                 >
-                  {canTimeTravel ? '▶ Go to Time Travel' : `▶ Failed Action (+${failVP} VP)`}
+                  {canTimeTravel
+                    ? t('ui.cx.hs.goToTimeTravel')
+                    : t('ui.cx.hs.failedAction', { vp: failVP })}
                 </button>
               </>
             )}
           </div>
         ) : step === 'hexes' ? (
           <div className="place-prompt">
-            <p className="pp-instruct">
-              Tap any Hypersync hex space that is already occupied on the board.
-            </p>
+            <p className="pp-instruct">{t('ui.cx.hs.tapOccupied')}</p>
             <div className="hs-hex-row">
               {Chronossus.HYPERSYNC_HEXES.map((n) => {
                 const off = occupied.has(n);
@@ -5825,7 +5827,7 @@ function HypersyncDialog({
                     className={`hs-hex ${off ? 'occupied' : ''}`}
                     onClick={() => toggleHex(n)}
                     aria-pressed={off}
-                    title={off ? 'Occupied — unavailable' : 'Available'}
+                    title={t(off ? 'ui.cx.hs.hexOccupied' : 'ui.cx.hs.hexAvailable')}
                   >
                     {off ? '⊘' : n}
                   </button>
@@ -5834,30 +5836,36 @@ function HypersyncDialog({
             </div>
             <p className="pp-sub">
               {available.length === 0
-                ? `No available space — the Chronossus performs a ${canTimeTravel ? 'Time Travel Action' : 'Failed Action'} instead.`
-                : `Available: ${available.join(', ')}.`}
+                ? t('ui.cx.hs.noneAvailable', {
+                    fallback: t(
+                      canTimeTravel
+                        ? 'ui.cx.hs.fallbackTimeTravel'
+                        : 'ui.cx.hs.fallbackFailed',
+                    ),
+                  })
+                : t('ui.cx.hs.available', { list: available.join(', ') })}
             </p>
             <button className="start-turn" onClick={confirmHexes}>
               {available.length === 0
                 ? canTimeTravel
-                  ? '▶ Go to Time Travel'
-                  : `▶ Failed Action (+${failVP} VP)`
-                : '▶ Confirm Available Hypersync space'}
+                  ? t('ui.cx.hs.goToTimeTravel')
+                  : t('ui.cx.hs.failedAction', { vp: failVP })
+                : t('ui.cx.hs.confirmSpace')}
             </button>
           </div>
         ) : blinkStep === 'blink' && blink ? (
           <BlinkPanel
             blink={blink}
             fluxDrawSrc={fluxDrawSrc}
-            destination={`Hypersync hex ${rolledHex ?? ''}`.trim()}
+            destination={t('ui.cx.hs.blinkDestination', { n: rolledHex ?? '' }).trim()}
             onConfirm={onConfirmBlink}
           />
         ) : blinkStep === 'casing' ? (
           <PlaceExosuitPanel
             destination={
               rolledHex != null
-                ? `Hypersync space ${rolledHex}`
-                : 'the Hypersync space matching your furthest-in-the-past pending tile'
+                ? t('ui.cx.hs.casingDestination', { n: rolledHex })
+                : t('ui.cx.hs.casingDestinationTargeted')
             }
             fluxDrawSrc={fluxDrawSrc}
             drewCasing
@@ -5869,31 +5877,29 @@ function HypersyncDialog({
           // rolling — only you can see whether an available space matches one.
           <div className="place-prompt">
             <p className="pp-instruct">
-              Does one of the available Hypersync spaces ({available.join(', ')}) match a{' '}
-              <b>Hypersync tile you have pending</b> from a <b>prior Era</b>?
+              <T k="ui.cx.hs.targetedAsk" params={{ list: available.join(', ') }} />
             </p>
             <div className="pp-buttons">
               <button className="pp-confirm" onClick={() => answerTargeted(true)}>
-                ✓ Yes — one matches
+                {t('ui.cx.hs.targetedYes')}
               </button>
               <button className="pp-cannot" onClick={() => answerTargeted(false)}>
-                ✗ No — none of mine
+                {t('ui.cx.hs.targetedNo')}
               </button>
             </div>
           </div>
         ) : step === 'targeted-place' ? (
           <div className="place-prompt">
             <p className="pp-instruct">
-              The Chronossus takes the space matching <b>your furthest-in-the-past</b>{' '}
-              pending Hypersync tile.
+              <T k="ui.cx.hs.targetedPlace" />
             </p>
             <p className="pp-sub">
-              {deferPlacement
-                ? 'It scores 2 VP and retrieves its own oldest pending tile (no Time Travel advance). Don’t place anything yet — the Blink check comes next.'
-                : 'Place a bot Exosuit on that space to block it; it scores 2 VP and retrieves its own oldest pending tile. (No Time Travel advance.)'}
+              {t(
+                deferPlacement ? 'ui.cx.hs.targetedDefer' : 'ui.cx.hs.targetedPlaceSub',
+              )}
             </p>
             <button className="start-turn" onClick={takeHypersync}>
-              {startLabel ?? '▶ Take Turn'}
+              {startLabel ?? t('ui.cx.hs.takeTurn')}
             </button>
           </div>
         ) : step === 'roll' ? (
@@ -5903,8 +5909,7 @@ function HypersyncDialog({
             {rolledHex == null ? (
               <>
                 <p className="pp-instruct">
-                  Roll to randomize between the available Hypersync spaces (
-                  {available.join(', ')}).
+                  {t('ui.cx.hs.rollPrompt', { list: available.join(', ') })}
                 </p>
                 <div className="hs-hex-row">
                   {Chronossus.HYPERSYNC_HEXES.map((n) => {
@@ -5917,24 +5922,16 @@ function HypersyncDialog({
                   })}
                 </div>
                 <button className="start-turn" onClick={rollSpace}>
-                  🎲 Roll available space
+                  {t('ui.cx.hs.rollButton')}
                 </button>
               </>
             ) : (
               <>
                 <p className="pp-instruct">
-                  {deferPlacement ? (
-                    <>
-                      The Chronossus takes <b>Hypersync space {rolledHex}</b> — it takes the
-                      Hypersync tile from the oldest Era (Era {plan.oldestTileEra}).
-                    </>
-                  ) : (
-                    <>
-                      Place a Bot Exosuit on <b>Hypersync space {rolledHex}</b> — the
-                      Chronossus takes the Hypersync tile from the oldest Era (Era{' '}
-                      {plan.oldestTileEra}).
-                    </>
-                  )}
+                  <T
+                    k={deferPlacement ? 'ui.cx.hs.rolledDefer' : 'ui.cx.hs.rolledPlace'}
+                    params={{ n: rolledHex, era: plan.oldestTileEra ?? 0 }}
+                  />
                 </p>
                 <div className="hs-hex-row">
                   {Chronossus.HYPERSYNC_HEXES.map((n) => {
@@ -5951,11 +5948,12 @@ function HypersyncDialog({
                   })}
                 </div>
                 <p className="pp-sub">
-                  It scores 2 VP. Do not advance the Time Travel marker.
-                  {deferPlacement ? ' Don’t place anything yet — the Blink check comes next.' : ''}
+                  {t('ui.cx.hs.scoresSub', {
+                    defer: deferPlacement ? t('ui.cx.hs.deferSuffix') : '',
+                  })}
                 </p>
                 <button className="start-turn" onClick={takeHypersync}>
-                  {startLabel ?? '▶ Take Turn'}
+                  {startLabel ?? t('ui.cx.hs.takeTurn')}
                 </button>
               </>
             )}
@@ -5965,11 +5963,10 @@ function HypersyncDialog({
           // Travel Action — shown like the printed Time Travel dialog.
           <div className="place-prompt">
             <p className="pp-instruct">
-              Remove one of the Chronossus’s <b>Warp tiles</b> from the past Timeline tile
-              where it has the most (oldest if tied), then advance its Time Travel marker.
+              <T k="ui.cx.hs.timeTravelFallback" />
             </p>
             <button className="start-turn" onClick={() => onResolve({ code, outcome: 'time-travel' })}>
-              ▶ Start Your Turn
+              ▶ {t('ui.dialog.startTurn')}
             </button>
           </div>
         )}
@@ -5986,11 +5983,9 @@ function HypersyncDialog({
           <>
             <HypersyncRules tile={tile} code={code} startOpen={false} />
             {targeted && (
-              <RulesBox label="Targeted Hypersync (difficulty)">
+              <RulesBox label={t('ui.cx.hs.targetedRulesLabel')}>
                 <p>
-                  Instead of randomly selecting a Hypersync Action space to take, the
-                  Chronossus takes the one corresponding to one of your pending Hypersync
-                  tiles. If you have more than one, it takes the one furthest in the past.
+                  <T k="rule.cx.targetedHypersync" />
                 </p>
               </RulesBox>
             )}
@@ -6020,15 +6015,12 @@ function VariableAnomalyGainPrompt({
 }) {
   // The Warp-retrieval answer commits the gain outright — no separate Confirm step.
   // A mis-tap is fixed with ↶ Undo (which restores the roll without re-rolling it).
+  const t = useT();
   const [vp, setVp] = useState<number | null>(null);
   return (
     <div className="place-prompt">
       <p className="pp-instruct">
-        <b>Variable Anomalies — the Chronossus receives an Anomaly.</b> From the visible
-        Anomaly tiles give it the one that <b>lets it retrieve a Warp tile</b> right now
-        (check each tile's Before/After Impact icon against this Era's Impact status). If{' '}
-        <b>both or neither</b> do, give it the one with the <b>smaller VP penalty</b>{' '}
-        (closer to 0). Tap its printed VP.
+        <T k="ui.cx.va.ask" />
       </p>
       <div className="vp-digits">
         {VARIABLE_ANOMALY_VP_OPTIONS.map((v) => (
@@ -6045,28 +6037,27 @@ function VariableAnomalyGainPrompt({
       {vp != null && (
         <>
           <p className="pp-instruct">
-            <b>Does the tile it took retrieve a Warp tile?</b>
+            <b>{t('ui.cx.va.retrieveAsk')}</b>
           </p>
           {/* Where the tile comes from, stated BEFORE the answer. A normal-mode Anomaly says
               this in its roll-log line; the Variable Anomalies path resolves after the roll,
               so its instruction only ever reached History and the player was told to
               retrieve a tile without being told which one. */}
           <p className="pp-sub">
-            If it does: remove one of the Chronossus’s Warp tiles from{' '}
-            <b>{warpRemovalLabel}</b>.
+            <T k="ui.cx.va.retrieveFrom" params={{ tile: warpRemovalLabel }} />
           </p>
           <div className="pp-buttons">
             <button
               className="pp-confirm"
               onClick={() => onConfirm({ vp, retrieveEligible: true })}
             >
-              ✓ Yes — it retrieves one
+              {t('ui.cx.va.yes')}
             </button>
             <button
               className="pp-cannot"
               onClick={() => onConfirm({ vp, retrieveEligible: false })}
             >
-              ✗ No
+              {t('ui.cx.va.no')}
             </button>
           </div>
         </>
@@ -6084,18 +6075,16 @@ function VariableAnomalyGainPrompt({
  * at the foot, which is what `ParadoxPhaseBody`'s `extraRules` slot is for.
  */
 function VariableAnomalyRules() {
+  const t = useT();
   return (
-    <RulesBox label="Variable Anomalies">
+    <RulesBox label={t('ui.cx.va.rulesLabel')}>
       <p>
-        <b>CHANGES AT SETUP:</b> The Chronossus ignores all unique effects of the
-        Anomalies and does not receive an Anomaly Remover tile.
+        <T k="rule.cx.variableAnomalies.setup" />
       </p>
       <p>
-        <b>RECEIVING ANOMALIES:</b> When receiving Anomalies, the Chronossus will select
-        one that will allow it to retrieve a Warp tile. If both or neither do, it will
-        select the one with the smaller VP penalty.
+        <T k="rule.cx.variableAnomalies.receiving" />
       </p>
-      <p className="rules-cite">Solo Opponents rulebook, p. 18</p>
+      <p className="rules-cite">{t('ui.cx.va.citeP18')}</p>
     </RulesBox>
   );
 }
@@ -6118,6 +6107,7 @@ function HypersyncTilePrompt({
   /** Render in normal flow (mobile), like DetailPanel — see CxTileDialog. */
   flow?: boolean;
 }) {
+  const t = useT();
   // `top` rather than `t`: `t` is the translator throughout this file.
   const [l, top, w, h] = panel;
   return (
@@ -6125,30 +6115,28 @@ function HypersyncTilePrompt({
       className={`detail-panel cx-tile-dialog ${flow ? 'dp-flow' : ''}`}
       style={flow ? undefined : { left: `${l}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
       role="dialog"
-      aria-label="Place a Solo Hypersync tile"
+      aria-label={t('ui.cx.hsTile.dialogAria')}
     >
       <div className="dp-head">
         <div className="dp-title">
           <img
             className="cx-tile-dialog-art"
             src="/assets/solo/chronossus/hypersync-solo-tile.png"
-            alt="Solo Hypersync tile"
+            alt={t('ui.cx.hsTile.art')}
           />
-          <h2>Hypersync tile</h2>
+          <h2>{t('ui.cx.hsTile.title')}</h2>
         </div>
-        <button className="dp-close" onClick={onCancel} aria-label="Close">
+        <button className="dp-close" onClick={onCancel} aria-label={t('ui.cx.hsTile.close')}>
           ×
         </button>
       </div>
       <div className="dp-body">
         <div className="place-prompt">
           <p className="pp-instruct">
-            No Action space remained for the “{actionLabel}” Action. Place one of the
-            Chronossus’s Solo Hypersync tiles <b>above Era {era}</b> and perform the Action
-            normally — no Exosuit is placed, and this is <b>not</b> a Failed Action.
+            <T k="ui.cx.hsTile.instruct" params={{ action: actionLabel, era }} />
           </p>
           <button className="start-turn" onClick={onConfirm}>
-            ▶ Place tile &amp; perform the Action
+            {t('ui.cx.hsTile.confirm')}
           </button>
         </div>
       </div>
@@ -6166,12 +6154,13 @@ function HypersyncRules({
   code: string;
   startOpen: boolean;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(startOpen);
   if (!tile) return null;
   return (
     <div className="mech-rules">
       <button className="mech-cta" onClick={() => setOpen((s) => !s)}>
-        📖 {tile.name} ({code}) {open ? '▾' : '▸'}
+        {t('ui.cx.hsRules.cta', { name: tile.name, code })} {open ? '▾' : '▸'}
       </button>
       {open && (
         <div className="rule-body">
@@ -6273,11 +6262,12 @@ function CxSimpleCommandView({
   onShowTileRules: (tileCode: string) => void;
   variant?: 'overlay' | 'side' | 'below';
 }) {
+  const t = useT();
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   const scvPhaseMeta = usePhaseMeta(true);
   const content = (
     <>
-      <div className="scv-title">What Chronossus might do next</div>
+      <div className="scv-title">{t('ui.scv.cxTitle')}</div>
       <div className="scv-grid">
         {rows.map((r) => (
           <button
@@ -6285,12 +6275,12 @@ function CxSimpleCommandView({
             className={`scv-row ${activeMarker === r.num ? 'active-row' : ''}`}
             key={r.num}
             onClick={() => (r.tile ? onShowTileRules(r.tile) : onShowRules(r.action))}
-            title={`Show the ${r.label} rules`}
+            title={t('ui.scv.rowTitle', { action: r.label })}
           >
             <div className="scv-markers">
               <img
                 src={`/assets/solo/commands/chronossus-marker-${r.num}.png`}
-                alt={`Command marker ${r.num}`}
+                alt={t('ui.scv.commandMarkerAlt', { n: r.num })}
                 className={`scv-marker ${activeMarker === r.num ? 'active' : ''}`}
               />
             </div>
@@ -6310,7 +6300,7 @@ function CxSimpleCommandView({
         ))}
       </div>
       <div className="scv-die">
-        <span className="scv-die-label">AI die faces</span>
+        <span className="scv-die-label">{t('ui.scv.dieLabel')}</span>
         <div className="scv-die-faces">
           {AI_DIE_FACES.map((f, i) => (
             <span key={i} className="scv-die-face">
@@ -6319,7 +6309,7 @@ function CxSimpleCommandView({
           ))}
         </div>
       </div>
-      <RulesBox label="How the AI die moves the markers">
+      <RulesBox label={t('ui.scv.cxRulesLabel')}>
         <p>{scvPhaseMeta.actions?.rules}</p>
       </RulesBox>
     </>
@@ -6337,10 +6327,10 @@ function CxSimpleCommandView({
           stop(e);
           onToggleShown?.();
         }}
-        title={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
-        aria-label={`Simple Command View — click to ${shown ? 'hide' : 'show'}`}
+        title={t(shown ? 'ui.scv.toggleHide' : 'ui.scv.toggleShow')}
+        aria-label={t(shown ? 'ui.scv.toggleHide' : 'ui.scv.toggleShow')}
       >
-        {shown ? '◂ Hide' : '▸ Show'}
+        {shown ? `◂ ${t('ui.scv.hide')}` : `▸ ${t('ui.scv.show')}`}
       </button>
       {shown && (
         <div
@@ -6625,14 +6615,15 @@ function CxVpPill({
   score: ReturnType<typeof Chronossus.scoreChronossus>;
   totalActions: number;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const pillRef = useRef<HTMLButtonElement>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
   useEffect(() => {
     if (!open) return;
     const onDown = (e: MouseEvent) => {
-      const t = e.target as HTMLElement;
-      if (!t.closest('.vp-pill-wrap') && !t.closest('.vp-popover')) setOpen(false);
+      const el = e.target as HTMLElement;
+      if (!el.closest('.vp-pill-wrap') && !el.closest('.vp-popover')) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('mousedown', onDown);
@@ -6654,57 +6645,59 @@ function CxVpPill({
         type="button"
         className={`stat-pill lead vp-pill ${open ? 'open' : ''}`}
         onClick={toggle}
-        title="Click for the full VP breakdown"
+        title={t('ui.vp.pillTitle')}
         aria-expanded={open}
         aria-haspopup="dialog"
       >
         <span className="vp-caret">{open ? '▾' : '▸'}</span>
         <span className="vp-seg">
-          <b>{score.total}</b> VP
+          <b>{score.total}</b> {t('ui.vp.pillUnit')}
         </span>
       </button>
       {open && (
         <AnchoredPopover rect={rect} className="vp-popover cx-vp-popover">
-          <div className="vp-popover-title">Chronossus VP</div>
+          <div className="vp-popover-title">{t('ui.vp.cxPopoverTitle')}</div>
           <ul className="score-breakdown">
-            <li title="Everything except Buildings, Time Travel & Breakthroughs">
-              <span>Token VP</span><b>{score.tokenVP}</b>
+            <li title={t('ui.vp.tokenVP.tip')}>
+              <span>{t('ui.vp.tokenVP')}</span><b>{score.tokenVP}</b>
             </li>
-            <li title="From Construct actions — Buildings only">
-              <span>Building VP</span><b>{score.buildingVP}</b>
+            <li title={t('ui.vp.cxBuildingVP.tip')}>
+              <span>{t('ui.vp.buildingVP')}</span><b>{score.buildingVP}</b>
             </li>
-            <li title="From Construct actions — Superprojects only">
-              <span>Superproject VP</span><b>{score.superprojectVP}</b>
+            <li title={t('ui.vp.superprojectVP.tip')}>
+              <span>{t('ui.vp.superprojectVP')}</span><b>{score.superprojectVP}</b>
             </li>
-            <li title="From the Time Travel marker's track position (0/2/4/…/12)">
-              <span>Time Travel</span><b>{score.timeTravelVP}</b>
+            <li title={t('ui.vp.timeTravel.tip')}>
+              <span>{t('ui.vp.timeTravel')}</span><b>{score.timeTravelVP}</b>
             </li>
-            <li title="1 VP per Breakthrough">
-              <span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b>
+            <li title={t('ui.vp.breakthroughs.tip')}>
+              <span>{t('ui.vp.breakthroughs')}</span><b>{score.breakthroughVP}</b>
             </li>
-            <li title="+2 VP per complete shape set (one of each)">
-              <span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b>
+            <li title={t('ui.vp.breakthroughSets.tip')}>
+              <span>{t('ui.vp.breakthroughSets')}</span><b>{score.shapeSetBonus}</b>
             </li>
-            <li title="−3 VP per Anomaly the Chronossus still holds at game end">
-              <span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b>
+            <li title={t('ui.vp.cxAnomalies.tip')}>
+              <span>{t('ui.vp.anomalies')}</span><b>{score.anomalyVP}</b>
             </li>
             {score.leftoverEnergyVP > 0 && (
-              <li title="Difficulty: 1 VP per energized Energy Core currently in the pool">
-                <span>Leftover Energy Cores</span><b>{score.leftoverEnergyVP}</b>
+              <li title={t('ui.vp.leftoverEnergy.tip')}>
+                <span>{t('ui.vp.leftoverEnergy')}</span><b>{score.leftoverEnergyVP}</b>
               </li>
             )}
             {score.technologyVP > 0 && (
-              <li title="Fractures: 3 VP per Technology card the Chronossus holds">
-                <span>Technologies (3 each)</span><b>{score.technologyVP}</b>
+              <li title={t('ui.vp.technologies.tip')}>
+                <span>{t('ui.vp.technologies')}</span><b>{score.technologyVP}</b>
               </li>
             )}
             {score.leftoverFluxVP > 0 && (
-              <li title="Fractures difficulty: 1 VP per Flux Core left in the Flux Pool">
-                <span>Leftover Flux Cores</span><b>{score.leftoverFluxVP}</b>
+              <li title={t('ui.vp.leftoverFlux.tip')}>
+                <span>{t('ui.vp.leftoverFlux')}</span><b>{score.leftoverFluxVP}</b>
               </li>
             )}
-            <li className="score-sum"><span>Total</span><b>{score.total}</b></li>
-            <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
+            <li className="score-sum"><span>{t('ui.vp.total')}</span><b>{score.total}</b></li>
+            <li className="score-turns">
+              <span>{t('ui.vp.botTurns')}</span><b>{totalActions}</b>
+            </li>
           </ul>
         </AnchoredPopover>
       )}
@@ -6721,24 +6714,25 @@ function CxVpPill({
 // `neg`: this field can only reduce the score — typing 3 stores −3, and only these
 // (Anomalies + Timeline penalties) plus nothing else may go negative. Every field is an
 // absolute VP value (no ×2 multiplier — the player enters the points directly).
-interface CxTallyField { key: string; label: string; neg?: boolean }
+/** `key` is also the locale key: `ui.cxTally.<key>`. */
+interface CxTallyField { key: string; neg?: boolean }
 const CX_TALLY_FIELDS: CxTallyField[] = [
-  { key: 'buildings', label: 'Buildings' },
-  { key: 'anomalies', label: 'Anomalies', neg: true },
-  { key: 'superprojects', label: 'Superprojects' },
-  { key: 'timeTravel', label: 'Time Travel' },
-  { key: 'morale', label: 'Morale' },
-  { key: 'vpTokens', label: 'Victory Point tokens' },
-  { key: 'soloObjectives', label: 'Solo Objectives (highest levels)' },
-  { key: 'breakthroughs', label: 'Breakthroughs' },
-  { key: 'breakthroughSets', label: 'Breakthrough sets' },
-  { key: 'timelinePenalties', label: 'Timeline penalties', neg: true },
+  { key: 'buildings' },
+  { key: 'anomalies', neg: true },
+  { key: 'superprojects' },
+  { key: 'timeTravel' },
+  { key: 'morale' },
+  { key: 'vpTokens' },
+  { key: 'soloObjectives' },
+  { key: 'breakthroughs' },
+  { key: 'breakthroughSets' },
+  { key: 'timelinePenalties', neg: true },
   // Module lines. Only rendered for the modes that use them, but they stay in this list
   // so a value already typed still counts if the rows re-render.
-  { key: 'technologies', label: 'Technology cards' },
-  { key: 'fractureDevice', label: 'Fracture Device' },
-  { key: 'glitches', label: 'Glitches', neg: true },
-  { key: 'hypersyncTiles', label: 'Hypersync tiles remaining', neg: true },
+  { key: 'technologies' },
+  { key: 'fractureDevice' },
+  { key: 'glitches', neg: true },
+  { key: 'hypersyncTiles', neg: true },
 ];
 const CX_TALLY_BY_KEY: Record<string, CxTallyField> = Object.fromEntries(
   CX_TALLY_FIELDS.map((f) => [f.key, f]),
@@ -6756,50 +6750,59 @@ const CX_SCORE_ROWS = (
   score: ReturnType<typeof Chronossus.scoreChronossus>,
   hypersync: boolean,
   fractures: boolean,
-): { label: string; playerKey?: string; botValue?: number }[] => [
-  { label: 'Buildings', playerKey: 'buildings', botValue: score.buildingVP },
-  { label: 'Superprojects', playerKey: 'superprojects', botValue: score.superprojectVP },
-  { label: 'Time Travel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
-  // Rate hints read the same on every line ("3 each", "−2 each") — no "×", since these
-  // fields take a total, not a count to be multiplied.
-  { label: 'Breakthroughs (1 each)', playerKey: 'breakthroughs', botValue: score.breakthroughVP },
-  { label: 'Breakthrough sets (set of shapes 2 each)', playerKey: 'breakthroughSets', botValue: score.shapeSetBonus },
-  { label: 'Anomalies (−3 each)', playerKey: 'anomalies', botValue: score.anomalyVP },
-  { label: 'Victory Point tokens', playerKey: 'vpTokens', botValue: score.tokenVP },
-  { label: 'Morale', playerKey: 'morale' },
-  { label: 'Solo Objectives (highest levels)', playerKey: 'soloObjectives' },
-  { label: 'Timeline penalties', playerKey: 'timelinePenalties' },
+): { labelKey: string; playerKey?: string; botValue?: number }[] => [
+  { labelKey: 'ui.cxScore.row.buildings', playerKey: 'buildings', botValue: score.buildingVP },
+  {
+    labelKey: 'ui.cxScore.row.superprojects',
+    playerKey: 'superprojects',
+    botValue: score.superprojectVP,
+  },
+  { labelKey: 'ui.cxScore.row.timeTravel', playerKey: 'timeTravel', botValue: score.timeTravelVP },
+  {
+    labelKey: 'ui.cxScore.row.breakthroughs',
+    playerKey: 'breakthroughs',
+    botValue: score.breakthroughVP,
+  },
+  {
+    labelKey: 'ui.cxScore.row.breakthroughSets',
+    playerKey: 'breakthroughSets',
+    botValue: score.shapeSetBonus,
+  },
+  { labelKey: 'ui.cxScore.row.anomalies', playerKey: 'anomalies', botValue: score.anomalyVP },
+  { labelKey: 'ui.cxScore.row.vpTokens', playerKey: 'vpTokens', botValue: score.tokenVP },
+  { labelKey: 'ui.cxScore.row.morale', playerKey: 'morale' },
+  { labelKey: 'ui.cxScore.row.soloObjectives', playerKey: 'soloObjectives' },
+  { labelKey: 'ui.cxScore.row.timelinePenalties', playerKey: 'timelinePenalties' },
   // Fractures: Technologies score for both sides (3 VP each); the Fracture Device and
   // Glitches are the player's alone — the Chronossus has neither.
   ...(fractures
     ? [
-        { label: 'Technology cards (3 each)', playerKey: 'technologies', botValue: score.technologyVP },
-        { label: 'Fracture Device', playerKey: 'fractureDevice' },
-        { label: 'Glitches (−2 each)', playerKey: 'glitches' },
+        {
+          labelKey: 'ui.cxScore.row.technologies',
+          playerKey: 'technologies',
+          botValue: score.technologyVP,
+        },
+        { labelKey: 'ui.cxScore.row.fractureDevice', playerKey: 'fractureDevice' },
+        { labelKey: 'ui.cxScore.row.glitches', playerKey: 'glitches' },
       ]
     : []),
   // Hypersync: the player loses 4 VP per tile still in the future; the bot never does.
   ...(hypersync
-    ? [{ label: 'Hypersync tiles remaining (−4 each)', playerKey: 'hypersyncTiles' }]
+    ? [{ labelKey: 'ui.cxScore.row.hypersyncTiles', playerKey: 'hypersyncTiles' }]
     : []),
   // Doomsday adds no scoring row: an Experiment's VP is taken as VP TOKENS when the card is
   // claimed, and the Doomsday track's VP is granted as the marker moves — both are ordinary
   // VP and sit in "Victory Point tokens" with everything else.
   // D5 difficulty (bot-only, no player equivalent) — only shown when it scored anything.
   ...(score.leftoverEnergyVP
-    ? [{ label: 'Leftover Energy Cores (difficulty, 1 each)', botValue: score.leftoverEnergyVP }]
+    ? [{ labelKey: 'ui.cxScore.row.leftoverEnergy', botValue: score.leftoverEnergyVP }]
     : []),
   // Fractures' leftover Flux Cores are bot-only, and only with that difficulty option.
   ...(score.upgradeTokenVP
-    ? [
-        {
-          label: 'Upgrade board VP tokens (difficulty, 1 each)',
-          botValue: score.upgradeTokenVP,
-        },
-      ]
+    ? [{ labelKey: 'ui.cxScore.row.upgradeTokens', botValue: score.upgradeTokenVP }]
     : []),
   ...(score.leftoverFluxVP
-    ? [{ label: 'Leftover Flux Cores (difficulty, 1 each)', botValue: score.leftoverFluxVP }]
+    ? [{ labelKey: 'ui.cxScore.row.leftoverFlux', botValue: score.leftoverFluxVP }]
     : []),
 ];
 
@@ -6816,6 +6819,7 @@ function CxScoreScreen({
   onHome: () => void;
   onNewGame: () => void;
 }) {
+  const t = useT();
   const endgameRules = useRule('rule.chronossusEndgame', CHRONOSSUS_ENDGAME_RULES);
   const { user, loading: authLoading, login } = useAuth();
   // Whether this game uses a Hypersync mode (adds the Hypersync-tile note to the
@@ -6924,10 +6928,10 @@ function CxScoreScreen({
       const lapsed = expired && !stillLoggedIn;
       setSaveErr(
         lapsed
-          ? 'Your login session expired. This game is saved on this device and will upload once you log in.'
+          ? t('ui.score.err.expired')
           : expired
-            ? "You're still logged in, but the history service rejected the save. This game is saved on this device and will upload once that's fixed."
-            : "Couldn't reach your history service. This game is saved on this device and will upload next time.",
+            ? t('ui.score.err.rejected')
+            : t('ui.score.err.unreachable'),
       );
       setSaveExpired(lapsed);
       setSaveState('error');
@@ -6939,7 +6943,7 @@ function CxScoreScreen({
   const handleShare = async () => {
     const rows: ScoreShareRow[] = CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => ({
       // Strip the parenthetical rule hints for the compact share card (they don't wrap).
-      label: r.label.replace(/\s*\([^)]*\)/g, ''),
+      label: t(r.labelKey).replace(/\s*\([^)]*\)/g, ''),
       you: r.playerKey ? (tally[r.playerKey] ?? null) : null,
       bot: r.botValue ?? null,
     }));
@@ -6965,9 +6969,9 @@ function CxScoreScreen({
         setup,
         footer: `anachrony.boardgameedge.com · ${new Date().toLocaleDateString()}`,
       });
-      setShareMsg(how === 'downloaded' ? '✓ Image downloaded' : '');
+      setShareMsg(how === 'downloaded' ? t('ui.cxScore.imageDownloaded') : '');
     } catch {
-      setShareMsg("Couldn't create the image.");
+      setShareMsg(t('ui.cxScore.imageFailed'));
     }
   };
   // Auto-save once the game has a player score (debounced, once per game). A failed
@@ -7023,8 +7027,8 @@ function CxScoreScreen({
     <div className="modal-overlay">
       <div className="score-screen" onClick={(e) => e.stopPropagation()}>
         <div className="score-head">
-          <h2>Final Score — Era {state.era}</h2>
-          <button className="dp-close" onClick={onHome} aria-label="Close">
+          <h2>{t('ui.score.title', { era: state.era })}</h2>
+          <button className="dp-close" onClick={onHome} aria-label={t('ui.score.close')}>
             ×
           </button>
         </div>
@@ -7033,21 +7037,21 @@ function CxScoreScreen({
         <div className={`score-vs ${result ?? ''}`}>
           <div className="score-vs-side">
             <span className="score-vs-num">{playerScore ?? '—'}</span>
-            <span className="score-vs-label">You</span>
+            <span className="score-vs-label">{t('ui.cxScore.you')}</span>
           </div>
-          <span className="score-vs-x">vs</span>
+          <span className="score-vs-x">{t('ui.cxScore.vs')}</span>
           <div className="score-vs-side">
             <span className="score-vs-num">{score.total}</span>
-            <span className="score-vs-label">Chronossus</span>
+            <span className="score-vs-label">{t('ui.cxScore.bot')}</span>
           </div>
         </div>
 
         <div className="score-mode">
           <button className={mode === 'number' ? 'on' : ''} onClick={() => setMode('number')}>
-            Number
+            {t('ui.score.modeNumber')}
           </button>
           <button className={mode === 'tally' ? 'on' : ''} onClick={() => setMode('tally')}>
-            Tally sheet
+            {t('ui.score.modeTally')}
           </button>
         </div>
 
@@ -7056,32 +7060,40 @@ function CxScoreScreen({
             <input
               className="score-num-input"
               type="number"
-              placeholder="Enter your total VP (including Solo Objectives)"
+              placeholder={t('ui.cxScore.numberPlaceholder')}
               value={num}
               onChange={(e) => setNum(e.target.value)}
             />
             {/* Bot breakdown still shown for reference in Number mode. */}
             <ul className="score-breakdown">
-              <li><span>Token VP</span><b>{score.tokenVP}</b></li>
-              <li><span>Building VP</span><b>{score.buildingVP}</b></li>
-              <li><span>Superproject VP</span><b>{score.superprojectVP}</b></li>
-              <li><span>Time Travel</span><b>{score.timeTravelVP}</b></li>
-              <li><span>Breakthroughs (1 each)</span><b>{score.breakthroughVP}</b></li>
-              <li><span>Breakthrough sets (+2 each)</span><b>{score.shapeSetBonus}</b></li>
-              <li><span>Anomalies (−3 each)</span><b>{score.anomalyVP}</b></li>
+              <li><span>{t('ui.vp.tokenVP')}</span><b>{score.tokenVP}</b></li>
+              <li><span>{t('ui.vp.buildingVP')}</span><b>{score.buildingVP}</b></li>
+              <li><span>{t('ui.vp.superprojectVP')}</span><b>{score.superprojectVP}</b></li>
+              <li><span>{t('ui.vp.timeTravel')}</span><b>{score.timeTravelVP}</b></li>
+              <li><span>{t('ui.vp.breakthroughs')}</span><b>{score.breakthroughVP}</b></li>
+              <li><span>{t('ui.vp.breakthroughSets')}</span><b>{score.shapeSetBonus}</b></li>
+              <li><span>{t('ui.vp.anomalies')}</span><b>{score.anomalyVP}</b></li>
               {score.leftoverEnergyVP > 0 && (
-                <li><span>Leftover Energy Cores (difficulty)</span><b>{score.leftoverEnergyVP}</b></li>
+                <li>
+                  <span>{t('ui.cxScore.leftoverEnergy')}</span><b>{score.leftoverEnergyVP}</b>
+                </li>
               )}
               {score.technologyVP > 0 && (
-                <li><span>Technologies (3 each)</span><b>{score.technologyVP}</b></li>
+                <li><span>{t('ui.vp.technologies')}</span><b>{score.technologyVP}</b></li>
               )}
               {score.upgradeTokenVP > 0 && (
-                <li><span>Upgrade board VP tokens (difficulty)</span><b>{score.upgradeTokenVP}</b></li>
+                <li>
+                  <span>{t('ui.cxScore.upgradeTokens')}</span><b>{score.upgradeTokenVP}</b>
+                </li>
               )}
               {score.leftoverFluxVP > 0 && (
-                <li><span>Leftover Flux Cores (difficulty)</span><b>{score.leftoverFluxVP}</b></li>
+                <li>
+                  <span>{t('ui.cxScore.leftoverFlux')}</span><b>{score.leftoverFluxVP}</b>
+                </li>
               )}
-              <li className="score-sum"><span>Chronossus total</span><b>{score.total}</b></li>
+              <li className="score-sum">
+                <span>{t('ui.cxScore.botTotal')}</span><b>{score.total}</b>
+              </li>
             </ul>
           </>
         ) : (
@@ -7091,12 +7103,12 @@ function CxScoreScreen({
             <div className="cx-tally">
               <div className="cx-trow cx-thead">
                 <span className="cx-tlabel"></span>
-                <span className="cx-tyou">You</span>
-                <span className="cx-tbot">Chronossus</span>
+                <span className="cx-tyou">{t('ui.cxScore.you')}</span>
+                <span className="cx-tbot">{t('ui.cxScore.bot')}</span>
               </div>
               {CX_SCORE_ROWS(score, hypersyncMode, fracturesMode).map((r) => (
-                <div key={r.label} className="cx-trow">
-                  <span className="cx-tlabel">{r.label}</span>
+                <div key={r.labelKey} className="cx-trow">
+                  <span className="cx-tlabel">{t(r.labelKey)}</span>
                   <span className="cx-tyou">
                     {r.playerKey ? tallyCell(r.playerKey) : <span className="cx-dash">—</span>}
                   </span>
@@ -7106,14 +7118,14 @@ function CxScoreScreen({
                 </div>
               ))}
               <div className="cx-trow cx-tsum">
-                <span className="cx-tlabel">Total</span>
+                <span className="cx-tlabel">{t('ui.vp.total')}</span>
                 <span className="cx-tyou">{tallyTotal}</span>
                 <span className="cx-tbot">{score.total}</span>
               </div>
             </div>
             {!tallyDone && (
               <button className="tally-done" onClick={() => setTallyDone(true)}>
-                Done — use this total
+                {t('ui.score.tallyDone')}
               </button>
             )}
           </>
@@ -7126,18 +7138,18 @@ function CxScoreScreen({
         <ModeList modes={selectedModeLabels(state.config)} />
         <DifficultyList
           difficulty={state.config.difficulty.map((f) =>
-            chronossusDifficultyLabel(f, state.config.difficultyValues),
+            chronossusDifficultyLabel(f, state.config.difficultyValues, t),
           )}
         />
 
         <ul className="score-breakdown score-meta">
-          <li className="score-turns"><span>Bot turns taken</span><b>{totalActions}</b></li>
+          <li className="score-turns">
+            <span>{t('ui.vp.botTurns')}</span><b>{totalActions}</b>
+          </li>
         </ul>
         {result && (
           <div className={`score-result ${result}`}>
-            {result === 'win'
-              ? '🎉 You win! (more points than the Chronossus)'
-              : 'You lose — the Chronossus has at least as many points.'}
+            {t(result === 'win' ? 'ui.cxScore.win' : 'ui.cxScore.lose')}
           </div>
         )}
 
@@ -7146,10 +7158,10 @@ function CxScoreScreen({
         {!user && !authLoading && result != null && (
           <div className="score-save score-login">
             <span className="score-login-msg">
-              Log in to save this game to your history.
+              {t('ui.score.loginToSave')}
             </span>
             <button className="score-save-retry" onClick={loginAndSave}>
-              Log in &amp; save
+              {t('ui.score.loginAndSave')}
             </button>
           </div>
         )}
@@ -7160,24 +7172,28 @@ function CxScoreScreen({
         {user && saveState === 'idle' && (playerScore == null || Number.isNaN(playerScore)) && (
           <div className="score-save">
             <span className="score-save-wait">
-              Enter your score above to save this game to your history.
+              {t('ui.score.enterToSave')}
             </span>
           </div>
         )}
 
         {user && saveState !== 'idle' && (
           <div className="score-save">
-            {saveState === 'saving' && <span className="score-save-ok">Saving…</span>}
-            {saveState === 'saved' && <span className="score-save-ok">✓ Saved to your history</span>}
+            {saveState === 'saving' && (
+              <span className="score-save-ok">{t('ui.score.saving')}</span>
+            )}
+            {saveState === 'saved' && (
+              <span className="score-save-ok">{t('ui.score.saved')}</span>
+            )}
             {saveState === 'error' && (
               <span className="score-save-err">
-                {saveErr || "Couldn't save automatically."}{' '}
+                {saveErr || t('ui.score.saveFailed')}{' '}
                 {/* The old message told the player to log in again and gave them no way to
                     — and nothing held the result. The game is queued by now, so this can
                     safely redirect. */}
                 {saveExpired && (
                   <button className="score-save-retry" onClick={login}>
-                    Log in
+                    {t('ui.score.logIn')}
                   </button>
                 )}{' '}
                 <button
@@ -7188,7 +7204,7 @@ function CxScoreScreen({
                     setSaveState('idle'); // re-arms the auto-save effect
                   }}
                 >
-                  Retry
+                  {t('ui.score.retry')}
                 </button>
               </span>
             )}
@@ -7199,7 +7215,7 @@ function CxScoreScreen({
 
         {/* Verbatim rules last, as on every other screen — above the pinned actions. */}
         <div className="score-rules">
-          <RulesBox label="End Game scoring">
+          <RulesBox label={t('ui.score.rulesLabel')}>
             <p>{endgameRules}</p>
           </RulesBox>
         </div>

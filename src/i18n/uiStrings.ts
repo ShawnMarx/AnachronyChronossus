@@ -837,6 +837,9 @@ export const UI_STRINGS = {
 
   // --- Simple Command View --------------------------------------------------
   'scv.title': 'What Chronobot might do next',
+  'scv.cxTitle': 'What Chronossus might do next',
+  'scv.cxRulesLabel': 'How the AI die moves the markers',
+  'scv.commandMarkerAlt': 'Command marker {n}',
   'scv.rowTitle': 'Show the {action} rules',
   'scv.dieLabel': 'AI die faces',
   'scv.rulesLabel': 'How the AI die moves the tokens',
@@ -863,6 +866,70 @@ export const UI_STRINGS = {
   'vp.pillTitle': 'Click for the full VP breakdown',
   'vp.pillUnit': 'VP',
   'vp.popoverTitle': 'Chronobot VP',
+  // Chronossus-only rows on the same breakdown.
+  'vp.cxPopoverTitle': 'Chronossus VP',
+  'vp.cxBuildingVP.tip': 'From Construct actions — Buildings only',
+  'vp.superprojectVP': 'Superproject VP',
+  'vp.superprojectVP.tip': 'From Construct actions — Superprojects only',
+  'vp.cxAnomalies.tip': '−3 VP per Anomaly the Chronossus still holds at game end',
+  'vp.leftoverEnergy': 'Leftover Energy Cores',
+  'vp.leftoverEnergy.tip':
+    'Difficulty: 1 VP per energized Energy Core currently in the pool',
+  'vp.technologies': 'Technologies (3 each)',
+  'vp.technologies.tip': 'Fractures: 3 VP per Technology card the Chronossus holds',
+  'vp.leftoverFlux': 'Leftover Flux Cores',
+  'vp.leftoverFlux.tip':
+    'Fractures difficulty: 1 VP per Flux Core left in the Flux Pool',
+
+  // --- The Chronossus player tally ------------------------------------------
+  'cxTally.buildings': 'Buildings',
+  'cxTally.anomalies': 'Anomalies',
+  'cxTally.superprojects': 'Superprojects',
+  'cxTally.timeTravel': 'Time Travel',
+  'cxTally.morale': 'Morale',
+  'cxTally.vpTokens': 'Victory Point tokens',
+  'cxTally.soloObjectives': 'Solo Objectives (highest levels)',
+  'cxTally.breakthroughs': 'Breakthroughs',
+  'cxTally.breakthroughSets': 'Breakthrough sets',
+  'cxTally.timelinePenalties': 'Timeline penalties',
+  'cxTally.technologies': 'Technology cards',
+  'cxTally.fractureDevice': 'Fracture Device',
+  'cxTally.glitches': 'Glitches',
+  'cxTally.hypersyncTiles': 'Hypersync tiles remaining',
+
+  // Score-screen row labels. Rate hints read the same on every line ("3 each",
+  // "−2 each") — no "×", since these fields take a total, not a count to multiply.
+  'cxScore.row.buildings': 'Buildings',
+  'cxScore.row.superprojects': 'Superprojects',
+  'cxScore.row.timeTravel': 'Time Travel',
+  'cxScore.row.breakthroughs': 'Breakthroughs (1 each)',
+  'cxScore.row.breakthroughSets': 'Breakthrough sets (set of shapes 2 each)',
+  'cxScore.row.anomalies': 'Anomalies (−3 each)',
+  'cxScore.row.vpTokens': 'Victory Point tokens',
+  'cxScore.row.morale': 'Morale',
+  'cxScore.row.soloObjectives': 'Solo Objectives (highest levels)',
+  'cxScore.row.timelinePenalties': 'Timeline penalties',
+  'cxScore.row.technologies': 'Technology cards (3 each)',
+  'cxScore.row.fractureDevice': 'Fracture Device',
+  'cxScore.row.glitches': 'Glitches (−2 each)',
+  'cxScore.row.hypersyncTiles': 'Hypersync tiles remaining (−4 each)',
+  'cxScore.row.leftoverEnergy': 'Leftover Energy Cores (difficulty, 1 each)',
+  'cxScore.row.upgradeTokens': 'Upgrade board VP tokens (difficulty, 1 each)',
+  'cxScore.row.leftoverFlux': 'Leftover Flux Cores (difficulty, 1 each)',
+
+  // --- The Chronossus score screen ------------------------------------------
+  'cxScore.you': 'You',
+  'cxScore.vs': 'vs',
+  'cxScore.bot': 'Chronossus',
+  'cxScore.numberPlaceholder': 'Enter your total VP (including Solo Objectives)',
+  'cxScore.leftoverEnergy': 'Leftover Energy Cores (difficulty)',
+  'cxScore.upgradeTokens': 'Upgrade board VP tokens (difficulty)',
+  'cxScore.leftoverFlux': 'Leftover Flux Cores (difficulty)',
+  'cxScore.botTotal': 'Chronossus total',
+  'cxScore.win': '🎉 You win! (more points than the Chronossus)',
+  'cxScore.lose': 'You lose — the Chronossus has at least as many points.',
+  'cxScore.imageDownloaded': '✓ Image downloaded',
+  'cxScore.imageFailed': "Couldn't create the image.",
 
   // --- The player's own score tally -----------------------------------------
   'tally.buildings': 'Buildings',
@@ -1171,6 +1238,160 @@ export const UI_STRINGS = {
     'The Chronossus performs an **Adventure** — put an Exosuit onto the Adventure board’s ' +
     '**hex pool** and a **Path marker** on the topmost free **Power slot**.',
   'cx.adv.slotAsk': 'Which Power slot did its Path marker go on?',
+  // Pioneers with the SHARED physical decks: the player draws and names the cards.
+  'cx.adv.sharedDraw':
+    'Draw **2 cards** from the **{deck}** deck for the Chronossus to evaluate.',
+  'cx.adv.sharedPickSub':
+    'It takes the one with the **highest Power requirement it meets** — pick that card ' +
+    'below. The other goes to the bottom of the deck.',
+  'cx.adv.sharedPickPlaceholder': 'Which card does it take?',
+  'cx.adv.sharedPickNone': 'Neither — it meets no requirement (+1 VP)',
+  'cx.adv.sharedOption': '{name} — {power} Power',
+  'cx.adv.sharedNotMet': ' (not met)',
+  'cx.adv.confirm': '✓ Confirm',
+
+  // --- Fractures: the Valley gates ------------------------------------------
+  'cx.valley.assimilateTech':
+    'The shape die rolled **{shape}** — the Chronossus takes a **Technology card**, ' +
+    'preferring the secondary stack.',
+  'cx.valley.techWorth': 'It is worth 3 VP at the end of the game.',
+  'cx.valley.confirmTaken': '✓ Confirm taken',
+  'cx.valley.assimilateOperator':
+    'The shape die rolled **{shape}** — the Chronossus recruits an **Operator**. Are ' +
+    'there any left in the **Valley**?',
+  'cx.valley.discardOperator': 'If so, discard one **Operator** from the Valley.',
+  'cx.valley.operatorYes': '✓ Yes — it takes an Operator',
+  'cx.valley.operatorNone': '✗ None left — Failed Action (+1 VP)',
+  'cx.valley.spaceAsk':
+    'Is an **{space}** Action space — or the **Valley Capital Action space** — open on ' +
+    'the **Valley board**?',
+  'cx.valley.spaceAskPlace':
+    'Is an **{space}** Action space — or the **Valley Capital Action space** — open on ' +
+    'the **Valley board**? Place the Chronossus’s Exosuit on the **topmost** available ' +
+    '{space} space, or on the Valley Capital space if no {space} space is open.',
+  // --- Doomsday: the Experiment gate ----------------------------------------
+  'cx.exp.place':
+    'Place one of the Chronossus’s **Exosuits** on the **Experiment Action space**.',
+  'cx.exp.step1':
+    '**Step 1 — Execute Experiment.** Is there a **Level {level} Experiment** on the ' +
+    'Timeline with one of the Chronossus’s **Path markers** on it?',
+  'cx.exp.step1Sub':
+    'If more than one, it takes the **leftmost** — and discards the Path marker. Every ' +
+    'Level {level} Experiment scores **{vp} VP**{tracker}',
+  'cx.exp.trackerLocked':
+    ', and the Doomsday tracks are locked so its **{tracker}** marker will not move.',
+  'cx.exp.trackerMovesVp':
+    ', then it moves its **{tracker}** marker one step, scoring the {vp} VP printed there.',
+  'cx.exp.trackerMovesNoVp':
+    ', then it moves its **{tracker}** marker one step (no VP printed there).',
+  'cx.exp.markedYes': '✓ Yes — it takes one',
+  'cx.exp.markedNo': '✗ None — skip this step',
+  'cx.exp.step2':
+    '**Step 2 — Prepare for Experimentation.** Place one of the Chronossus’s **Path ' +
+    'markers** on a face-up Experiment that does not already have one — a **Level 1 ' +
+    'before a Level 2**, and the **furthest in the past** to break a tie.',
+  'cx.exp.step2Sub':
+    'Never the Experiment under the next Era. Your Focus marker has no effect on this ' +
+    'choice.',
+  'cx.exp.allMarked': '✗ All of them already have one',
+  'cx.valley.neitherOpen': '✗ No — neither is open',
+
+  // --- Hypersync: the tile dialog -------------------------------------------
+  'cx.hs.timeTravelTitle': 'Time Travel',
+  'cx.hs.tileAlt': '{name} tile ({code})',
+  'cx.hs.close': 'Close',
+  'cx.hs.intro':
+    'The Chronossus has {n} pending Hypersync tile (furthest in the past: Era {era}) and ' +
+    'an available Exosuit. Check which Hypersync hex spaces are open on your board.',
+  'cx.hs.introPlural':
+    'The Chronossus has {n} pending Hypersync tiles (furthest in the past: Era {era}) and ' +
+    'an available Exosuit. Check which Hypersync hex spaces are open on your board.',
+  'cx.hs.checkHexes': '▶ Check Hypersync hexes',
+  'cx.hs.noAction':
+    'No pending Hypersync Action is available{why}. The Chronossus performs a normal Time ' +
+    'Travel Action instead{fallback}.',
+  'cx.hs.whyNeither': ' (no retrievable tile in a prior Era, and no available Exosuit)',
+  'cx.hs.whyNoTile': ' (no retrievable Hypersync tile in a prior Era)',
+  'cx.hs.whyNoExosuit': ' (no available Exosuit)',
+  'cx.hs.fallbackCurrentEra':
+    ', but its only Warp tiles are on the current Era’s Timeline tile, so it is a Failed Action',
+  'cx.hs.fallbackNoTiles': ', but no Warp tiles remain, so it is a Failed Action',
+  'cx.hs.goToTimeTravel': '▶ Go to Time Travel',
+  'cx.hs.failedAction': '▶ Failed Action (+{vp} VP)',
+  'cx.hs.tapOccupied': 'Tap any Hypersync hex space that is already occupied on the board.',
+  'cx.hs.hexOccupied': 'Occupied — unavailable',
+  'cx.hs.hexAvailable': 'Available',
+  'cx.hs.noneAvailable':
+    'No available space — the Chronossus performs a {fallback} instead.',
+  'cx.hs.fallbackTimeTravel': 'Time Travel Action',
+  'cx.hs.fallbackFailed': 'Failed Action',
+  'cx.hs.available': 'Available: {list}.',
+  'cx.hs.confirmSpace': '▶ Confirm Available Hypersync space',
+  'cx.hs.blinkDestination': 'Hypersync hex {n}',
+  'cx.hs.casingDestination': 'Hypersync space {n}',
+  'cx.hs.casingDestinationTargeted':
+    'the Hypersync space matching your furthest-in-the-past pending tile',
+  'cx.hs.targetedAsk':
+    'Does one of the available Hypersync spaces ({list}) match a **Hypersync tile you ' +
+    'have pending** from a **prior Era**?',
+  'cx.hs.targetedYes': '✓ Yes — one matches',
+  'cx.hs.targetedNo': '✗ No — none of mine',
+  'cx.hs.targetedPlace':
+    'The Chronossus takes the space matching **your furthest-in-the-past** pending ' +
+    'Hypersync tile.',
+  'cx.hs.targetedDefer':
+    'It scores 2 VP and retrieves its own oldest pending tile (no Time Travel advance). ' +
+    'Don’t place anything yet — the Blink check comes next.',
+  'cx.hs.targetedPlaceSub':
+    'Place a bot Exosuit on that space to block it; it scores 2 VP and retrieves its own ' +
+    'oldest pending tile. (No Time Travel advance.)',
+  'cx.hs.takeTurn': '▶ Take Turn',
+  'cx.hs.rollPrompt':
+    'Roll to randomize between the available Hypersync spaces ({list}).',
+  'cx.hs.rollButton': '🎲 Roll available space',
+  'cx.hs.rolledDefer':
+    'The Chronossus takes **Hypersync space {n}** — it takes the Hypersync tile from the ' +
+    'oldest Era (Era {era}).',
+  'cx.hs.rolledPlace':
+    'Place a Bot Exosuit on **Hypersync space {n}** — the Chronossus takes the Hypersync ' +
+    'tile from the oldest Era (Era {era}).',
+  'cx.hs.scoresSub': 'It scores 2 VP. Do not advance the Time Travel marker.{defer}',
+  'cx.hs.deferSuffix': ' Don’t place anything yet — the Blink check comes next.',
+  'cx.hs.timeTravelFallback':
+    'Remove one of the Chronossus’s **Warp tiles** from the past Timeline tile where it ' +
+    'has the most (oldest if tied), then advance its Time Travel marker.',
+  'cx.hs.targetedRulesLabel': 'Targeted Hypersync (difficulty)',
+
+  // --- Variable Anomalies ---------------------------------------------------
+  'cx.va.ask':
+    '**Variable Anomalies — the Chronossus receives an Anomaly.** From the visible ' +
+    'Anomaly tiles give it the one that **lets it retrieve a Warp tile** right now (check ' +
+    'each tile’s Before/After Impact icon against this Era’s Impact status). If **both or ' +
+    'neither** do, give it the one with the **smaller VP penalty** (closer to 0). Tap its ' +
+    'printed VP.',
+  'cx.va.retrieveAsk': 'Does the tile it took retrieve a Warp tile?',
+  'cx.va.retrieveFrom':
+    'If it does: remove one of the Chronossus’s Warp tiles from **{tile}**.',
+  'cx.va.yes': '✓ Yes — it retrieves one',
+  'cx.va.no': '✗ No',
+  'cx.va.rulesLabel': 'Variable Anomalies',
+  'cx.va.citeP18': 'Solo Opponents rulebook, p. 18',
+
+  // --- Hypersync: the no-space Capital-Action fallback ----------------------
+  'cx.hsTile.dialogAria': 'Place a Solo Hypersync tile',
+  'cx.hsTile.art': 'Solo Hypersync tile',
+  'cx.hsTile.title': 'Hypersync tile',
+  'cx.hsTile.close': 'Close',
+  'cx.hsTile.instruct':
+    'No Action space remained for the “{action}” Action. Place one of the Chronossus’s ' +
+    'Solo Hypersync tiles **above Era {era}** and perform the Action normally — no ' +
+    'Exosuit is placed, and this is **not** a Failed Action.',
+  'cx.hsTile.confirm': '▶ Place tile & perform the Action',
+  'cx.hsRules.cta': '📖 {name} ({code})',
+
+  'cx.valley.blinkSub':
+    'Don’t place anything yet — the Chronossus Blink-checks first, and a Blink moves an ' +
+    'Exosuit it already has on the Main board onto the Valley space instead.',
   'cx.adv.slotNone': '✗ None free ({n})',
   'cx.adv.boardPower': '{n} Power',
   'cx.adv.pathMarker': ' {sign} {n} Path marker',
