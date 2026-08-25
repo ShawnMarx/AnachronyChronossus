@@ -2,6 +2,69 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-24 — The chrome sweep: every player-facing string now has a key
+
+**Yesterday shipped the mechanism; today filled it.** The translatable surface went from
+**314 keys to 1,113**. What was left after the 2026-08-23 session was the bulk of the app's
+own voice — `BoardExplorer.tsx` (the whole Chronobot play view), `ChronossusGame.tsx`,
+`ChronossusSetupFlow.tsx`, plus `PhaseScreen`, `HistoryPane`, `TurnBarOverview`,
+`ReadyToBegin`, `FirstPlayerPrompt` and `AdminStats`. All of it now resolves through
+`ui.*`.
+
+**Three families joined the surface because leaving them out would have been a
+half-translation.** `piece.<key>` is the one that mattered: "Neutronium" was written out in
+the board tracker labels, the Mine resource swatches and the Recruit Worker swatches, so a
+translator would have done the same word three times or — worse — twice. It is derived from
+`BOARD_COUNTERS`, so a new tracker joins the surface with it. `module.<id>` /
+`extraModule.<id>` are the expansion titles (a locale uses the names printed on that
+language's boxes), `objectiveCard.<slug>` the Solo Objective cards, and `blinkSpace.<key>`
+the Capital Action space names, derived from the engine's own map.
+
+**Verbatim rulebook text moved out of JSX into rule constants** rather than being translated
+as app voice: `src/engine/rules/chronossusSetupRules.ts` (seven setup blocks plus Doomsday's
+tracker rule) and `chronossusModuleRules.ts` (Alternate Timelines, Quantum Loops, Variable
+Anomalies, Targeted Hypersync), joined by `HYPERSYNC_PARADOX_RULE`. Every one is a `rule.*`
+key, so it stays behind the `officialRulebook` gate. Note the wording is the books' text
+reflowed into prose, as the screens have always shown it — `doomsday.ts` and
+`quantumLoops.ts` still carry their own headed `*_SETUP_RULE` constants, which nothing
+renders. Reconciling them changes displayed text, so it is deliberately a separate job.
+
+**The persisted/display split is the rule the whole sweep follows.** A string that gets
+saved must not be translated, or it freezes in whatever language was active when it was
+written: History labels and effects, the history service's difficulty column, the BG Stats
+notes. Where one helper serves both a display path and a persisted path it now takes an
+optional `translate` and defaults to English — `chronobotDifficultyLabel`, `spaceLabel`,
+`chronossusActionLabel`, `describeCubes`, `tileInstruction`, `tileDescription`, matching
+`chronossusDifficultyLabel`'s existing shape. The Blink is the clearest case: the panel's
+`spaceLabel` translates, while `blinkFromRef`'s `toLabel` — which feeds a History line —
+does not. `powerBreakdown` went further and now returns `{key, params, power}`: the engine
+should not decide what language the Power sum reads in.
+
+**The all-modes pseudolocale sweep is what closed it.** 897 captures across all ten modes,
+**zero layout faults**, and 51 lines still rendering English — 47 of them deliberately
+(persisted History, the debug bar, a username, a locale's own endonym, the bots' names).
+The four real ones are the argument for a harness that reads *rendered text*: the board
+hotspots' `title` and `aria-label` were already keyed, but the **Simple Command View**
+renders those same Action names as visible text straight from the catalog, so
+`Construct — Factory` sat there in English on a screen that looked done. The others were
+`tileText.ts` (the app's own words for a modular tile, whose `tileInstruction` now assembles
+its sentence from one key per effect clause, with `tileInstr.join` / `.frame` deciding how
+clauses combine), the three add-on module names, and one stray `Continue ▶`.
+
+**Verified against a production build, which turned out to matter.** Checking each step
+against a dev-server baseline looked clean until the switch to `vite preview` surfaced a
+diff — the AI die read `2` before and `4` after. That is `vite dev` vs `vite build`:
+chunking changes how many `Math.random` calls precede the roll, and the snapshot harness's
+LCG pin is applied per-page, not per-module-graph. `origin/main` was rebuilt in a worktree
+and served the same way; the whole branch then compared **identical in text and layout on
+all 36 screens**, with two Chronossus phase shots 6px over the 400px pixel budget from
+text-node coalescing. 538 tests green, lint at its baseline throughout.
+
+**Still English: History.** `Instruction.text` is interpolated inside the pure bot functions
+and written to saved games as finished sentences, so no key can reach it. That is now the
+one player-facing surface a translator cannot touch, and the `{key, params}` refactor
+(~150–200 call sites) is the next phase.
+
 ## 2026-08-23 — A translation layer, where adding a language is one file
 
 **Someone offered to translate the app, so the plumbing went in — not the translations.**

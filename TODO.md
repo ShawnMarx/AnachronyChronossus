@@ -15,7 +15,9 @@ committed and none are planned in-house.
       `doomsday.ts`, `pioneers.ts`, `chronossusHistory.ts`. Worth doing regardless of
       translation — it stops History freezing prose into `localStorage`, so a reworded
       instruction fixes old saves too, and the engine tests assert keys instead of sentences.
-- [ ] **Raise review coverage past ~47% (`MODES=Base`).** `pw-i18n-review.mjs` reports what
+- [ ] **Raise review coverage past ~47% (`MODES=Base`).** (`MODES=all` now runs clean —
+      897 captures, zero layout faults — so what is left is the COVERAGE report, not the
+      sweep itself.) `pw-i18n-review.mjs` reports what
       it missed in `coverage.md`; the known gaps and their routes:
       `tile.*` needs `MODES=all` plus a second `SIDES=B` run (all 28 tiles are reachable —
       verified against the mode matrix); `rule.blink` needs Fractures and
@@ -24,32 +26,27 @@ committed and none are planned in-house.
       stepping Exosuits to 0 (the new debug stepper reaches the state — the harness just
       does not yet drive the two turns that follow); `phase.actions.*` may render nowhere
       (the Action Rounds "phase screen" is the board) — check before keeping the key.
-- [~] **Remaining app-voice chrome — the sweep a real translator needs.** ~4,300 words were
-      hard-coded in `.tsx`. **Done 2026-08-23:** `Landing.tsx`, `SetupFlow.tsx`,
-      `RulesFrame.tsx`, `HistoryScreen.tsx` and all 23 Chronossus difficulty options — app-voice
-      translatable words went 167 → 1,609. **Done 2026-08-24:** `BoardExplorer.tsx` (the whole
-      Chronobot play view), plus `PhaseScreen.tsx` and `HistoryPane.tsx`, which the pseudolocale
-      run turned up. Piece names ("Neutronium", "Genius") are now ONE `piece.<key>` family
-      derived from `BOARD_COUNTERS`, shared by the tracker tooltips and the Mine/Recruit
-      swatches; Hypersync's Paradox rules moved out of inline JSX into
-      `HYPERSYNC_PARADOX_RULE` / `rule.hypersyncParadox`, behind the `officialRulebook` gate.
-      **Remaining ~2,562 words:** `ChronossusGame.tsx` ~1,379, `ChronossusSetupFlow.tsx`
-      ~1,165 (the per-module setup prose), `AdminStats.tsx` ~18. No blocker — just volume, and
-      it is prose so it needs reading rather than scripting.
-      Deliberately NOT swept: the debug bar and calibrate mode (dev-only), and any string
-      that gets persisted — History labels/effects, the history service's difficulty column,
-      the BG Stats notes. Where a display path and a persisted path share a helper, the
-      helper takes an optional `translate` and English is the default
-      (`chronobotDifficultyLabel`, `spaceLabel`, `chronossusDifficultyLabel`). Use `<T k=… links=… />` (`src/i18n/Trans.tsx`) for any sentence with an inline
-      link or bold run: keep it as ONE key so the translator can move the link where their
-      grammar needs it. Verify each file with
-      `node pw-i18n-diff.mjs <before> <after>` — text and layout must match exactly; a small
-      pixel budget absorbs the antialiasing shift that text-node coalescing causes.
+- [x] **Remaining app-voice chrome — DONE 2026-08-24.** All of it: `BoardExplorer.tsx`,
+      `ChronossusGame.tsx`, `ChronossusSetupFlow.tsx`, `AdminStats.tsx`, plus `PhaseScreen`,
+      `HistoryPane`, `TurnBarOverview`, `ReadyToBegin` and `FirstPlayerPrompt`. Surface
+      314 -> 1,113 keys. Three families joined it so a word is translated once, not three
+      times: `piece.<key>` (derived from `BOARD_COUNTERS`; used by the tracker tooltips AND
+      the Mine/Recruit swatches), `module.<id>` / `extraModule.<id>` / `objectiveCard.<slug>`,
+      and `blinkSpace.<key>`. Verbatim boxes moved into
+      `src/engine/rules/chronossusSetupRules.ts` + `chronossusModuleRules.ts` as `rule.*`
+      keys rather than being translated as app voice. Deliberately NOT swept: debug/calibrate
+      (dev-only) and anything persisted — see the convention in `CLAUDE.md`.
+
 - [ ] **Rule constants nothing renders.** `ENDGAME_TRIGGER_RULE`, `FAILED_ACTIONS`, the
       `QUANTUM_LOOPS_*` blocks and `DOOMSDAY_SETUP/DIFFICULTY/PLANNED_EXPERIMENTS_RULE` are
       exported but shown nowhere — they were pulled back out of the translatable surface so
       a translator is not asked to do invisible work. Add the key back when a screen renders
       one.
+- [ ] **Reconcile the duplicated setup rule constants.** `doomsday.ts` and
+      `quantumLoops.ts` carry `*_SETUP_RULE` in the rulebook's headed/bulleted form and
+      nothing renders them; the setup screen shows the same text reflowed into prose from
+      `src/engine/rules/chronossusSetupRules.ts`. Merging them changes displayed text, so it
+      was kept out of the i18n conversion on purpose.
 - [ ] **When a translator appears:** point them at `src/i18n/locales/README.md`, and be clear
       that `officialRulebook: true` means the rule text was transcribed from that language's
       **official** Anachrony / Solo Opponents edition — not translated from the English.

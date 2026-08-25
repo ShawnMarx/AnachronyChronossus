@@ -461,6 +461,32 @@ Keep it that way; a change that requires a second edit to add a language is a re
   the turn happened. The `PHASE_META[next.phase]?.name` used for a History label is left on the
   raw catalog for exactly this reason, while the same lookup for display goes through
   `usePhaseMeta()`. Fixing this properly is the `{key, params}` refactor in `TODO.md`.
+  **Where one helper serves BOTH a display path and a persisted path, it takes an optional
+  `translate` and defaults to English** — `chronossusDifficultyLabel`, `chronobotDifficultyLabel`,
+  `spaceLabel`, `chronossusActionLabel`, `describeCubes`, `tileInstruction`, `tileDescription`.
+  The view passes `useT()`; anything writing a saved string calls it without. The Blink is the
+  clearest case: `BlinkPanel`'s `spaceLabel` translates, while `blinkFromRef`'s `toLabel`, which
+  feeds a History line, does not. An engine function that would otherwise return prose returns
+  keys instead (`powerBreakdown` -> `{key, params, power}`).
+- **A word the app names in more than one place gets ONE key family.** "Neutronium" appeared in
+  the board tracker labels, the Mine resource swatches and the Recruit Worker swatches; it is now
+  `piece.<key>`, derived from `BOARD_COUNTERS` so a new tracker joins the surface with it. Same
+  for `module.<id>` / `extraModule.<id>` (expansion titles), `objectiveCard.<slug>`,
+  `blinkSpace.<key>` and `ui.tileAction.<id>`. Deriving from the catalog is the point: a family
+  that has to be hand-extended drifts.
+- **Verbatim rulebook text belongs in a rule constant, never inline in JSX.** Inline text can
+  only be published as `ui.*`, which bypasses the `officialRulebook` gate and invites a fan
+  translation of the book. `src/engine/rules/chronossusSetupRules.ts` and
+  `chronossusModuleRules.ts` hold the blocks the Chronossus's setup and phase screens show;
+  `SetupRules` renders one (paragraphs on a blank line, single newlines as `<br>`).
+- **A keyed `title`/`aria-label` is not a keyed UI.** The board hotspots' attributes were keyed
+  while the **Simple Command View** still rendered the same Action names as visible text from the
+  raw catalog. `pw-i18n-review.mjs` reads RENDERED TEXT, which is why it caught it — run it
+  before believing a file is done.
+- **Capture the visual baseline in the same build mode you compare against.** `vite dev` and
+  `vite build` chunk differently, which changes how many `Math.random` calls precede the app's
+  own dice — a dev-server baseline vs a `vite preview` capture showed the AI die as 2 then 4 with
+  no code change. Serve both sides with `vite preview` (build `origin/main` in a worktree).
 - `en.json` is **generated** — `UPDATE_LOCALES=1 npm test`. The suite also checks every other
   locale file for a valid header, no unknown keys, and `{placeholder}` parity with English.
 - **A sentence with an inline link or bold run stays ONE key**, rendered by `<T>`
