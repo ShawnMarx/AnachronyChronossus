@@ -1060,7 +1060,8 @@ export function isMainBoardPlacement(actionId: ChronossusActionId): boolean {
   return placesExosuitFor(actionId) && !OFF_MAIN_BOARD_ACTIONS.includes(actionId);
 }
 
-const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
+/** Tile Action names. Published as `ui.tileAction.<id>` — see `surface.ts`. */
+export const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-reboot': { label: 'Reboot' },
   'tile-score': { label: 'Score' },
   'tile-energy-pack': { label: 'Energy Pack' },
@@ -1074,8 +1075,22 @@ const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
 };
 
 /** Human-facing label for any Chronossus action id. */
-export function chronossusActionLabel(id: ChronossusActionId): string {
-  return isTileAction(id) ? TILE_ACTIONS[id].label : actionDef(id).label;
+export function chronossusActionLabel(
+  id: ChronossusActionId,
+  /**
+   * Optional translator, for the same reason every other pure helper here takes one: a
+   * caller outside React — and anything writing a persisted string — gets English.
+   */
+  translate?: (key: string) => string,
+): string {
+  if (isTileAction(id)) {
+    const label = TILE_ACTIONS[id].label;
+    const hit = translate?.(`ui.tileAction.${id}`);
+    return hit && hit !== `ui.tileAction.${id}` ? hit : label;
+  }
+  const def = actionDef(id);
+  const hit = translate?.(`action.${def.id}.label`);
+  return hit && hit !== `action.${def.id}.label` ? hit : def.label;
 }
 
 function isTileAction(id: ChronossusActionId): id is ChronossusTileActionId {

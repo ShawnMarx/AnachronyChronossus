@@ -42,6 +42,7 @@ import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from '../phases/chron
 import {
   BLINK_RULE,
   BLINK_SPACE_LABEL,
+  TILE_ACTIONS,
   CHRONOSSUS_PASSING_RULE,
   HYPERSYNC_PARADOX_RULE,
 } from '../engine/bots/chronossus';
@@ -158,6 +159,8 @@ export function englishMessages(): Messages {
   // `tileText.ts`, so a new module's tile joins the surface with its branch.
   for (const [action, text] of Object.entries(TILE_DESC)) put(`ui.tileDesc.${action}`, text);
   for (const [key, text] of Object.entries(TILE_INSTR_EN)) put(key, text);
+  // A tile Action's own short name, as the Command view and the Blink panels say it.
+  for (const [id, def] of Object.entries(TILE_ACTIONS)) put(`ui.tileAction.${id}`, def.label);
 
   // --- Phase metadata (verbatim phase summaries) ----------------------------
   for (const [phase, meta] of Object.entries(PHASE_META)) {

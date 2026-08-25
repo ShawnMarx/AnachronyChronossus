@@ -21,7 +21,7 @@ import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
-import { useAction, usePhaseMeta, useRule, useTile } from './i18n/localized';
+import { useAction, usePhaseMeta, useRule, useTile, useTiles } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
 import T from './i18n/Trans';
 import {
@@ -2079,6 +2079,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // Rows for the Simple Command View: each of the 4 markers, the action it now
   // sits on (a modular tile action, or the nearest printed Action space).
+  // Tile names and Action labels, translated — the Command view renders both as text.
+  const scvTiles = useTiles();
   const scvRows: ScvRow[] = COMMAND_NUMS.map((num) => {
     const key = markerPosKey(num, markerSteps[num]);
     const tp = trackPos(key);
@@ -2088,8 +2090,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // The live tile action for this mode (Fractures fills these slots with C04-C06).
       const live = tileActionAt(key) ?? tp.action;
       const label = modeSlot
-        ? (CHRONOSSUS_TILES[code]?.name ?? Chronossus.chronossusActionLabel(live))
-        : Chronossus.chronossusActionLabel(live);
+        ? (scvTiles[code]?.name ?? Chronossus.chronossusActionLabel(live, t))
+        : Chronossus.chronossusActionLabel(live, t);
       return { num, action: live, label, tile: code };
     }
     const [x, y] = positions[key] ?? [0, 0];
@@ -2106,11 +2108,11 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       return {
         num,
         action: h.action,
-        label: CHRONOSSUS_TILES[code]?.name ?? CHRONOBOT_ACTIONS[h.action].label,
+        label: scvTiles[code]?.name ?? t(`action.${h.action}.label`),
         tile: code,
       };
     }
-    return { num, action: h.action, label: CHRONOBOT_ACTIONS[h.action].label, tile: null };
+    return { num, action: h.action, label: t(`action.${h.action}.label`), tile: null };
   });
 
   // Will completing the current turn advance the active marker onto an Autoleap tile?
@@ -4797,7 +4799,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
             commitPhase(next, enteredLabel(next));
           }}
         >
-          Continue ▶
+          {t('ui.phaseBody.continue')} ▶
         </button>
       );
       break;
@@ -5128,7 +5130,9 @@ function CxTileDialog({
   // The Valley board's printed Action spaces are always Assimilate and Extract, whichever
   // tile side (or C14) sits on the Chronossus board — so the player is pointed at the
   // space's own name, never the tile's ("Assimilate and Score", "Efficient Extract"…).
-  const valleySpaceName = Chronossus.chronossusActionLabel(action);
+  // Display, so it translates. The `chronossusActionLabel` calls that feed History
+  // labels deliberately do NOT pass `t` — a persisted string keeps English.
+  const valleySpaceName = Chronossus.chronossusActionLabel(action, t);
   // Where a Valley placement/Blink lands, including the Capital fallback (p.11) — the app
   // never renders the Valley board, so the instruction has to name both.
   const valleyDestination = `${valleySpaceName} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
