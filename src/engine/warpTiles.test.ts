@@ -2,6 +2,7 @@
 // Timeline tile" rule turns on.
 
 import { describe, it, expect } from 'vitest';
+import { englishText } from './messages';
 import {
   currentEraWarpTiles,
   pastWarpTiles,
@@ -28,7 +29,11 @@ describe('past vs current Era', () => {
     const b = bot({ 0: 2 });
     expect(pastWarpTiles(b, 1)).toBe(2);
     expect(warpRemoval(b, 1)).toEqual({ era: 0, eligible: true });
-    expect(warpTileLabel(0)).toBe('the Era Zero tile');
+    // A descriptor, and Era Zero is its own KEY — "the Era Zero tile" is that tile's name,
+    // not "Era 0" with a number substituted in.
+    expect(warpTileLabel(0)).toEqual({ key: 'board.timelineTile.eraZero' });
+    expect(englishText(warpTileLabel(0))).toBe('the Era Zero tile');
+    expect(englishText(warpTileLabel(3))).toBe('the Era 3 Timeline tile');
   });
 });
 

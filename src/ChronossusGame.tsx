@@ -23,6 +23,8 @@ import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
 import { useAction, usePhaseMeta, useRule, useTile, useTiles } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
+import { renderMsg } from './i18n/msg';
+import { msg } from './engine/message';
 import T from './i18n/Trans';
 import {
   DetailPanel,
@@ -1153,11 +1155,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   /** Where a retrieved Warp tile comes off — the same wording the engine's own instruction
    *  uses, so the prompt and History cannot describe the removal differently. */
   const variableAnomalyWarpLabel = (() => {
-    if (!state.chronossus) return 'the Timeline tile where it has the most (oldest if tied)';
+    const anyPast = msg('board.timelineTile.mostOldest');
+    if (!state.chronossus) return renderMsg(t, anyPast);
     const from = warpRemoval(state.chronossus, state.era);
-    return from.era != null
-      ? warpTileLabel(from.era)
-      : 'the Timeline tile where it has the most (oldest if tied)';
+    return renderMsg(t, from.era != null ? warpTileLabel(from.era) : anyPast);
   })();
   // What the Warp screen's Quantum Loops check came to, for the on-screen report. Derived
   // from the same pure helper the engine uses, so screen and state can't disagree.

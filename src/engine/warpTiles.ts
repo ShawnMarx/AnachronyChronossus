@@ -10,6 +10,8 @@
 // Keys are the Era the tiles were placed in; 0 is Fractures' Era Zero tile. Pure, so
 // every rule that reads it is unit-tested.
 
+import { msg, type Msg } from './message';
+
 /** Warp tiles on the Timeline, keyed by the Era whose tile they sit on (0 = Era Zero). */
 export type WarpTilesByEra = Record<number, number>;
 
@@ -89,9 +91,13 @@ export function warpRemoval(bot: WarpTileHolder, era: number): WarpRemoval {
   return { era: pick, eligible: true };
 }
 
-/** How the app names that tile to the player. */
-export function warpTileLabel(era: number): string {
-  return era === 0 ? 'the Era Zero tile' : `the Era ${era} Timeline tile`;
+/**
+ * How the app names that tile to the player. A descriptor, not a sentence — it is
+ * interpolated into instructions that get persisted, and Era Zero is a separate KEY
+ * rather than a param because "the Era Zero tile" is a name, not "Era 0".
+ */
+export function warpTileLabel(era: number): Msg {
+  return era === 0 ? msg('board.timelineTile.eraZero') : msg('board.timelineTile.era', { era });
 }
 
 /** Place `n` tiles on `era`'s Timeline tile. */

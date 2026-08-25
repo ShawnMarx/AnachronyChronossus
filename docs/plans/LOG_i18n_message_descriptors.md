@@ -23,12 +23,14 @@ note deviations and decisions inline as they happen.
 
 ## Feature 2 — `chronobot.ts` (35 sites) — the shakedown
 
-- [ ] 2.1 Convert the phase functions' instructions to descriptors, adding each English
+- [x] 2.1 Convert the phase functions' instructions to descriptors, adding each English
       default to `messages.ts` under `instr.chronobot.*`.
-- [ ] 2.2 Convert the action-turn instructions.
-- [ ] 2.3 Split every mid-sentence ternary into distinct keys (D2); list them here.
-- [ ] 2.4 Update `chronobot`'s unit tests to assert keys and params, not prose.
-- [ ] 2.5 Review the key-naming scheme now, before it is repeated 120 more times.
+- [x] 2.2 Convert the action-turn instructions.
+- [x] 2.3 Split every mid-sentence ternary into distinct keys (D2); list them here.
+- [x] 2.4 Update `chronobot`'s unit tests to assert keys and params, not prose.
+- [x] 2.5 Review the key-naming scheme now, before it is repeated 120 more times.
+      _(done FIRST, before writing any of Feature 2 — see D8/D9/D10 in the plan. Measured
+      the overlap to decide it: only 9 of 79 strings are shared between the bots.)_
 
 ## Feature 3 — `chronossus.ts` (54 sites) + the prose helpers
 
@@ -71,10 +73,12 @@ note deviations and decisions inline as they happen.
 
 ## Feature 7 — surface, locale and the completeness check
 
-- [ ] 7.1 Fold `messages.ts` into `src/i18n/surface.ts` as `instr.*` / `hist.*`.
-- [ ] 7.2 Rewrite the "NOT in the surface" note in `surface.ts` — it currently names this
+- [x] 7.1 Fold `messages.ts` into `src/i18n/surface.ts` as `instr.*` / `hist.*`.
+      _(done early in Feature 2 — the English-rendering test needed it.)_
+- [x] 7.2 Rewrite the "NOT in the surface" note in `surface.ts` — it currently names this
       refactor as the reason instructions are excluded.
-- [ ] 7.3 Regenerate `en.json` (`UPDATE_LOCALES=1 npm test`); record the new key count.
+- [~] 7.3 Regenerate `en.json` — done for Feature 2 (**1,182** keys, up from 1,114; 58
+      `instr.*`). Re-run after each remaining feature.
 - [ ] 7.4 Extend `engine/playthrough.test.ts` per D7: collect every emitted `Msg`, assert
       the key exists and every `{placeholder}` is supplied.
 
@@ -93,6 +97,57 @@ note deviations and decisions inline as they happen.
 ---
 
 ## Deviations and decisions during execution
+
+### Feature 2 — chronobot.ts, 2026-08-25
+
+**The key scheme was settled BEFORE writing any of it** (step 2.5, done first), grounded in
+a measurement: only 9 of the 79 strings the two bots emit are identical once the bot's name
+is normalised away. See D8/D9/D10.
+
+**Two English strings improved on the way through, both the same bug.** Construct named the
+building by slicing the Action label — `def.label.replace('Construct — ', '')` — which only
+works in English; it now nests the published `piece.<type>` key. The rolled-turn header
+interpolated `def.label` itself, which would have put an English Action name in the middle
+of a translated sentence; it nests `action.<id>.label`. Both render byte-identical English.
+
+**A hard-coded English fallback surfaced in `ChronossusGame.tsx`** — "the Timeline tile where
+it has the most (oldest if tied)", used when per-Era tracking cannot name the tile. The
+pseudolocale sweep never caught it because it only renders for a pre-tracking save. It is now
+`board.timelineTile.mostOldest`, shared with both bots.
+
+**`renderMsg` moved to `src/engine/message.ts`** (it was in `src/i18n/msg.ts` after Feature
+1). It depends on nothing but a lookup function, and the ENGINE needs it: `warpTileLabel` is
+shared, so converting it broke four not-yet-converted `chronossus.ts` sites that interpolate
+it into a template string — the coercion hazard, caught by a failing test rather than by
+`tsc`. They now call `englishText()`, which is honest about what they are and goes away with
+them in Feature 3. `src/i18n/msg.ts` is now the view-facing binding and adds `renderEnglish`,
+which renders against the WHOLE surface — the engine's own `englishText` cannot see
+surface-owned keys like `piece.factory`, and cannot import them without a cycle.
+
+**`MsgList` was added** — a list param with catalog-key separators, because mined cubes join
+with `" + "` and step 8.4 requires displayed text to stay byte-identical.
+
+**Steps 7.1–7.2 were pulled forward** out of necessity: the English-rendering test could not
+pass until `ENGINE_MESSAGES` was in the surface.
+
+**Verification.** 58 keys. Every default was checked against the pre-change source
+automatically: 52 matched a literal verbatim, and the remaining 6 — the ones built at runtime
+by splicing a clause or pasting a shared tail, i.e. exactly the D2 splits — are pinned by
+hand in the new `chronobot.messages.test.ts`. `npm test` 568 passing, `tsc`/build/lint clean.
+`pw-chronobot-parity.mjs` passes with no page errors.
+
+**New harness `pw-descriptors.mjs`**, which catches the two failures neither `tsc` nor the
+unit suite can: a coerced descriptor rendering `[object Object]`, and an unresolved key
+rendering as if it were a sentence. It scans RENDERED text only (the save legitimately
+contains keys) and asserts the converse — that instructions really are persisted as
+descriptors. **Its coverage stops at the Action Rounds board**: it does not yet drive the
+guided Action dialogs, which need the Debug-on hotspot-tapping route `pw-i18n-review.mjs`
+uses. Stated in the file's header so nobody reads a pass as more than it is.
+
+**Fixed a live bug this created:** `setPassMsg` (×3) and `rollLine` in `BoardExplorer.tsx`
+read `instruction.text` through `.join(' ')` and a template literal. The moment the Chronobot
+emitted descriptors those rendered `[object Object]` — step 6.5's sweep, needed within the
+same commit rather than at Feature 6.
 
 ### Feature 1 — 2026-08-25
 

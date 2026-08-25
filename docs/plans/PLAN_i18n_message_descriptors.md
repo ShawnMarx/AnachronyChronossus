@@ -73,12 +73,48 @@ If a translator ever hits it, the upgrade is `Intl.PluralRules` inside `t()` res
 `key.<category>` — a contained change, since every counted key is already a `.one`/`.other`
 family. Logged to `TODO.md` at cleanup.
 
-### D5 — English defaults live in the engine, as data
+### D5 — English defaults live in the engine, as data — *amended by D10*
 The engine stays **pure and i18n-free**: it returns keys, and imports nothing from
 `src/i18n/`. The English text moves to `src/engine/messages.ts` as a flat
 `key -> English default` map (the same shape every other catalog in `surface.ts` has), which
 `surface.ts` folds in as the `instr.*` and `hist.*` families. This keeps the established
 rule that English lives with the rules and the locale file is an override layer.
+
+### D8 — Per-bot keys, with the bot's name written into the sentence
+
+Measured before deciding: of the 79 instruction strings the two bots emit, **only 9 are
+identical once the bot's name is normalised away** (~11%). The rest genuinely differ — the
+Chronobot's Reboot says "not a Failed Action" and the Chronossus's does not; Construct's VP
+wording diverges; the Chronossus's Failed Action VP is a variable where the Chronobot's is
+always +1. So a shared `{bot}` param would have saved nine strings out of seventy-nine and
+would still have needed per-bot keys for everything else.
+
+Each bot therefore gets its own namespace (`instr.chronobot.*`, `instr.chronossus.*`) and
+the name is **written into the string, not passed as a param**. A proper noun dropped into
+a slot cannot take a case ending or agree with an article; written in, it can.
+
+### D9 — Keys are dotted and grouped by phase or Action
+
+`instr.chronobot.construct.knownVp`, not `instr.chronobot.construct`. This matches the
+conventions the surface already uses (`action.*.label`, `rule.*`, `piece.*`, `ui.*`), sorts
+a translator's file into meaningful blocks, and tells a reader where a string appears
+without opening the code.
+
+**Not** derived mechanically from the existing `Instruction.id`. The ids are terse internal
+shorthand — `rgr`, `tt`, `ra`, `evac` — and a key is a thing a translator reads.
+
+**A split ternary (D2) becomes sibling keys** under the same group: `…failed.placing` /
+`…failed.plain`.
+
+### D10 — The defaults live in per-bot files, beside the rules they describe
+
+Amends D5's single `src/engine/messages.ts`. Each bot and each summarizer carries its own
+catalog — `bots/chronobot.messages.ts`, `bots/chronossus.messages.ts`,
+`bots/doomsday.messages.ts`, `bots/pioneers.messages.ts`, `game/history.messages.ts` — and
+`surface.ts` folds them all in. That is the pattern the surface already follows (it derives
+from a dozen catalogs), and it means **a new module ships its own message file** exactly as
+it ships its own tiles and rules, rather than editing a central file that every module
+touches. `engine/messages.ts` remains for the genuinely shared keys (the list separators).
 
 ### D6 — Markup survives untouched
 `**bold**` (every board location the player acts on) and `{flux}` icon tokens move **inside

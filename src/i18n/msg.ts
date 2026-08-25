@@ -1,55 +1,31 @@
-// Resolving a message descriptor into the player's language.
+// The view-facing entry point for rendering a message descriptor.
 //
-// The engine returns `{ key, params }` (see `src/engine/message.ts`); this is where that
-// becomes a sentence. Kept separate from the engine so the engine imports nothing from
-// i18n, and pure so the whole resolution — nesting, lists, legacy strings — is unit-tested
-// without a DOM.
+// The resolver itself lives in `src/engine/message.ts` — it depends on nothing but a
+// lookup function, and the engine needs it too for the paths that must stay English
+// (anything on its way to storage or an export). This module exists so the views import
+// rendering from i18n, where the rest of the translation layer lives.
 
-import type { Msg, MsgParam, Text } from '../engine/message';
-import { isMsg } from '../engine/message';
+import { renderMsg, type Text } from '../engine/message';
+import { interpolate } from './catalog';
+import { englishMessages } from './surface';
 
-type Translate = (key: string, params?: Record<string, string | number>) => string;
+export { renderMsg, renderAll } from '../engine/message';
+export type { Msg, Text, Translate } from '../engine/message';
 
-/**
- * Join a list of already-resolved fragments the way the language writes a list.
- * English: "a", "a and b", "a, b and c". Both separators are catalog keys, because a
- * language that writes lists differently (no Oxford comma, a different conjunction, or a
- * trailing particle) has to be able to say so.
- */
-function joinList(t: Translate, parts: string[]): string {
-  if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0];
-  const sep = t('msg.list.sep');
-  const last = t('msg.list.last');
-  return parts.slice(0, -1).join(sep) + last + parts[parts.length - 1];
-}
-
-function resolveParam(t: Translate, value: MsgParam): string | number {
-  if (Array.isArray(value)) return joinList(t, value.map((v) => renderMsg(t, v)));
-  if (typeof value === 'object' && value != null) return renderMsg(t, value);
-  return value;
-}
+let english: Record<string, string> | null = null;
 
 /**
- * Render a descriptor (or a legacy saved sentence) into text.
+ * Render a descriptor in English, against the WHOLE surface.
  *
- * A bare string passes through untouched — that is a sentence persisted by a build from
- * before this refactor, and re-rendering an in-progress game's old History in English is
- * exactly right. Params resolve depth-first, so a message can carry another message.
+ * The engine has its own `englishText`, but it can only see the engine's own catalogs —
+ * and an instruction routinely nests a key the surface owns (`piece.factory`,
+ * `ui.pieceInline.gold`, `action.<id>.label`). The engine cannot import the surface
+ * without a cycle, so the full-surface English renderer lives here.
+ *
+ * For the paths that must NOT be translated — a string on its way to storage, an export,
+ * or another tool — and for tests that pin the exact English wording.
  */
-export function renderMsg(t: Translate, value: Text): string {
-  if (!isMsg(value)) return value;
-  if (!value.params) return t(value.key);
-  const params: Record<string, string | number> = {};
-  for (const [name, raw] of Object.entries(value.params)) {
-    params[name] = resolveParam(t, raw);
-  }
-  return t(value.key, params);
+export function renderEnglish(value: Text): string {
+  english ??= englishMessages();
+  return renderMsg((key, params) => interpolate(english![key] ?? key, params), value);
 }
-
-/** Render a list of descriptors — the History pane's per-turn effects. */
-export function renderAll(t: Translate, values: Text[]): string[] {
-  return values.map((v) => renderMsg(t, v));
-}
-
-export type { Msg, Text };

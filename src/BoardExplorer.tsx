@@ -75,7 +75,7 @@ import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
 import { useI18n, useT } from './i18n/I18nProvider';
-import { renderMsg } from './i18n/msg';
+import { renderAll, renderMsg } from './i18n/msg';
 import T from './i18n/Trans';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import {
@@ -167,7 +167,7 @@ export function WarpTileBreakdown({
             .sort((a, b) => a - b)
             .map((e) => (
               <li key={e}>
-                {warpTileLabel(e)} — {tiles(byEra[e])}
+                {renderMsg(t, warpTileLabel(e))} — {tiles(byEra[e])}
               </li>
             ))}
         </ul>
@@ -1149,7 +1149,7 @@ export default function BoardExplorer({
             'Out of Exosuits — its final Time Travel, then it passes',
           ],
         );
-        setPassMsg(instructions.map((i) => i.text).join(' '));
+        setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));
       }
       return;
     }
@@ -1160,7 +1160,7 @@ export default function BoardExplorer({
       commit(next, tokens, `Era ${state.era} · Bot passed`, [
         `You passed and it has taken its ${Chronobot.chronobotMinActions(state)} Actions — the Action Rounds Phase ends`,
       ]);
-      setPassMsg(instructions.map((i) => i.text).join(' '));
+      setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));
       setBotDie(null);
       setActiveToken(null);
       botDieRef.current = null;
@@ -1400,7 +1400,7 @@ export default function BoardExplorer({
             'Out of Exosuits — its final Time Travel, then it passes',
           ],
         );
-        setPassMsg(instructions.map((i) => i.text).join(' '));
+        setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));
       } else {
         resolve(active, {});
       }
@@ -2587,7 +2587,9 @@ export function ParadoxPhaseBody({
   // Anomaly) so the player is actually told to remove the tile.
   const rollLine = (res: { instructions: Instruction[] }) => {
     const ins = res.instructions[0];
-    return ins ? `${ins.text}${ins.detail ? ' ' + ins.detail : ''}` : '';
+    if (!ins) return '';
+    const detail = ins.detail ? ' ' + renderMsg(t, ins.detail) : '';
+    return `${renderMsg(t, ins.text)}${detail}`;
   };
 
   const answerYes = () => {
@@ -4510,7 +4512,9 @@ export function DetailPanel({
                   params={{
                     bot: botName,
                     tile:
-                      timeTravel.fromEra != null ? warpTileLabel(timeTravel.fromEra) : '',
+                      timeTravel.fromEra != null
+                        ? renderMsg(t, warpTileLabel(timeTravel.fromEra))
+                        : '',
                   }}
                 />
               </p>

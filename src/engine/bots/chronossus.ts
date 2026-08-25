@@ -11,6 +11,10 @@
 // Feature 3 lands the state slice + Power Up. Later features add Action Rounds
 // (F4), scoring/Solo Objectives (F5), and the view (F6).
 
+// INTERIM (message-descriptor refactor): `warpTileLabel` now returns a descriptor, and
+// these instructions are still English sentences until Feature 3 converts this file.
+// Rendering it in English here keeps the output identical; the calls go away with them.
+import { englishText } from '../messages';
 import type { GameState, Instruction, EnergyPool, ChronossusState } from '../state';
 import type { BreakthroughShape, GameConfig, Resource, Worker } from '../types';
 import { BREAKTHROUGH_SHAPES } from '../types';
@@ -1964,7 +1968,7 @@ function resolveTimeTravel(
     const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
     const from =
       removal.era != null
-        ? `from ${warpTileLabel(removal.era)}`
+        ? `from ${englishText(warpTileLabel(removal.era))}`
         : 'from the past Timeline tile where it has the most (oldest if tied)';
     instr.push({ id: `tt-${n}`, text: `Remove one of the Chronossus’s Warp tiles ${from}; advance its Time Travel marker 1 spot.`, detail: `The marker is now worth ${TIME_TRAVEL_VP[spot]} VP.` });
   }
@@ -2503,7 +2507,7 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
         id: 'paradox-anomaly',
         text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
         detail: removed
-          ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
+          ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? englishText(warpTileLabel(from.era)) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
             (total > 0 ? ` to ${total}.` : ' to 0.')
           : 'It has no Warp tiles on the Timeline to remove.',
       });
@@ -2569,7 +2573,7 @@ export function resolveVariableAnomalyGain(
         `The Chronossus takes the ${chosen.vp} VP Anomaly` +
         (chosen.retrieveEligible ? ' and retrieves a Warp tile.' : '.'),
       detail: removed
-        ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}.`
+        ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? englishText(warpTileLabel(from.era)) : 'the Timeline tile where it has the most (oldest if tied)'}.`
         : chosen.retrieveEligible
           ? 'It has no Warp tiles on the Timeline to remove.'
           : undefined,

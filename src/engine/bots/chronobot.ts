@@ -13,6 +13,7 @@ import type {
 } from '../types';
 import { BREAKTHROUGH_SHAPES } from '../types';
 import { placeWarpTiles, removeWarpTile, warpRemoval, warpTileLabel } from '../warpTiles';
+import { msg, plural, type Msg, type MsgList } from '../message';
 import {
   createInitialState,
   emptyChronobotState,
@@ -303,30 +304,30 @@ function setupInstructions(): Instruction[] {
   return [
     {
       id: 'setup-board',
-      text: 'Use the Chronobot side of the Solo board; place it next to the Main board.',
+      text: msg('instr.chronobot.setup.board'),
     },
     {
       id: 'setup-exosuits',
-      text: 'Give the Chronobot its 6 Exosuits and 8 Warp tiles.',
-      detail: 'It receives no Starting Assets and no Workers.',
+      text: msg('instr.chronobot.setup.exosuits'),
+      detail: msg('instr.chronobot.setup.exosuits.detail'),
     },
     {
       id: 'setup-commands',
-      text: 'Place the 4 Command tokens on the 4 marked positions on the Chronobot board.',
-      detail: 'The Chronobot does not use a Focus marker. Its die is the AI die (the Flux die reused).',
+      text: msg('instr.chronobot.setup.commands'),
+      detail: msg('instr.chronobot.setup.commands.detail'),
     },
     {
       id: 'setup-banner',
-      text: "Place the Chronobot's Banner on the First Player spot — it is First Player in Era 1.",
-      detail: 'You take 1 additional Water for being the second player.',
+      text: msg('instr.chronobot.setup.banner'),
+      detail: msg('instr.chronobot.setup.banner.detail'),
     },
     {
       id: 'setup-endgame',
-      text: 'Leave all Endgame Condition cards in the box.',
+      text: msg('instr.chronobot.setup.endgame'),
     },
     {
       id: 'setup-player',
-      text: 'Choose the "A" or "B" side of your Player board and set up your own game normally.',
+      text: msg('instr.chronobot.setup.player'),
     },
   ];
 }
@@ -373,7 +374,7 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
     if (bot.anomalies >= 3) {
       instructions.push({
         id: 'paradox-capped',
-        text: 'The Chronobot already has 3 Anomalies — it gains no Anomaly and removes no Warp tile. It stops rolling.',
+        text: msg('instr.chronobot.paradox.capped'),
       });
     } else {
       bot.anomalies += 1;
@@ -387,11 +388,16 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       }
       instructions.push({
         id: 'paradox-anomaly',
-        text: `The Chronobot rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
+        text: msg('instr.chronobot.paradox.anomaly', { gain }),
         detail: removed
-          ? `Remove one of the Chronobot’s Warp tiles from ${from.era != null ? warpTileLabel(from.era) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
-            (total > 0 ? ` to ${total}.` : ' to 0.')
-          : 'It has no Warp tiles on the Timeline to remove.',
+          ? msg('instr.chronobot.paradox.anomaly.removed', {
+              tile:
+                from.era != null
+                  ? warpTileLabel(from.era)
+                  : msg('board.timelineTile.mostOldest'),
+              n: total,
+            })
+          : msg('instr.chronobot.paradox.anomaly.none'),
       });
     }
   } else {
@@ -400,8 +406,8 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       id: 'paradox-roll',
       text:
         gain === 0
-          ? 'The Chronobot rolls a blank — no Paradox this roll. It keeps rolling.'
-          : `The Chronobot rolls +${gain} Paradox — its tracker is now ${total}. It keeps rolling.`,
+          ? msg('instr.chronobot.paradox.blank')
+          : msg('instr.chronobot.paradox.gain', { gain, total }),
     });
   }
 
@@ -443,10 +449,8 @@ export function resolvePowerUp(state: GameState): GameState {
   const instructions: Instruction[] = [
     {
       id: 'powerup',
-      text: `Power up ${bot.exosuitsAvailable} of the Chronobot's Exosuits.`,
-      detail:
-        `Eras 1–4 power up 6 Exosuits; Eras 5–7 power up 4 (this is Era ${state.era}).` +
-        ' It neither gains nor spends Energy Cores or Water. Pile the powered-up Exosuit markers on the upper-right hex slot.',
+      text: msg('instr.chronobot.powerUp', { n: bot.exosuitsAvailable }),
+      detail: msg('instr.chronobot.powerUp.detail', { era: state.era }),
     },
   ];
   return advance(state, bot, 'warp', instructions, `Power Up phase (${bot.exosuitsAvailable} Exosuits).`);
@@ -466,11 +470,11 @@ export function resolveWarp(state: GameState, paradoxes: number): GameState {
   const instructions: Instruction[] = [
     {
       id: 'warp',
-      text: place > 0
-        ? `Place ${place} Warp tile${place === 1 ? '' : 's'} for the Chronobot on the Timeline.`
-        : 'The Chronobot places no Warp tiles this Era.',
-      detail:
-        'Warping happens in player order. The Chronobot gains nothing for its Warp tiles and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)',
+      text:
+        place > 0
+          ? plural('instr.chronobot.warp.place', place)
+          : msg('instr.chronobot.warp.none'),
+      detail: msg('instr.chronobot.warp.detail'),
     },
   ];
   return advance(state, bot, 'actions', instructions, `Warp phase (placed ${place}).`);
@@ -545,24 +549,35 @@ export function takeActionTurn(
 
   instr.push({
     id: `turn-die-${bot.totalActions}`,
-    text: `AI die shows ${input.dieRoll} → the Command token with that number performs the "${def.label}" action on its space, then advances along its colored arrow.`,
+    // The Action's name is a nested descriptor, not `def.label`: it is already published
+    // as `action.<id>.label`, so interpolating the English one would put a stray English
+    // word in the middle of a translated sentence.
+    text: msg('instr.chronobot.turn.die', {
+      die: input.dieRoll,
+      action: msg(`action.${input.actionId}.label`),
+    }),
     detail: def.summary,
   });
 
   const failNoSpace = () => {
     instr.push({
       id: `fail-nospace-${bot.totalActions}`,
-      text: 'No available Action space — the Chronobot does NOT place an Exosuit and takes +1 VP.',
+      text: msg('instr.chronobot.failed.noSpace'),
       effect: { vp: 1 },
     });
     bot.vp += 1;
   };
-  const failCantPerform = (why: string) => {
+  // `why` is a descriptor, and the "places an Exosuit and" branch is a SEPARATE KEY rather
+  // than an interpolated fragment: a conditional English clause dropped into the middle of
+  // a sentence has no grammatical home in another language.
+  const failCantPerform = (why: Msg) => {
     const place = def.placesExosuit;
     if (place) bot.exosuitsAvailable = Math.max(0, bot.exosuitsAvailable - 1);
     instr.push({
       id: `fail-perform-${bot.totalActions}`,
-      text: `Failed Action: ${why} — the Chronobot ${place ? 'places an Exosuit and ' : ''}takes +1 VP instead.`,
+      text: msg(place ? 'instr.chronobot.failed.placing' : 'instr.chronobot.failed.plain', {
+        reason: why,
+      }),
       effect: { vp: 1 },
     });
     bot.vp += 1;
@@ -577,7 +592,7 @@ export function takeActionTurn(
     case 'reboot':
       instr.push({
         id: `reboot-${bot.totalActions}`,
-        text: 'Reboot: the Chronobot does nothing (no Exosuit, no VP, not a Failed Action).',
+        text: msg('instr.chronobot.reboot'),
       });
       break;
 
@@ -597,14 +612,14 @@ export function takeActionTurn(
         bot.vp += 1;
         instr.push({
           id: `rgr-genius-${bot.totalActions}`,
-          text: 'Recruit a Genius for the Chronobot (+1 VP).',
+          text: msg('instr.chronobot.recruitGenius.genius'),
           effect: { vp: 1 },
         });
         consumeExosuit(bot, def);
       } else {
         instr.push({
           id: `rgr-research-${bot.totalActions}`,
-          text: 'No Genius available — perform a Research action instead.',
+          text: msg('instr.chronobot.recruitGenius.research'),
         });
         resolveResearch(bot, instr, input.shape);
         consumeExosuit(bot, def);
@@ -624,7 +639,11 @@ export function takeActionTurn(
       const discards = chooseRemoveAnomalyDiscards(bot);
       if (bot.anomalies < 1 || !discards) {
         failCantPerform(
-          bot.anomalies < 1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend',
+          msg(
+            bot.anomalies < 1
+              ? 'instr.chronobot.reason.noAnomaly'
+              : 'instr.chronobot.reason.lacksCubes',
+          ),
         );
       } else {
         for (const r of discards) bot.resources[r] -= 1;
@@ -632,8 +651,8 @@ export function takeActionTurn(
         consumeExosuit(bot, def);
         instr.push({
           id: `ra-${bot.totalActions}`,
-          text: `Discard ${describeCubes(discards)} from the Chronobot and remove 1 Anomaly.`,
-          detail: 'Discards the Resources it has most of; ties: Titanium > Gold > Uranium > Neutronium (1 Neutronium = 2 cubes).',
+          text: msg('instr.chronobot.removeAnomaly.done', { cubes: describeCubes(discards) }),
+          detail: msg('instr.chronobot.removeAnomaly.detail'),
         });
       }
       break;
@@ -644,9 +663,11 @@ export function takeActionTurn(
     case 'construct-powerplant':
     case 'construct-support': {
       const type = input.actionId.replace('construct-', '') as keyof ChronobotState['buildings'];
-      const label = def.label.replace('Construct — ', '');
+      // `piece.<type>` is the building's published name. The old code sliced it out of the
+      // Action label with `replace('Construct — ', '')`, which only works in English.
+      const label = msg(`piece.${type}`);
       if (bot.buildings[type] >= 3) {
-        failCantPerform(`it already has 3 ${label} buildings`);
+        failCantPerform(msg('instr.chronobot.reason.threeBuildings', { building: label }));
       } else {
         bot.buildings[type] += 1;
         consumeExosuit(bot, def);
@@ -657,13 +678,13 @@ export function takeActionTurn(
           bot.buildingVps[type].push(vp);
           instr.push({
             id: `construct-${bot.totalActions}`,
-            text: `Give the Chronobot the higher-VP ${label} (secondary stack if tied) — worth ${vp} VP. Add ${vp} to its score, then discard the tile.`,
+            text: msg('instr.chronobot.construct.knownVp', { building: label, vp }),
             effect: { vp },
           });
         } else {
           instr.push({
             id: `construct-${bot.totalActions}`,
-            text: `Give the Chronobot the higher-VP ${label} (secondary stack if tied); record its printed VP, then discard the tile.`,
+            text: msg('instr.chronobot.construct.recordVp', { building: label }),
             requiresInput: true,
           });
         }
@@ -675,7 +696,11 @@ export function takeActionTurn(
       const discard = chooseBreakthroughDiscard(bot);
       if (bot.superprojects >= 3 || !discard) {
         failCantPerform(
-          bot.superprojects >= 3 ? 'it already has 3 Superprojects' : 'it has no Breakthrough to discard',
+          msg(
+            bot.superprojects >= 3
+              ? 'instr.chronobot.reason.threeSuperprojects'
+              : 'instr.chronobot.reason.noBreakthrough',
+          ),
         );
       } else {
         bot.breakthroughs[discard] -= 1;
@@ -688,13 +713,18 @@ export function takeActionTurn(
           bot.superprojectVps.push(vp);
           instr.push({
             id: `superproject-${bot.totalActions}`,
-            text: `Discard 1 ${discard} Breakthrough, then give the Chronobot the highest-VP face-up Superproject (oldest if tied) — worth ${vp} VP. Add ${vp} to its score.`,
+            text: msg('instr.chronobot.superproject.knownVp', {
+              shape: msg(`piece.shape.${discard}`),
+              vp,
+            }),
             effect: { vp },
           });
         } else {
           instr.push({
             id: `superproject-${bot.totalActions}`,
-            text: `Discard 1 ${discard} Breakthrough, then give the Chronobot the highest-VP face-up Superproject (oldest if tied); record its VP.`,
+            text: msg('instr.chronobot.superproject.recordVp', {
+              shape: msg(`piece.shape.${discard}`),
+            }),
             requiresInput: true,
           });
         }
@@ -705,7 +735,7 @@ export function takeActionTurn(
     case 'evacuation':
       instr.push({
         id: `evac-${bot.totalActions}`,
-        text: 'The Chronobot never takes Evacuation — advance the token per the board routing.',
+        text: msg('instr.chronobot.evacuation'),
       });
       break;
   }
@@ -748,11 +778,13 @@ function resolveTimeTravel(bot: ChronobotState, instr: Instruction[], era: numbe
   if (!removal.eligible) {
     instr.push({
       id: `tt-fail-${bot.totalActions}`,
-      text:
-        (bot.warpTilesOnTimeline > 0
-          ? 'The Chronobot’s only Warp tiles are on the current Era’s Timeline tile, which Time Travel may not take from'
-          : 'No Warp tiles remain on the Timeline') +
-        ' — Time Travel is Failed; the Chronobot takes +1 VP (no Exosuit).',
+      // Two whole sentences rather than one with a spliced-in clause: the shared tail
+      // ("— Time Travel is Failed; …") reads differently depending on what precedes it.
+      text: msg(
+        bot.warpTilesOnTimeline > 0
+          ? 'instr.chronobot.timeTravel.failCurrentEra'
+          : 'instr.chronobot.timeTravel.failNone',
+      ),
       effect: { vp: 1 },
     });
     bot.vp += 1;
@@ -762,8 +794,13 @@ function resolveTimeTravel(bot: ChronobotState, instr: Instruction[], era: numbe
     bot.timeTravelTrack += 1;
     instr.push({
       id: `tt-${bot.totalActions}`,
-      text: `Remove one of the Chronobot’s Warp tiles from ${removal.era != null ? warpTileLabel(removal.era) : 'the past Timeline tile where it has the most (oldest if tied)'}; advance its Time Travel marker 1 spot along the track.`,
-      detail: `Time Travel places no Exosuit. The marker is now worth ${timeTravelVp(bot)} VP.`,
+      text: msg('instr.chronobot.timeTravel.done', {
+        tile:
+          removal.era != null
+            ? warpTileLabel(removal.era)
+            : msg('board.timelineTile.mostOldestPast'),
+      }),
+      detail: msg('instr.chronobot.timeTravel.done.detail', { vp: timeTravelVp(bot) }),
     });
   }
 }
@@ -777,12 +814,12 @@ function resolveResearch(
     bot.breakthroughs[shape] += 1;
     instr.push({
       id: `research-${bot.totalActions}`,
-      text: `Research: the shape die shows ${shape} — give the Chronobot any Breakthrough of that shape.`,
+      text: msg('instr.chronobot.research.rolled', { shape: msg(`piece.shape.${shape}`) }),
     });
   } else {
     instr.push({
       id: `research-noshape-${bot.totalActions}`,
-      text: 'Research: roll the shape die and give the Chronobot any Breakthrough of the rolled shape.',
+      text: msg('instr.chronobot.research.roll'),
       requiresInput: true,
     });
   }
@@ -794,9 +831,8 @@ function resolveRecruit(bot: ChronobotState, instr: Instruction[], recruited?: W
   bot.vp += 1;
   instr.push({
     id: `recruit-${bot.totalActions}`,
-    text: `Recruit a ${target} for the Chronobot (+1 VP).`,
-    detail:
-      'Priority: Genius > Administrator > Engineer > Scientist. If unavailable, take the next available type by that order (still +1 VP). No Recruit bonus.',
+    text: msg('instr.chronobot.recruit.worker', { worker: msg(`piece.${target}`) }),
+    detail: msg('instr.chronobot.recruit.detail'),
     effect: { vp: 1 },
   });
   // Set bonus: once it holds all 4 Worker types, discard one of each for +5 VP.
@@ -805,7 +841,7 @@ function resolveRecruit(bot: ChronobotState, instr: Instruction[], recruited?: W
     bot.vp += 5;
     instr.push({
       id: `recruit-set-${bot.totalActions}`,
-      text: 'The Chronobot now holds all 4 Worker types — discard one of each and add 5 VP to its score.',
+      text: msg('instr.chronobot.recruit.set'),
       effect: { vp: 5 },
     });
   }
@@ -852,11 +888,10 @@ function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource
   for (const r of gained) bot.resources[r] += 1;
   instr.push({
     id: `mine-${bot.totalActions}`,
-    text: `Mine: give the Chronobot ${gained.join(' + ')} from the Mine space you used.`,
-    detail:
-      'It wants the 2 Resources it has fewest of, decided one pick at a time; ties: ' +
-      'Neutronium > Uranium > Gold > Titanium. Completing the set of all 4 is what it is ' +
-      'after, so a Resource it has none of always comes first.',
+    text: msg('instr.chronobot.mine.gained', {
+      cubes: { list: gained.map((r) => msg(`ui.pieceInline.${r}`)), sep: 'msg.cubeJoin', last: 'msg.cubeJoin' },
+    }),
+    detail: msg('instr.chronobot.mine.detail'),
   });
   // Set bonus: once it holds all 4 tracked Resource types, discard one of each for +5 VP.
   if (SET_BONUS_RESOURCES.every((r) => bot.resources[r] > 0)) {
@@ -864,7 +899,7 @@ function resolveMine(bot: ChronobotState, instr: Instruction[], mined?: Resource
     bot.vp += 5;
     instr.push({
       id: `mine-set-${bot.totalActions}`,
-      text: 'The Chronobot now holds all 4 Resource types — discard one of each and add 5 VP to its score.',
+      text: msg('instr.chronobot.mine.set'),
       effect: { vp: 5 },
     });
   }
@@ -1029,7 +1064,7 @@ export function resolveBotPass(state: GameState): ActionTurnResult {
     const instr: Instruction[] = [
       {
         id: `pass-tt-${bot.totalActions}`,
-        text: 'The Chronobot is out of Exosuits — it takes one final Time Travel Action, then passes.',
+        text: msg('instr.chronobot.pass.finalTimeTravel'),
       },
     ];
     resolveTimeTravel(bot, instr, state.era);
@@ -1044,10 +1079,10 @@ export function resolveBotPass(state: GameState): ActionTurnResult {
     {
       id: `pass-${state.chronobot.totalActions}`,
       text: already
-        ? 'The Chronobot has already passed for this Era.'
+        ? msg('instr.chronobot.pass.already')
         : state.playerPassed
-          ? `You passed and the Chronobot has taken its minimum ${min} Actions — the Action Rounds Phase ends immediately.`
-          : 'The Chronobot passes for this Era.',
+          ? msg('instr.chronobot.pass.playerPassed', { min })
+          : msg('instr.chronobot.pass.plain'),
     },
   ];
   const next = markBotPassed({ ...state, currentInstructions: instr });
@@ -1067,11 +1102,11 @@ export function resolveCleanUp(state: GameState): GameState {
   const instructions: Instruction[] = [
     {
       id: 'cleanup-retrieve',
-      text: "Retrieve the Chronobot's Exosuits along with your own.",
+      text: msg('instr.chronobot.cleanUp.retrieve'),
     },
     {
       id: 'cleanup-collapse',
-      text: 'After the Impact, follow the usual procedure for flipping Collapsing Capital tiles.',
+      text: msg('instr.chronobot.cleanUp.collapse'),
     },
   ];
   return {
@@ -1169,10 +1204,19 @@ function advance(
   };
 }
 
-function describeCubes(cubes: Resource[]): string {
+/**
+ * "1 gold + 2 titanium" as a descriptor. The resource names are the published
+ * `ui.pieceInline.*` keys, and the " + " joiner is `msg.cubeJoin` — a key, because a
+ * language may not join a list that way.
+ */
+function describeCubes(cubes: Resource[]): MsgList {
   const counts: Partial<Record<Resource, number>> = {};
   for (const c of cubes) counts[c] = (counts[c] ?? 0) + 1;
-  return Object.entries(counts)
-    .map(([r, n]) => `${n} ${r}`)
-    .join(' + ');
+  return {
+    list: Object.entries(counts).map(([r, n]) =>
+      msg('ui.dialog.anomaly.cubes', { n: n ?? 0, resource: msg(`ui.pieceInline.${r}`) }),
+    ),
+    sep: 'msg.cubeJoin',
+    last: 'msg.cubeJoin',
+  };
 }

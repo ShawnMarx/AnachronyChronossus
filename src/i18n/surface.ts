@@ -21,10 +21,11 @@
 //     the `QUANTUM_LOOPS_*` and most `DOOMSDAY_*` blocks). A key here costs a translator
 //     real effort, so only publish one the app can actually show; add it when a screen
 //     starts rendering it.
-//   * Instructions generated inside the engine (`Instruction.text`). Those are assembled
-//     from interpolated English inside the pure bot functions and persisted to History as
-//     rendered strings; they need the message-descriptor refactor before a key can reach
-//     them. See docs/plans for the phasing.
+// Engine instructions ARE in the surface (`instr.*`, plus the `hist.*` History lines and
+// a few shared `board.*` / `msg.*` keys). They were the last thing a locale file could not
+// reach: the bots used to assemble English sentences and persist them to History, so a
+// translated one would have frozen in whatever language was active when the turn happened.
+// They are message descriptors now — see `src/engine/message.ts`.
 
 import {
   CHRONOBOT_ACTIONS,
@@ -34,6 +35,7 @@ import {
   CHRONOBOT_SETUP_RULE_INTRO,
   CHRONOBOT_SETUP_RULE_BULLETS,
 } from '../engine/rules/chronobotActions';
+import { ENGINE_MESSAGES } from '../engine/messages';
 import { CHRONOSSUS_TILES } from '../board/chronossusTiles';
 import { TILE_DESC, TILE_INSTR_EN } from '../board/tileText';
 import { BOARD_COUNTERS } from '../board/chronobotHotspots';
@@ -88,6 +90,14 @@ export function englishMessages(): Messages {
 
   // --- App chrome (the app's own voice) -------------------------------------
   for (const [key, value] of Object.entries(UI_STRINGS)) put(`ui.${key}`, value);
+
+  // --- Engine messages (instructions + History lines) -----------------------
+  // What the bots and the History summarizers say. The engine returns `{key, params}`
+  // descriptors rather than sentences, because these get PERSISTED — a saved sentence
+  // freezes in whatever language and wording wrote it, while a saved descriptor is
+  // re-rendered on every read. Each bot's defaults live beside the bot, in its own
+  // `*.messages.ts`, and `ENGINE_MESSAGES` collects them.
+  for (const [key, value] of Object.entries(ENGINE_MESSAGES)) put(key, value);
 
   // --- Chronobot Action catalog (verbatim rulebook, pp. 4-6) ----------------
   for (const def of Object.values(CHRONOBOT_ACTIONS)) {
