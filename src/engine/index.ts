@@ -28,6 +28,7 @@ registerEngine({
 
 export * from './types';
 export * from './state';
+export * from './message';
 export { getBot, listBots, registerBot } from './bots/BotModule';
 export type { BotModule } from './bots/BotModule';
 export { engineFor, registerEngine, hasEngine } from './bots/soloEngine';

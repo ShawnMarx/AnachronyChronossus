@@ -50,6 +50,7 @@ import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
 import { summarizeChronossusExtras } from './game/chronossusHistory';
 import { clearPersisted, peekSaved, type HistoryEntry } from './game/undo';
+import { isBotTurnEntry } from './game/historyLabels';
 import { clearSavedChronobot } from './BoardExplorer';
 import { ActionIcon } from './board/ActionIcon';
 import RulesBox from './phases/RulesBox';
@@ -3265,9 +3266,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // in the full History pane but are not Action Rounds "turns" — including the phase-entry
   // entries `commitPhase` pushes (`Era N · → Power Up`), which were being counted as turns.
   const thisEraEntries: HistoryEntry[] = entries.filter(
-    (e) =>
-      e.state.era === state.era &&
-      !/You passed|Power Up|Warp|Paradox|· → /.test(e.label),
+    (e) => e.state.era === state.era && isBotTurnEntry(e),
   );
   const turnsThisEra = thisEraEntries.length;
 

@@ -4,24 +4,9 @@
 // (label / die / effects), so the same pane renders Chronobot and Chronossus turns.
 
 import type { HistoryEntry } from '../game/undo';
+import { isSupersededPhaseEntry } from '../game/historyLabels';
 import HistoryText from './HistoryText';
 import { useT } from '../i18n/I18nProvider';
-
-/**
- * Entering a phase commits "Era 1 · → Warp", and the phase's own result then commits
- * "Era 1 · Warp: placed 1" — so Power Up and Warp each showed twice, once with nothing on
- * it. The bare arrow row is dropped when the very next entry reports what that same phase
- * did; a phase where nothing happened keeps its arrow row, since that is its only trace.
- *
- * This is display only: both entries stay on the undo stack, so every phase move is still
- * a separate ↶ Undo step.
- */
-export function isSupersededPhaseEntry(entry: HistoryEntry, next: HistoryEntry | undefined): boolean {
-  if (entry.effects.length > 0 || entry.die != null) return false;
-  const arrow = /^(Era \d+) · → (.+)$/.exec(entry.label);
-  if (!arrow || !next) return false;
-  return next.label.startsWith(`${arrow[1]} · ${arrow[2]}:`);
-}
 
 export default function HistoryPane({
   entries,

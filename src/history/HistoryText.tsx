@@ -1,13 +1,21 @@
-// HistoryText — renders a History label/effect string, swapping icon tokens for the
-// game's own component art and `**…**` for bold.
+// HistoryText — renders a History label/effect, swapping icon tokens for the game's own
+// component art and `**…**` for bold.
 //
-// History entries are plain strings (they are persisted to localStorage and shared by both
-// bots), so a line that wants a game icon writes a token instead: `{flux} Blink — …`.
-// Only real in-game component art belongs here — never decorative emoji.
+// It takes a `Text`: a message descriptor from the engine, or — on a save written before
+// the descriptor refactor — a finished English sentence. Either way it is RESOLVED FIRST
+// and the markup is read off the resolved string, so a locale's own translation can carry
+// the icon and the bold runs and put them where its grammar needs them.
+//
+// A line that wants a game icon writes a token: `{flux} Blink — …`. Only real in-game
+// component art belongs here — never decorative emoji.
 //
 // The same reason drives the bold markup: by convention every board location the player
 // has to act on reads bold wherever the app shows it (see CLAUDE.md). Dialogs write a
 // plain <b>; a persisted string can't, so it carries `**…**` instead.
+
+import type { Text } from '../engine/message';
+import { renderMsg } from '../i18n/msg';
+import { useT } from '../i18n/I18nProvider';
 
 const ICONS: Record<string, { src: string; alt: string }> = {
   flux: { src: '/assets/solo/chronossus/flux-core.png', alt: 'Flux Core' },
@@ -40,10 +48,11 @@ export function historySegments(text: string): HistorySegment[] {
   return parts;
 }
 
-export default function HistoryText({ text }: { text: string }) {
+export default function HistoryText({ text }: { text: Text }) {
+  const t = useT();
   return (
     <>
-      {historySegments(text).map((seg, i) => {
+      {historySegments(renderMsg(t, text)).map((seg, i) => {
         if (seg.kind === 'text') return seg.value;
         if (seg.kind === 'bold') return <b key={i}>{seg.value}</b>;
         const icon = ICONS[seg.value];

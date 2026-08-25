@@ -1,3 +1,4 @@
+import type { Text } from './message';
 import type {
   BotModeId,
   BreakthroughShape,
@@ -15,10 +16,15 @@ import type {
  */
 export interface Instruction {
   id: string;
-  /** Short imperative text, e.g. "Place a Chronobot Exosuit on the Mine". */
-  text: string;
+  /**
+   * Short imperative text, e.g. "Place a Chronobot Exosuit on the Mine".
+   *
+   * A `Msg` descriptor from the engine; a bare string only where a legacy save carries
+   * one (see `./message`). Render it with `renderMsg`, never by reading it directly.
+   */
+  text: Text;
   /** Optional longer explanation / rules reminder (the "why" — JIT rule). */
-  detail?: string;
+  detail?: Text;
   /** Resources/VP the bot gains or loses, for the player to apply. */
   effect?: ResourcePool & { vp?: number };
   /** Marks a decision the player must resolve on their physical board. */

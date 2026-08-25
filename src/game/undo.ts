@@ -7,19 +7,26 @@
 // (GameState); the transient per-view UI slice (Command-token/marker positions +
 // the shown AI die) is generic — `TUi`.
 
-import type { GameState } from '../engine';
+import type { GameState, Text } from '../engine';
 
 /** Cap the undo/history depth so persisted state stays bounded. */
 export const UNDO_CAP = 50;
 
 /** The parts of an entry the History pane renders (bot-agnostic). */
 export interface HistoryEntry {
-  /** One-line summary of the turn (e.g. "Era 2 · Construct — Factory · +3 VP"). */
-  label: string;
+  /**
+   * One-line summary of the turn (e.g. "Era 2 · Construct — Factory · +3 VP").
+   *
+   * A message descriptor, so it is re-rendered in the reader's language on every read —
+   * a saved sentence would freeze in whatever language wrote it. A bare string is a
+   * LEGACY value from a save written before that change; those still render as written,
+   * which is why `PersistedGame.version` was deliberately NOT bumped.
+   */
+  label: Text;
   /** The AI die rolled for a bot turn, shown as the die symbol in History. */
   die?: number | null;
   /** Concise per-turn change-list (Exosuit placed, cubes gained, +5 set, etc.). */
-  effects: string[];
+  effects: Text[];
 }
 
 /**

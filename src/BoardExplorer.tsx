@@ -75,6 +75,7 @@ import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
 import { useI18n, useT } from './i18n/I18nProvider';
+import { renderMsg } from './i18n/msg';
 import T from './i18n/Trans';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
 import {
@@ -4568,7 +4569,7 @@ export function DetailPanel({
         {/* Failed Action notice — the only post-action detail we surface. */}
         {!pending && failedInstr && (
           <div className="place-prompt failed-note">
-            <p className="pp-instruct">{failedInstr.text}</p>
+            <p className="pp-instruct">{renderMsg(t, failedInstr.text)}</p>
           </div>
         )}
 

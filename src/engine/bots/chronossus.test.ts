@@ -72,6 +72,13 @@ import type { GameConfig, Worker as EngineWorker } from '../types';
 import type { ChronossusActionInput as ChronossusActionInputType } from './chronossus';
 import type { ChronossusState } from '../state';
 
+// INTERIM (message-descriptor refactor, Feature 1): `Instruction.text` is now a `Text`,
+// so these prose assertions cannot read it directly. Feature 3 converts this file to
+// assert KEYS instead — which is the point of the refactor — and this helper goes away.
+const textOf = (i: { text: unknown }): string =>
+  typeof i.text === 'string' ? i.text : String((i.text as { key: string }).key);
+
+
 const CONFIG: GameConfig = {
   bot: 'chronossus',
   expansions: ['base'],
@@ -260,7 +267,7 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     const { state, instructions } = resolveAction(s, { actionId: 'time-travel' });
     expect(state.chronossus!.warpTilesByEra).toEqual({ 1: 1, 2: 1, 4: 1 });
     expect(state.chronossus!.warpTilesOnTimeline).toBe(3);
-    expect(instructions.some((i) => i.text.includes('the Era 2 Timeline tile'))).toBe(true);
+    expect(instructions.some((i) => textOf(i).includes('the Era 2 Timeline tile'))).toBe(true);
   });
 
   it('Time Travel is Failed when every Warp tile is on the CURRENT Era’s tile', () => {
@@ -275,7 +282,7 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     expect(state.chronossus!.warpTilesOnTimeline).toBe(2); // nothing removed
     expect(state.chronossus!.timeTravelTrack).toBe(0);
     expect(state.chronossus!.vp).toBe(before + 1); // Failed Action
-    expect(instructions.some((i) => i.text.includes('current Era’s Timeline tile'))).toBe(true);
+    expect(instructions.some((i) => textOf(i).includes('current Era’s Timeline tile'))).toBe(true);
   });
 
   it('no-space Failed: +1 VP AND discards an active Exosuit (every placing action)', () => {
@@ -1211,7 +1218,7 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
       actionId: 'tile-extract',
       placementSpace: 'world-council',
     });
-    expect(instructions.some((i) => /Valley Capital Action space/.test(i.text))).toBe(true);
+    expect(instructions.some((i) => /Valley Capital Action space/.test(textOf(i)))).toBe(true);
   });
 
   it('can be Blinked INTO: the moved Exosuit leaves the Main board, none is spent', () => {
@@ -1232,7 +1239,7 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
       { action: 'recruit', space: 'action', hasCore: true },
     ]);
     expect(next.chronossus!.exosuitsAvailable).toBe(3); // unchanged — no new Exosuit
-    expect(instructions.some((i) => /Blink: move that Exosuit/.test(i.text))).toBe(true);
+    expect(instructions.some((i) => /Blink: move that Exosuit/.test(textOf(i)))).toBe(true);
   });
 
   it('every Main-board Exosuit is Blink-ready for a Valley Action (none is on it)', () => {
