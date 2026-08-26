@@ -194,6 +194,7 @@ SHOT_DIR=/tmp node pw-pass.mjs http://localhost:5173/ "<mode label>"   # pass-at
 SHOT_DIR=/tmp node pw-quantum.mjs        # Quantum Loops' Warp check (ROLL= ALT= UNDO= SETUP=)
 SHOT_DIR=/tmp node pw-shapedie.mjs       # the shape die on Research; ASSIM=1 for Assimilate
 SHOT_DIR=/tmp node pw-chronobot-parity.mjs   # phase-screen Undo/History + roll persistence
+SHOT_DIR=/tmp node pw-descriptors.mjs    # a coerced descriptor / an unresolved key on screen
 SHOT_DIR=/tmp node pw-nostorage.mjs      # the app under a localStorage that THROWS (BOT=chronobot)
 SHOT_DIR=/tmp node pw-i18n-snapshot.mjs  # 36 screens: text + layout geometry + screenshot
 node pw-i18n-diff.mjs <before> <after>   # compare two captures (text/layout strict, pixels budgeted)
@@ -489,6 +490,32 @@ Keep it that way; a change that requires a second edit to add a language is a re
   no code change. Serve both sides with `vite preview` (build `origin/main` in a worktree).
 - `en.json` is **generated** — `UPDATE_LOCALES=1 npm test`. The suite also checks every other
   locale file for a valid header, no unknown keys, and `{placeholder}` parity with English.
+- **The engine returns `{key, params}`, never prose** (`src/engine/message.ts`). Instructions
+  and History lines are PERSISTED, so a finished sentence freezes in the language and wording
+  that wrote it; a saved descriptor is re-rendered on every read, which is why this is worth
+  doing in an English-only build too — rewording an instruction fixes **old saves**. English
+  defaults live per bot, beside the rules, in `bots/<bot>.messages.ts`, and `engine/messages.ts`
+  collects them for `surface.ts`. Rules when adding one: a **mid-sentence branch is its own key**
+  (a conditional English fragment passed as a param has no grammatical home in another
+  language); a **counted noun is a `.one`/`.other` pair** via `plural()`; and a **proper noun is
+  written into the sentence, not passed as `{bot}`** — measured, only 9 of the two bots' 79
+  strings were shared, and a name in a slot cannot take a case ending. A bare string is a legacy
+  saved sentence and still renders as written, so `PersistedGame.version` was NOT bumped.
+- **Widening a type will not find the code that breaks.** `${instr.text}` and
+  `instrs.map((i) => i.text).join(' ')` are both legal on `string | Msg` and render
+  `[object Object]`; `tsc` cannot see either. **Grep for template-literal and `join` reads**
+  after converting anything, and run `pw-descriptors.mjs`, which catches that and the other
+  invisible failure — a key with no catalog entry rendering as if it were a sentence.
+- **What a History entry MEANS is decided by its key, not its prose** (`src/game/historyLabels.ts`).
+  Two rules used to parse the English label with a regex — the superseded-arrow-row rule and the
+  Chronossus's "turns this Era" count — so rewording a label silently changed a **count the
+  player sees**. Every phase-result label must carry `era` and `phase` params, since the
+  superseded rule pairs it with the `enteredPhase` row before it.
+- **A locale's `officialRulebook` is per BOOK, not per language.** Mindclash publish the base
+  game in Spanish, but there is **no Spanish edition of the Solo Opponents rulebook** — so
+  `es.json` sets it `false` even though official Spanish terminology exists and is used
+  throughout. `src/i18n/locales/GLOSSARY-es.md` records each term with its rulebook page and
+  marks with ⚠ every solo-only term that had to be inferred.
 - **A sentence with an inline link or bold run stays ONE key**, rendered by `<T>`
   (`src/i18n/Trans.tsx`): `[**Anachrony**](store)`, `**bold**`, `*italic*`, with hrefs passed
   as a `links` prop. Splitting it into `…before`/`…after` fragments reads tidily in the JSON

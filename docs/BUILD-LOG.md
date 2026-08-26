@@ -2,6 +2,59 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-25 — Message descriptors: the engine stops writing sentences
+
+**The last surface a locale file could not reach was the one the engine writes.** Instructions
+and History lines were assembled as interpolated English inside the pure bot functions and
+persisted to `localStorage` as finished sentences — so translating them would have frozen each
+one in whatever language was active when the turn happened. They are now **message descriptors**
+(`{ key, params }`), rendered by the view at read time. Worth doing regardless of translation: a
+persisted key is re-rendered on every read, so rewording an instruction now fixes **old saves**
+too, and the engine tests assert keys instead of prose.
+
+Plan and tracker: `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…`. **Features 1–2 of 8
+are done** (infrastructure, and the Chronobot's 35 sites); the Chronossus's 54, the module bots,
+the History summarizers and the view-built labels remain.
+
+**The infrastructure** is `src/engine/message.ts` — `Msg` / `Text` / `MsgParam`, `msg()`,
+`plural()` and the resolver. Params resolve depth-first, so a message can carry another message
+(an instruction routinely names a resource, an Action or a board space that is itself
+translatable). A `MsgList` param joins through catalog keys, because the mined cubes read
+"1 gold + 2 titanium" and a language may not join a list that way. **A bare string still renders
+as written** — that is a sentence saved by an older build, and `PersistedGame.version` was
+deliberately not bumped, so a game in progress survives the deploy with its History intact.
+
+**Two English strings turned out to be wrong in a way only translation exposes.** Construct
+named its building by slicing `"Construct — "` off the Action label, and the rolled-turn header
+interpolated `def.label` — both would have put an English word inside a translated sentence.
+They now nest the published key (`piece.<type>`, `action.<id>.label`) and render identically.
+
+**Widening a type does not find the code that breaks.** After `Instruction.text` became
+`string | Msg`, `tsc` reported five errors. It should have reported more: `${instr.text}` and
+`instrs.map((i) => i.text).join(' ')` are both legal on that union and render `[object Object]`.
+Three `setPassMsg` calls and `rollLine` were live bugs the moment the Chronobot emitted
+descriptors. The plan now carries an explicit grep sweep for coercion sites, and
+**`pw-descriptors.mjs`** guards both failures a compiler cannot see — a coerced descriptor, and a
+key with no catalog entry rendering as though it were a sentence.
+
+**Two places were deciding what a History entry MEANT by parsing its English prose** — the
+superseded-arrow-row rule ran a regex over the label, and the Chronossus's "turns this Era" count
+filtered on `/You passed|Power Up|Warp|Paradox|· → /`. Both moved into `src/game/historyLabels.ts`
+and now read the label's key. The turn count also flipped from a blocklist to an allowlist: the
+old filter counted anything it forgot to exclude, which is how the phase-entry rows came to be
+counted as turns.
+
+**A Spanish test locale landed with it** (`src/i18n/locales/es.json`, 174 keys), built from the
+**official Spanish base-game rulebook** Shawn added to OneDrive under `languages/`. It ships
+`officialRulebook: false` — that rulebook is the base game, and there is **no Spanish edition of
+the Solo Opponents book** — so the 📖 boxes stay English and the app says so, which is exactly
+what the flag is for. `src/i18n/locales/GLOSSARY-es.md` records each term with its page and marks
+every solo-only term that had to be inferred. Two the book settles that nobody would guess:
+**Power Up is "Activación"** and **Warp is "Disformidad"**.
+
+The EN-vs-ES review run captured 130 screens per side with **zero layout faults** — and made the
+remaining work visible: with the chrome in Spanish, the History pane is still entirely English.
+
 ## 2026-08-24 — The chrome sweep: every player-facing string now has a key
 
 **Yesterday shipped the mechanism; today filled it.** The translatable surface went from

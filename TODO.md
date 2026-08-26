@@ -8,7 +8,9 @@ The mechanism is in (`src/i18n/`, `src/i18n/locales/README.md`): drop a `<code>.
 `src/i18n/locales/` and it appears in the ⚙ menu. Ships English-only; no translations are
 committed and none are planned in-house.
 
-- [ ] **Engine instructions → message descriptors.** `Instruction.text` is assembled from
+- [~] **Engine instructions → message descriptors — IN PROGRESS (plan active).** See
+      `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…`, which are the live tracker;
+      Features 1–2 of 8 are done (infrastructure + the Chronobot). Original framing: `Instruction.text` is assembled from
       interpolated English inside the pure bot functions and persisted to History as a
       finished sentence, so no key can reach it. Change it to `{ id, key, params }` and
       render in the view: ~150-200 call sites across `chronossus.ts`, `chronobot.ts`,
@@ -50,6 +52,13 @@ committed and none are planned in-house.
 - [ ] **When a translator appears:** point them at `src/i18n/locales/README.md`, and be clear
       that `officialRulebook: true` means the rule text was transcribed from that language's
       **official** Anachrony / Solo Opponents edition — not translated from the English.
+
+- [ ] **Extend `es.json` past its 174 keys.** The Spanish locale is partial by design — it
+      covers the terminology families, the Chronobot's `instr.*` and the main chrome, and
+      everything else falls back to English per key. The obvious next slices are the Chronossus
+      setup prose (`ui.cxSetup.*`, 152 keys) and the dialogs (`ui.dialog.*`, 56). Terminology is
+      settled in `src/i18n/locales/GLOSSARY-es.md`; the ⚠ solo terms there are inferred and
+      should be revisited if an official Spanish solo edition ever appears.
 
 ## Deployment / publishing (deferred from the 2026-07-27 DO deploy)
 See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done — live at

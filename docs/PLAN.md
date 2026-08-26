@@ -5,16 +5,23 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-24): every module AND add-on is implemented, the repo is PUBLIC, saved
+> **Status (2026-08-25): every module AND add-on is implemented, the repo is PUBLIC, saved
 > history works in both environments, and the app is translation-ready — adding a language is
 > one dropped-in locale file (`src/i18n/locales/README.md`), with the app's own voice
 > translatable and verbatim rulebook text gated behind an `officialRulebook` flag.**
 > **2026-08-24:** the chrome sweep finished — every player-facing string now resolves through
 > a key (**1,113** published, up from 314), verified by an all-modes pseudolocale run (897
 > captures, zero layout faults) and a text/layout diff against a production build of `main`.
-> The one surface a translator still cannot reach is **History**: `Instruction.text` is
-> assembled inside the pure engine and saved as finished sentences, so the `{key, params}`
-> message-descriptor refactor (~150–200 call sites) is the next phase. See `TODO.md`.
+> **2026-08-25:** that message-descriptor refactor is **in progress** — the engine now returns
+> `{key, params}` instead of prose, so a persisted History line is re-rendered on every read
+> rather than frozen in the language and wording that wrote it. **Features 1–2 of 8 are done**
+> (the infrastructure, and the Chronobot's 35 sites); the Chronossus's 54, the module bots, the
+> History summarizers and the view-built turn labels remain. Active plan:
+> `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…` — **that is the pickup point.**
+> A **Spanish test locale** (`src/i18n/locales/es.json`, 174 keys) landed with it, built from the
+> official Spanish *base-game* rulebook; it ships `officialRulebook: false` because there is no
+> Spanish Solo Opponents edition, and `GLOSSARY-es.md` marks every solo term that had to be
+> inferred.
 > Chronobot, Chronossus base, all 10 difficulty options, Alternate Timelines, Variable
 > Anomalies, Fractures of Time, Guardians of the Council, Pioneers of New Earth, **Doomsday**
 > and — as of today — **Quantum Loops** are all built. Doomsday was archived 2026-08-21 to
