@@ -4,6 +4,10 @@
 the app's ⚙ menu — there is no registry, import list or enum to edit. Nothing else in the
 codebase has to change.
 
+**Translating into Spanish?** `GLOSSARY-es.md` in this directory has the official
+terminology transcribed from the Spanish base-game rulebook, and flags every solo-only term
+that had to be inferred because no Spanish solo edition exists.
+
 ## The short version
 
 1. Copy `en.json` to `<code>.json` (BCP-47: `de`, `fr`, `es`, `pl`, `hu`, …).
