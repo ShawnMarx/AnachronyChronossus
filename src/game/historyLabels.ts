@@ -24,10 +24,17 @@ export const HISTORY_LABEL = {
   enteredPhase: 'hist.label.enteredPhase',
   /** What a phase did: "Era 2 · Warp: placed 1". Params: `{ era, phase, … }`. */
   phaseResult: 'hist.label.phaseResult',
-  /** A bot Action turn — the only entry that counts as a "turn this Era". */
+  /**
+   * A bot Action turn — the only entry that counts as a "turn this Era". Two keys,
+   * because whether the turn scored VP changes the sentence rather than a word in it;
+   * `isBotTurnEntry` allowlists both.
+   */
   botTurn: 'hist.label.botTurn',
+  botTurnVp: 'hist.label.botTurn.vp',
   youPassed: 'hist.label.youPassed',
   botPassed: 'hist.label.botPassed',
+  chronossusPassed: 'hist.label.chronossusPassed',
+  botTimeTravelPass: 'hist.label.botTimeTravelPass',
   endGame: 'hist.label.endGame',
 } as const;
 
@@ -51,7 +58,7 @@ function labelParam(entry: HistoryEntry, name: string): string | number | null {
  */
 export function isBotTurnEntry(entry: HistoryEntry): boolean {
   const key = labelKey(entry);
-  if (key != null) return key === HISTORY_LABEL.botTurn;
+  if (key != null) return key === HISTORY_LABEL.botTurn || key === HISTORY_LABEL.botTurnVp;
   // Legacy prose fallback — the original blocklist, unchanged.
   return !/You passed|Power Up|Warp|Paradox|· → /.test(String(entry.label));
 }

@@ -29,7 +29,7 @@ export interface UndoableGame<TUi> {
   commit: (
     next: GameState,
     nextUi: TUi,
-    label: string,
+    label: Text,
     effects?: Text[],
     die?: number | null,
   ) => void;

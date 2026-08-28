@@ -20,11 +20,11 @@ import './BoardExplorer.css';
 import './ChronossusExplorer.css';
 import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
-import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
+import { CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
 import { useAction, usePhaseMeta, useRule, useTile, useTiles } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
-import { renderEnglish, renderMsg } from './i18n/msg';
-import { msg, plural, type Msg } from './engine/message';
+import { renderMsg } from './i18n/msg';
+import { msg, plural, type Msg, type Text } from './engine/message';
 import T from './i18n/Trans';
 import {
   DetailPanel,
@@ -51,6 +51,7 @@ import DebugBar from './components/DebugBar';
 import { useUndoableGame } from './game/useUndoableGame';
 import { useMediaQuery } from './game/useMediaQuery';
 import { summarizeChronossusExtras } from './game/chronossusHistory';
+import { HISTORY_LABEL } from './game/historyLabels';
 import { clearPersisted, peekSaved, type HistoryEntry } from './game/undo';
 import { isBotTurnEntry } from './game/historyLabels';
 import { clearSavedChronobot } from './BoardExplorer';
@@ -1413,20 +1414,20 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * History detail for a pass. The die and the Action it landed on are the whole reason
    * the bot passed, so a later read-back can see WHY without replaying the turn.
    */
-  const passEffects = (actionId: ChronossusActionId): string[] => {
-    const label = renderEnglish(Chronossus.chronossusActionLabel(actionId));
+  const passEffects = (actionId: ChronossusActionId): Msg[] => {
+    const action = Chronossus.chronossusActionLabel(actionId);
     // "Out of Exosuits" covers Guardians too — a Guardian IS an Exosuit, so naming them
     // separately here would imply they're a different resource.
     return [
-      `Rolled onto ${label}, which needs a figure placed`,
-      'Out of Exosuits — it passes',
+      msg('hist.rolledOntoNeedsFigure', { action }),
+      msg('hist.outOfExosuitsPasses'),
     ];
   };
 
   const finishTurn = (
     stateA: GameState,
     instrA: Instruction[],
-    actionLabel: string,
+    actionLabel: Text,
     extraLeap = false,
   ) => {
     const preC = state.chronossus!;
@@ -1526,9 +1527,12 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
 
   // One-line History label for a resolved turn (Era · action · +VP). A Blink stays OFF this
   // line — the Action taken is what matters; how the Exosuit got there is an effect below.
-  const turnLabel = (instructions: Instruction[], actionLabel: string): string => {
+  const turnLabel = (instructions: Instruction[], action: Text): Msg => {
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    return `Era ${state.era} · ${actionLabel}${vp ? ` · +${vp} VP` : ''}`;
+    // Two keys rather than an appended " · +N VP" (D2); `historyLabels.ts` allowlists both.
+    return vp
+      ? msg(HISTORY_LABEL.botTurnVp, { era: state.era, action, vp })
+      : msg(HISTORY_LABEL.botTurn, { era: state.era, action });
   };
 
   // The action hotspot nearest a board point (used to map a marker's landing
@@ -1586,7 +1590,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     guardianBoardTurnRef.current = guardianSpaceRef.current; // for the History line
     guardianSpaceRef.current = false; // consumed
     // Advance the marker + resolve any Autoleap tiles it lands on, then commit.
-    finishTurn(next, instructions, CHRONOBOT_ACTIONS[h.action].label);
+    finishTurn(next, instructions, msg(`action.${h.action}.label`));
   };
 
   // Close every open read/action dialog (DetailPanel + modular tile + Hypersync)
@@ -1637,7 +1641,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     commit(
       next,
       { ...ui, botDie: botDieRef.current },
-      `Era ${state.era} · Chronossus passed`,
+      msg(HISTORY_LABEL.chronossusPassed, { era: state.era }),
       passEffects(actionId),
       botDieRef.current,
     );
@@ -2391,13 +2395,22 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Every phase advance goes on the undo stack, even the ones that change nothing but
   // the phase, so ↶ Undo always steps back to the screen you came from. Leaving Power
   // Up also consumes this Era's draw (`lastDraw: null`) — restored by the snapshot.
-  const commitPhase = (next: GameState, label: string, effects: string[] = []) =>
+  const commitPhase = (next: GameState, label: Text, effects: Text[] = []) =>
     // Leaving the phase drops any owed Autoleap: Action Rounds are over, so there is no
     // turn left to resolve it in.
     commit(next, { ...ui, lastDraw: null, owedLeap: null }, label, effects);
   /** "Era 3 · → Power Up" — the label a phase move gets in History. */
-  const enteredLabel = (next: GameState) =>
-    `Era ${next.era} · → ${CHRONOSSUS_PHASE_META[next.phase]?.name ?? next.phase}`;
+  const enteredLabel = (next: GameState): Msg =>
+    msg(HISTORY_LABEL.enteredPhase, {
+      era: next.era,
+      // The phase ID, not its name: `isSupersededPhaseEntry` pairs this row with the
+      // result row by comparing it, so it must not be a translated word.
+      phase: next.phase,
+      name: msg(`phase.chronossus.${next.phase}.name`),
+    });
+  /** "Era 3 · Warp: placed 2" — what a phase DID, paired with the row above by `phase`. */
+  const phaseResultLabel = (phase: GameState['phase'], text: Msg): Msg =>
+    msg(HISTORY_LABEL.phaseResult, { era: state.era, phase, text });
   // Finish Setup: seed the chosen module / difficulty / tile sides, enter Era 1.
   const beginGame = (result: ChronossusSetupResult) => {
     setState((s) => {
@@ -2438,20 +2451,24 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // are split across their own lines, since they are different miniatures to pull.
     const guardiansUp = b.guardians?.powered ?? 0;
     const total = b.exosuitsAvailable + guardiansUp;
-    const plural = (n: number) => (n === 1 ? '' : 's');
     commit(
       next,
       { ...ui, lastDraw: draw },
-      `Era ${state.era} · Power Up: ${total} Exosuit${plural(total)}`,
+      phaseResultLabel('powerup', plural('hist.phase.powerUp', total)),
       [
-        `Drew ${draw.energized} Energy + ${draw.exhausted} Exhausted`,
+        msg('hist.powerUp.drew', { energized: draw.energized, exhausted: draw.exhausted }),
+        // Guardians are a different miniature to pull, so they get their own line — and
+        // that changes what the Exosuit line is called, which makes it its own key.
         ...(guardiansUp > 0
           ? [
-              `Powered up ${b.exosuitsAvailable} Normal Exosuit${plural(b.exosuitsAvailable)}`,
-              `Powered up ${guardiansUp} Guardian${plural(guardiansUp)}`,
+              plural('hist.powerUp.normalExosuits', b.exosuitsAvailable),
+              plural('hist.powerUp.guardians', guardiansUp),
             ]
-          : [`Powered up ${b.exosuitsAvailable} Exosuit${plural(b.exosuitsAvailable)}`]),
-        `Pool now ${b.energyPool.energized}/${b.energyPool.exhausted}`,
+          : [plural('hist.powerUp.exosuits', b.exosuitsAvailable)]),
+        msg('hist.powerUp.pool', {
+          energized: b.energyPool.energized,
+          exhausted: b.energyPool.exhausted,
+        }),
       ],
     );
   };
@@ -2464,18 +2481,18 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const pre = state.chronossus!;
     const post = res.state.chronossus!;
     const needsVariableAnomalyInput = res.instructions.some((i) => i.id === 'paradox-anomaly-variable');
-    const effects: string[] = [];
-    if (post.paradoxes !== pre.paradoxes) effects.push(`Paradox tracker → ${post.paradoxes}/3`);
-    if (post.anomalies > pre.anomalies) effects.push('Gained 1 Anomaly (−3 VP)');
-    if (needsVariableAnomalyInput) effects.push('Gained an Anomaly — resolve which Variable Anomaly tile');
+    const effects: Msg[] = [];
+    if (post.paradoxes !== pre.paradoxes) effects.push(msg('hist.paradoxTracker', { n: post.paradoxes }));
+    if (post.anomalies > pre.anomalies) effects.push(msg('hist.anomalyGained'));
+    if (needsVariableAnomalyInput) effects.push(msg('hist.anomalyGained.variable'));
     if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline)
-      effects.push('Warp tile removed from the Timeline');
+      effects.push(msg('hist.warpTileRemoved'));
     // Store the rolled value on the entry (die) so Undo can re-seed the same roll
     // (no re-randomize); clear the reusable roll going forward.
     commit(
       res.state,
       { ...ui, paradoxRoll: null },
-      `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`,
+      phaseResultLabel('paradox', msg('hist.phase.paradoxRoll', { n: Math.max(0, rolled) })),
       effects,
       rolled,
     );
@@ -2487,8 +2504,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const finishVariableAnomalyGain = (taken: Chronossus.VariableAnomalyCandidate) => {
     const next = Chronossus.resolveVariableAnomalyGain(state, taken);
     const vps = next.chronossus!.anomalyVps!;
-    commit(next, ui, `Era ${state.era} · Variable Anomaly gained`, [
-      `Anomaly VP: ${vps[vps.length - 1]}`,
+    commit(next, ui, phaseResultLabel('paradox', msg('hist.phase.variableAnomaly')), [
+      msg('hist.anomalyVp', { vp: vps[vps.length - 1] }),
     ]);
     setVariableAnomalyPending(false);
   };
@@ -2532,18 +2549,28 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     commit(
       next,
       { ...ui, warpRoll: null, quantumRoll: null },
-      `Era ${eraZero ? 0 : state.era} · Warp: placed ${place}`,
+      msg(HISTORY_LABEL.phaseResult, {
+        era: eraZero ? 0 : state.era,
+        phase: eraZero ? 'era0warp' : 'warp',
+        text: msg('hist.phase.warp', { n: place }),
+      }),
       [
         place > 0
-          ? `Placed ${place} Warp tile${place === 1 ? '' : 's'} on the ${eraZero ? 'Era Zero tile' : 'Timeline'}`
-          : 'Placed no Warp tiles',
-        ...(bonusVP ? [`Alternate Timelines: +${bonusVP} VP (${positiveSpaces} positive space${positiveSpaces === 1 ? '' : 's'})`] : []),
+          ? plural(eraZero ? 'hist.warpPlacedEraZero' : 'hist.warpPlaced', place)
+          : msg('hist.warpPlacedNone'),
+        ...(bonusVP
+          ? [plural('hist.altTimelines', positiveSpaces, { vp: bonusVP })]
+          : []),
         ...(quantum.rolled
           ? [
               quantum.removes
-                ? `Quantum Loops: rolled ${quantumRoll} — removed the card **farthest from the draw deck**` +
-                  (quantum.vp ? ` (+${quantum.vp} VP)` : '')
-                : `Quantum Loops: rolled ${quantumRoll} — no card removed`,
+                ? msg(
+                    quantum.vp
+                      ? 'hist.quantumLoops.removedVp'
+                      : 'hist.quantumLoops.removed',
+                    { roll: quantumRoll ?? 0, vp: quantum.vp },
+                  )
+                : msg('hist.quantumLoops.kept', { roll: quantumRoll ?? 0 }),
             ]
           : []),
       ],
@@ -2578,7 +2605,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     const withFp: GameState = { ...state, firstPlayer: playerFirst ? 'player' : 'bot' };
     const next = state.phase === 'cleanup' ? finishEra(withFp) : Chronossus.resolveCleanUp(withFp);
     commitPhase(next, enteredLabel(next), [
-      `First Player next: ${playerFirst ? 'you' : 'the Chronossus'}`,
+      msg(playerFirst ? 'hist.firstPlayer.you' : 'hist.firstPlayer.bot'),
     ]);
   };
   /**
@@ -2596,7 +2623,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   const finishCleanUp = () => {
     const pick = impactPick?.era === state.era ? impactPick.outcome : null;
     setImpactPick(null);
-    const notes: string[] = [];
+    const notes: Text[] = [];
     let next = state;
     // Doomsday records the check even when nothing happened, so the Era is not asked twice.
     if (doomsdayMode && state.chronossus?.doomsday && state.chronossus.doomsday.impactEra == null) {
@@ -2608,16 +2635,16 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
           pick ?? 'not-yet',
         ),
       };
-      if (pick === 'earth-saved') notes.push('Earth is saved — the Impact never happens');
+      if (pick === 'earth-saved') notes.push(msg('hist.earthSavedNote'));
       else if (pick === 'impact-now')
-        notes.push('“Seal Fate” locked in — the Impact resolves at the end of this Era');
+        notes.push(msg('hist.fateSealedNote'));
       else if (pick === 'impact-occurred')
-        notes.push(`The Impact occurred at the end of Era ${state.era}`);
+        notes.push(msg('hist.impactOccurred', { era: state.era }));
     }
     if (pick === 'earth-saved') {
       commitPhase(
         { ...next, phase: 'endgame', finished: true },
-        `Era ${state.era} · → End Game`,
+        msg(HISTORY_LABEL.endGame, { era: state.era }),
         notes,
       );
       return;
@@ -2628,7 +2655,10 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
   // Clean Up → End Game: the game ended (Era 7, or the Capital collapsed in Era
   // 5–6 when flipping Collapsing Capital tiles). Mirrors the Chronobot exactly.
   const endGameNow = () =>
-    commitPhase({ ...state, phase: 'endgame', finished: true }, `Era ${state.era} · → End Game`);
+    commitPhase(
+      { ...state, phase: 'endgame', finished: true },
+      msg(HISTORY_LABEL.endGame, { era: state.era }),
+    );
   const goPhase = (p: Phase) => {
     closePanel();
     const next = { ...state, phase: p };
@@ -2800,9 +2830,9 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
     // opens its dialog (so the chain continues one tile at a time).
-    const label = renderEnglish(Chronossus.chronossusActionLabel(actionId));
+    const label = Chronossus.chronossusActionLabel(actionId);
     assimShapeRef.current = null;
-    finishTurn(next, instructions, tileAutoleap ? `Autoleap — ${label}` : label);
+    finishTurn(next, instructions, tileAutoleap ? msg('hist.label.autoleap', { action: label }) : label);
   };
   // ▶ Start on the tile dialog: resolve and (unless the resolution chained onto another
   // Autoleap tile) close. The result lands in History / the turn-status aside.
@@ -3113,7 +3143,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
     chainOpenRef.current = false;
     setTileBlinkStep(null);
-    finishTurn(next, instructions, renderEnglish(Chronossus.chronossusActionLabel(pendingTile)));
+    finishTurn(next, instructions, Chronossus.chronossusActionLabel(pendingTile));
     if (!chainOpenRef.current) closeTile();
   };
 
@@ -3235,7 +3265,14 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     setPendingHypersync(null); // close the Hypersync dialog
     // Advance the marker + resolve any Autoleap it lands on (may re-open a Hypersync
     // dialog if the marker moves onto a Hypersync Autoleap tile).
-    finishTurn(next, instructions, CHRONOSSUS_TILES[input.code]?.name ?? input.code, extraLeap);
+    finishTurn(
+      next,
+      instructions,
+      // A tile's name is catalog data, published as `tile.<code>.name`; an unknown code
+      // falls back to the code itself, which is not a key and must not become one.
+      CHRONOSSUS_TILES[input.code] ? msg(`tile.${input.code}.name`) : input.code,
+      extraLeap,
+    );
   };
   const closeHypersync = () => {
     setPendingHypersync(null);

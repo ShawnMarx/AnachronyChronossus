@@ -10,6 +10,72 @@
 // forms are separate strings rather than one with an `s` glued on.
 
 export const HISTORY_MESSAGES: Record<string, string> = {
+  // --- Entry labels ---------------------------------------------------------------
+  // The one-line label a History entry carries. `game/historyLabels.ts` decides what an
+  // entry MEANS from these keys, so they are a contract, not just text: every phase row
+  // carries `era` and `phase` (the phase ID, not its name) so the pane can pair an
+  // "entered" row with the result that supersedes it.
+  'hist.label.enteredPhase': 'Era {era} · → {name}',
+  'hist.label.phaseResult': 'Era {era} · {text}',
+  'hist.label.botTurn': 'Era {era} · {action}',
+  'hist.label.botTurn.vp': 'Era {era} · {action} · +{vp} VP',
+  'hist.label.autoleap': 'Autoleap — {action}',
+  'hist.label.youPassed': 'Era {era} · You passed',
+  'hist.label.botPassed': 'Era {era} · Bot passed',
+  'hist.label.chronossusPassed': 'Era {era} · Chronossus passed',
+  'hist.label.botTimeTravelPass': 'Era {era} · Bot: Time Travel + pass',
+  'hist.label.endGame': 'Era {era} · → End Game',
+
+  // What a phase did — nested into `hist.label.phaseResult` as `{text}`.
+  'hist.phase.powerUp.one': 'Power Up: {n} Exosuit',
+  'hist.phase.powerUp.other': 'Power Up: {n} Exosuits',
+  'hist.phase.paradoxRoll': 'Paradox roll (+{n})',
+  'hist.phase.warp': 'Warp: placed {n}',
+  'hist.phase.variableAnomaly': 'Variable Anomaly gained',
+
+  // --- Phase effects ----------------------------------------------------------------
+  'hist.paradoxTracker': 'Paradox tracker → {n}/3',
+  'hist.anomalyGained': 'Gained 1 Anomaly (−3 VP)',
+  'hist.anomalyGained.variable': 'Gained an Anomaly — resolve which Variable Anomaly tile',
+  'hist.warpTileRemoved': 'Warp tile removed from the Timeline',
+  'hist.warpPlaced.one': 'Placed {n} Warp tile on the Timeline',
+  'hist.warpPlaced.other': 'Placed {n} Warp tiles on the Timeline',
+  // Fractures' Era Zero Warp puts them on a tile with its own name, not on "the Timeline".
+  'hist.warpPlacedEraZero.one': 'Placed {n} Warp tile on the Era Zero tile',
+  'hist.warpPlacedEraZero.other': 'Placed {n} Warp tiles on the Era Zero tile',
+  'hist.warpPlacedNone': 'Placed no Warp tiles',
+  'hist.altTimelines.one': 'Alternate Timelines: +{vp} VP ({n} positive space)',
+  'hist.altTimelines.other': 'Alternate Timelines: +{vp} VP ({n} positive spaces)',
+  'hist.quantumLoops.removed':
+    'Quantum Loops: rolled {roll} — removed the card **farthest from the draw deck**',
+  'hist.quantumLoops.removedVp':
+    'Quantum Loops: rolled {roll} — removed the card **farthest from the draw deck** (+{vp} VP)',
+  'hist.quantumLoops.kept': 'Quantum Loops: rolled {roll} — no card removed',
+  'hist.earthSavedNote': 'Earth is saved — the Impact never happens',
+  'hist.fateSealedNote': '“Seal Fate” locked in — the Impact resolves at the end of this Era',
+  'hist.impactOccurred': 'The Impact occurred at the end of Era {era}',
+  'hist.anomalyVp': 'Anomaly VP: {vp}',
+  // Who leads next Era: two keys, because "you" and "the Chronossus" are not
+  // interchangeable words — one is a pronoun, the other a proper noun.
+  'hist.firstPlayer.you': 'First Player next: you',
+  'hist.firstPlayer.bot': 'First Player next: the Chronossus',
+
+  // --- Power Up -----------------------------------------------------------------
+  'hist.powerUp.drew': 'Drew {energized} Energy + {exhausted} Exhausted',
+  'hist.powerUp.exosuits.one': 'Powered up {n} Exosuit',
+  'hist.powerUp.exosuits.other': 'Powered up {n} Exosuits',
+  'hist.powerUp.normalExosuits.one': 'Powered up {n} Normal Exosuit',
+  'hist.powerUp.normalExosuits.other': 'Powered up {n} Normal Exosuits',
+  'hist.powerUp.guardians.one': 'Powered up {n} Guardian',
+  'hist.powerUp.guardians.other': 'Powered up {n} Guardians',
+  'hist.powerUp.pool': 'Pool now {energized}/{exhausted}',
+
+  // --- Passing ----------------------------------------------------------------------
+  'hist.rolledOntoNeedsFigure': 'Rolled onto {action}, which needs a figure placed',
+  'hist.outOfExosuitsPasses': 'Out of Exosuits — it passes',
+  'hist.playerPassedMinMet':
+    'You passed and it has taken its {min} Actions — the Action Rounds Phase ends',
+
   // --- The figure ----------------------------------------------------------------
   'hist.exosuitPlaced': 'Exosuit placed',
   'hist.exosuitDiscarded': 'Discarded an active Exosuit',

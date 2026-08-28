@@ -4,7 +4,7 @@
 // (label / die / effects), so the same pane renders Chronobot and Chronossus turns.
 
 import type { HistoryEntry } from '../game/undo';
-import { isSupersededPhaseEntry } from '../game/historyLabels';
+import { isSupersededPhaseEntry, labelKey } from '../game/historyLabels';
 import HistoryText from './HistoryText';
 import { useT } from '../i18n/I18nProvider';
 
@@ -34,7 +34,9 @@ export default function HistoryPane({
           {/* Numbered over the ROWS shown, not the raw stack — a filtered-out arrow
               entry would otherwise leave a gap that reads as a missing turn. */}
           {rows.map((e, i) => (
-            <li key={`${rows.length - i}-${e.label}`} className="history-row">
+            // The label is a descriptor now, so it cannot go in a template — it would
+            // render every row's key as "[object Object]". Its KEY identifies it.
+            <li key={`${rows.length - i}-${labelKey(e) ?? String(e.label)}`} className="history-row">
               <span className="history-num">{rows.length - i}</span>
               <span className="history-main">
                 <span className="history-label">

@@ -58,14 +58,14 @@ note deviations and decisions inline as they happen.
 
 ## Feature 6 — the views
 
-- [ ] 6.1 `ChronossusGame.tsx` — `turnLabel`, `enteredLabel`, the `commitPhase` label
+- [x] 6.1 `ChronossusGame.tsx` — `turnLabel`, `enteredLabel`, the `commitPhase` label
       literals and the inline `effects.push` sites.
-- [ ] 6.2 `BoardExplorer.tsx` — the same set for the Chronobot.
-- [ ] 6.3 Every dialog / panel that renders `instruction.text` or `.detail` resolves through
+- [x] 6.2 `BoardExplorer.tsx` — the same set for the Chronobot.
+- [x] 6.3 Every dialog / panel that renders `instruction.text` or `.detail` resolves through
       `renderMsg`. Sweep for direct reads so none is missed.
 - [x] 6.4 `HistoryPane` renders `Text` throughout; check the docked and overlay paths.
       _(done early in 1.6 — the widened type forced it.)_
-- [ ] 6.5 **Sweep for silent string coercion** (added during Feature 1 — see the deviation
+- [x] 6.5 **Sweep for silent string coercion** (added during Feature 1 — see the deviation
       note below). `${instr.text}` and `instructions.map((i) => i.text).join(' ')` do NOT
       raise a type error; they coerce a descriptor to `[object Object]`. Known sites:
       `BoardExplorer.tsx` 1151, 1162, 1402 (`setPassMsg`) and 2589 (`rollLine`). Grep for
@@ -80,8 +80,10 @@ note deviations and decisions inline as they happen.
       refactor as the reason instructions are excluded.
 - [~] 7.3 Regenerate `en.json` — done for Feature 2 (**1,182** keys, up from 1,114; 58
       `instr.*`). Re-run after each remaining feature.
-- [ ] 7.4 Extend `engine/playthrough.test.ts` per D7: collect every emitted `Msg`, assert
-      the key exists and every `{placeholder}` is supplied.
+- [x] 7.4 D7's completeness check — as its own file, `engine/messageKeys.test.ts`, rather
+      than inside `playthrough.test.ts`: that test drives the CHRONOBOT and asserts game
+      state, and bolting a message walk onto it would have made one test answer two
+      questions. Written during Feature 3 and extended in Feature 4.
 
 ## Feature 8 — verification
 
@@ -347,3 +349,51 @@ identity, the key is what decides it, and the code above matches on that.
 
 **Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
 clean, `npm run lint` 0 errors.
+
+### Feature 6 — 2026-08-28
+
+Both views converted. Every History label is a descriptor now, so nothing a game persists
+is a finished English sentence any more.
+
+**The label keys are a contract, not just text.** `historyLabels.ts` decides what an entry
+MEANS from its key, so `enteredLabel` carries the **phase ID** (`warp`), not its name —
+`isSupersededPhaseEntry` pairs the arrow row with the result row by comparing that param,
+and a translated word would break the pairing in every language but English. The phase's
+NAME rides alongside as a nested `phase.<id>.name` / `phase.chronossus.<id>.name`.
+`HISTORY_LABEL` gains `botTurnVp`, `chronossusPassed` and `botTimeTravelPass`, and
+`isBotTurnEntry` allowlists both bot-turn keys — the VP suffix is a separate key (D2), and
+missing it would have silently changed the "turns this Era" count.
+
+**Two more English-parsing rules found and fixed** (five in all across the refactor): the
+turn overview's `!e.label.includes('You passed')` filter in `BoardExplorer`, and
+`HistoryPane`'s React key, `` `${rows.length - i}-${e.label}` `` — which would have rendered
+every row's key as `[object Object]`. Both keep a legacy-prose fallback.
+
+**A local `plural` shadow.** `drawAndPowerUp` had `const plural = (n) => (n === 1 ? '' : 's')`
+one scope inside the imported `plural()`; converting the label made the call resolve to the
+local one. The Power Up effect lines became proper `.one`/`.other` keys and the shadow is
+gone. Worth watching for wherever a view is converted.
+
+**Verified in a real browser, both bots.** `pw-descriptors.mjs` gains a **`BOT=chronossus`**
+mode — each view has its own save key and its own undo stack, so a descriptor coerced in one
+says nothing about the other. Both runs report no `[object Object]` and no raw keys on
+screen, and the persisted stack is descriptors throughout:
+
+    {"label":{"key":"hist.label.phaseResult","params":{"era":1,"phase":"powerup",
+      "text":{"key":"hist.phase.powerUp.other","params":{"n":4}}}},
+     "effects":[{"key":"hist.powerUp.drew","params":{"energized":1,"exhausted":2}}, …]}
+
+That run is also what caught the four view effect literals the type checker could not: the
+Warp phase's placed/none lines, Alternate Timelines, Quantum Loops, the Variable Anomaly VP
+and the First-Player note. **A screen-reading harness sees what `tsc` cannot** — the same
+lesson `pw-i18n-review.mjs` taught about keyed `title` attributes.
+
+**`pw-quantum.mjs` was matching on English** (`/Quantum Loops/i` over the persisted effects)
+and failed — correctly, in the sense that the prose it looked for is gone. It now matches the
+descriptor's key, and reads `entries` as well as `undoStack`, since the Chronossus's stack
+lives in the shared undo hook. `pw-chronobot-parity.mjs`, `pw-shapedie.mjs` and
+`pw-nostorage.mjs` all pass untouched.
+
+**Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
+clean, `npm run lint` 0 errors; `pw-descriptors` (both bots), `pw-chronobot-parity`,
+`pw-quantum`, `pw-shapedie` and `pw-nostorage` all green.

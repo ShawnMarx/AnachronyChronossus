@@ -16,6 +16,7 @@ import { useMediaQuery } from './game/useMediaQuery';
 // Re-exported for existing importers (e.g. ChronossusGame).
 export { AnchoredPopover };
 import { summarizeTurn } from './game/turnHistory';
+import { HISTORY_LABEL } from './game/historyLabels';
 export { summarizeTurn };
 import RulesFrame, { RulesButton } from './rules/RulesFrame';
 import {
@@ -72,10 +73,10 @@ import './phases/phases.css';
 import PhaseScreen from './phases/PhaseScreen';
 import SetupFlow from './phases/SetupFlow';
 import RulesBox from './phases/RulesBox';
-import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
+import { ENDGAME_RULES, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
 import { useI18n, useT } from './i18n/I18nProvider';
-import { msg, type Text } from './engine/message';
+import { isMsg, msg, plural, type Msg, type Text } from './engine/message';
 import { renderAll, renderMsg } from './i18n/msg';
 import T from './i18n/Trans';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
@@ -362,7 +363,7 @@ interface Snapshot {
 /** One entry on the undo/history stack: the pre-commit snapshot + what happened. */
 interface UndoEntry {
   snap: Snapshot;
-  label: string;
+  label: Text;
   /** The AI die rolled for a bot turn, shown as the die symbol in History. */
   die?: number | null;
   /** Concise per-turn change-list (mech placed, cubes gained, +5 set, etc.). */
@@ -403,22 +404,22 @@ function chronobotDifficultyLabel(flag: string, translate?: (key: string) => str
  * tracker movement, and — when the roll hit 3 — the Anomaly gained (−3 VP) and
  * the Warp tile pulled off the Timeline.
  */
-function summarizeParadox(pre: ChronobotState, post: ChronobotState): string[] {
-  const out: string[] = [];
+function summarizeParadox(pre: ChronobotState, post: ChronobotState): Msg[] {
+  const out: Msg[] = [];
   if (post.paradoxes !== pre.paradoxes) {
-    out.push(`Paradox tracker → ${post.paradoxes}/3`);
+    out.push(msg('hist.paradoxTracker', { n: post.paradoxes }));
   }
-  if (post.anomalies > pre.anomalies) out.push('Gained 1 Anomaly (−3 VP)');
+  if (post.anomalies > pre.anomalies) out.push(msg('hist.anomalyGained'));
   if (post.warpTilesOnTimeline < pre.warpTilesOnTimeline) {
-    out.push('Warp tile removed from the Timeline');
+    out.push(msg('hist.warpTileRemoved'));
   }
   return out;
 }
 
 /** Summarize the Warp phase: how many Warp tiles the Chronobot placed. */
-function summarizeWarp(pre: ChronobotState, post: ChronobotState): string[] {
+function summarizeWarp(pre: ChronobotState, post: ChronobotState): Msg[] {
   const d = post.warpTilesOnTimeline - pre.warpTilesOnTimeline;
-  return d > 0 ? [`Placed ${d} Warp tile${d === 1 ? '' : 's'} on the Timeline`] : [];
+  return d > 0 ? [plural('hist.warpPlaced', d)] : [];
 }
 
 /** Cap the undo/history depth so persisted state stays bounded. */
@@ -1009,7 +1010,7 @@ export default function BoardExplorer({
   const commit = (
     next: GameState,
     nextTokens: CommandTokensState,
-    label: string,
+    label: Text,
     effects: Text[] = [],
     die: number | null = null,
   ) => {
@@ -1020,16 +1021,15 @@ export default function BoardExplorer({
   };
 
   /** One-line history label for a resolved Action turn. */
-  const turnLabel = (
-    instructions: Instruction[],
-    die: number | null,
-    actionLabel: string,
-  ) => {
+  const turnLabel = (instructions: Instruction[], die: number | null, action: Msg): Msg => {
     // The die is shown as a symbol in History (see HistoryPane), not inline text.
     void die;
     const vp = instructions.reduce((n, i) => n + (i.effect?.vp ?? 0), 0);
-    const vpPart = vp ? ` · +${vp} VP` : '';
-    return `Era ${state.era} · ${actionLabel}${vpPart}`;
+    // Two keys rather than an appended " · +N VP": `historyLabels.ts` allowlists both,
+    // and a language may not put the score last.
+    return vp
+      ? msg(HISTORY_LABEL.botTurnVp, { era: state.era, action, vp })
+      : msg(HISTORY_LABEL.botTurn, { era: state.era, action });
   };
 
   // Undo the last committed step: restore its snapshot wholesale, including the
@@ -1144,7 +1144,7 @@ export default function BoardExplorer({
         commit(
           next,
           tokens,
-          `Era ${state.era} · Bot: Time Travel + pass`,
+          msg(HISTORY_LABEL.botTimeTravelPass, { era: state.era }),
           [
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
             msg('hist.finalTimeTravelPass'),
@@ -1158,8 +1158,8 @@ export default function BoardExplorer({
       const { state: next, instructions } = Chronobot.resolveBotPass(state);
       // No roll here: this isn't a bot turn — you passed first and it has met its minimum,
       // so the phase ends immediately (rulebook's "However" exception).
-      commit(next, tokens, `Era ${state.era} · Bot passed`, [
-        `You passed and it has taken its ${Chronobot.chronobotMinActions(state)} Actions — the Action Rounds Phase ends`,
+      commit(next, tokens, msg(HISTORY_LABEL.botPassed, { era: state.era }), [
+        msg('hist.playerPassedMinMet', { min: Chronobot.chronobotMinActions(state) }),
       ]);
       setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));
       setBotDie(null);
@@ -1192,7 +1192,7 @@ export default function BoardExplorer({
   // must keep going to its minimum, or it owes a final Time Travel before passing.
   const playerPass = () => {
     setShowStatus(false);
-    commit(Chronobot.markPlayerPassed(state), tokens, `Era ${state.era} · You passed`);
+    commit(Chronobot.markPlayerPassed(state), tokens, msg(HISTORY_LABEL.youPassed, { era: state.era }));
     setPassMsg(null);
     closePanel();
   };
@@ -1224,7 +1224,7 @@ export default function BoardExplorer({
     commit(
       next,
       nextTokens,
-      turnLabel(instructions, botDie, CHRONOBOT_ACTIONS[h.action].label),
+      turnLabel(instructions, botDie, msg(`action.${h.action}.label`)),
       summarizeTurn(state.chronobot, next.chronobot, instructions),
       botDie,
     );
@@ -1395,7 +1395,7 @@ export default function BoardExplorer({
         commit(
           next,
           tokens,
-          `Era ${state.era} · Bot: Time Travel + pass`,
+          msg(HISTORY_LABEL.botTimeTravelPass, { era: state.era }),
           [
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
             msg('hist.finalTimeTravelPass'),
@@ -1529,7 +1529,7 @@ export default function BoardExplorer({
     commit(
       res.state,
       tokens,
-      `Era ${state.era} · Paradox roll (+${Math.max(0, rolled)})`,
+      phaseResultLabel('paradox', msg('hist.phase.paradoxRoll', { n: Math.max(0, rolled) })),
       summarizeParadox(state.chronobot, res.state.chronobot),
       rolled,
     );
@@ -1544,7 +1544,7 @@ export default function BoardExplorer({
     commit(
       next,
       tokens,
-      `Era ${state.era} · Warp: placed ${Math.max(0, paradoxes)}`,
+      phaseResultLabel('warp', msg('hist.phase.warp', { n: Math.max(0, paradoxes) })),
       summarizeWarp(state.chronobot, next.chronobot),
     );
     setWarpRoll(null);
@@ -1552,8 +1552,17 @@ export default function BoardExplorer({
 
   // Advance out of the current non-Action phase (calls the matching resolver).
   /** "Era 3 · → Power Up" — the label a phase move gets in History. */
-  const enteredLabel = (next: GameState) =>
-    `Era ${next.era} · → ${PHASE_META[next.phase]?.name ?? next.phase}`;
+  const enteredLabel = (next: GameState): Msg =>
+    msg(HISTORY_LABEL.enteredPhase, {
+      era: next.era,
+      // The phase ID, not its name: `isSupersededPhaseEntry` pairs this row with the
+      // result row by comparing it, so it must not be a translated word.
+      phase: next.phase,
+      name: msg(`phase.${next.phase}.name`),
+    });
+  /** "Era 3 · Warp: placed 2" — what a phase DID, paired with the row above by `phase`. */
+  const phaseResultLabel = (phase: GameState['phase'], text: Msg): Msg =>
+    msg(HISTORY_LABEL.phaseResult, { era: state.era, phase, text });
   /**
    * Every phase advance commits, so it is undoable and shows in History — the Chronossus
    * has worked this way since 2026-08-11 and the Chronobot's phase screens did not.
@@ -2004,7 +2013,13 @@ export default function BoardExplorer({
           turnRules={phaseMeta.actions?.rules}
           difficulty={state.config.difficulty.map((f) => chronobotDifficultyLabel(f, t))}
           entries={undoStack.filter(
-            (e) => e.snap.state.era === state.era && !e.label.includes('You passed'),
+            // By KEY, not by prose — a third rule that used to read the English label.
+            // A legacy saved sentence still falls back to matching the words.
+            (e) =>
+              e.snap.state.era === state.era &&
+              !(isMsg(e.label)
+                ? e.label.key === HISTORY_LABEL.youPassed
+                : e.label.includes('You passed')),
           )}
           passingRule={passingRule}
           onClose={() => setShowStatus(false)}

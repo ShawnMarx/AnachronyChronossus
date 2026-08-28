@@ -1,6 +1,7 @@
 // pw-descriptors.mjs — the guard for the message-descriptor refactor.
 //
-//   SHOT_DIR=/tmp node pw-descriptors.mjs [url]
+//   SHOT_DIR=/tmp node pw-descriptors.mjs [url]        # the Chronobot
+//   BOT=chronossus SHOT_DIR=/tmp node pw-descriptors.mjs  # the Chronossus (its own save)
 //
 // Two failures this catches that neither `tsc` nor the unit suite can:
 //
@@ -39,12 +40,22 @@ const scan = (txt, where) => {
 await page.goto(URL, { waitUntil: 'networkidle' });
 await page.evaluate(() => localStorage.clear());
 await page.goto(URL, { waitUntil: 'networkidle' });
-await page.getByText('Chronobot', { exact: false }).first().click(); await wait(500);
+// Each bot has its own view, its own save key and its own undo stack, so each needs its
+// own run — a descriptor coerced in one says nothing about the other.
+const BOT = process.env.BOT === 'chronossus' ? 'Chronossus' : 'Chronobot';
+const SAVE_KEY = BOT === 'Chronossus' ? 'anachrony:chronossus' : 'anachrony:chronobot';
+await page.evaluate((k) => { window.__saveKey = k; }, SAVE_KEY);
+await page.getByText(BOT, { exact: false }).first().click(); await wait(500);
+if (BOT === 'Chronossus') {
+  // Its setup asks for a mode before the phase flow starts.
+  await page.getByRole('button', { name: /Continue/i }).first().click(); await wait(300);
+  await page.getByText('Base', { exact: true }).first().click(); await wait(300);
+}
 // through setup + the phases into Action Rounds
 for (let i = 0; i < 40; i++) {
   scan(await body(), `phase step ${i}`);
   const btn = page
-    .getByRole('button', { name: /Begin Era|Continue|Roll for|Start|Next|Begin/i })
+    .getByRole('button', { name: /Begin Era|Continue|Roll for|Draw \d+ from|Start|Next|Begin/i })
     .first();
   if (!(await btn.count())) break;
   await btn.click({ timeout: 2500 }).catch(() => {});
@@ -77,17 +88,16 @@ for (let turn = 0; turn < 14; turn++) {
 scan(await body(), 'final board');
 {
   const phase = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem('anachrony:chronobot') ?? '{}')?.state?.phase,
+    JSON.parse(localStorage.getItem(window.__saveKey) ?? '{}')?.state?.phase,
   );
   const btns = await page.locator('button:visible').allInnerTexts();
   console.log('DIAG phase =', phase, '| buttons:', JSON.stringify(btns.slice(0, 14)));
 }
 // The persisted save is the real evidence: History labels/effects are written to
 // localStorage, and after the refactor they must be DESCRIPTORS, not sentences.
-const save = await page.evaluate(() =>
-  JSON.parse(localStorage.getItem('anachrony:chronobot') ?? '{}'),
-);
-const stack = save.undoStack ?? [];
+const save = await page.evaluate(() => JSON.parse(localStorage.getItem(window.__saveKey) ?? '{}'));
+// The Chronobot keeps its own stack; the Chronossus's lives in the shared undo hook.
+const stack = save.undoStack ?? save.entries ?? [];
 console.log(`--- persisted undo stack: ${stack.length} entries ---`);
 for (const e of stack.slice(-8)) {
   console.log(JSON.stringify({ label: e.label, effects: e.effects }));

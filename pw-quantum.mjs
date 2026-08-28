@@ -124,11 +124,17 @@ if (ALT) {
 
 const after = await page.evaluate(() => {
   const data = JSON.parse(localStorage.getItem('anachrony:chronossus'));
-  const hist = (data.undoStack ?? []).flatMap((h) => h.effects ?? []);
+  // The Chronossus's stack lives in the shared undo hook's `entries`; `undoStack` is the
+  // Chronobot's own. Take whichever this save has.
+  const hist = (data.undoStack ?? data.entries ?? []).flatMap((h) => h.effects ?? []);
   return { hist, vp: data.state.chronossus.vp, ui: data.ui.quantumRoll, phase: data.state.phase };
 });
-const line = after.hist.find((l) => /Quantum Loops/i.test(l));
-console.log('HISTORY:', line ?? '(none)');
+// A History effect is a `{key, params}` descriptor, not a sentence — match the KEY. (A
+// legacy save from before that refactor still holds prose, so both are accepted.)
+const line = after.hist.find((l) =>
+  typeof l === 'string' ? /Quantum Loops/i.test(l) : /quantumLoops/i.test(l.key ?? ''),
+);
+console.log('HISTORY:', line ? JSON.stringify(line) : '(none)');
 ok('History carries the Quantum Loops line', !!line);
 ok('the roll is cleared after committing', after.ui == null);
 ok('the phase moved on', after.phase === 'actions');
