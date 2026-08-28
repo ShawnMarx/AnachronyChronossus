@@ -23,6 +23,7 @@ import { CHRONOBOT_MESSAGES } from './bots/chronobot.messages';
 import { CHRONOSSUS_MESSAGES } from './bots/chronossus.messages';
 import { DOOMSDAY_MESSAGES } from './bots/doomsday.messages';
 import { PIONEERS_MESSAGES } from './bots/pioneers.messages';
+import { HISTORY_MESSAGES } from '../game/history.messages';
 import { renderMsg, type Text } from './message';
 
 /** Keys shared by more than one bot, or by the engine itself. */
@@ -72,6 +73,7 @@ export const ENGINE_MESSAGES: Record<string, string> = {
   ...CHRONOSSUS_MESSAGES,
   ...DOOMSDAY_MESSAGES,
   ...PIONEERS_MESSAGES,
+  ...HISTORY_MESSAGES,
 };
 
 /**

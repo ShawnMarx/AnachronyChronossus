@@ -75,6 +75,7 @@ import RulesBox from './phases/RulesBox';
 import { ENDGAME_RULES, PHASE_META, type PhaseMeta } from './phases/phaseMeta';
 import { useAction, useActions, usePhaseMeta, useRule, useRuleLines } from './i18n/localized';
 import { useI18n, useT } from './i18n/I18nProvider';
+import { msg, type Text } from './engine/message';
 import { renderAll, renderMsg } from './i18n/msg';
 import T from './i18n/Trans';
 import { advanceFromPreparation, finishEra, startFirstEra } from './game/flow';
@@ -365,7 +366,7 @@ interface UndoEntry {
   /** The AI die rolled for a bot turn, shown as the die symbol in History. */
   die?: number | null;
   /** Concise per-turn change-list (mech placed, cubes gained, +5 set, etc.). */
-  effects: string[];
+  effects: Text[];
 }
 
 /** Short labels for the difficulty flags (kept in sync with SetupFlow). */
@@ -1009,7 +1010,7 @@ export default function BoardExplorer({
     next: GameState,
     nextTokens: CommandTokensState,
     label: string,
-    effects: string[] = [],
+    effects: Text[] = [],
     die: number | null = null,
   ) => {
     const pre: Snapshot = { state, tokens, botDie, activeToken, warpRoll, paradoxRoll };
@@ -1146,7 +1147,7 @@ export default function BoardExplorer({
           `Era ${state.era} · Bot: Time Travel + pass`,
           [
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
-            'Out of Exosuits — its final Time Travel, then it passes',
+            msg('hist.finalTimeTravelPass'),
           ],
         );
         setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));
@@ -1397,7 +1398,7 @@ export default function BoardExplorer({
           `Era ${state.era} · Bot: Time Travel + pass`,
           [
             ...summarizeTurn(state.chronobot, next.chronobot, instructions),
-            'Out of Exosuits — its final Time Travel, then it passes',
+            msg('hist.finalTimeTravelPass'),
           ],
         );
         setPassMsg(renderAll(t, instructions.map((i) => i.text)).join(' '));

@@ -2,7 +2,9 @@
 // assertions track what a turn actually does (not a hand-built delta).
 
 import { describe, it, expect } from 'vitest';
-import { summarizeChronossusExtras } from './chronossusHistory';
+import { summarizeChronossusExtras as summarize } from './chronossusHistory';
+import { msg } from '../engine/message';
+import { renderEnglish } from '../i18n/msg';
 import {
   Chronossus,
   createInitialState,
@@ -10,6 +12,15 @@ import {
   DEFAULT_CONFIG,
   type GameState,
 } from '../engine';
+
+/**
+ * The extras, rendered in English — what these tests are about is the line the player
+ * reads. (Where a RULE depends on a line's identity, the descriptor's key is what decides
+ * it, and `chronossusHistory.ts` matches on that.)
+ */
+const summarizeChronossusExtras = (
+  ...args: Parameters<typeof summarize>
+): string[] => summarize(...args).map(renderEnglish);
 
 const fracturesState = (): GameState => {
   const st = createInitialState({ ...DEFAULT_CONFIG, chronossusMode: 'fractures' });
@@ -132,7 +143,7 @@ describe('Chronossus History extras — Fractures tiles', () => {
   it('Assimilate logs the Operator and its Flux Core, naming the column it filled', () => {
     expect(extrasFor(fracturesState(), { actionId: 'tile-assimilate', shape: 'circle' })).toEqual([
       '+1 Flux Core to the Flux Pool',
-      'Recruited an Operator into the genius column (wildcard Worker)',
+      'Recruited an Operator into the Genius column (wildcard Worker)',
     ]);
   });
 
@@ -144,12 +155,12 @@ describe('Chronossus History extras — Fractures tiles', () => {
       shape: 'circle',
     });
     const effects = summarizeChronossusExtras(pre, next.chronossus!, [
-      'Exosuit placed',
-      'Recruited genius',
+      msg('hist.exosuitPlaced'),
+      msg('hist.recruited', { worker: msg('piece.genius') }),
     ]);
     expect(effects).toEqual([
       'Exosuit placed',
-      'Recruited an Operator into the genius column (wildcard Worker)',
+      'Recruited an Operator into the Genius column (wildcard Worker)',
       '+1 Flux Core to the Flux Pool',
     ]);
   });
@@ -241,7 +252,7 @@ describe('summarizeChronossusExtras — Guardians of the Council', () => {
     };
     const lines = summarizeChronossusExtras(pre, post, []);
     expect(lines).toContain('Acquired 1 Guardian');
-    expect(lines).toContain('Spent a engineer to acquire it');
+    expect(lines).toContain('Spent 1 Engineer to acquire it');
   });
 
   it('logs a Guardian being placed (the Exosuit count never moves)', () => {

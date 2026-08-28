@@ -14,6 +14,7 @@ import {
   savePersisted,
   type UndoEntry,
 } from './undo';
+import type { Text } from '../engine/message';
 
 export interface UndoableGame<TUi> {
   state: GameState;
@@ -29,7 +30,7 @@ export interface UndoableGame<TUi> {
     next: GameState,
     nextUi: TUi,
     label: string,
-    effects?: string[],
+    effects?: Text[],
     die?: number | null,
   ) => void;
   /** Pop + restore the last snapshot; returns it (or null) so the view can sync refs. */

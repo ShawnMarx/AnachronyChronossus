@@ -24,7 +24,7 @@ import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chrono
 import { useAction, usePhaseMeta, useRule, useTile, useTiles } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
 import { renderEnglish, renderMsg } from './i18n/msg';
-import { msg } from './engine/message';
+import { msg, plural, type Msg } from './engine/message';
 import T from './i18n/Trans';
 import {
   DetailPanel,
@@ -1439,12 +1439,13 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     // `{flux}` renders as the Flux Core art (HistoryText) — the Blink's own component.
     // The Energy Core going back to the supply is in the rules and implied here.
     const blinkEffect = blinkFrom
-      ? `{flux} Blink — Exosuit moved from **${blinkFrom.spaceLabel}** to **${blinkFrom.toLabel}**`
+      ? msg('hist.blink', { from: blinkFrom.spaceLabel, to: blinkFrom.toLabel })
       : null;
     /** The move IS the placement, so it replaces the shared summarizer's "Exosuit placed". */
-    const withBlink = (effects: string[]) => {
+    const withBlink = (effects: Msg[]) => {
       if (!blinkEffect) return effects;
-      const out = effects.filter((e) => e !== 'Exosuit placed');
+      // Matched on the KEY: a reworded English default must not stop this finding it.
+      const out = effects.filter((e) => e.key !== 'hist.exosuitPlaced');
       out.unshift(blinkEffect);
       return out;
     };
@@ -1489,7 +1490,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
     guardianBoardTurnRef.current = false;
     const ec = stateA.chronossus!.energyPool.energized - preC.energyPool.energized;
-    if (ec > 0) effects.unshift(`+${ec} Energy Core${ec === 1 ? '' : 's'}`);
+    if (ec > 0) effects.unshift(plural('hist.energyCore', ec));
     commit(stateA, newUi, turnLabel(instrA, actionLabel), withBlink(effects), botDieRef.current);
     setResult(instrA);
     setLastResult(instrA);

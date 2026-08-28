@@ -50,11 +50,11 @@ note deviations and decisions inline as they happen.
 
 ## Feature 5 — the summarizers
 
-- [ ] 5.1 `game/turnHistory.ts` — `summarizeTurn` returns `Text[]`; 12 push sites, plus the
-      `BUILDING_LABEL` map, which becomes keys.
-- [ ] 5.2 `game/chronossusHistory.ts` — `summarizeChronossusExtras`, 15 push sites, most of
+- [x] 5.1 `game/turnHistory.ts` — `summarizeTurn` returns `Msg[]`; 12 push sites, plus the
+      `BUILDING_LABEL` map, which is deleted in favour of `piece.*`.
+- [x] 5.2 `game/chronossusHistory.ts` — `summarizeChronossusExtras`, 15 push sites, most of
       them counted (D4 plurals).
-- [ ] 5.3 Update both test files to assert descriptors.
+- [x] 5.3 Update both test files to assert descriptors.
 
 ## Feature 6 — the views
 
@@ -292,6 +292,58 @@ steps, locked, the Failed Action, Earth saved, fate sealed) and the Adventure's 
 taken, neither met, the no-slot penalty into the VP-token upgrade). It also **counts what it
 checked** and asserts a floor now: a walk that silently visited nothing would otherwise pass
 while proving nothing.
+
+**Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
+clean, `npm run lint` 0 errors.
+
+### Feature 5 — 2026-08-28
+
+Both summarizers return `Msg[]` now, with their English in `game/history.messages.ts`
+(42 keys). This is the part of the refactor that pays off most directly: these lines are
+written into `localStorage` with every turn, so until now a game's History was frozen prose.
+
+**`BUILDING_LABEL` is gone.** It was a private four-entry map duplicating names the board
+trackers already publish as `piece.factory` / `piece.lab` / `piece.powerplant` /
+`piece.support`; the History line now nests those, so the word is translated once.
+
+**Two rules that matched on English are now matching on keys** — the same class of bug
+`historyLabels.ts` fixed in Feature 1, still live here:
+
+* The Operator line replaces the shared summarizer's plain "Recruited …" row, found with
+  `e.startsWith('Recruited ')`.
+* The Power Upgrade line replaces "Discarded uranium" — a Resource **spent onto the board**,
+  not discarded — found with `e === \`Discarded ${upgraded}\``.
+
+Both now match on the key (and, for the second, on the nested `ui.pieceInline.*` param), so
+rewording an English default can no longer make a line silently print twice.
+
+**A third one was in the view:** `withBlink` filtered `e !== 'Exosuit placed'` to stop a
+Blink turn also claiming a placement. Same treatment.
+
+**Feature 6 spill-over, taken here deliberately.** The three inline `effects.push` lines the
+views add around the summarizers — the final-Time-Travel pass note, the Blink line and the
+Energy Cores gained — had to become descriptors for the arrays to typecheck at all, so they
+join `history.messages.ts` rather than being stranded as the last prose in a keyed list.
+`{flux}` and the `**bold**` runs move inside the strings, where a translator can place them
+(D6). `UndoableGame.commit` and `BoardExplorer`'s `Snapshot.effects` widen to `Text[]`.
+
+**A trap worth naming: `Text` collides with the DOM's global `Text`.** Widening
+`useUndoableGame`'s `effects?: string[]` to `Text[]` without the import typechecked
+**clean** — against `lib.dom`'s `Text` node — and then failed on `string` not being
+assignable to it. `tsc` reports it as a type error somewhere else entirely. Import
+`type { Text }` explicitly in every file that names it.
+
+**One deliberate wording change**, the only one in this refactor: "Spent a engineer to
+acquire it" became **"Spent 1 {worker} to acquire it"**. Worker names now come from
+`piece.*` and are capitalised, which turned an already-wrong article into a visibly wrong
+one ("a Engineer"); an English indefinite article cannot be chosen without knowing the word
+that follows, and every language has its own version of that problem. The count sidesteps
+it. Noted here because Feature 8 diffs rendered text and will flag this line.
+
+**The test files render rather than assert keys**, unlike the engine's. What these tests are
+about IS the sentence the player reads — that a Mine logs "Gained titanium" and not a
+discard — so both wrap the summarizer in `renderEnglish`. Where a *rule* depends on a line's
+identity, the key is what decides it, and the code above matches on that.
 
 **Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
 clean, `npm run lint` 0 errors.

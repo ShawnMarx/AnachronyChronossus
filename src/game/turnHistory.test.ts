@@ -3,6 +3,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { summarizeTurn } from './turnHistory';
+import { renderEnglish } from '../i18n/msg';
 import { summarizeChronossusExtras } from './chronossusHistory';
 import {
   Chronossus,
@@ -19,11 +20,15 @@ const stateWith = (over: Partial<ReturnType<typeof emptyChronossusState>>): Game
   return st;
 };
 
-/** Effects for one resolved Action, as the view builds them. */
+/**
+ * Effects for one resolved Action, as the view builds them — rendered in English, because
+ * what these tests are about IS the line the player reads. (The descriptors themselves are
+ * asserted by key where a rule depends on the key: see `historyLabels.test.ts`.)
+ */
 const effectsFor = (state: GameState, input: Parameters<typeof Chronossus.resolveAction>[1]) => {
   const pre = state.chronossus!;
   const { state: next, instructions } = Chronossus.resolveAction(state, input);
-  return summarizeTurn(pre, next.chronossus!, instructions);
+  return summarizeTurn(pre, next.chronossus!, instructions).map(renderEnglish);
 };
 
 describe('summarizeTurn — the +5 VP sets', () => {
@@ -34,7 +39,7 @@ describe('summarizeTurn — the +5 VP sets', () => {
       workers: { genius: 1, administrator: 1, engineer: 1, scientist: 0 },
     });
     const out = effectsFor(st, { actionId: 'recruit', placementSpace: 'action', recruitedWorker: 'scientist' });
-    expect(out).toContain('Recruited scientist');
+    expect(out).toContain('Recruited Scientist');
     expect(out).toContain('Worker set completed — discard one of each (+5 VP)');
   });
 
@@ -52,7 +57,7 @@ describe('summarizeTurn — the +5 VP sets', () => {
   it('reports a plain Recruit / Mine with no set line', () => {
     const st = stateWith({});
     const rec = effectsFor(st, { actionId: 'recruit', placementSpace: 'action', recruitedWorker: 'engineer' });
-    expect(rec).toContain('Recruited engineer');
+    expect(rec).toContain('Recruited Engineer');
     expect(rec.some((e) => e.includes('set completed'))).toBe(false);
 
     const mine = effectsFor(st, { actionId: 'mine-resource', placementSpace: 'action', minedResources: ['gold'] });
@@ -82,8 +87,12 @@ describe('summarizeTurn — Assimilate completes the set with an Operator', () =
       shape: 'circle',
       operatorsAvailable: true,
     });
-    const out = summarizeChronossusExtras(pre, next.chronossus!, summarizeTurn(pre, next.chronossus!, instructions));
-    expect(out).toContain('Recruited an Operator into the scientist column (wildcard Worker)');
+    const out = summarizeChronossusExtras(
+      pre,
+      next.chronossus!,
+      summarizeTurn(pre, next.chronossus!, instructions),
+    ).map(renderEnglish);
+    expect(out).toContain('Recruited an Operator into the Scientist column (wildcard Worker)');
     expect(out).toContain('Worker set completed — discard one of each (+5 VP)');
   });
 });

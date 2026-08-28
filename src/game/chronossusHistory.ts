@@ -8,6 +8,7 @@
 // When a new module adds tracked state, extend this (and its tests) — see CLAUDE.md.
 
 import type { ChronossusState } from '../engine';
+import { isMsg, msg, plural, type Msg } from '../engine/message';
 import { adventureCard } from '../data/adventureCards';
 import { UPGRADE_SLOTS } from '../engine/bots/pioneers';
 import {
@@ -26,20 +27,20 @@ const RESOURCE_KEYS = ['titanium', 'uranium', 'gold', 'neutronium'] as const;
 export function summarizeChronossusExtras(
   pre: ChronossusState,
   post: ChronossusState,
-  effects: string[],
+  effects: Msg[],
   /** Guardians: this turn's placement went onto the Guardian board's own space. The state
    *  diff can't show that — both routes just decrement `guardians.powered`. */
   opts: { guardianBoard?: boolean } = {},
-): string[] {
+): Msg[] {
   // Fractures — Flux Pool. Only gains: a Blink's spent Core is already reported by the
   // Blink line itself, and Casings moving to the set-aside pile is bookkeeping.
   const flux = (post.fluxPool?.cores ?? 0) - (pre.fluxPool?.cores ?? 0);
-  if (flux > 0) effects.push(`+${flux} Flux Core${flux === 1 ? '' : 's'} to the Flux Pool`);
+  if (flux > 0) effects.push(plural('hist.fluxCore', flux));
 
   // Fractures — Technology cards (3 VP each at the end).
   const tech = (post.technologies ?? 0) - (pre.technologies ?? 0);
   if (tech > 0) {
-    effects.push(`+${tech} Technology card${tech === 1 ? '' : 's'} (3 VP each at the end)`);
+    effects.push(plural('hist.technology', tech));
   }
 
   // Fractures — Operators. An Operator arrives as a wildcard Worker, so the shared
@@ -57,8 +58,12 @@ export function summarizeChronossusExtras(
   );
   if (ops > 0 || opsColumn) {
     const col = opsColumn ?? WORKER_KEYS.find((w) => post.workers[w] > pre.workers[w]);
-    const line = `Recruited an Operator${col ? ` into the ${col} column` : ''} (wildcard Worker)`;
-    const i = effects.findIndex((e) => e.startsWith('Recruited '));
+    const line = col
+      ? msg('hist.operator.column', { column: msg(`piece.${col}`) })
+      : msg('hist.operator');
+    // Which line to replace is decided by its KEY, not by the English it renders as — a
+    // reworded default must never change what this finds (the `historyLabels.ts` rule).
+    const i = effects.findIndex((e) => isMsg(e) && e.key === 'hist.recruited');
     if (i >= 0) effects[i] = line;
     else effects.push(line);
   }
@@ -67,19 +72,22 @@ export function summarizeChronossusExtras(
   // `owned` only ever rises; `powered` is per-Era bookkeeping and isn't worth a line.
   const gained = (post.guardians?.owned ?? 0) - (pre.guardians?.owned ?? 0);
   if (gained > 0) {
-    effects.push(`Acquired ${gained} Guardian${gained === 1 ? '' : 's'}`);
+    effects.push(plural('hist.guardianAcquired', gained));
     // The Worker branch spends one; the shared summarizer has no idea why it went.
     const spent = WORKER_KEYS.find((w) => post.workers[w] < pre.workers[w]);
-    if (spent) effects.push(`Spent a ${spent} to acquire it`);
+    if (spent) effects.push(msg('hist.guardianWorkerSpent', { worker: msg(`piece.${spent}`) }));
   }
   // A Guardian placed — because no Exosuit was left, or onto its own Guardian board space
   // when the Action spaces ran out. The Exosuit count doesn't move either way, so nothing
   // else in the summary would mention it.
   const guardiansPlaced = (pre.guardians?.powered ?? 0) - (post.guardians?.powered ?? 0);
   if (guardiansPlaced > 0 && gained === 0) {
-    const where = opts.guardianBoard ? ' on the **Guardian board**' : '';
+    // Naming the board is a clause, not a word, so it is its own key (D2).
     effects.push(
-      `Placed ${guardiansPlaced} Guardian${guardiansPlaced === 1 ? '' : 's'}${where}`,
+      plural(
+        opts.guardianBoard ? 'hist.guardianPlacedBoard' : 'hist.guardianPlaced',
+        guardiansPlaced,
+      ),
     );
   }
 
@@ -94,8 +102,8 @@ export function summarizeChronossusExtras(
     const card = taken ? adventureCard(taken) : undefined;
     effects.push(
       card
-        ? `Adventure succeeded — took "${card.name}" (Power ${card.power})`
-        : 'Adventure succeeded',
+        ? msg('hist.adventure.card', { card: card.name, power: card.power })
+        : msg('hist.adventure'),
     );
   }
   if (pre.pioneers && post.pioneers) {
@@ -104,19 +112,27 @@ export function summarizeChronossusExtras(
     );
     if (upgraded) {
       const gain = UPGRADE_SLOTS.find((sl) => sl.resource === upgraded)?.power ?? 0;
-      const line = `Power Upgrade: 1 ${upgraded} onto the **Upgrade board** (+${gain} Power)`;
+      const line = msg('hist.powerUpgrade', {
+        resource: msg(`ui.pieceInline.${upgraded}`),
+        power: gain,
+      });
       // The shared summarizer sees the Resource leave and calls it "Discarded uranium" —
       // it wasn't discarded, it was spent onto the board. Replace that line rather than
-      // printing both (the same trick the Operator line uses).
-      const i = effects.findIndex((e) => e === `Discarded ${upgraded}`);
+      // printing both (the same trick the Operator line uses). Matched on key + param,
+      // never on the rendered English.
+      const i = effects.findIndex(
+        (e) =>
+          isMsg(e) &&
+          e.key === 'hist.discarded.one' &&
+          isMsg(e.params?.resource as Msg) &&
+          (e.params!.resource as Msg).key === `ui.pieceInline.${upgraded}`,
+      );
       if (i >= 0) effects[i] = line;
       else effects.push(line);
     }
     const tokens = post.pioneers.vpTokens - pre.pioneers.vpTokens;
     if (tokens > 0) {
-      effects.push(
-        `Power Upgrade: +${tokens} VP token on the Upgrade board (Power, not VP)`,
-      );
+      effects.push(msg('hist.powerUpgrade.tokens', { n: tokens }));
     }
   }
 
@@ -126,26 +142,30 @@ export function summarizeChronossusExtras(
   const expBefore = pre.doomsday?.experimentsCompleted ?? 0;
   const expAfter = post.doomsday?.experimentsCompleted ?? 0;
   if (expAfter > expBefore) {
-    effects.push(`Executed an Experiment (${expAfter} completed)`);
+    effects.push(msg('hist.experiment', { total: expAfter }));
   }
   if (pre.doomsday && post.doomsday && post.doomsday.botSlot !== pre.doomsday.botSlot) {
-    const name = post.doomsday.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate';
+    const name = msg(
+      post.doomsday.botTracker === 'save-earth' ? 'ui.track.saveEarth' : 'ui.track.sealFate',
+    );
     const vp = doomsdaySlotVp(post.doomsday.botSlot);
     effects.push(
-      `Moved the ${name} tracker one step` + (vp > 0 ? ` (+${vp} VP printed there)` : ''),
+      vp > 0
+        ? msg('hist.doomsdayTracker.vp', { tracker: name, vp })
+        : msg('hist.doomsdayTracker', { tracker: name }),
     );
     if (post.doomsday.botSlot === DOOMSDAY_TOP_SLOT) {
-      effects.push('Save Earth is topmost — the Impact is mitigated and the game ends');
+      effects.push(msg('hist.earthSaved'));
     } else if (post.doomsday.botSlot === DOOMSDAY_BOTTOM_SLOT) {
-      effects.push('Seal Fate is bottommost — the Impact resolves immediately');
+      effects.push(msg('hist.fateSealed'));
     }
   }
 
   // Hypersync (HFA) — Solo Hypersync tiles placed on / retrieved from the Timeline.
   const hsBefore = pre.hypersyncTiles.length;
   const hsAfter = post.hypersyncTiles.length;
-  if (hsAfter > hsBefore) effects.push('Solo Hypersync tile placed on the Timeline');
-  else if (hsAfter < hsBefore) effects.push('Solo Hypersync tile retrieved');
+  if (hsAfter > hsBefore) effects.push(msg('hist.hypersyncPlaced'));
+  else if (hsAfter < hsBefore) effects.push(msg('hist.hypersyncRetrieved'));
 
   return effects;
 }
