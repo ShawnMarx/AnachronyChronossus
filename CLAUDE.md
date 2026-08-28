@@ -484,6 +484,12 @@ Keep it that way; a change that requires a second edit to add a language is a re
   while the **Simple Command View** still rendered the same Action names as visible text from the
   raw catalog. `pw-i18n-review.mjs` reads RENDERED TEXT, which is why it caught it — run it
   before believing a file is done.
+- **A generated locale must exist BEFORE the build you serve.** `import.meta.glob` resolves
+  at **build time**, so a `vite preview` build made before `--pseudo` writes `xx.json` (or
+  `--markers` writes `zz.json`) contains no such locale: the ⚙ menu cannot switch to it, every
+  screen captures in English, and the run reports *hundreds* of "untranslated" lines that are
+  really "the locale was never loaded" (675 of them, 2026-08-28). Write the locale, **rebuild**,
+  then serve that build. Same family as the next item.
 - **Capture the visual baseline in the same build mode you compare against.** `vite dev` and
   `vite build` chunk differently, which changes how many `Math.random` calls precede the app's
   own dice — a dev-server baseline vs a `vite preview` capture showed the AI die as 2 then 4 with

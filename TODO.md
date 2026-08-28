@@ -17,7 +17,18 @@ committed and none are planned in-house.
       `doomsday.ts`, `pioneers.ts`, `chronossusHistory.ts`. Worth doing regardless of
       translation — it stops History freezing prose into `localStorage`, so a reworded
       instruction fixes old saves too, and the engine tests assert keys instead of sentences.
-- [ ] **Raise review coverage past ~47% (`MODES=Base`).** (`MODES=all` now runs clean —
+- [ ] **Raise review coverage past ~21% (`COVERAGE=1 MODES=all`, 2026-08-28).** The
+      denominator moved: the surface is now **1,450 keys** (was 1,114) and the message-
+      descriptor refactor added the two families a screen sweep is *worst* at reaching —
+      `instr.*` (4/234 seen) and `hist.*` (19/89), most of which only render after a rolled
+      turn or a committed one. Two fixable causes: the **marker locale** gives the harness
+      less text to navigate by, so it reaches 742 screens where the pseudolocale run reaches
+      897; and the sweep **never plays a turn**, so Clean Up's lines, Construct's two VP
+      branches, an Adventure's card line and Alternate Timelines can never appear. The
+      pseudolocale run DOES exercise them (`untranslated.md` is down to 19 lines, none of
+      them an instruction), so this is a coverage-reporting gap, not a translation gap.
+      Superseded detail — the original entry:
+      **Raise review coverage past ~47% (`MODES=Base`).** (`MODES=all` now runs clean —
       897 captures, zero layout faults — so what is left is the COVERAGE report, not the
       sweep itself.) `pw-i18n-review.mjs` reports what
       it missed in `coverage.md`; the known gaps and their routes:

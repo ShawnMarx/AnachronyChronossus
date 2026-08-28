@@ -89,10 +89,12 @@ note deviations and decisions inline as they happen.
 ## Feature 8 — verification
 
 - [x] 8.1 `npm test`, `npm run build`, `npm run lint` all clean.
-- [ ] 8.2 `pw-i18n-review.mjs --pseudo` with `MODES=all` — History and the dialogs must now
-      pseudolocalize; zero layout faults, and `untranslated.md` must not list an instruction.
-- [ ] 8.3 `COVERAGE=1 LANG_CODE=zz --markers` — confirm the new families are reached, and
-      record what is not.
+- [x] 8.2 `pw-i18n-review.mjs --pseudo` with `MODES=all` — **897 captures, zero layout
+      faults, 19 untranslated lines** (was 40), and not one of them an instruction or a
+      History line. See the deviation note below: the pseudolocale must be present at BUILD
+      time or the whole run is a false negative.
+- [x] 8.3 `COVERAGE=1 LANG_CODE=zz --markers` — run, and **what it does not reach is
+      reported rather than glossed**: see the note below and the extended `TODO.md` item.
 - [x] 8.4 Snapshot diff against a `vite preview` build of the pre-refactor commit (built in
       a worktree, per `CLAUDE.md`): **36 screens, text and layout identical, worst pixel
       delta 0** — no regressions.
@@ -400,3 +402,56 @@ lives in the shared undo hook. `pw-chronobot-parity.mjs`, `pw-shapedie.mjs` and
 **Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
 clean, `npm run lint` 0 errors; `pw-descriptors` (both bots), `pw-chronobot-parity`,
 `pw-quantum`, `pw-shapedie` and `pw-nostorage` all green.
+
+### Feature 8 — verification, 2026-08-28
+
+**A trap that made the first pseudolocale run a false negative: `import.meta.glob` resolves
+at BUILD time.** `--pseudo` writes `src/i18n/locales/xx.json`, but the `vite preview` build
+being served was made before that file existed, so the app had no such locale, the ⚙ menu
+could not switch to it, and every screen captured in English. The harness dutifully reported
+**675 untranslated lines** — a number that looks like a catastrophic regression and is
+actually "the locale was never loaded". **Rebuild after writing the pseudolocale (or the
+marker locale), then serve that build.** This is the same class of mistake as capturing a
+baseline with `vite dev`, and it now sits next to it in `CLAUDE.md`.
+
+**The corrected run is the measurement this refactor was for.** 897 captures, **zero layout
+faults**, and `untranslated.md` down from **40 lines to 19**. Every line it lost is one this
+refactor keyed:
+
+    Era 1 · → Power Up            Era 1 · Power Up: 3 Exosuits
+    Era 1 · Warp: placed 1        Placed 1 Warp tile on the Timeline
+    Failed action (+1 VP)         Drew 0 Energy + 3 Exhausted
+    Era 1 · Remove Anomaly · +1 VP    Era 1 · Score · +2 VP    …
+
+The 19 that remain are all legitimate: the two bots' proper nouns, the dev-only Debug bar
+(deliberately never swept), the signed-in user's name, the language names in the ⚙ menu, and
+four lines that are a translated string's tail split off by a bold run (the trailing `⟧`
+gives them away).
+
+**8.4 — the no-wording-change proof.** `pw-i18n-snapshot.mjs` against a `vite preview` build
+of the pre-refactor commit (`c783bd3`, built in a worktree): **36 screens, text and layout
+identical, worst pixel delta 0**. The one deliberate wording change (Feature 5's "Spent 1
+{worker}") is a History line and does not appear on those screens.
+
+**8.3 — the coverage run, reported honestly.** `COVERAGE=1 LANG_CODE=zz MODES=all`:
+**742 captures, zero layout faults, 300 of 1,450 keys (21%) displayed** — `instr.*` 4/234,
+`hist.*` 19/89. That is NOT evidence the new families are unreachable; the **pseudolocale**
+run (897 captures) is what exercised them, and its `untranslated.md` proves it — every
+History line it used to list in English is gone from the list.
+
+Two separate reasons for the gap, and they belong in `TODO.md` rather than being smoothed
+over:
+
+* The marker locale replaces every string with `⟦key⟧`, so the harness has **less text to
+  navigate by** and reaches 742 screens where the pseudolocale run reaches 897. It is a
+  weaker sweep by construction.
+* Most `instr.*` / `hist.*` keys only render **after a rolled turn or a committed one** —
+  Clean Up's lines, Construct's two VP branches, an Adventure's card line, Alternate
+  Timelines. A screen sweep that never plays a turn cannot show them.
+
+The existing TODO item ("raise review coverage past ~47%") is updated with the new
+denominator: the surface grew 1,114 -> 1,450, and the families that grew it are exactly the
+ones a screen sweep is worst at reaching.
+
+**Housekeeping:** `xx.json` was swept into a commit by `git add -A` (it is a build input for
+one run, never a source file). Both generated locales are now in `.gitignore`.

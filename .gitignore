@@ -29,3 +29,9 @@ dist-ssr
 # Test artefacts: screenshots and score-share PNGs written next to the harnesses.
 score-*.png
 shot*.png
+
+# Generated review locales — `pw-i18n-review.mjs --pseudo` writes xx.json and `--markers`
+# writes zz.json. They are build inputs for one run (import.meta.glob is build-time), never
+# committed: one slipped into a commit on 2026-08-28 because `git add -A` swept it up.
+src/i18n/locales/xx.json
+src/i18n/locales/zz.json
