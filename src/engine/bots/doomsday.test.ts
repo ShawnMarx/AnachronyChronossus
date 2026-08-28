@@ -179,7 +179,9 @@ function run(
 ) {
   const instr: Instruction[] = [];
   const res = resolveDoomsdayAction(b, instr, 1, level, input, failVp, postImpact);
-  return { res, instr, text: instr.map((i) => i.text).join('\n') };
+  // Rendered, not coerced: `i.text` is a `Text`, and `${…}` on a descriptor prints
+  // [object Object] with no type error (the plan's step 6.5).
+  return { res, instr, text: instr.map((i) => renderEnglish(i.text)).join('\n') };
 }
 
 describe('Experiment — Step 1 (execute)', () => {

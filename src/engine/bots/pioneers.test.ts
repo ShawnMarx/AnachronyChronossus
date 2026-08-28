@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { renderEnglish } from '../../i18n/msg';
 import type { ChronossusState, Instruction } from '../state';
 import {
   BASE_POWER,
@@ -269,7 +270,7 @@ describe('resolveAdventure', () => {
     // Giant Sandworm is purple — its printed Success box grants ongoing Power, which the
     // bot never takes; it gets 3 VP + 1 Energy Core instead.
     const res = resolveAdventure(b, [], 0, { powerSlot: 0, die: 1, drawn: ['5+/15'] });
-    expect(res.gains).toEqual(['3 VP', '1 Energy Core']);
+    expect(res.gains.map(renderEnglish)).toEqual(['3 VP', '1 Energy Core']);
     expect(res.actions).toEqual([]);
     expect(res.followUps).toEqual([]);
   });
@@ -280,7 +281,7 @@ describe('resolveAdventure', () => {
     // Secret Tunnels: the Research/Recruit/Construct choice always resolves to Research.
     const res = resolveAdventure(b, [], 0, { powerSlot: 4, die: 6, drawn: ['5+/13'] });
     expect(res.taken?.name).toBe('Secret Tunnels');
-    expect(res.followUps).toEqual(['Then it takes 2 Research Actions.']);
+    expect(res.followUps.map(renderEnglish)).toEqual(['Then it takes 2 Research Actions.']);
   });
 
   it('leaves gains and follow-ups empty when it meets neither card', () => {

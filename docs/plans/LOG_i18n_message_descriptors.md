@@ -45,8 +45,8 @@ note deviations and decisions inline as they happen.
 
 ## Feature 4 — the module bots (17 sites)
 
-- [ ] 4.1 `doomsday.ts` (9 sites) + tests — note `doomsday.test.ts` asserts `text:` today.
-- [ ] 4.2 `pioneers.ts` (8 sites) + tests.
+- [x] 4.1 `doomsday.ts` (9 sites) + tests — note `doomsday.test.ts` asserts `text:` today.
+- [x] 4.2 `pioneers.ts` (8 sites) + tests.
 
 ## Feature 5 — the summarizers
 
@@ -253,3 +253,45 @@ clean — the failure mode that grep sweep exists for.
 **Verification:** `npx tsc --noEmit` clean, `npm test` **570 passing** (was 559 — +11:
 2 new message-key tests, 9 from the converted assertions), `npm run build` clean, `npm run
 lint` 0 errors. Every literal and templated key in the engine checked against `en.json`.
+
+### Feature 4 — 2026-08-28
+
+Both module bots converted, each with its own catalog beside its rules (D10):
+`bots/doomsday.messages.ts` (20 keys) and `bots/pioneers.messages.ts` (25).
+
+**Doomsday's track line was one string with two ternaries** — which way the marker moves,
+and whether the spot prints VP — so it becomes four whole sentences
+(`track.up.vp` / `.up.noVp` / `.down.vp` / `.down.noVp`). The tracker's name now comes from
+the existing `ui.track.saveEarth` / `ui.track.sealFate` rather than a literal, so it is
+translated once for the board and the instruction alike.
+
+**Pioneers: `AdventureResult.gains` / `.actions` / `.followUps` are `Msg[]` now.** They are
+not just instruction fragments — the Adventure result panel renders the same three lists —
+so leaving them as prose would have been a translated instruction next to an untranslated
+summary of itself. `adventureDid()` is **exported** and builds the "gains 2 VP, 1 Gold,
+removes 1 Anomaly" line for both the engine's instruction and the panel, so the two cannot
+drift; `msg.join` joins clause lists the way `msg.sentences` joins sentences.
+
+**An Adventure card's own text stays a plain string.** The card catalog (`data/adventureCards.ts`)
+is untranslated data — the name, the conversion note — so it fills a param rather than
+becoming a key. Publishing it would ask a translator to translate a card catalog we do not
+own the wording of.
+
+**The worker/building normalisation continues** (Feature 3's note): a card's Worker gain
+reads "1 Scientist" and its free Construct "1 Power Plant", from `piece.*`, where the raw
+enum previously printed "1 scientist" / "1 powerplant". A bare enum value cannot be handed
+to a translator, and the capitalised forms are the ones the rest of the UI already uses.
+
+**Step 6.5 caught a second coercion**: `doomsday.test.ts`'s own `run()` helper built its
+assertion text with `instr.map((i) => i.text).join('\n')`. Both module test files now render
+through `renderEnglish` — deliberately, because what those tests assert IS the English
+wording, and rendering keeps them able to catch a wording regression.
+
+**`messageKeys.test.ts` extended to both modules** — the Experiment's five branches (both
+steps, locked, the Failed Action, Earth saved, fate sealed) and the Adventure's three (a card
+taken, neither met, the no-slot penalty into the VP-token upgrade). It also **counts what it
+checked** and asserts a floor now: a walk that silently visited nothing would otherwise pass
+while proving nothing.
+
+**Verification:** `npx tsc --noEmit` clean, `npm test` **572 passing**, `npm run build`
+clean, `npm run lint` 0 errors.

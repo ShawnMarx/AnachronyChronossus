@@ -9,6 +9,7 @@
 // happens, ignore that step."
 
 import type { ChronossusState, Instruction } from '../state';
+import { msg, plural, type Msg } from '../message';
 import { removeAnyWarpTile } from '../warpTiles';
 import type { Resource } from '../types';
 import { adventureCard, type AdventureCard, type AdventureDeck } from '../../data/adventureCards';
@@ -194,11 +195,44 @@ export interface AdventureResult {
    * four conversions (W, Morale, Research/Recruit/Construct choice, ongoing) mean the
    * printed text routinely describes something else entirely.
    */
-  gains: string[];
+  gains: Msg[];
   /** Things it does rather than gains ("removes 1 Anomaly") — each a full clause. */
-  actions: string[];
+  actions: Msg[];
   /** Follow-ups the app can't apply on the physical board (Research/Recruit/Construct). */
-  followUps: string[];
+  followUps: Msg[];
+}
+
+/**
+ * What a taken card did, as one descriptor: "gains 2 VP, 1 Gold, removes 1 Anomaly", or
+ * null when the card did nothing the app can state. Exported because the Adventure result
+ * panel builds the same line, and the two must not drift apart.
+ */
+export function adventureDid(gains: Msg[], actions: Msg[]): Msg | null {
+  const parts: Msg[] = [
+    ...(gains.length
+      ? [
+          msg('instr.pioneers.adventure.gains', {
+            gains: {
+              list: gains,
+              sep: 'instr.pioneers.adventure.gainsSep',
+              last: 'instr.pioneers.adventure.gainsSep',
+            },
+          }),
+        ]
+      : []),
+    ...actions,
+  ];
+  if (parts.length === 0) return null;
+  return {
+    key: 'msg.join',
+    params: {
+      text: {
+        list: parts,
+        sep: 'instr.pioneers.adventure.didSep',
+        last: 'instr.pioneers.adventure.didSep',
+      },
+    },
+  };
 }
 
 /**
@@ -224,29 +258,32 @@ export function resolveAdventure(
   // the strength bonus from the Path marker) ... THEN, it rolls the Adventure die" (p.15).
   instr.push({
     id: `adv-power-${n}`,
-    text:
-      `Power ${powerBeforeRoll} before the roll — ${base} on its Upgrade board, ` +
-      `${input.powerSlot >= 0 ? '+' : ''}${input.powerSlot} from the Path marker — ` +
-      `so it draws 2 cards from the ${deck} deck. The Adventure die adds ${input.die}, ` +
-      `for a total Power of ${totalPower}.`,
+    text: msg('instr.pioneers.adventure.power', {
+      power: powerBeforeRoll,
+      base,
+      // A signed number, not an English word: the sign is punctuation, so it fills a
+      // param rather than splitting the sentence in two.
+      slot: `${input.powerSlot >= 0 ? '+' : ''}${input.powerSlot}`,
+      deck,
+      die: input.die,
+      total: totalPower,
+    }),
     detail:
       input.powerSlot === NO_SLOT_PENALTY
-        ? 'No free Power slot was left on the Adventure board, so it takes -3 instead.'
+        ? msg('instr.pioneers.adventure.noSlot.detail')
         : undefined,
   });
 
   const taken = chooseAdventureCard(drawn, totalPower);
-  let gains: string[] = [];
-  let actions: string[] = [];
-  let followUps: string[] = [];
+  let gains: Msg[] = [];
+  let actions: Msg[] = [];
+  let followUps: Msg[] = [];
 
   if (!taken) {
     bot.vp += 1;
     instr.push({
       id: `adv-none-${n}`,
-      text:
-        'It does not meet either drawn card’s Power requirement — the Chronossus gains 1 VP ' +
-        'and both cards go to the bottom of their decks.',
+      text: msg('instr.pioneers.adventure.neither'),
       effect: { vp: 1 },
     });
   } else {
@@ -283,65 +320,85 @@ function applyCardToBot(
   instr: Instruction[],
   n: number,
   card: AdventureCard,
-): { gains: string[]; actions: string[]; followUps: string[] } {
+): { gains: Msg[]; actions: Msg[]; followUps: Msg[] } {
   const b = card.bot;
   /** Things it GAINS ("2 VP") — read as one list after "it gains …". */
-  const gains: string[] = [];
+  const gains: Msg[] = [];
   /** Things it DOES ("removes 1 Anomaly") — each already a full clause. */
-  const actions: string[] = [];
-  const followUps: string[] = [];
+  const actions: Msg[] = [];
+  const followUps: Msg[] = [];
 
   if (b.vp) {
     bot.vp += b.vp;
-    gains.push(`${b.vp} VP`);
+    gains.push(msg('instr.pioneers.card.vp', { n: b.vp }));
   }
   if (b.energyCores) {
     bot.energyPool.energized += b.energyCores;
-    gains.push(`${b.energyCores} Energy Core${b.energyCores === 1 ? '' : 's'}`);
+    gains.push(plural('instr.pioneers.card.energyCore', b.energyCores));
   }
   for (const [res, amount] of Object.entries(b.resources ?? {})) {
     bot.resources[res as Resource] += amount as number;
-    gains.push(`${amount} ${res}`);
+    gains.push(
+      msg('instr.pioneers.card.piece', {
+        n: amount as number,
+        piece: msg(`ui.pieceInline.${res}`),
+      }),
+    );
   }
   for (const [w, amount] of Object.entries(b.workers ?? {})) {
     bot.workers[w as keyof typeof bot.workers] += amount as number;
-    gains.push(`${amount} ${w}`);
+    gains.push(
+      msg('instr.pioneers.card.piece', { n: amount as number, piece: msg(`piece.${w}`) }),
+    );
   }
   if (b.resourceChoice) {
     const picked = chooseCardResource(bot, b.resourceChoice.from);
     bot.resources[picked] += b.resourceChoice.count;
-    gains.push(`${b.resourceChoice.count} ${picked}`);
+    gains.push(
+      msg('instr.pioneers.card.piece', {
+        n: b.resourceChoice.count,
+        piece: msg(`ui.pieceInline.${picked}`),
+      }),
+    );
   }
   if (b.timeTravel) {
     bot.timeTravelTrack += b.timeTravel;
-    actions.push(
-      `advances ${b.timeTravel} step${b.timeTravel === 1 ? '' : 's'} on the Time Travel track`,
-    );
+    actions.push(plural('instr.pioneers.card.timeTravel', b.timeTravel));
   }
   if (b.removeAnomaly && bot.anomalies > 0) {
     bot.anomalies -= 1;
     if (bot.anomalyVps && bot.anomalyVps.length > 0) bot.anomalyVps = bot.anomalyVps.slice(1);
-    actions.push('removes 1 Anomaly');
+    actions.push(msg('instr.pioneers.card.removeAnomaly'));
   }
   if (b.returnWarpTile && bot.warpTilesOnTimeline > 0) {
     bot.warpTilesOnTimeline -= 1;
     // Not Time Travel: the card just returns a tile, so no past-tile restriction — but the
     // per-Era map still has to lose the one it took.
     bot.warpTilesByEra = removeAnyWarpTile(bot.warpTilesByEra);
-    actions.push('returns 1 Warp tile from the Timeline to its supply');
+    actions.push(msg('instr.pioneers.card.returnWarpTile'));
   }
 
-  const did = [...(gains.length ? [`gains ${gains.join(', ')}`] : []), ...actions];
+  const did = adventureDid(gains, actions);
   instr.push({
     id: `adv-card-${n}`,
-    text: `It takes "${card.name}" (Power ${card.power})${did.length ? ` — it ${did.join(', ')}.` : '.'}`,
+    // Two keys, not one with a clause spliced in: a card that does nothing reads as a
+    // different sentence (D2).
+    text: did
+      ? msg('instr.pioneers.adventure.takesDid', {
+          card: card.name,
+          power: card.power,
+          did,
+        })
+      : msg('instr.pioneers.adventure.takes', { card: card.name, power: card.power }),
+    // The card's own text is DATA — the card catalog is untranslated — so it stays a
+    // plain string.
     detail: [card.bot.conversion, card.bot.note].filter(Boolean).join(' '),
     effect: b.vp ? { vp: b.vp } : undefined,
   });
 
   // Follow-ups the app cannot apply on the player's physical board.
   if (b.research) {
-    followUps.push(`Then it takes ${b.research} Research Action${b.research === 1 ? '' : 's'}.`);
+    followUps.push(plural('instr.pioneers.followUp.research', b.research));
     instr.push({
       id: `adv-research-${n}`,
       text: followUps[followUps.length - 1],
@@ -349,7 +406,7 @@ function applyCardToBot(
     });
   }
   if (b.recruit) {
-    followUps.push(`Then it takes ${b.recruit} Recruit Action${b.recruit === 1 ? '' : 's'}.`);
+    followUps.push(plural('instr.pioneers.followUp.recruit', b.recruit));
     instr.push({
       id: `adv-recruit-${n}`,
       text: followUps[followUps.length - 1],
@@ -359,13 +416,13 @@ function applyCardToBot(
   if (b.construct) {
     followUps.push(
       b.construct === 'superproject'
-        ? 'Then it constructs 1 Superproject from the Timeline for free.'
-        : `Then it constructs 1 ${b.construct} for free.`,
+        ? msg('instr.pioneers.followUp.superproject')
+        : msg('instr.pioneers.followUp.building', { building: msg(`piece.${b.construct}`) }),
     );
     instr.push({
       id: `adv-construct-${n}`,
       text: followUps[followUps.length - 1],
-      detail: 'Tap the printed VP on the tile it took so the Chronossus scores it.',
+      detail: msg('instr.pioneers.followUp.construct.detail'),
       requiresInput: true,
     });
   }
@@ -388,11 +445,8 @@ export function resolvePowerUpgrade(
     p.upgraded = { ...p.upgraded, [pick]: true };
     instr.push({
       id: `adv-upgrade-${n}`,
-      text: `Power Upgrade: the Chronossus moves 1 ${pick} from its board onto its Exosuit Upgrade board.`,
-      detail:
-        'It takes whichever placeable Resource it has the most of; ties go ' +
-        'Titanium > Gold > Uranium > Neutronium. That Resource is now spent, and its slot ' +
-        'adds to the Chronossus’s Power permanently.',
+      text: msg('instr.pioneers.upgrade.resource', { resource: msg(`ui.pieceInline.${pick}`) }),
+      detail: msg('instr.pioneers.upgrade.resource.detail'),
     });
     return pick;
   }
@@ -400,12 +454,8 @@ export function resolvePowerUpgrade(
   p.vpTokens += 1;
   instr.push({
     id: `adv-upgrade-vp-${n}`,
-    text:
-      'Power Upgrade: the Chronossus has no Resource with a free slot, so it places 1 VP token from the ' +
-      'supply on its Exosuit Upgrade board instead.',
-    detail:
-      'These VP tokens add Power but do NOT count as VP for the Chronossus, unless that ' +
-      'difficulty option is on.',
+    text: msg('instr.pioneers.upgrade.vpToken'),
+    detail: msg('instr.pioneers.upgrade.vpToken.detail'),
   });
   return null;
 }

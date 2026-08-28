@@ -15,6 +15,7 @@
 //     is the player's job; the app only says WHEN to do it and takes the outcome as input.
 //     Hence there is no `+`/`-` data anywhere in this file.
 
+import { msg } from '../message';
 import type { ChronossusState, Instruction } from '../state';
 
 /** Which of the two tracker tokens a side of the table moves. */
@@ -326,7 +327,7 @@ export function resolveDoomsdayAction(
   const d = bot.doomsday;
   if (!d) throw new Error('resolveDoomsdayAction: no Doomsday state');
 
-  const trackerName = d.botTracker === 'save-earth' ? 'Save Earth' : 'Seal Fate';
+  const trackerName = msg(d.botTracker === 'save-earth' ? 'ui.track.saveEarth' : 'ui.track.sealFate');
   const fromSlot = d.botSlot;
   const result: ExperimentResult = {
     level,
@@ -348,10 +349,8 @@ export function resolveDoomsdayAction(
   if (!input.markedAvailable) {
     instr.push({
       id: `exp-none-${n}`,
-      text: `No Level ${level} Experiment carries one of the Chronossus’s Path markers — skip this step.`,
-      detail:
-        'A step that cannot be performed is simply ignored; the Action still continues to ' +
-        'Step 2.',
+      text: msg('instr.doomsday.experiment.none', { level }),
+      detail: msg('instr.doomsday.experiment.none.detail'),
     });
   } else {
     const vp = EXPERIMENT_VP[level];
@@ -362,10 +361,7 @@ export function resolveDoomsdayAction(
     d.experimentsCompleted += 1;
     instr.push({
       id: `exp-take-${n}`,
-      text:
-        `Give the Chronossus the leftmost Level ${level} Experiment on the Timeline carrying ` +
-        `one of its Path markers, and discard that marker. It scores the ${vp} VP printed ` +
-        `on the card.`,
+      text: msg('instr.doomsday.experiment.take', { level, vp }),
       ...(vp ? { effect: { vp } } : {}),
     });
 
@@ -381,10 +377,8 @@ export function resolveDoomsdayAction(
     if (result.locked) {
       instr.push({
         id: `exp-locked-${n}`,
-        text: `The Doomsday tracks are locked, so the ${trackerName} marker does not move.`,
-        detail:
-          'No movement is allowed once the Impact has occurred or either tracker has reached ' +
-          'its final slot — but Experiments still score their VP.',
+        text: msg('instr.doomsday.track.locked', { tracker: trackerName }),
+        detail: msg('instr.doomsday.track.locked.detail'),
       });
     } else {
       const toSlot = nextSlot(d.botTracker, d.botSlot);
@@ -396,15 +390,15 @@ export function resolveDoomsdayAction(
       result.trackVp = trackVp;
       instr.push({
         id: `exp-track-${n}`,
-        text:
-          `Move the ${trackerName} marker one step ${d.botTracker === 'save-earth' ? 'up' : 'down'} ` +
-          `the Doomsday track` +
-          (trackVp ? `. The Chronossus scores the ${trackVp} VP printed there.` : ' (no VP printed there).'),
-        detail:
-          trackVp > 0
-            ? 'The Chronossus takes any printed VP on the spot regardless of which Path it ' +
-              'belongs to, so where a spot prints a value for each Path it takes both.'
-            : undefined,
+        // Which way it moves and whether the spot prints VP are both mid-sentence
+        // branches, so all four readings are whole sentences of their own (D2).
+        text: msg(
+          `instr.doomsday.track.${d.botTracker === 'save-earth' ? 'up' : 'down'}.${
+            trackVp ? 'vp' : 'noVp'
+          }`,
+          { tracker: trackerName, vp: trackVp },
+        ),
+        detail: trackVp > 0 ? msg('instr.doomsday.track.vp.detail') : undefined,
         ...(trackVp ? { effect: { vp: trackVp } } : {}),
       });
 
@@ -414,21 +408,15 @@ export function resolveDoomsdayAction(
           result.endsGame = true;
           instr.push({
             id: `exp-earth-saved-${n}`,
-            text:
-              'The Save Earth marker has reached the topmost slot — the Impact’s damage is ' +
-              'completely mitigated and the game is over.',
-            detail:
-              'In games where Earth is saved the Impact is never resolved, so there is no ' +
-              'Evacuation.',
+            text: msg('instr.doomsday.track.earthSaved'),
+            detail: msg('instr.doomsday.track.earthSaved.detail'),
           });
         } else {
           result.impactNow = true;
           instr.push({
             id: `exp-fate-sealed-${n}`,
-            text:
-              'The Seal Fate marker has reached the bottommost slot — place the Impact tile ' +
-              'after the current Timeline tile and resolve the Impact immediately.',
-            detail: 'Do not roll the Trajectory dice in this Era’s Check for Impact.',
+            text: msg('instr.doomsday.track.fateSealed'),
+            detail: msg('instr.doomsday.track.fateSealed.detail'),
           });
         }
       }
@@ -440,18 +428,13 @@ export function resolveDoomsdayAction(
     result.prepared = true;
     instr.push({
       id: `exp-prepare-${n}`,
-      text:
-        'Place one of the Chronossus’s Path markers on a face-up Experiment that does not ' +
-        'already have one — a Level 1 before a Level 2, and the furthest in the past on the ' +
-        'Timeline to break a tie.',
-      detail:
-        'Never the Experiment under the next Era. Your Focus marker has no effect on this ' +
-        'choice.',
+      text: msg('instr.doomsday.prepare.done'),
+      detail: msg('instr.doomsday.prepare.done.detail'),
     });
   } else {
     instr.push({
       id: `exp-noprepare-${n}`,
-      text: 'Every available face-up Experiment already carries a Path marker — skip this step.',
+      text: msg('instr.doomsday.prepare.none'),
     });
   }
 
@@ -463,10 +446,8 @@ export function resolveDoomsdayAction(
     bot.vp += failVp;
     instr.push({
       id: `exp-failed-${n}`,
-      text: `Neither step could be performed — a Failed Action, so the Chronossus takes ${failVp} VP instead.`,
-      detail:
-        'The Exosuit is still placed: an Action that can be taken but cannot be performed ' +
-        'pays VP in place of its normal effect.',
+      text: msg('instr.doomsday.failed', { vp: failVp }),
+      detail: msg('instr.doomsday.failed.detail'),
       effect: { vp: failVp },
     });
   }

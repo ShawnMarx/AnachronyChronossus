@@ -134,7 +134,12 @@ import {
   type AdventureCard,
   type AdventureDeck,
 } from './data/adventureCards';
-import { resolveAdventure, type AdventureInput, type AdventureResult } from './engine/bots/pioneers';
+import {
+  adventureDid,
+  resolveAdventure,
+  type AdventureInput,
+  type AdventureResult,
+} from './engine/bots/pioneers';
 import { placeWarpTiles, removeAnyWarpTile, warpRemoval, warpTileLabel } from './engine/warpTiles';
 import {
   getMode,
@@ -4869,10 +4874,9 @@ function AdventureResultPanel({
   const boardTotal = breakdown.reduce((n, b) => n + b.power, 0);
   const slotBonus = result.powerBeforeRoll - boardTotal;
   const die = result.totalPower - result.powerBeforeRoll;
-  const did = [
-    ...(result.gains.length ? [`gains ${result.gains.join(', ')}`] : []),
-    ...result.actions,
-  ];
+  // Built by the engine, so this line and the History instruction cannot drift apart.
+  const didMsg = adventureDid(result.gains, result.actions);
+  const did = didMsg ? renderMsg(t, didMsg) : '';
   return (
     <>
       {/* 1. Power before the roll. */}
@@ -4944,13 +4948,11 @@ function AdventureResultPanel({
               restate either here. */}
           <p className="pp-instruct">
             <T k="ui.cx.adv.takes" params={{ card: result.taken.name }} />
-            {did.length ? (
-              <T k="ui.cx.adv.takesAnd" params={{ what: did.join(', ') }} />
-            ) : null}
+            {did ? <T k="ui.cx.adv.takesAnd" params={{ what: did }} /> : null}
           </p>
           {result.followUps.map((f) => (
-            <p className="pp-instruct" key={f}>
-              {f}
+            <p className="pp-instruct" key={f.key}>
+              {renderMsg(t, f)}
             </p>
           ))}
           {result.taken.bot.conversion && (
