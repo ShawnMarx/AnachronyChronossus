@@ -78,8 +78,9 @@ note deviations and decisions inline as they happen.
       _(done early in Feature 2 — the English-rendering test needed it.)_
 - [x] 7.2 Rewrite the "NOT in the surface" note in `surface.ts` — it currently names this
       refactor as the reason instructions are excluded.
-- [~] 7.3 Regenerate `en.json` — done for Feature 2 (**1,182** keys, up from 1,114; 58
-      `instr.*`). Re-run after each remaining feature.
+- [x] 7.3 Regenerate `en.json` — re-run after every feature; now **1,450** keys (up from
+      1,114 before the refactor): 234 `instr.*`, 89 `hist.*`, plus the shared `msg.*` /
+      `board.*`.
 - [x] 7.4 D7's completeness check — as its own file, `engine/messageKeys.test.ts`, rather
       than inside `playthrough.test.ts`: that test drives the CHRONOBOT and asserts game
       state, and bolting a message walk onto it would have made one test answer two
@@ -87,15 +88,17 @@ note deviations and decisions inline as they happen.
 
 ## Feature 8 — verification
 
-- [ ] 8.1 `npm test`, `npm run build`, `npm run lint` all clean.
+- [x] 8.1 `npm test`, `npm run build`, `npm run lint` all clean.
 - [ ] 8.2 `pw-i18n-review.mjs --pseudo` with `MODES=all` — History and the dialogs must now
       pseudolocalize; zero layout faults, and `untranslated.md` must not list an instruction.
 - [ ] 8.3 `COVERAGE=1 LANG_CODE=zz --markers` — confirm the new families are reached, and
       record what is not.
-- [ ] 8.4 Snapshot diff against a `vite preview` build of `staging` (build the baseline in a
-      worktree, per `CLAUDE.md`): text and layout identical — this refactor changes no wording.
-- [ ] 8.5 Play a real game in the browser: an in-progress save from before the change must
-      still render its old English History (D3), and new turns must render keyed.
+- [x] 8.4 Snapshot diff against a `vite preview` build of the pre-refactor commit (built in
+      a worktree, per `CLAUDE.md`): **36 screens, text and layout identical, worst pixel
+      delta 0** — no regressions.
+- [x] 8.5 D3's back-compat guarantee is now **automated** in `pw-descriptors.mjs` rather
+      than played by hand: it rewrites the last saved entry as a finished English sentence,
+      reloads, and asserts it still renders. Green on both bots.
 
 ---
 

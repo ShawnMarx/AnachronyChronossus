@@ -110,6 +110,42 @@ if (instrs.length && !keyed.length) {
 } else {
   console.log(`persisted instructions: ${keyed.length}/${instrs.length} are descriptors`);
 }
+// D3, the back-compat guarantee: a game already in progress when this shipped has FINISHED
+// ENGLISH SENTENCES on its undo stack. Those must still render as written — bumping the save
+// version would have discarded every in-progress game instead. Inject one and reload.
+if (stack.length) {
+  const LEGACY = 'Era 1 · Bot: a legacy saved sentence';
+  await page.evaluate(
+    ([key, legacy]) => {
+      const data = JSON.parse(localStorage.getItem(key));
+      const list = data.undoStack ?? data.entries;
+      list[list.length - 1] = {
+        ...list[list.length - 1],
+        label: legacy,
+        effects: ['A legacy saved effect line'],
+      };
+      localStorage.setItem(key, JSON.stringify(data));
+    },
+    [SAVE_KEY, LEGACY],
+  );
+  await page.reload({ waitUntil: 'networkidle' });
+  await wait(600);
+  // Only open it if it is not already docked — the same button TOGGLES, so clicking it on
+  // the Chronossus's board (where the pane is open by default) would close it instead.
+  if ((await page.locator('.history-pane').count()) === 0) {
+    const openHistory = page
+      .locator('button[title*="History" i], button[aria-label*="History" i]')
+      .first();
+    if (await openHistory.count()) {
+      await openHistory.click({ force: true }).catch(() => {});
+      await wait(400);
+    }
+  }
+  const shown = await body();
+  if (!shown.includes(LEGACY)) bad.push('a legacy saved sentence no longer renders (D3)');
+  else console.log('legacy prose entry still renders:', LEGACY);
+}
+
 const pane = page.locator('.history-pane').first();
 if (await pane.count()) {
   console.log('--- History pane (rendered) ---');
