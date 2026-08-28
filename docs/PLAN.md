@@ -5,19 +5,23 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-08-25): every module AND add-on is implemented, the repo is PUBLIC, saved
+> **Status (2026-08-28): every module AND add-on is implemented, the repo is PUBLIC, saved
 > history works in both environments, and the app is translation-ready — adding a language is
 > one dropped-in locale file (`src/i18n/locales/README.md`), with the app's own voice
 > translatable and verbatim rulebook text gated behind an `officialRulebook` flag.**
 > **2026-08-24:** the chrome sweep finished — every player-facing string now resolves through
 > a key (**1,113** published, up from 314), verified by an all-modes pseudolocale run (897
 > captures, zero layout faults) and a text/layout diff against a production build of `main`.
-> **2026-08-25:** that message-descriptor refactor is **in progress** — the engine now returns
-> `{key, params}` instead of prose, so a persisted History line is re-rendered on every read
-> rather than frozen in the language and wording that wrote it. **Features 1–2 of 8 are done**
-> (the infrastructure, and the Chronobot's 35 sites); the Chronossus's 54, the module bots, the
-> History summarizers and the view-built turn labels remain. Active plan:
-> `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…` — **that is the pickup point.**
+> **2026-08-28:** the message-descriptor refactor is **done** — all 8 features, archived to
+> `docs/complete/20260828_I18N_MESSAGE_DESCRIPTORS_COMPLETED.md`. The engine returns
+> `{key, params}` and never prose, so a persisted History line is re-rendered on every read
+> rather than frozen in the language and wording that wrote it — which fixes **old saves**
+> when an instruction is reworded, English-only build or not. Surface **1,114 -> 1,450 keys**;
+> the all-modes pseudolocale run's `untranslated.md` fell **40 -> 19 lines** (none of them an
+> instruction), zero layout faults; a 36-screen snapshot diff against a production build of
+> the pre-refactor commit is identical, pixel delta 0. **No plan is active** — the pickup
+> point is `TODO.md`, whose largest remaining i18n items are the review sweep's coverage and
+> extending `es.json` past its 174 keys.
 > A **Spanish test locale** (`src/i18n/locales/es.json`, 174 keys) landed with it, built from the
 > official Spanish *base-game* rulebook; it ships `officialRulebook: false` because there is no
 > Spanish Solo Opponents edition, and `GLOSSARY-es.md` marks every solo term that had to be

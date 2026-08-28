@@ -507,6 +507,13 @@ Keep it that way; a change that requires a second edit to add a language is a re
   written into the sentence, not passed as `{bot}`** — measured, only 9 of the two bots' 79
   strings were shared, and a name in a slot cannot take a case ending. A bare string is a legacy
   saved sentence and still renders as written, so `PersistedGame.version` was NOT bumped.
+- **A new module ships its own `bots/<module>.messages.ts`**, beside the rules it describes,
+  folded into `engine/messages.ts` — the same way it ships its own tiles. Never a central
+  catalog every module edits. The summarizers' English lives in `game/history.messages.ts`.
+- **`Text` collides with the DOM's global `Text`.** Widening a field to `Text` without
+  importing the type compiles **clean** — against `lib.dom`'s Text node — and then fails as a
+  confusing error somewhere else ("`string` is not assignable to `Text`"). Always
+  `import type { Text } from '…/engine/message'` in the file that names it.
 - **Widening a type will not find the code that breaks.** `${instr.text}` and
   `instrs.map((i) => i.text).join(' ')` are both legal on `string | Msg` and render
   `[object Object]`; `tsc` cannot see either. **Grep for template-literal and `join` reads**

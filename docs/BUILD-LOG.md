@@ -2,6 +2,59 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-08-28 — Message descriptors: finished, and the History pane speaks the locale
+
+**The refactor started on 2026-08-25 is done — all 8 features.** Archived to
+`docs/complete/20260828_I18N_MESSAGE_DESCRIPTORS_COMPLETED.md`. The engine no longer returns a
+sentence anywhere: `chronossus.ts` (54 sites + the prose helpers), `doomsday.ts`, `pioneers.ts`,
+both History summarizers and both views now emit `{key, params}`, with the English living in
+per-bot catalogs beside the rules — `chronossus.messages.ts` (133 keys),
+`doomsday.messages.ts` (20), `pioneers.messages.ts` (25), `game/history.messages.ts` (89).
+Surface **1,114 → 1,450 keys**.
+
+**The measurement that says it worked.** The all-modes pseudolocale run's `untranslated.md`
+fell from **40 lines to 19**, and every line it lost is one this work keyed: `Era 1 · Power Up:
+3 Exosuits`, `Placed 1 Warp tile on the Timeline`, `Failed action (+1 VP)`, `Drew 0 Energy +
+3 Exhausted`. The 19 left are proper nouns, the dev-only Debug bar, the signed-in user's name
+and the language menu. 897 captures, **zero layout faults**. And a 36-screen text/layout/pixel
+diff against a production build of the pre-refactor commit came back **identical, delta 0** —
+this changed no wording.
+
+**Except once, deliberately.** "Spent a engineer to acquire it" became **"Spent 1 {worker} to
+acquire it"**. Worker names now come from the published `piece.*` family and are capitalised,
+which turned an already-wrong article into a visibly wrong one — and an English indefinite
+article cannot be chosen without knowing the word after it, a problem every language has its own
+version of. The count sidesteps it.
+
+**Three more rules were deciding meaning by reading English** — on top of the two found in
+Feature 1. The Operator History line replaces the shared summarizer's "Recruited …" row; the
+Power Upgrade line replaces "Discarded uranium" (a Resource *spent onto the board*, not
+discarded); the turn overview filters out "You passed"; and `HistoryPane`'s React key
+interpolated the label, which would have made every row's key `[object Object]`. All four match
+on the KEY now, with the prose path kept as a legacy fallback. Five in total across the
+refactor, every one of them capable of silently changing a count or duplicating a line.
+
+**What guards it going forward.** `src/engine/messageKeys.test.ts` walks a full Chronossus Era,
+both module bots' branches and both tile sides, and asserts every key resolves and every
+`{placeholder}` is supplied — the two failures neither `tsc` nor a key assertion can see. It
+counts what it checked, so an empty walk cannot pass silently, and it was **self-tested both
+ways** before being believed. `pw-descriptors.mjs` gained a `BOT=chronossus` mode and now also
+proves the back-compat guarantee: it rewrites a saved entry as a finished English sentence,
+reloads, and asserts it still renders. `PersistedGame.version` stays where it is, so a game in
+progress survives the deploy.
+
+**Two traps this session paid for, both now in `CLAUDE.md`.** `Text` collides with the DOM's
+global `Text` — widening a field without importing the type checks *clean* against a DOM node
+and fails somewhere else entirely. And a generated locale must exist **before** the build you
+serve: `import.meta.glob` is build-time, so the first pseudolocale run served a build with no
+`xx.json` in it, captured every screen in English, and reported 675 "untranslated" lines that
+meant "the locale never loaded".
+
+**Reported, not glossed:** the marker-locale coverage run reaches 300 of 1,450 keys. The marker
+locale leaves the harness less text to navigate by (742 screens vs the pseudolocale's 897), and
+a sweep that never plays a turn cannot show most `instr.*` / `hist.*` keys. `TODO.md` carries
+the numbers and both causes.
+
 ## 2026-08-25 — Message descriptors: the engine stops writing sentences
 
 **The last surface a locale file could not reach was the one the engine writes.** Instructions
@@ -14,7 +67,8 @@ too, and the engine tests assert keys instead of prose.
 
 Plan and tracker: `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…`. **Features 1–2 of 8
 are done** (infrastructure, and the Chronobot's 35 sites); the Chronossus's 54, the module bots,
-the History summarizers and the view-built labels remain.
+the History summarizers and the view-built labels remain. *(Finished 2026-08-28 — see the entry
+above; the plan is archived to `docs/complete/20260828_I18N_MESSAGE_DESCRIPTORS_COMPLETED.md`.)*
 
 **The infrastructure** is `src/engine/message.ts` — `Msg` / `Text` / `MsgParam`, `msg()`,
 `plural()` and the resolver. Params resolve depth-first, so a message can carry another message

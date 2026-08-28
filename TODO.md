@@ -8,15 +8,14 @@ The mechanism is in (`src/i18n/`, `src/i18n/locales/README.md`): drop a `<code>.
 `src/i18n/locales/` and it appears in the ⚙ menu. Ships English-only; no translations are
 committed and none are planned in-house.
 
-- [~] **Engine instructions → message descriptors — IN PROGRESS (plan active).** See
-      `docs/plans/PLAN_i18n_message_descriptors.md` + `LOG_…`, which are the live tracker;
-      Features 1–2 of 8 are done (infrastructure + the Chronobot). Original framing: `Instruction.text` is assembled from
-      interpolated English inside the pure bot functions and persisted to History as a
-      finished sentence, so no key can reach it. Change it to `{ id, key, params }` and
-      render in the view: ~150-200 call sites across `chronossus.ts`, `chronobot.ts`,
-      `doomsday.ts`, `pioneers.ts`, `chronossusHistory.ts`. Worth doing regardless of
-      translation — it stops History freezing prose into `localStorage`, so a reworded
-      instruction fixes old saves too, and the engine tests assert keys instead of sentences.
+- [x] **Engine instructions → message descriptors — DONE 2026-08-28.** All 8 features;
+      archived to `docs/complete/20260828_I18N_MESSAGE_DESCRIPTORS_COMPLETED.md`. The engine
+      returns `{key, params}` and never prose, so a persisted History line is re-rendered on
+      every read rather than frozen in the wording — and language — that wrote it. Surface
+      **1,114 -> 1,450 keys**; the pseudolocale run's `untranslated.md` **40 -> 19 lines**;
+      36-screen snapshot diff against the pre-refactor build identical (one deliberate
+      wording fix, "Spent 1 {worker}"). `PersistedGame.version` deliberately NOT bumped, so
+      games in progress keep their old English History (guarded by `pw-descriptors.mjs`).
 - [ ] **Raise review coverage past ~21% (`COVERAGE=1 MODES=all`, 2026-08-28).** The
       denominator moved: the surface is now **1,450 keys** (was 1,114) and the message-
       descriptor refactor added the two families a screen sweep is *worst* at reaching —
