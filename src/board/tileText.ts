@@ -9,6 +9,7 @@
 // — the fallback meant for Reboot. Every new module's tile must add BOTH entries.
 
 import type { ChronossusActionId } from '../engine/bots/chronossus';
+import { msg, type Msg, type MsgList, type MsgParam } from '../engine/message';
 import { tileEffect } from './chronossusTiles';
 
 /**
@@ -35,18 +36,14 @@ export const TILE_DESC: Partial<Record<ChronossusActionId, string>> = {
 };
 
 /**
- * One tile action's one-liner, translated. `translate` is optional for the same reason
- * every other pure helper's is: a caller outside React (and the unit tests) gets English.
+ * One tile action's one-liner, as a descriptor — undefined for a tile with no entry.
+ *
+ * A key rather than a sentence: the caller renders it (`renderMsg(t, …)` for display),
+ * so nothing here has to know the language, and a description that reaches a saved
+ * string is re-rendered on every read rather than frozen.
  */
-export function tileDescription(
-  action: ChronossusActionId,
-  translate?: (key: string) => string,
-): string | undefined {
-  const english = TILE_DESC[action];
-  if (english == null) return undefined;
-  const key = `ui.tileDesc.${action}`;
-  const hit = translate?.(key);
-  return hit && hit !== key ? hit : english;
+export function tileDescription(action: ChronossusActionId): Msg | undefined {
+  return TILE_DESC[action] == null ? undefined : msg(`ui.tileDesc.${action}`);
 }
 
 /**
@@ -88,34 +85,27 @@ export const TILE_INSTR_EN: Record<string, string> = {
     'ui.tileInstr.frame': 'The Chronossus {parts}.',
     'ui.tileInstr.nothing':
       'The Chronossus does nothing this turn — its Command marker still advances.',
-    'ui.tileInstr.autoleap':
-      ' Its Command marker then advances one EXTRA step (Autoleap).',
+    // The Autoleap variants: a whole sentence, not an appended clause, so a language can
+    // put the extra step where its grammar needs it.
+    'ui.tileInstr.frameAutoleap':
+      'The Chronossus {parts}. Its Command marker then advances one EXTRA step (Autoleap).',
+    'ui.tileInstr.nothingAutoleap':
+      'The Chronossus does nothing this turn — its Command marker still advances. Its Command marker then advances one EXTRA step (Autoleap).',
   };
 
 /**
- * The expanded description shown in a tile's dialog.
+ * The expanded description shown in a tile's dialog, as a descriptor.
  *
  * Assembled from one clause per effect, so a tile that both scores and gains reads as one
  * sentence. Each clause is its own key with its own params — a translator can reorder the
- * words inside a clause, and `tileInstr.join` / `tileInstr.frame` decide how the clauses
- * come together, which differs by language. `translate` is optional: the unit tests and
- * any non-React caller get the English below.
+ * words inside a clause, and `ui.tileInstr.join` / `.frame` decide how the clauses come
+ * together, which differs by language. The caller renders it; nothing here resolves text.
  */
-export function tileInstruction(
-  code: string,
-  translate?: (key: string, params?: Record<string, string | number>) => string,
-): string {
+export function tileInstruction(code: string): Msg {
   const eff = tileEffect(code);
-  const t = (key: string, params?: Record<string, string | number>): string => {
-    const hit = translate?.(key, params);
-    if (hit != null && hit !== key) return hit;
-    // Interpolate the English fallback the same way `t()` would.
-    return (TILE_INSTR_EN[key] ?? key).replace(/\{(\w+)\}/g, (whole, name: string) =>
-      params && name in params ? String(params[name]) : whole,
-    );
-  };
+  const t = (key: string, params?: Record<string, MsgParam>): Msg => msg(key, params);
 
-  const parts: string[] = [];
+  const parts: Msg[] = [];
   if (eff.assimilate) parts.push(t('ui.tileInstr.assimilate'));
   // Pioneers: listed BEFORE the flat gains, so the B sides read "performs an Adventure …
   // and scores +1 VP" rather than leading with the bonus. Without this branch the A sides
@@ -139,9 +129,13 @@ export function tileInstruction(
     );
   if (eff.acquireGuardian) parts.push(t('ui.tileInstr.acquireGuardian'));
 
-  let s = parts.length
-    ? t('ui.tileInstr.frame', { parts: parts.join(t('ui.tileInstr.join')) })
-    : t('ui.tileInstr.nothing');
-  if (eff.autoleap) s += t('ui.tileInstr.autoleap');
-  return s;
+  const joined: MsgList = { list: parts, sep: 'ui.tileInstr.join', last: 'ui.tileInstr.join' };
+  // The Autoleap note is a whole extra sentence, so the framed line and its Autoleap
+  // variant are separate keys rather than one string with a clause glued on the end.
+  if (parts.length === 0) {
+    return eff.autoleap ? t('ui.tileInstr.nothingAutoleap') : t('ui.tileInstr.nothing');
+  }
+  return eff.autoleap
+    ? t('ui.tileInstr.frameAutoleap', { parts: joined })
+    : t('ui.tileInstr.frame', { parts: joined });
 }

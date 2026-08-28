@@ -18,6 +18,7 @@ import {
 } from '../phases/ChronossusSetupFlow';
 import { emptyChronossusState, Chronossus } from '../engine';
 import { TILE_DESC, tileInstruction } from './tileText';
+import { renderEnglish } from '../i18n/msg';
 import { TILE_ACTION_FAMILY } from './chronossusTiles';
 
 /** The tile actions a mode can actually put in play (keys of TILE_ACTION_FAMILY). */
@@ -384,7 +385,7 @@ describe('every implemented tile explains itself', () => {
 
   it('only Reboot (C01A) describes itself as doing nothing', () => {
     for (const code of IMPLEMENTED) {
-      const text = tileInstruction(code);
+      const text = renderEnglish(tileInstruction(code));
       if (code === 'C01A') expect(text, code).toMatch(DOES_NOTHING);
       else expect(text, code).not.toMatch(DOES_NOTHING);
     }
@@ -392,20 +393,20 @@ describe('every implemented tile explains itself', () => {
 
   it('names the Adventure on both C09/C10 sides, with the B-side bonus after it', () => {
     for (const code of ['C09A', 'C09B', 'C10A', 'C10B']) {
-      expect(tileInstruction(code), code).toMatch(/performs an Adventure/);
+      expect(renderEnglish(tileInstruction(code)), code).toMatch(/performs an Adventure/);
     }
-    expect(tileInstruction('C09B')).toMatch(/Adventure[\s\S]*\+1 VP/);
-    expect(tileInstruction('C10B')).toMatch(/Adventure[\s\S]*Energy Core/);
+    expect(renderEnglish(tileInstruction('C09B'))).toMatch(/Adventure[\s\S]*\+1 VP/);
+    expect(renderEnglish(tileInstruction('C10B'))).toMatch(/Adventure[\s\S]*Energy Core/);
   });
 
   it('names the Experiment on both C07/C08 sides, with the B-side bonus after it', () => {
-    expect(tileInstruction('C07A')).toMatch(/executes a Level 1 Experiment/);
-    expect(tileInstruction('C07B')).toMatch(/executes a Level 1 Experiment/);
-    expect(tileInstruction('C08A')).toMatch(/executes a Level 2 Experiment/);
-    expect(tileInstruction('C08B')).toMatch(/executes a Level 2 Experiment/);
+    expect(renderEnglish(tileInstruction('C07A'))).toMatch(/executes a Level 1 Experiment/);
+    expect(renderEnglish(tileInstruction('C07B'))).toMatch(/executes a Level 1 Experiment/);
+    expect(renderEnglish(tileInstruction('C08A'))).toMatch(/executes a Level 2 Experiment/);
+    expect(renderEnglish(tileInstruction('C08B'))).toMatch(/executes a Level 2 Experiment/);
     // The B sides' printed bonus reads after the Action, not before it.
-    expect(tileInstruction('C07B')).toMatch(/Experiment[\s\S]*Energy Core/);
-    expect(tileInstruction('C08B')).toMatch(/Experiment[\s\S]*\+1 VP/);
+    expect(renderEnglish(tileInstruction('C07B'))).toMatch(/Experiment[\s\S]*Energy Core/);
+    expect(renderEnglish(tileInstruction('C08B'))).toMatch(/Experiment[\s\S]*\+1 VP/);
   });
 
   it('gives every in-play tile action a Command-view description', () => {

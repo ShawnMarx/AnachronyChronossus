@@ -14,7 +14,7 @@
 // INTERIM (message-descriptor refactor): `warpTileLabel` now returns a descriptor, and
 // these instructions are still English sentences until Feature 3 converts this file.
 // Rendering it in English here keeps the output identical; the calls go away with them.
-import { englishText } from '../messages';
+import { msg, plural, sentences, type Msg, type MsgList } from '../message';
 import type { GameState, Instruction, EnergyPool, ChronossusState } from '../state';
 import type { BreakthroughShape, GameConfig, Resource, Worker } from '../types';
 import { BREAKTHROUGH_SHAPES } from '../types';
@@ -577,7 +577,7 @@ export function assimilate(
       // Action and takes 1 VP." (Solo Opponents p.13) — no Operator, no Flux Core.
       bot.vp += 1;
       res.vp += 1;
-      res.gains.push('finds no Operators left — Failed Action: it takes +1 VP instead');
+      res.gains.push(msg('instr.chronossus.assimilate.noOperators'));
       return;
     }
     // An Operator is a wildcard Worker: it goes into the topmost empty space of the
@@ -595,7 +595,7 @@ export function assimilate(
     bot.operators = (bot.operators ?? 0) + 1;
     if (bot.fluxPool) bot.fluxPool = { ...bot.fluxPool, cores: bot.fluxPool.cores + 1 };
     res.gains.push(
-      `recruits an Operator (place it in the ${slot} space — the topmost empty space of its Worker collection) and gains 1 Flux Core into the Flux Pool`,
+      msg('instr.chronossus.assimilate.operator', { slot: msg(`piece.${slot}`) }),
     );
     const set = applyWorkerSetBonus(bot);
     if (set) {
@@ -609,7 +609,7 @@ export function assimilate(
   };
   const takeTechnology = () => {
     bot.technologies = (bot.technologies ?? 0) + 1;
-    res.gains.push('takes a Technology card (preferring the secondary stack) — worth 3 VP at the end');
+    res.gains.push(msg('instr.chronossus.assimilate.technology'));
   };
   if (shape === 'circle') takeOperator();
   else if (shape === 'triangle') takeTechnology();
@@ -621,9 +621,9 @@ export function assimilate(
 
 /** What Assimilate does, as phrases to fold into the tile instruction plus the VP it moved. */
 export interface AssimilateResult {
-  gains: string[];
+  gains: Msg[];
   /** Set when the recruited Operator completed the +5 VP Worker set; its own instruction. */
-  workerSet?: string;
+  workerSet?: Msg;
   vp: number;
 }
 
@@ -804,29 +804,41 @@ export function resolvePowerUp(state: GameState, draw: EnergyDraw): GameState {
   const instructions: Instruction[] = [
     {
       id: 'powerup',
+      // Three keys, not one string with two ternaries (D2): whether Guardians power up,
+      // and whether any Exosuits are left after them, are different sentences.
       text: guardiansPowered
-        ? `Power up ${guardiansPowered} of the Chronossus's Guardians` +
-          (exosuitsAvailable
-            ? ` and ${exosuitsAvailable} of its Exosuits.`
-            : ' (that uses up its whole number — no Exosuits power up).')
-        : `Power up ${exosuitsAvailable} of the Chronossus's Exosuits.`,
-      detail:
-        `Drew ${drawnTotal} token${drawnTotal === 1 ? '' : 's'} from the Energy Pool: ` +
-        `${draw.energized} Energy + ${draw.exhausted} Exhausted. ${impact ? '2' : '3'}+${draw.energized} ` +
-        `= ${capped} Exosuit${capped === 1 ? '' : 's'} ` +
-        `(max ${powerUpCap(impact)} ${impact ? 'after' : 'before'} the Impact). ` +
-        (guardiansPowered
-          ? `It powers up its ${guardiansPowered} Guardian${guardiansPowered === 1 ? '' : 's'} first, then its own Exosuits. `
-          : '') +
-        (extraPowerup
-          ? bonusVP
-            ? `Difficulty: +1 free Exosuit would exceed the max of ${state.chronossus.exosuitsTotal} — ` +
-              `+${bonusVP} VP instead. `
-            : `Difficulty: +1 free Exosuit (${exosuitsAvailable} total). `
-          : '') +
-        (returned
-          ? 'Return 1 drawn Exhausted core to the Pool and remove the rest from the game.'
-          : 'Remove all drawn tokens from the game (no Exhausted core to return).'),
+        ? exosuitsAvailable
+          ? msg('instr.chronossus.powerUp.guardiansAndExosuits', {
+              guardians: guardiansPowered,
+              n: exosuitsAvailable,
+            })
+          : msg('instr.chronossus.powerUp.guardiansOnly', { guardians: guardiansPowered })
+        : msg('instr.chronossus.powerUp.exosuits', { n: exosuitsAvailable }),
+      detail: sentences(
+        plural('instr.chronossus.powerUp.drew', drawnTotal, {
+          energized: draw.energized,
+          exhausted: draw.exhausted,
+        }),
+        plural(`instr.chronossus.powerUp.sum.${impact ? 'after' : 'before'}`, capped, {
+          base: impact ? 2 : 3,
+          energized: draw.energized,
+          cap: powerUpCap(impact),
+        }),
+        guardiansPowered > 0 &&
+          plural('instr.chronossus.powerUp.guardiansFirst', guardiansPowered),
+        extraPowerup &&
+          (bonusVP
+            ? msg('instr.chronossus.powerUp.bonusVp', {
+                max: state.chronossus.exosuitsTotal,
+                vp: bonusVP,
+              })
+            : msg('instr.chronossus.powerUp.freeExosuit', { total: exosuitsAvailable })),
+        msg(
+          returned
+            ? 'instr.chronossus.powerUp.returnCore'
+            : 'instr.chronossus.powerUp.returnNone',
+        ),
+      ),
       ...(bonusVP ? { effect: { vp: bonusVP } } : {}),
     },
   ];
@@ -1078,23 +1090,17 @@ export const TILE_ACTIONS: Record<ChronossusTileActionId, { label: string }> = {
   'tile-experiment-2': { label: 'Level 2 Experiment' },
 };
 
-/** Human-facing label for any Chronossus action id. */
-export function chronossusActionLabel(
-  id: ChronossusActionId,
-  /**
-   * Optional translator, for the same reason every other pure helper here takes one: a
-   * caller outside React — and anything writing a persisted string — gets English.
-   */
-  translate?: (key: string) => string,
-): string {
-  if (isTileAction(id)) {
-    const label = TILE_ACTIONS[id].label;
-    const hit = translate?.(`ui.tileAction.${id}`);
-    return hit && hit !== `ui.tileAction.${id}` ? hit : label;
-  }
-  const def = actionDef(id);
-  const hit = translate?.(`action.${def.id}.label`);
-  return hit && hit !== `action.${def.id}.label` ? hit : def.label;
+/**
+ * The label for any Chronossus action id, as a descriptor.
+ *
+ * A key rather than a sentence: the label is interpolated into instructions and History
+ * lines that get PERSISTED, so a resolved one would freeze in whatever language wrote it.
+ * Callers that need a string render it — `renderMsg(t, …)` for display, `renderEnglish()`
+ * for anything on its way to storage or an export.
+ */
+export function chronossusActionLabel(id: ChronossusActionId): Msg {
+  if (isTileAction(id)) return msg(`ui.tileAction.${id}`);
+  return msg(`action.${actionDef(id).id}.label`);
 }
 
 function isTileAction(id: ChronossusActionId): id is ChronossusTileActionId {
@@ -1175,7 +1181,7 @@ export function resolveAction(
 
   instr.push({
     id: `turn-${n}`,
-    text: `The Chronossus takes the "${chronossusActionLabel(input.actionId)}" action.`,
+    text: msg('instr.chronossus.turn.action', { action: chronossusActionLabel(input.actionId) }),
   });
 
   // Guardians fallback (p.16): a Capital Action with no space left anywhere — World
@@ -1192,13 +1198,8 @@ export function resolveAction(
     spendGuardian(bot);
     instr.push({
       id: `guardian-space-${n}`,
-      text:
-        'No Action space remained (including World Council) — place one of the ' +
-        "Chronossus's Guardians on the Guardian board, on a slot marked with one of its " +
-        'Path markers, and perform the Action normally.',
-      detail:
-        'It does not matter which of its marked slots you use. This is NOT a Failed ' +
-        'Action, so it takes no +1 VP.',
+      text: msg('instr.chronossus.noSpace.guardianBoard'),
+      detail: msg('instr.chronossus.noSpace.guardianBoard.detail'),
     });
   }
 
@@ -1212,9 +1213,8 @@ export function resolveAction(
     bot.hypersyncTiles = [...bot.hypersyncTiles, state.era];
     instr.push({
       id: `hs-tile-${n}`,
-      text: `No Action space remained — the Chronossus places a Solo Hypersync tile above Era ${state.era} and performs the Action normally (no Exosuit placed, not a Failed Action).`,
-      detail:
-        'It has a maximum of one Hypersync tile per Era and 3 pending Hypersync tiles total.',
+      text: msg('instr.chronossus.noSpace.hypersyncTile', { era: state.era }),
+      detail: msg('instr.chronossus.noSpace.hypersyncTile.detail'),
     });
   } else if (input.hypersyncNoTile) {
     // Hypersync Capital Action, no space, and no Hypersync tile available: still a
@@ -1224,7 +1224,7 @@ export function resolveAction(
     spendFigure(bot);
     instr.push({
       id: `hs-fail-notile-${n}`,
-      text: `No Action space remained and no Solo Hypersync tile could be placed (max one per Era, 3 pending) — Failed Action: the Chronossus takes +${failVP} VP and additionally discards one active Exosuit.`,
+      text: msg('instr.chronossus.noSpace.hypersyncFail', { vp: failVP }),
       effect: { vp: failVP },
     });
     return finishAction(state, bot, instr);
@@ -1235,7 +1235,7 @@ export function resolveAction(
     spendFigure(bot);
     instr.push({
       id: `fail-nospace-${n}`,
-      text: `No available Action space — the Chronossus takes +${failVP} VP and additionally discards one active Exosuit (no Exosuit placed).`,
+      text: msg('instr.chronossus.noSpace.fail', { vp: failVP }),
       effect: { vp: failVP },
     });
     return finishAction(state, bot, instr);
@@ -1252,12 +1252,12 @@ export function resolveAction(
     if (offBoardPlacement) {
       const adventureSpace = ADVENTURE_TILE_ACTIONS.includes(input.actionId);
       const where = adventureSpace
-        ? "the Adventure board's hex pool space"
+        ? msg('instr.chronossus.place.where.adventure')
         : input.placementSpace === 'world-council'
-          ? 'the Valley Capital Action space (no Valley Action space was free)'
+          ? msg('instr.chronossus.place.where.valleyCapital')
           : // The topmost rule applies on the Valley board exactly as it does on the
             // Main board's Capital Actions.
-            'the topmost available Valley Action space';
+            msg('instr.chronossus.place.where.valleyTopmost');
       if (input.blink && bot.fluxPool) {
         // Blinked in from the Main board: the Exosuit moves onto the Valley board and
         // leaves the Blink-from list — nothing on the Valley board can Blink again.
@@ -1265,21 +1265,24 @@ export function resolveAction(
         bot.placedExosuits = (bot.placedExosuits ?? []).filter((e) => e !== sel?.exosuit);
         instr.push({
           id: `valley-blink-${n}`,
-          text: `Blink: move that Exosuit to ${where} instead of placing a new one.`,
-          detail: "Return the moved Exosuit's Energy Core to the supply.",
+          text: msg('instr.chronossus.place.blink', { where }),
+          detail: msg('instr.chronossus.place.blink.detail'),
         });
       } else if (placeableFigures(bot) > 0) {
         const figure = spendFigure(bot);
         tileFigure = figure;
         instr.push({
           id: `valley-place-${n}`,
-          text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on ${where}.`,
+          text: msg(
+            figure === 'guardian'
+              ? 'instr.chronossus.place.guardian'
+              : 'instr.chronossus.place.exosuit',
+            { where },
+          ),
           // No Energy Core here: the core is only the marker for "this Exosuit could
           // Blink", and nothing off the Main board ever can — so saying it can't just
           // raises a question the player never had.
-          detail: adventureSpace
-            ? 'Any number of figures can share the Adventure hex pool.'
-            : undefined,
+          detail: adventureSpace ? msg('instr.chronossus.place.detail.adventure') : undefined,
         });
       }
     }
@@ -1295,8 +1298,12 @@ export function resolveAction(
       tileFigure = figure;
       instr.push({
         id: `exp-place-${n}`,
-        text: `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the Experiment hex pool space.`,
-        detail: 'Any number of figures can share the Experiment hex pool.',
+        text: msg(
+          figure === 'guardian'
+            ? 'instr.chronossus.place.experiment.guardian'
+            : 'instr.chronossus.place.experiment.exosuit',
+        ),
+        detail: msg('instr.chronossus.place.detail.experiment'),
       });
     }
     let acquired: ReturnType<typeof resolveAcquireGuardian> | null = null;
@@ -1397,19 +1404,22 @@ export function resolveAction(
       }
     }
   };
-  const failCantPerform = (why: string) => {
+  const failCantPerform = (why: Msg) => {
     if (def.placesExosuit) spendFigure(bot);
     bot.vp += failVP;
     instr.push({
       id: `fail-perform-${n}`,
-      text: `Failed Action: ${why} — the Chronossus ${def.placesExosuit ? 'places an Exosuit and ' : ''}takes +${failVP} VP instead.`,
+      text: msg(
+        def.placesExosuit ? 'instr.chronossus.failed.placing' : 'instr.chronossus.failed.plain',
+        { reason: why, vp: failVP },
+      ),
       effect: { vp: failVP },
     });
   };
 
   switch (input.actionId) {
     case 'reboot':
-      instr.push({ id: `reboot-${n}`, text: 'Reboot: the Chronossus does nothing (no Exosuit, no VP).' });
+      instr.push({ id: `reboot-${n}`, text: msg('instr.chronossus.reboot') });
       break;
 
     case 'research':
@@ -1426,10 +1436,14 @@ export function resolveAction(
       if (input.geniusAvailable) {
         bot.workers.genius += 1;
         bot.vp += 1;
-        instr.push({ id: `rgr-${n}`, text: 'Recruit a Genius for the Chronossus (+1 VP).', effect: { vp: 1 } });
+        instr.push({
+          id: `rgr-${n}`,
+          text: msg('instr.chronossus.recruitGenius.genius'),
+          effect: { vp: 1 },
+        });
         placeExosuit();
       } else {
-        instr.push({ id: `rgr-res-${n}`, text: 'No Genius available — perform a Research action instead.' });
+        instr.push({ id: `rgr-res-${n}`, text: msg('instr.chronossus.recruitGenius.research') });
         resolveResearch(bot, instr, input.shape, n, researchNewShape);
         placeExosuit();
       }
@@ -1441,8 +1455,8 @@ export function resolveAction(
       placeExosuit();
       instr.push({
         id: `mine-${n}`,
-        text: `Mine ${describeCubes(mined)} for the Chronossus.`,
-        detail: 'Prioritises Resources it lacks; ties Neutronium > Uranium > Gold > Titanium.',
+        text: msg('instr.chronossus.mine.gained', { cubes: describeCubes(mined) }),
+        detail: msg('instr.chronossus.mine.detail'),
       });
       applyResourceSetBonus(bot, instr, n);
       break;
@@ -1457,26 +1471,40 @@ export function resolveAction(
       const variableAnomalies = bot.anomalyVps != null;
       const anomalyCount = variableAnomalies ? bot.anomalyVps!.length : bot.anomalies;
       if (anomalyCount < 1 || !discards) {
-        failCantPerform(anomalyCount < 1 ? 'it has no Anomaly to remove' : 'it lacks 2 Resource cubes to spend');
+        failCantPerform(
+          msg(
+            anomalyCount < 1
+              ? 'instr.chronossus.reason.noAnomaly'
+              : 'instr.chronossus.reason.lacksCubes',
+          ),
+        );
       } else {
         for (const r of discards) bot.resources[r] -= 1;
         placeExosuit();
         // Variable Anomalies: REMOVING ANOMALIES — always the largest VP penalty
         // (most negative); no player input needed, the engine already knows every
         // held tile's value.
-        let removedText = 'remove 1 Anomaly';
+        // Two whole sentences, not one with a spliced-in clause (D2): naming the removed
+        // tile's own penalty changes the shape of the sentence, not just a word in it.
+        let removed: Msg;
         if (variableAnomalies) {
           const worst = Math.min(...bot.anomalyVps!);
           const idx = bot.anomalyVps!.indexOf(worst);
           bot.anomalyVps = [...bot.anomalyVps!.slice(0, idx), ...bot.anomalyVps!.slice(idx + 1)];
-          removedText = `remove its largest-penalty Anomaly (${worst} VP)`;
+          removed = msg('instr.chronossus.removeAnomaly.variable', {
+            cubes: describeCubes(discards),
+            vp: worst,
+          });
         } else {
           bot.anomalies -= 1;
+          removed = msg('instr.chronossus.removeAnomaly.plain', {
+            cubes: describeCubes(discards),
+          });
         }
         instr.push({
           id: `ra-${n}`,
-          text: `Discard ${describeCubes(discards)} from the Chronossus and ${removedText}.`,
-          detail: 'Discards the Resources it has most of; ties Titanium > Gold > Uranium > Neutronium (1 Neutronium = 2 cubes).',
+          text: removed,
+          detail: msg('instr.chronossus.removeAnomaly.detail'),
         });
       }
       break;
@@ -1489,7 +1517,7 @@ export function resolveAction(
       const type = input.actionId.replace('construct-', '') as keyof ChronossusState['buildings'];
       const label = def.label.replace('Construct — ', '');
       if (bot.buildings[type] >= 3) {
-        failCantPerform(`it already has 3 ${label} buildings`);
+        failCantPerform(msg('instr.chronossus.reason.threeBuildings', { building: label }));
       } else {
         bot.buildings[type] += 1;
         placeExosuit();
@@ -1498,9 +1526,17 @@ export function resolveAction(
           bot.vp += vp;
           bot.buildingVp += vp;
           bot.buildingVps[type].push(vp);
-          instr.push({ id: `con-${n}`, text: `Give the Chronossus the higher-VP ${label} (secondary stack if tied) — ${vp} VP.`, effect: { vp } });
+          instr.push({
+            id: `con-${n}`,
+            text: msg('instr.chronossus.construct.knownVp', { building: label, vp }),
+            effect: { vp },
+          });
         } else {
-          instr.push({ id: `con-${n}`, text: `Give the Chronossus the higher-VP ${label} (secondary stack if tied); record its printed VP.`, requiresInput: true });
+          instr.push({
+            id: `con-${n}`,
+            text: msg('instr.chronossus.construct.recordVp', { building: label }),
+            requiresInput: true,
+          });
         }
       }
       break;
@@ -1509,7 +1545,13 @@ export function resolveAction(
     case 'construct-superproject': {
       const discard = chooseBreakthroughDiscard(bot);
       if (bot.superprojects >= 3 || !discard) {
-        failCantPerform(bot.superprojects >= 3 ? 'it already has 3 Superprojects' : 'it has no Breakthrough to discard');
+        failCantPerform(
+          msg(
+            bot.superprojects >= 3
+              ? 'instr.chronossus.reason.threeSuperprojects'
+              : 'instr.chronossus.reason.noBreakthrough',
+          ),
+        );
       } else {
         bot.breakthroughs[discard] -= 1;
         bot.superprojects += 1;
@@ -1519,16 +1561,29 @@ export function resolveAction(
           bot.vp += vp;
           bot.buildingVp += vp;
           bot.superprojectVps.push(vp);
-          instr.push({ id: `sp-${n}`, text: `Discard 1 ${discard} Breakthrough, then give the Chronossus the highest-VP face-up Superproject (oldest if tied) — ${vp} VP.`, effect: { vp } });
+          instr.push({
+            id: `sp-${n}`,
+            text: msg('instr.chronossus.superproject.knownVp', {
+              shape: msg(`piece.shape.${discard}`),
+              vp,
+            }),
+            effect: { vp },
+          });
         } else {
-          instr.push({ id: `sp-${n}`, text: `Discard 1 ${discard} Breakthrough, then give the Chronossus the highest-VP face-up Superproject (oldest if tied); record its VP.`, requiresInput: true });
+          instr.push({
+            id: `sp-${n}`,
+            text: msg('instr.chronossus.superproject.recordVp', {
+              shape: msg(`piece.shape.${discard}`),
+            }),
+            requiresInput: true,
+          });
         }
       }
       break;
     }
 
     case 'evacuation':
-      instr.push({ id: `evac-${n}`, text: 'The Chronossus does not take Evacuation here.' });
+      instr.push({ id: `evac-${n}`, text: msg('instr.chronossus.evacuation') });
       break;
   }
 
@@ -1581,20 +1636,18 @@ function resolveTileAction(
   const code = `${tileFamily ?? family}${side}`;
   const tile = CHRONOSSUS_TILES[code];
   const eff = tileEffect(code);
-  const gains: string[] = [];
+  const gains: Msg[] = [];
   if (eff.vp) {
     bot.vp += eff.vp;
-    gains.push(`gains ${eff.vp} VP`);
+    gains.push(msg('instr.chronossus.tile.gain.vp', { n: eff.vp }));
   }
   if (eff.energyCores) {
     bot.energyPool.energized += eff.energyCores;
-    gains.push(`gains ${eff.energyCores} Energy Core${eff.energyCores === 1 ? '' : 's'}`);
+    gains.push(plural('instr.chronossus.tile.gain.energyCore', eff.energyCores));
   }
   if (eff.fluxCores && bot.fluxPool) {
     bot.fluxPool = { ...bot.fluxPool, cores: bot.fluxPool.cores + eff.fluxCores };
-    gains.push(
-      `gains ${eff.fluxCores} Flux Core${eff.fluxCores === 1 ? '' : 's'} into the Flux Pool`,
-    );
+    gains.push(plural('instr.chronossus.tile.gain.fluxCore', eff.fluxCores));
   }
   let vp = eff.vp ?? 0;
   if (eff.acquireGuardian && guardian) {
@@ -1606,7 +1659,7 @@ function resolveTileAction(
     if (eff.autoleap) {
       instr.push({
         id: `tile-${code}-autoleap-${n}`,
-        text: `${code} ${name}: advance its Command marker to the next position (Autoleap).`,
+        text: msg('instr.chronossus.tile.autoleap', { code, name }),
       });
     }
     return eff.autoleap === true;
@@ -1618,7 +1671,7 @@ function resolveTileAction(
     if (gains.length > 0) {
       instr.push({
         id: `tile-${code}-${n}`,
-        text: `${code} ${name}: the Chronossus ${gains.join(' and ')}.`,
+        text: msg('instr.chronossus.tile.line', { code, name, gains: joinGains(gains) }),
         ...(vp ? { effect: { vp } } : {}),
       });
     }
@@ -1639,7 +1692,7 @@ function resolveTileAction(
     if (gains.length > 0) {
       instr.push({
         id: `tile-${code}-${n}`,
-        text: `${code} ${name}: the Chronossus ${gains.join(' and ')}.`,
+        text: msg('instr.chronossus.tile.line', { code, name, gains: joinGains(gains) }),
         ...(vp ? { effect: { vp } } : {}),
       });
     }
@@ -1648,12 +1701,12 @@ function resolveTileAction(
     if (eff.autoleap) {
       instr.push({
         id: `tile-${code}-autoleap-${n}`,
-        text: `${code} ${name}: advance its Command marker to the next position (Autoleap).`,
+        text: msg('instr.chronossus.tile.autoleap', { code, name }),
       });
     }
     return eff.autoleap === true;
   }
-  let workerSet: string | undefined;
+  let workerSet: Msg | undefined;
   if (eff.assimilate) {
     const res = assimilate(bot, shape, operatorsAvailable);
     gains.push(...res.gains);
@@ -1661,11 +1714,19 @@ function resolveTileAction(
     workerSet = res.workerSet;
   }
   const name = tile?.name ?? id;
-  let text =
+  // Four keys rather than a sentence with an appended clause (D2): a language may not
+  // put the Autoleap step last, and "does nothing" is a different sentence again.
+  const text =
     gains.length > 0
-      ? `${code} ${name}: the Chronossus ${gains.join(' and ')}.`
-      : `${code} ${name}: the Chronossus does nothing.`;
-  if (eff.autoleap) text += ' Then advance its Command marker to the next position (Autoleap).';
+      ? msg(eff.autoleap ? 'instr.chronossus.tile.lineAutoleap' : 'instr.chronossus.tile.line', {
+          code,
+          name,
+          gains: joinGains(gains),
+        })
+      : msg(
+          eff.autoleap ? 'instr.chronossus.tile.nothingAutoleap' : 'instr.chronossus.tile.nothing',
+          { code, name },
+        );
   instr.push({
     id: `tile-${code}-${n}`,
     text,
@@ -1673,7 +1734,7 @@ function resolveTileAction(
   });
   // The set's 5 VP is already in the tile instruction's total, so this one carries no
   // effect of its own — it is the player-facing "and now discard one of each" step.
-  if (workerSet) instr.push({ id: `rec-set-${n}`, text: capitalize(workerSet) });
+  if (workerSet) instr.push({ id: `rec-set-${n}`, text: workerSet });
   return eff.autoleap === true;
 }
 
@@ -1773,9 +1834,7 @@ export function resolveAcquireGuardian(
       bot.vp += 2;
       instr.push({
         id: `guardian-postimpact-${n}`,
-        text:
-          'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
-          'difficulty option: it scores 2 VP instead.',
+        text: msg('instr.chronossus.guardian.postImpact2VP'),
         effect: { vp: 2 },
       });
       return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1783,9 +1842,7 @@ export function resolveAcquireGuardian(
     bot.vp += opts.failVP;
     instr.push({
       id: `guardian-postimpact-${n}`,
-      text:
-        'The Impact has happened, so the Chronossus can no longer acquire Guardians — ' +
-        `Failed Action: it takes +${opts.failVP} VP.`,
+      text: msg('instr.chronossus.guardian.postImpactFail', { vp: opts.failVP }),
       effect: { vp: opts.failVP },
     });
     return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1796,7 +1853,7 @@ export function resolveAcquireGuardian(
     bot.vp += opts.failVP;
     instr.push({
       id: `guardian-none-${n}`,
-      text: `No Guardian is available to recruit — Failed Action: the Chronossus takes +${opts.failVP} VP.`,
+      text: msg('instr.chronossus.guardian.noneAvailable', { vp: opts.failVP }),
       effect: { vp: opts.failVP },
     });
     return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1808,14 +1865,12 @@ export function resolveAcquireGuardian(
     gain(figure, null);
     instr.push({
       id: `guardian-wc-${n}`,
-      text:
-        `Place the Chronossus's ${figure === 'guardian' ? 'Guardian' : 'Exosuit'} on the ` +
-        'World Council Action space — it becomes the First Player. It performs no Action ' +
-        'there; instead it recruits the leftmost available Guardian at no cost.',
-      detail:
-        "Put one of the Chronossus's Path markers on an empty Guardian board slot for it — " +
-        'that slot becomes this Guardian\'s own Action space. (Solo Path markers are not ' +
-        'meant to be limited: if they run out, use an unused Path\'s markers.)',
+      text: msg(
+        figure === 'guardian'
+          ? 'instr.chronossus.guardian.worldCouncil.guardian'
+          : 'instr.chronossus.guardian.worldCouncil.exosuit',
+      ),
+      detail: msg('instr.chronossus.guardian.worldCouncil.detail'),
     });
     return { outcome: 'world-council', figurePlaced: figure, becameFirstPlayer: true };
   }
@@ -1828,13 +1883,8 @@ export function resolveAcquireGuardian(
     gain(null, worker);
     instr.push({
       id: `guardian-worker-${n}`,
-      text:
-        `The World Council Action space is taken — the Chronossus spends a ${worker} ` +
-        'and recruits the leftmost available Guardian without placing an Exosuit.',
-      detail:
-        'Worker priority: the one it has most of, then Scientist > Engineer > Administrator > ' +
-        "Genius. Put one of the Chronossus's Path markers on an empty Guardian board slot for " +
-        "the new Guardian — that slot becomes its own Action space.",
+      text: msg('instr.chronossus.guardian.worker', { worker: msg(`piece.${worker}`) }),
+      detail: msg('instr.chronossus.guardian.worker.detail'),
     });
     return { outcome: 'worker', figurePlaced: null, becameFirstPlayer: false };
   }
@@ -1845,7 +1895,7 @@ export function resolveAcquireGuardian(
   bot.vp += opts.failVP;
   instr.push({
     id: `guardian-fail-${n}`,
-    text: `It has no Workers left to spend on a Guardian — Failed Action: the Chronossus takes +${opts.failVP} VP.`,
+    text: msg('instr.chronossus.guardian.noWorkers', { vp: opts.failVP }),
     effect: { vp: opts.failVP },
   });
   return { outcome: 'failed', figurePlaced: null, becameFirstPlayer: false };
@@ -1875,13 +1925,19 @@ function resolveResearch(
 ): void {
   if (shape) {
     bot.breakthroughs[shape] += 1;
-    const text = newShapeDifficulty
-      ? `Research (difficulty): the Chronossus takes a Breakthrough shape it doesn't already ` +
-        `have (or has the fewest of) — give it any Breakthrough of the ${shape} shape.`
-      : `Research: the shape die shows ${shape} — give the Chronossus any Breakthrough of that shape.`;
+    const text = msg(
+      newShapeDifficulty
+        ? 'instr.chronossus.research.difficulty'
+        : 'instr.chronossus.research.rolled',
+      { shape: msg(`piece.shape.${shape}`) },
+    );
     instr.push({ id: `res-${n}`, text });
   } else {
-    instr.push({ id: `res-${n}`, text: 'Research: roll the shape die and give the Chronossus any Breakthrough of the rolled shape.', requiresInput: true });
+    instr.push({
+      id: `res-${n}`,
+      text: msg('instr.chronossus.research.roll'),
+      requiresInput: true,
+    });
   }
 }
 
@@ -1889,12 +1945,14 @@ function resolveRecruit(bot: ChronossusState, instr: Instruction[], recruited: W
   const target = recruited ?? chooseRecruitWorker(bot);
   if (target) bot.workers[target] += 1;
   bot.vp += 1;
-  instr.push({ id: `rec-${n}`, text: `Recruit a ${target} for the Chronossus (+1 VP).`, effect: { vp: 1 } });
+  instr.push({
+    id: `rec-${n}`,
+    text: msg('instr.chronossus.recruit.worker', { worker: msg(`piece.${target}`) }),
+    effect: { vp: 1 },
+  });
   const set = applyWorkerSetBonus(bot);
-  if (set) instr.push({ id: `rec-set-${n}`, text: capitalize(set), effect: { vp: 5 } });
+  if (set) instr.push({ id: `rec-set-${n}`, text: set, effect: { vp: 5 } });
 }
-
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /**
  * The +5 VP Worker set: once the Chronossus holds all 4 Worker types it discards one of
@@ -1905,10 +1963,10 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
  * the choice the player makes at the table: it puts the Operator back in the Valley
  * supply (where it can matter to the player) and leaves the plain Worker in the column.
  *
- * Mutates `bot` and returns the phrase describing the discard, or null when the set
+ * Mutates `bot` and returns the descriptor describing the discard, or null when the set
  * isn't complete.
  */
-export function applyWorkerSetBonus(bot: ChronossusState): string | null {
+export function applyWorkerSetBonus(bot: ChronossusState): Msg | null {
   if (!RECRUIT_PRIORITY.every((w) => bot.workers[w] > 0)) return null;
   let operatorsDiscarded = 0;
   for (const w of RECRUIT_PRIORITY) {
@@ -1923,13 +1981,11 @@ export function applyWorkerSetBonus(bot: ChronossusState): string | null {
     bot.operators = Math.max(0, (bot.operators ?? 0) - operatorsDiscarded);
   }
   bot.vp += 5;
-  const opsNote =
-    operatorsDiscarded === 0
-      ? ''
-      : operatorsDiscarded === 1
-        ? ' (1 of the discarded tokens is an Operator — return it to the Valley supply)'
-        : ` (${operatorsDiscarded} of the discarded tokens are Operators — return them to the Valley supply)`;
-  return `the Chronossus holds all 4 Worker types — discard one of each and add 5 VP${opsNote}`;
+  // Whether any Operators were discarded changes the sentence, not a word inside it, so
+  // it is its own key rather than a fragment appended to a shared one (D2).
+  return operatorsDiscarded === 0
+    ? msg('instr.chronossus.workerSet.plain')
+    : plural('instr.chronossus.workerSet.operators', operatorsDiscarded);
 }
 
 const SET_RESOURCES: Resource[] = ['neutronium', 'uranium', 'gold', 'titanium'];
@@ -1937,7 +1993,7 @@ function applyResourceSetBonus(bot: ChronossusState, instr: Instruction[], n: nu
   if (SET_RESOURCES.every((r) => bot.resources[r] > 0)) {
     for (const r of SET_RESOURCES) bot.resources[r] -= 1;
     bot.vp += 5;
-    instr.push({ id: `mine-set-${n}`, text: 'The Chronossus holds all 4 Resource types — discard one of each and add 5 VP.', effect: { vp: 5 } });
+    instr.push({ id: `mine-set-${n}`, text: msg('instr.chronossus.mine.set'), effect: { vp: 5 } });
   }
 }
 
@@ -1956,28 +2012,59 @@ function resolveTimeTravel(
   const removal = warpRemoval(bot, era);
   if (!removal.eligible) {
     bot.vp += failVP;
-    const why =
-      bot.warpTilesOnTimeline > 0
-        ? `The Chronossus’s only Warp tiles are on the current Era’s Timeline tile, which Time Travel may not take from`
-        : 'No Warp tiles remain on the Timeline';
-    instr.push({ id: `tt-${n}`, text: `${why} — Time Travel is Failed; the Chronossus takes +${failVP} VP (no Exosuit).`, effect: { vp: failVP } });
+    // Two whole sentences rather than a {why} fragment: they read differently (D2).
+    instr.push({
+      id: `tt-${n}`,
+      text: msg(
+        bot.warpTilesOnTimeline > 0
+          ? 'instr.chronossus.timeTravel.failCurrentEra'
+          : 'instr.chronossus.timeTravel.failNone',
+        { vp: failVP },
+      ),
+      effect: { vp: failVP },
+    });
   } else {
     bot.warpTilesOnTimeline -= 1;
     if (removal.era != null) bot.warpTilesByEra = removeWarpTile(bot.warpTilesByEra, removal.era);
     bot.timeTravelTrack += 1;
     const spot = Math.min(bot.timeTravelTrack, TIME_TRAVEL_VP.length - 1);
-    const from =
-      removal.era != null
-        ? `from ${englishText(warpTileLabel(removal.era))}`
-        : 'from the past Timeline tile where it has the most (oldest if tied)';
-    instr.push({ id: `tt-${n}`, text: `Remove one of the Chronossus’s Warp tiles ${from}; advance its Time Travel marker 1 spot.`, detail: `The marker is now worth ${TIME_TRAVEL_VP[spot]} VP.` });
+    instr.push({
+      id: `tt-${n}`,
+      text: msg('instr.chronossus.timeTravel.done', {
+        tile:
+          removal.era != null
+            ? warpTileLabel(removal.era)
+            : msg('board.timelineTile.mostOldestPast'),
+      }),
+      detail: msg('instr.chronossus.timeTravel.done.detail', { vp: TIME_TRAVEL_VP[spot] }),
+    });
   }
 }
 
-function describeCubes(cubes: Resource[]): string {
+/**
+ * The clauses a tile granted, joined the way they always have been: " and " between every
+ * one of them, not "a, b and c". The separator is a key either way, so a language can
+ * write the list its own way.
+ */
+function joinGains(gains: Msg[]): MsgList {
+  return { list: gains, sep: 'msg.list.last', last: 'msg.list.last' };
+}
+
+/**
+ * "1 gold + 2 titanium" as a descriptor. The resource names are the published
+ * `ui.pieceInline.*` keys and the " + " joiner is `msg.cubeJoin` — a key, because a
+ * language may not join a list that way.
+ */
+function describeCubes(cubes: Resource[]): MsgList {
   const counts: Partial<Record<Resource, number>> = {};
   for (const c of cubes) counts[c] = (counts[c] ?? 0) + 1;
-  return Object.entries(counts).map(([r, c]) => `${c} ${r}`).join(' + ');
+  return {
+    list: Object.entries(counts).map(([r, c]) =>
+      msg('ui.dialog.anomaly.cubes', { n: c ?? 0, resource: msg(`ui.pieceInline.${r}`) }),
+    ),
+    sep: 'msg.cubeJoin',
+    last: 'msg.cubeJoin',
+  };
 }
 
 function finishAction(
@@ -2090,7 +2177,7 @@ export function passChronossus(state: GameState): ChronossusActionResult {
   const instructions: Instruction[] = [
     {
       id: 'cx-pass',
-      text: 'The Chronossus is out of Exosuits and passes. (Its Command token does not advance.)',
+      text: msg('instr.chronossus.pass'),
     },
   ];
   return {
@@ -2200,7 +2287,10 @@ export function resolveHypersyncAction(
   const tile = CHRONOSSUS_TILES[input.code];
   const eff = tileEffect(input.code);
   const name = tile?.name ?? input.code;
-  instr.push({ id: `hs-turn-${n}`, text: `The Chronossus takes the "${name}" action (${input.code}).` });
+  instr.push({
+    id: `hs-turn-${n}`,
+    text: msg('instr.chronossus.hypersync.turn', { name, code: input.code }),
+  });
 
   let succeeded = false;
   if (input.outcome === 'hypersync') {
@@ -2223,13 +2313,17 @@ export function resolveHypersyncAction(
     bot.vp += 2;
     const where =
       input.hex != null
-        ? `Hypersync hex ${input.hex}`
-        : "the Hypersync space matching your furthest-in-the-past pending tile";
+        ? msg('instr.chronossus.hypersync.where.hex', { hex: input.hex })
+        : msg('instr.chronossus.hypersync.where.matching');
     instr.push({
       id: `hs-place-${n}`,
-      text: `Send ${hsFigure === 'guardian' ? 'a Guardian' : 'an Exosuit'} to ${where}; the Chronossus scores 2 VP and retrieves its pending Solo Hypersync tile from Era ${era}.`,
-      detail:
-        'Do NOT advance the Time Travel marker. In post-Impact Eras it ignores the printed effect of Supercharge tiles.',
+      text: msg(
+        hsFigure === 'guardian'
+          ? 'instr.chronossus.hypersync.send.guardian'
+          : 'instr.chronossus.hypersync.send.exosuit',
+        { where, era },
+      ),
+      detail: msg('instr.chronossus.hypersync.send.detail'),
       effect: { vp: 2 },
     });
     succeeded = true;
@@ -2244,7 +2338,7 @@ export function resolveHypersyncAction(
     bot.vp += vp;
     instr.push({
       id: `hs-fail-${n}`,
-      text: `Neither a Hypersync nor a Time Travel Action is possible — Failed Action: the Chronossus takes +${vp} VP.`,
+      text: msg('instr.chronossus.hypersync.fail', { vp }),
       effect: { vp },
     });
   }
@@ -2256,14 +2350,14 @@ export function resolveHypersyncAction(
       bot.energyPool.energized += eff.energyCores;
       instr.push({
         id: `hs-bonus-e-${n}`,
-        text: `Finally, the Chronossus gains ${eff.energyCores} Energy Core${eff.energyCores === 1 ? '' : 's'}.`,
+        text: plural('instr.chronossus.hypersync.bonus.energyCore', eff.energyCores),
       });
     }
     if (eff.vp) {
       bot.vp += eff.vp;
       instr.push({
         id: `hs-bonus-v-${n}`,
-        text: `The Chronossus gains ${eff.vp} VP instead of an Energy Core.`,
+        text: msg('instr.chronossus.hypersync.bonus.vp', { n: eff.vp }),
         effect: { vp: eff.vp },
       });
     }
@@ -2289,11 +2383,8 @@ export function resolveCleanUp(state: GameState): GameState {
       : {}),
   };
   const instructions: Instruction[] = [
-    { id: 'cleanup-retrieve', text: "Retrieve the Chronossus's Exosuits along with your own." },
-    {
-      id: 'cleanup-collapse',
-      text: 'After the Impact, follow the usual procedure for flipping Collapsing Capital tiles.',
-    },
+    { id: 'cleanup-retrieve', text: msg('instr.chronossus.cleanUp.retrieve') },
+    { id: 'cleanup-collapse', text: msg('instr.chronossus.cleanUp.collapse') },
   ];
   // Fractures: the Exosuits come off the board, and the Empty Flux Casings set aside by
   // this Era's Blink checks return to the Flux Pool (Solo Opponents p.13).
@@ -2308,7 +2399,7 @@ export function resolveCleanUp(state: GameState): GameState {
     if (setAside > 0) {
       instructions.push({
         id: 'cleanup-flux-casings',
-        text: `Return the ${setAside} Empty Flux Casing${setAside === 1 ? '' : 's'} set aside this Era to the Flux Pool.`,
+        text: plural('instr.chronossus.cleanUp.casings', setAside),
       });
     }
   }
@@ -2319,9 +2410,7 @@ export function resolveCleanUp(state: GameState): GameState {
   if (bot.pioneers) {
     instructions.push({
       id: 'cleanup-adventure-markers',
-      text:
-        "Retrieve the Chronossus's Path markers from the Power slots next to the Adventure " +
-        'Action space, along with your own.',
+      text: msg('instr.chronossus.cleanUp.adventureMarkers'),
     });
   }
   return {
@@ -2483,12 +2572,12 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
     if (anomalyCount >= 3) {
       instructions.push({
         id: 'paradox-capped',
-        text: 'The Chronossus already has 3 Anomalies — it gains no Anomaly and removes no Warp tile. It stops rolling.',
+        text: msg('instr.chronossus.paradox.capped'),
       });
     } else if (variableAnomalies) {
       instructions.push({
         id: 'paradox-anomaly-variable',
-        text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains an Anomaly and stops rolling.`,
+        text: msg('instr.chronossus.paradox.anomalyVariable', { gain }),
         // No detail: the gain prompt that follows this roll states what to do, and it
         // renders directly under this line — repeating it here just says it twice.
         requiresInput: true,
@@ -2505,11 +2594,16 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       }
       instructions.push({
         id: 'paradox-anomaly',
-        text: `The Chronossus rolls +${gain} Paradox — reaching 3, so it gains 1 Anomaly (−3 VP) and stops rolling.`,
+        text: msg('instr.chronossus.paradox.anomaly', { gain }),
         detail: removed
-          ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? englishText(warpTileLabel(from.era)) : 'the Timeline tile where it has the most (oldest if tied)'}. Its Paradox tracker resets` +
-            (total > 0 ? ` to ${total}.` : ' to 0.')
-          : 'It has no Warp tiles on the Timeline to remove.',
+          ? msg('instr.chronossus.paradox.anomaly.removed', {
+              tile:
+                from.era != null
+                  ? warpTileLabel(from.era)
+                  : msg('board.timelineTile.mostOldest'),
+              n: total > 0 ? total : 0,
+            })
+          : msg('instr.chronossus.paradox.anomaly.none'),
       });
     }
   } else {
@@ -2518,8 +2612,8 @@ export function rollParadox(state: GameState, rolled: number): ParadoxRollResult
       id: 'paradox-roll',
       text:
         gain === 0
-          ? 'The Chronossus rolls a blank — no Paradox this roll. It keeps rolling.'
-          : `The Chronossus rolls +${gain} Paradox — its tracker is now ${total}. It keeps rolling.`,
+          ? msg('instr.chronossus.paradox.blank')
+          : msg('instr.chronossus.paradox.gain', { gain, total }),
     });
   }
 
@@ -2569,13 +2663,19 @@ export function resolveVariableAnomalyGain(
   const instructions: Instruction[] = [
     {
       id: 'variable-anomaly-gain',
-      text:
-        `The Chronossus takes the ${chosen.vp} VP Anomaly` +
-        (chosen.retrieveEligible ? ' and retrieves a Warp tile.' : '.'),
+      text: msg(
+        chosen.retrieveEligible
+          ? 'instr.chronossus.variableAnomaly.retrieves'
+          : 'instr.chronossus.variableAnomaly.plain',
+        { vp: chosen.vp },
+      ),
       detail: removed
-        ? `Remove one of the Chronossus’s Warp tiles from ${from.era != null ? englishText(warpTileLabel(from.era)) : 'the Timeline tile where it has the most (oldest if tied)'}.`
+        ? msg('instr.chronossus.variableAnomaly.removed', {
+            tile:
+              from.era != null ? warpTileLabel(from.era) : msg('board.timelineTile.mostOldest'),
+          })
         : chosen.retrieveEligible
-          ? 'It has no Warp tiles on the Timeline to remove.'
+          ? msg('instr.chronossus.variableAnomaly.none')
           : undefined,
     },
   ];
@@ -2655,22 +2755,28 @@ export function resolveWarp(
     ),
     vp: state.chronossus.vp + bonusVP + quantum.vp,
   };
-  const where = eraZero ? 'on the Era Zero tile' : 'on the Timeline';
+  const where = msg(
+    eraZero ? 'instr.chronossus.warp.where.eraZero' : 'instr.chronossus.warp.where.timeline',
+  );
   const instructions: Instruction[] = [
     {
       id: 'warp',
       text:
         place > 0
-          ? `Place ${place} Warp tile${place === 1 ? '' : 's'} for the Chronossus ${where}.`
-          : `The Chronossus places no Warp tiles ${eraZero ? 'in the Era Zero Warp Phase' : 'this Era'}.`,
-      detail:
-        'Warping happens in player order. The Chronossus gains nothing for its Warp tiles ' +
-        'and it does not matter which tiles it places. (You place your own 0–2 Warp tiles as normal.)' +
-        (eraZero ? ' You may not warp an Exosuit during the Era Zero Warp Phase.' : '') +
-        (bonusVP
-          ? ` Alternate Timelines: ${positiveSpaces} landed on a positive-effect space — ` +
-            `+${bonusVP} VP (${perSpace} each). It ignores negative-space penalties entirely.`
-          : ''),
+          ? plural('instr.chronossus.warp.place', place, { where })
+          : msg(
+              eraZero ? 'instr.chronossus.warp.none.eraZero' : 'instr.chronossus.warp.none',
+            ),
+      detail: sentences(
+        msg('instr.chronossus.warp.detail'),
+        eraZero && msg('instr.chronossus.warp.detail.eraZero'),
+        bonusVP > 0 &&
+          msg('instr.chronossus.warp.detail.altTimelines', {
+            spaces: positiveSpaces,
+            vp: bonusVP,
+            each: perSpace,
+          }),
+      ),
       ...(bonusVP ? { effect: { vp: bonusVP } } : {}),
     },
     // The Quantum Loops check is its own instruction so a miss still reports — a check that
@@ -2679,16 +2785,24 @@ export function resolveWarp(
       ? [
           {
             id: 'quantum-loops',
-            text: quantum.removes
-              ? 'Remove the Quantum Loop card **farthest from the draw deck** from play — permanently.'
-              : 'No Quantum Loop card is removed this Warp Phase.',
-            detail:
-              `The Chronossus placed a Warp tile, so it rolled the AI die: ${quantumRoll}. ` +
-              (quantum.removes
-                ? 'It never returns a card, so this one is out of the game for good.' +
-                  (quantum.vp ? ` It also receives ${quantum.vp} VP for the removal.` : '')
-                : 'A card is only removed on a roll of ' +
-                  (state.config.difficulty.includes(DIFFICULTY_QL_REMOVE_ON_5) ? '4 or 5.' : '4.')),
+            text: msg(
+              quantum.removes
+                ? 'instr.chronossus.quantumLoops.removes'
+                : 'instr.chronossus.quantumLoops.keeps',
+            ),
+            detail: sentences(
+              msg('instr.chronossus.quantumLoops.rolled', { roll: quantumRoll ?? 0 }),
+              quantum.removes
+                ? msg('instr.chronossus.quantumLoops.gone')
+                : msg(
+                    state.config.difficulty.includes(DIFFICULTY_QL_REMOVE_ON_5)
+                      ? 'instr.chronossus.quantumLoops.onlyOn4or5'
+                      : 'instr.chronossus.quantumLoops.onlyOn4',
+                  ),
+              quantum.removes &&
+                quantum.vp > 0 &&
+                msg('instr.chronossus.quantumLoops.vp', { vp: quantum.vp }),
+            ),
             ...(quantum.vp ? { effect: { vp: quantum.vp } } : {}),
           } as Instruction,
         ]

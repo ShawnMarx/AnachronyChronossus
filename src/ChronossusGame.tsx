@@ -23,7 +23,7 @@ import PhaseScreen from './phases/PhaseScreen';
 import { CHRONOSSUS_PHASE_META, CHRONOSSUS_ENDGAME_RULES } from './phases/chronossusPhaseMeta';
 import { useAction, usePhaseMeta, useRule, useTile, useTiles } from './i18n/localized';
 import { useT } from './i18n/I18nProvider';
-import { renderMsg } from './i18n/msg';
+import { renderEnglish, renderMsg } from './i18n/msg';
 import { msg } from './engine/message';
 import T from './i18n/Trans';
 import {
@@ -1409,7 +1409,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
    * the bot passed, so a later read-back can see WHY without replaying the turn.
    */
   const passEffects = (actionId: ChronossusActionId): string[] => {
-    const label = Chronossus.chronossusActionLabel(actionId);
+    const label = renderEnglish(Chronossus.chronossusActionLabel(actionId));
     // "Out of Exosuits" covers Guardians too — a Guardian IS an Exosuit, so naming them
     // separately here would imply they're a different resource.
     return [
@@ -2092,8 +2092,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
       // The live tile action for this mode (Fractures fills these slots with C04-C06).
       const live = tileActionAt(key) ?? tp.action;
       const label = modeSlot
-        ? (scvTiles[code]?.name ?? Chronossus.chronossusActionLabel(live, t))
-        : Chronossus.chronossusActionLabel(live, t);
+        ? (scvTiles[code]?.name ?? renderMsg(t, Chronossus.chronossusActionLabel(live)))
+        : renderMsg(t, Chronossus.chronossusActionLabel(live));
       return { num, action: live, label, tile: code };
     }
     const [x, y] = positions[key] ?? [0, 0];
@@ -2794,7 +2794,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
     // finishTurn advances the marker one step; if that lands on an Autoleap tile it
     // opens its dialog (so the chain continues one tile at a time).
-    const label = Chronossus.chronossusActionLabel(actionId);
+    const label = renderEnglish(Chronossus.chronossusActionLabel(actionId));
     assimShapeRef.current = null;
     finishTurn(next, instructions, tileAutoleap ? `Autoleap — ${label}` : label);
   };
@@ -3107,7 +3107,7 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
     });
     chainOpenRef.current = false;
     setTileBlinkStep(null);
-    finishTurn(next, instructions, Chronossus.chronossusActionLabel(pendingTile));
+    finishTurn(next, instructions, renderEnglish(Chronossus.chronossusActionLabel(pendingTile)));
     if (!chainOpenRef.current) closeTile();
   };
 
@@ -3844,7 +3844,8 @@ export default function ChronossusGame({ onHome }: { onHome: () => void }) {
                 // Describe the tile actually sitting here in this mode, not the base-game
                 // tile the path data names for the slot.
                 const liveAction = tileActionAt(p.key);
-                const desc = liveAction ? tileDescription(liveAction, t) : undefined;
+                const descMsg = liveAction ? tileDescription(liveAction) : undefined;
+                const desc = descMsg ? renderMsg(t, descMsg) : undefined;
                 return (
                   <img
                     key={k}
@@ -5132,7 +5133,7 @@ function CxTileDialog({
   // space's own name, never the tile's ("Assimilate and Score", "Efficient Extract"…).
   // Display, so it translates. The `chronossusActionLabel` calls that feed History
   // labels deliberately do NOT pass `t` — a persisted string keeps English.
-  const valleySpaceName = Chronossus.chronossusActionLabel(action, t);
+  const valleySpaceName = renderMsg(t, Chronossus.chronossusActionLabel(action));
   // Where a Valley placement/Blink lands, including the Capital fallback (p.11) — the app
   // never renders the Valley board, so the instruction has to name both.
   const valleyDestination = `${valleySpaceName} (Valley board, topmost space — or the Valley Capital Action space if none is available)`;
@@ -5569,7 +5570,7 @@ function CxTileDialog({
           )}
             </>
           ) : (
-            <p className="pp-instruct">{tileInstruction(code, t)}</p>
+            <p className="pp-instruct">{renderMsg(t, tileInstruction(code))}</p>
           )}
           {!readOnly && !valleyGate && !guardianGate && !adventureGate && !experimentGate && (
             <button className="start-turn" onClick={onStart}>

@@ -71,6 +71,27 @@ export function plural(key: string, n: number, params?: Record<string, MsgParam>
   return { key: `${key}.${n === 1 ? 'one' : 'other'}`, params: { ...params, n } };
 }
 
+/**
+ * Several whole sentences as one message — for a `detail` that is assembled from a fixed
+ * opening plus whichever optional notes apply.
+ *
+ * Each sentence stays its own key (a translator gets whole sentences, never fragments to
+ * splice), and the separator between them is a key too, because a language may not put a
+ * space there. Falsy entries drop out, so a caller can pass a condition's result inline.
+ */
+export function sentences(...parts: (Msg | null | undefined | false)[]): Msg {
+  return {
+    key: 'msg.sentences',
+    params: {
+      text: {
+        list: parts.filter((p): p is Msg => !!p),
+        sep: 'msg.sentenceSep',
+        last: 'msg.sentenceSep',
+      },
+    },
+  };
+}
+
 /** Shorthand for a message with no params. */
 export function msg(key: string, params?: Record<string, MsgParam>): Msg {
   return params ? { key, params } : { key };

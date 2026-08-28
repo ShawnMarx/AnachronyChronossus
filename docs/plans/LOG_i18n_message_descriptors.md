@@ -34,13 +34,14 @@ note deviations and decisions inline as they happen.
 
 ## Feature 3 — `chronossus.ts` (54 sites) + the prose helpers
 
-- [ ] 3.1 Convert the prose helpers to `Msg` producers and drop their optional `translate`
-      parameter: `chronossusActionLabel`, `describeCubes`, `spaceLabel`,
-      `tileInstruction`, `tileDescription` (`board/tileText.ts`). Update their tests.
-- [ ] 3.2 Convert the phase-function instructions.
-- [ ] 3.3 Convert the action-resolution instructions (the bulk).
-- [ ] 3.4 Convert the tile / Blink / Autoleap instructions.
-- [ ] 3.5 Update `chronossus`'s unit tests to assert keys.
+- [x] 3.1 Convert the prose helpers to `Msg` producers and drop their optional `translate`
+      parameter: `chronossusActionLabel`, `describeCubes`, `tileInstruction`,
+      `tileDescription` (`board/tileText.ts`). Update their tests.
+      _(`spaceLabel` is NOT one of them — see the deviation below.)_
+- [x] 3.2 Convert the phase-function instructions.
+- [x] 3.3 Convert the action-resolution instructions (the bulk).
+- [x] 3.4 Convert the tile / Blink / Autoleap instructions.
+- [x] 3.5 Update `chronossus`'s unit tests to assert keys.
 
 ## Feature 4 — the module bots (17 sites)
 
@@ -189,3 +190,66 @@ key assertions and deletes the helper.
 
 **Verification:** `npx tsc --noEmit` clean, `npm test` 559 passing (was 538 — +21 new),
 `npm run build` clean, `npm run lint` 0 errors (the fast-refresh warnings are pre-existing).
+
+### Feature 3 — 2026-08-28
+
+`chronossus.ts` is fully converted: every `text` / `detail` it emits is a descriptor, and
+its English lives in the new `bots/chronossus.messages.ts` (D10), folded into
+`ENGINE_MESSAGES` beside the Chronobot's. **133 keys**, `en.json` regenerated. The engine
+file no longer imports `englishText` at all — nothing in it renders text any more.
+
+**`spaceLabel` is not in this feature.** The plan listed it with the prose helpers, but the
+only `spaceLabel` in the tree is a **view** function in `BoardExplorer.tsx` (the Chronobot's
+Blink panel); `Chronossus.BLINK_SPACE_LABEL` is a plain map the view reads through
+`blinkSpace.*`. It belongs to Feature 6, and step 3.1 is complete without it.
+
+**New: `sentences(...)` in `message.ts`.** Several `detail` lines are assembled from a fixed
+opening plus whichever optional notes apply — the Power Up draw, the Warp phase's Era Zero
+and Alternate Timelines notes, the Quantum Loops roll. Concatenating translated fragments is
+exactly what D2 forbids, so each sentence stays its own key and `sentences()` joins them
+through `msg.sentenceSep` (a key, since a language may not separate sentences with a space).
+Falsy entries drop out, so a condition can be passed inline.
+
+**Two normalisations, both following Feature 2's precedent.** Worker and shape names now come
+from `piece.*` / `piece.shape.*` rather than the raw enum value, so "Recruit a genius" reads
+"Recruit a **Genius**" — the Chronobot's conversion made the same change, and a translator
+cannot be handed a bare enum. And `applyWorkerSetBonus` now returns a **sentence-cased** key
+instead of a lower-case phrase the caller ran `capitalize()` over: a caller can no longer
+reach inside a translated string to change its first letter, and a language may not
+capitalise that word at all. `capitalize` is deleted.
+
+**Mid-sentence ternaries split (D2), eleven of them:** the Failed Action's "places an Exosuit
+and", the Exosuit/Guardian placement lines (a different miniature comes off the table, so
+`.exosuit` / `.guardian` throughout — placements, the Experiment hex, the World Council, the
+Hypersync send), Remove Anomaly's plain vs Variable-Anomalies removal, Time Travel's two
+failure reasons, the Warp phase's "this Era" vs "in the Era Zero Warp Phase", Power Up's
+"before/after the Impact" (which becomes `sum.before` / `sum.after`, each a `.one`/`.other`
+pair), the tile line's appended Autoleap clause (`tile.line` / `tile.lineAutoleap` /
+`tile.nothing` / `tile.nothingAutoleap`, and the same in `tileText.ts`), and Quantum Loops'
+"a roll of 4" vs "4 or 5".
+
+**Tile gains join with " and ", as they always have** — `joinGains` passes `msg.list.last`
+as BOTH separators rather than taking the default "a, b and c". Preserving the rendered
+English was the point: this refactor changes no wording.
+
+**Pulled forward from Feature 8: `src/engine/messageKeys.test.ts`** (D7's completeness
+check). It drives the Chronossus through a full Era — every phase, eleven Actions, both tile
+sides — collects every `Msg` including nested params, and asserts each key has a catalog
+entry and each `{placeholder}` in the English default is supplied. Written now rather than at
+F8 because it is what validates 133 hand-written keys; **self-tested both ways** (a renamed
+key and an unsupplied param each fail it) before being believed. Feature 8 extends it to the
+other bots rather than writing its own.
+
+**View call sites touched only as far as compiling required** (the sweep is Feature 6), and
+the display/persisted split was decided per site: `renderMsg(t, …)` for the SCV rows, the
+tile tooltip, the Valley space name and the tile's expanded line; `renderEnglish(…)` for the
+two persisted paths — `finishTurn`'s turn label and `passEffects`' History lines — so a saved
+string still holds English exactly as before.
+
+**Step 6.5 caught its first one already.** `doomsday.test.ts` had
+`instructions.map((i) => i.text).join('\n')`, which rendered `[object Object]` and typechecked
+clean — the failure mode that grep sweep exists for.
+
+**Verification:** `npx tsc --noEmit` clean, `npm test` **570 passing** (was 559 — +11:
+2 new message-key tests, 9 from the converted assertions), `npm run build` clean, `npm run
+lint` 0 errors. Every literal and templated key in the engine checked against `en.json`.

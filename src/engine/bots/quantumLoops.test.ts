@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { isMsg, type Text } from '../message';
 import type { GameState } from '../state';
 import { Chronossus, createInitialState, emptyChronossusState, DEFAULT_CONFIG } from '../index';
 import {
@@ -74,11 +75,14 @@ const warpState = (opts: { extras?: string[]; difficulty?: string[]; era?: numbe
 const quantumInstruction = (st: GameState) =>
   st.currentInstructions.find((i) => i.id === 'quantum-loops');
 
+/** Which message the instruction IS — the key, not the English it happens to render as. */
+const keyOf = (i: { text: Text }): string => (isMsg(i.text) ? i.text.key : i.text);
+
 describe('Quantum Loops — resolveWarp', () => {
   it('emits the removal instruction on a 4, naming the card position in bold', () => {
     const next = Chronossus.resolveWarp(warpState(), 2, 0, false, 4);
     const inst = quantumInstruction(next);
-    expect(inst?.text).toContain('**farthest from the draw deck**');
+    expect(keyOf(inst!)).toBe('instr.chronossus.quantumLoops.removes');
     expect(next.log.at(-1)).toContain('Quantum Loops card removed');
   });
 
@@ -86,7 +90,7 @@ describe('Quantum Loops — resolveWarp', () => {
     const next = Chronossus.resolveWarp(warpState(), 1, 0, false, 3);
     const inst = quantumInstruction(next);
     expect(inst).toBeDefined();
-    expect(inst!.text).toContain('No Quantum Loop card is removed');
+    expect(keyOf(inst!)).toBe('instr.chronossus.quantumLoops.keeps');
     expect(next.log.at(-1)).not.toContain('Quantum Loops card removed');
   });
 
@@ -112,7 +116,7 @@ describe('Quantum Loops — resolveWarp', () => {
 
   it('runs in Fractures’ Era Zero Warp too — it is a Warp Phase like any other', () => {
     const next = Chronossus.resolveWarp(warpState({ era: 1 }), 1, 0, true, 4);
-    expect(quantumInstruction(next)?.text).toContain('farthest from the draw deck');
+    expect(keyOf(quantumInstruction(next)!)).toBe('instr.chronossus.quantumLoops.removes');
     // …and still hands off to Era 1's Preparation, not Action Rounds.
     expect(next.phase).toBe('preparation');
   });

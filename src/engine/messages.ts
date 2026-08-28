@@ -20,6 +20,7 @@
 // live INSIDE the string so a translator can move them where their grammar needs them.
 
 import { CHRONOBOT_MESSAGES } from './bots/chronobot.messages';
+import { CHRONOSSUS_MESSAGES } from './bots/chronossus.messages';
 import { renderMsg, type Text } from './message';
 
 /** Keys shared by more than one bot, or by the engine itself. */
@@ -29,6 +30,11 @@ const SHARED_MESSAGES: Record<string, string> = {
   // language may use a different conjunction, drop the comma, or need a trailing particle.
   'msg.list.sep': ', ',
   'msg.list.last': ' and ',
+
+  // How several whole sentences come together into one `detail` line (see `sentences()`).
+  // A key, not a hard-coded space: a language may separate sentences differently.
+  'msg.sentences': '{text}',
+  'msg.sentenceSep': ' ',
 
   // --- Board pieces named inside an instruction ---------------------------------
   // Which Timeline tile a Warp tile sits on. Era Zero (Fractures) is its own key because
@@ -59,6 +65,7 @@ const SHARED_MESSAGES: Record<string, string> = {
 export const ENGINE_MESSAGES: Record<string, string> = {
   ...SHARED_MESSAGES,
   ...CHRONOBOT_MESSAGES,
+  ...CHRONOSSUS_MESSAGES,
 };
 
 /**

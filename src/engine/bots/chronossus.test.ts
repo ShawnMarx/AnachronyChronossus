@@ -71,12 +71,16 @@ import {
 import type { GameConfig, Worker as EngineWorker } from '../types';
 import type { ChronossusActionInput as ChronossusActionInputType } from './chronossus';
 import type { ChronossusState } from '../state';
+import { isMsg, type Text } from '../message';
 
-// INTERIM (message-descriptor refactor, Feature 1): `Instruction.text` is now a `Text`,
-// so these prose assertions cannot read it directly. Feature 3 converts this file to
-// assert KEYS instead — which is the point of the refactor — and this helper goes away.
-const textOf = (i: { text: unknown }): string =>
-  typeof i.text === 'string' ? i.text : String((i.text as { key: string }).key);
+// What an instruction SAYS is now its key plus its params, so that is what these assert:
+// prose is the locale file's business, and a reworded English default must not fail a
+// test about which rule fired.
+const keyOf = (i: { text: Text }): string => (isMsg(i.text) ? i.text.key : i.text);
+const paramsOf = (i: { text: Text }): Record<string, unknown> =>
+  isMsg(i.text) ? ((i.text.params ?? {}) as Record<string, unknown>) : {};
+const hasKey = (instructions: { text: Text }[], key: string): boolean =>
+  instructions.some((i) => keyOf(i) === key);
 
 
 const CONFIG: GameConfig = {
@@ -227,15 +231,14 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     const s = withExosuits(4, { config: { ...CONFIG, difficulty: [DIFFICULTY_RESEARCH_NEW_SHAPE] } });
     const { state, instructions } = resolveAction(s, { actionId: 'research', shape: 'triangle' });
     expect(state.chronossus!.breakthroughs.triangle).toBe(1);
-    const text = instructions.find((i) => i.id.startsWith('res-'))!.text;
-    expect(text).toMatch(/doesn't already have/);
-    expect(text).not.toMatch(/the shape die shows/);
+    const res = instructions.find((i) => i.id.startsWith('res-'))!;
+    expect(keyOf(res)).toBe('instr.chronossus.research.difficulty');
   });
 
   it('Research still reads "the shape die shows" when D8 is off (regression)', () => {
     const { instructions } = resolveAction(withExosuits(4), { actionId: 'research', shape: 'triangle' });
-    const text = instructions.find((i) => i.id.startsWith('res-'))!.text;
-    expect(text).toMatch(/the shape die shows/);
+    const res = instructions.find((i) => i.id.startsWith('res-'))!;
+    expect(keyOf(res)).toBe('instr.chronossus.research.rolled');
   });
 
   it('Reboot does nothing (no Exosuit, no VP)', () => {
@@ -267,7 +270,8 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     const { state, instructions } = resolveAction(s, { actionId: 'time-travel' });
     expect(state.chronossus!.warpTilesByEra).toEqual({ 1: 1, 2: 1, 4: 1 });
     expect(state.chronossus!.warpTilesOnTimeline).toBe(3);
-    expect(instructions.some((i) => textOf(i).includes('the Era 2 Timeline tile'))).toBe(true);
+    const tt = instructions.find((i) => keyOf(i) === 'instr.chronossus.timeTravel.done')!;
+    expect(paramsOf(tt).tile).toEqual({ key: 'board.timelineTile.era', params: { era: 2 } });
   });
 
   it('Time Travel is Failed when every Warp tile is on the CURRENT Era’s tile', () => {
@@ -282,7 +286,7 @@ describe('resolveAction — base actions on the Chronossus slice', () => {
     expect(state.chronossus!.warpTilesOnTimeline).toBe(2); // nothing removed
     expect(state.chronossus!.timeTravelTrack).toBe(0);
     expect(state.chronossus!.vp).toBe(before + 1); // Failed Action
-    expect(instructions.some((i) => textOf(i).includes('current Era’s Timeline tile'))).toBe(true);
+    expect(hasKey(instructions, 'instr.chronossus.timeTravel.failCurrentEra')).toBe(true);
   });
 
   it('no-space Failed: +1 VP AND discards an active Exosuit (every placing action)', () => {
@@ -601,8 +605,14 @@ describe('resolveWarp — places the rolled Warp tiles', () => {
     expect(next.chronossus!.warpTilesOnTimeline).toBe(2);
     expect(next.phase).toBe('preparation');
     expect(next.era).toBe(1);
-    expect(next.currentInstructions[0].text).toContain('Era Zero tile');
-    expect(next.currentInstructions[0].detail).toContain('may not warp an Exosuit');
+    expect(keyOf(next.currentInstructions[0])).toBe('instr.chronossus.warp.place.other');
+    expect(paramsOf(next.currentInstructions[0]).where).toEqual({
+      key: 'instr.chronossus.warp.where.eraZero',
+    });
+    // The Era Zero note is its own sentence in the detail, so it is its own key.
+    const detail = next.currentInstructions[0].detail!;
+    expect(isMsg(detail) && detail.key).toBe('msg.sentences');
+    expect(JSON.stringify(detail)).toContain('instr.chronossus.warp.detail.eraZero');
   });
 });
 
@@ -1218,7 +1228,10 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
       actionId: 'tile-extract',
       placementSpace: 'world-council',
     });
-    expect(instructions.some((i) => /Valley Capital Action space/.test(textOf(i)))).toBe(true);
+    const place = instructions.find((i) => keyOf(i) === 'instr.chronossus.place.exosuit')!;
+    expect(paramsOf(place).where).toEqual({
+      key: 'instr.chronossus.place.where.valleyCapital',
+    });
   });
 
   it('can be Blinked INTO: the moved Exosuit leaves the Main board, none is spent', () => {
@@ -1239,7 +1252,7 @@ describe('Fractures — Valley board Actions take an Exosuit', () => {
       { action: 'recruit', space: 'action', hasCore: true },
     ]);
     expect(next.chronossus!.exosuitsAvailable).toBe(3); // unchanged — no new Exosuit
-    expect(instructions.some((i) => /Blink: move that Exosuit/.test(textOf(i)))).toBe(true);
+    expect(hasKey(instructions, 'instr.chronossus.place.blink')).toBe(true);
   });
 
   it('every Main-board Exosuit is Blink-ready for a Valley Action (none is on it)', () => {

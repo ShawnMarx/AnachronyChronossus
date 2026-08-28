@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { renderEnglish } from '../../i18n/msg';
 import type { ChronossusState, Instruction } from '../state';
 import type { GameState } from '../state';
 import { Chronossus, createInitialState, emptyChronossusState, DEFAULT_CONFIG } from '../index';
@@ -411,7 +412,9 @@ describe('Experiment — resolved through takeActionTurn', () => {
     const state = doomsdayState();
     const { state: next, instructions } = Chronossus.resolveAction(state, input);
     expect(next.chronossus!.exosuitsAvailable).toBe(2);
-    const text = instructions.map((i) => i.text).join('\n');
+    // `.map((i) => i.text).join()` on a `Text` renders [object Object] and `tsc` cannot
+    // see it — render each descriptor instead (the plan's step 6.5).
+    const text = instructions.map((i) => renderEnglish(i.text)).join('\n');
     expect(text).toMatch(/Experiment hex pool space\./);
     expect(text).not.toMatch(/Energy Core/);
     // Nothing is recorded as Blink-able: Doomsday never coexists with Fractures.
