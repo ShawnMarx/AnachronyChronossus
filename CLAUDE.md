@@ -555,6 +555,12 @@ Keep it that way; a change that requires a second edit to add a language is a re
   `onTileClick` with `debug` sets the real `pending` flow, so a tap opens the full guided
   dialog exactly as if the die had sent a marker there. `MODES=all` walks every module,
   which is what covers `tile.*` (a tile's text only renders in a mode that places it).
+- **A screen's file name is translated too — pair captures by INDEX.** `pw-i18n-review.mjs`
+  names each capture after what is on it, so `023-chronobot-action-Mine-Resource.png` is
+  `023-chronobot-action-Extraer-Recurso.png` on the Spanish side. `report.html` paired on the
+  full name until 2026-08-28 and therefore printed **"not captured"** for every Action and
+  tile dialog — the screens a translator most needs. Both runs walk the same route in the
+  same order, so the numeric prefix is the key.
 - **Report what the sweep missed.** `--markers` writes a locale of `⟦key⟧` markers and
   `COVERAGE=1` then lists every key no screen displayed. A harness that silently shows two
   thirds of the strings is worse than none — the translator would believe they reviewed

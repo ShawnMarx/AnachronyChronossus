@@ -503,21 +503,37 @@ if (faultLines.length) {
 // --- side-by-side report ----------------------------------------------------------
 const shots = readdirSync(en.dir).filter((f) => f.endsWith('.png')).sort();
 const esc = (s) => s.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+
+// PAIR BY CAPTURE INDEX, NOT BY FILENAME. A screen is named after what is ON it, and in the
+// target language that name is translated — `023-chronobot-action-Mine-Resource.png` on the
+// English side is `023-chronobot-action-Extraer-Recurso.png` on the Spanish one. Matching on
+// the full name therefore reported "not captured" for every Action and tile dialog, which is
+// exactly the set a translator most needs to see side by side. Both runs walk the same route
+// in the same order, so the numeric prefix is the reliable key.
+const trByIndex = new Map(
+  readdirSync(tr.dir)
+    .filter((f) => f.endsWith('.png'))
+    .map((f) => [f.slice(0, f.indexOf('-')), f]),
+);
 const rows = shots
   .map((f) => {
     const base = f.replace(/\.png$/, '');
-    const other = existsSync(join(tr.dir, f)) ? f : null;
+    const other = trByIndex.get(f.slice(0, f.indexOf('-'))) ?? null;
+    const otherBase = other ? other.replace(/\.png$/, '') : null;
     const enTxt = existsSync(join(en.dir, `${base}.txt`)) ? readFileSync(join(en.dir, `${base}.txt`), 'utf8') : '';
-    const trTxt = other && existsSync(join(tr.dir, `${base}.txt`)) ? readFileSync(join(tr.dir, `${base}.txt`), 'utf8') : '';
+    const trTxt =
+      otherBase && existsSync(join(tr.dir, `${otherBase}.txt`))
+        ? readFileSync(join(tr.dir, `${otherBase}.txt`), 'utf8')
+        : '';
     let faults = '';
     try {
-      faults = readFileSync(join(tr.dir, `${base}.faults`), 'utf8').trim();
+      faults = readFileSync(join(tr.dir, `${otherBase ?? base}.faults`), 'utf8').trim();
     } catch { /* no faults on this screen */ }
     return `<section><h2>${esc(base.replace(/^\d+-/, ''))}</h2>
   ${faults ? `<ul class="faults">${faults.split('\n').map((l) => `<li>${esc(l)}</li>`).join('')}</ul>` : ''}
   <div class="pair">
     <figure><figcaption>English</figcaption><img src="en/${f}" loading="lazy"><pre>${esc(enTxt)}</pre></figure>
-    <figure><figcaption>${esc(LANG)}</figcaption>${other ? `<img src="${esc(LANG)}/${f}" loading="lazy">` : '<p class="missing">not captured</p>'}<pre>${esc(trTxt)}</pre></figure>
+    <figure><figcaption>${esc(LANG)}</figcaption>${other ? `<img src="${esc(LANG)}/${esc(other)}" loading="lazy">` : '<p class="missing">not captured</p>'}<pre>${esc(trTxt)}</pre></figure>
   </div></section>`;
   })
   .join('\n');
