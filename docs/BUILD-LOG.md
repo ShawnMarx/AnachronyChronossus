@@ -50,6 +50,20 @@ serve: `import.meta.glob` is build-time, so the first pseudolocale run served a 
 `xx.json` in it, captured every screen in English, and reported 675 "untranslated" lines that
 meant "the locale never loaded".
 
+**Then the same day, EN vs ES, end to end.** A fresh all-modes review run against a production
+build of staging — **761 captures per side, zero layout faults** — became a published side-by-side
+report (130 core screens, click a shot to flip languages in place). Building it exposed a bug in
+`pw-i18n-review.mjs`: `report.html` paired captures **by filename**, but a capture is named after
+what is on it, so `023-chronobot-action-Mine-Resource.png` is `023-…-Extraer-Recurso.png` in
+Spanish. Every Action and tile dialog — the screens a translator most needs — printed "not
+captured". It pairs by the numeric index now, which is stable because both runs walk the same
+route in the same order.
+
+The run also measured what `es.json` actually covers: **174 keys, 58 of them `instr.*` (all
+Chronobot) and zero `hist.*`**. The History pane and the Chronossus's own instructions became
+translatable *today* and nobody has translated them yet — which is the next slice, and the gate
+on promoting any of this to `main`.
+
 **Reported, not glossed:** the marker-locale coverage run reaches 300 of 1,450 keys. The marker
 locale leaves the harness less text to navigate by (742 screens vs the pseudolocale's 897), and
 a sweep that never plays a turn cannot show most `instr.*` / `hist.*` keys. `TODO.md` carries

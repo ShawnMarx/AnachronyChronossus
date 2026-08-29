@@ -63,12 +63,17 @@ committed and none are planned in-house.
       that `officialRulebook: true` means the rule text was transcribed from that language's
       **official** Anachrony / Solo Opponents edition — not translated from the English.
 
-- [ ] **Extend `es.json` past its 174 keys.** The Spanish locale is partial by design — it
-      covers the terminology families, the Chronobot's `instr.*` and the main chrome, and
-      everything else falls back to English per key. The obvious next slices are the Chronossus
-      setup prose (`ui.cxSetup.*`, 152 keys) and the dialogs (`ui.dialog.*`, 56). Terminology is
-      settled in `src/i18n/locales/GLOSSARY-es.md`; the ⚠ solo terms there are inferred and
-      should be revisited if an official Spanish solo edition ever appears.
+- [ ] **Extend `es.json` past its 174 keys — now the gate on promoting to `main`** (measured
+      2026-08-28: **58 `instr.*`, all Chronobot; 0 `hist.*`; 58 `ui.*`**). The Spanish locale is
+      partial by design — everything else falls back to English per key. The message-descriptor
+      refactor just made the two biggest missing slices reachable, so take them in this order:
+      the **History families** (`hist.*`, 89 keys — every line a saved game shows) and the
+      **Chronossus's instructions** (`instr.chronossus.*`, 133), then the Chronossus setup prose
+      (`ui.cxSetup.*`, 152) and the dialogs (`ui.dialog.*`, 56). Terminology is settled in
+      `src/i18n/locales/GLOSSARY-es.md`; the ⚠ solo terms there are inferred and should be
+      revisited if an official Spanish solo edition ever appears. A full EN-vs-ES capture of the
+      current state (761 per side, zero layout faults) was run 2026-08-28 — regenerate with
+      `LANG_CODE=es MODES=all node pw-i18n-review.mjs` after each slice.
 
 ## Deployment / publishing (deferred from the 2026-07-27 DO deploy)
 See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done — live at
