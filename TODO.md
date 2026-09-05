@@ -162,7 +162,11 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
             mints a random 128-bit **host-only** `bge_anon`, never derived from the visitor,
             never throwing, and returns null rather than claiming an id a blocked browser
             never stored. **Inert today — nothing reads it**, which is deliberate: it lets
-            the cookie age into real browsers before anything counts it. 8 unit tests.
+            the cookie age into real browsers before anything counts it. 9 unit tests.
+            **Max-Age is 180 days** — normative across the suite as of 2026-09-05, not this
+            app's choice: it shipped at 365 while the contract named no value, which made
+            this app's visitor decay at half the rate of landing's and its count therefore
+            incomparable with the rest. Asserted in a test so it can't drift back.
       - [ ] **Step 2 — nginx** logs that cookie plus a signed-in boolean, so the *server*
             decides anonymous-vs-authenticated. **Send the `log_format` line to the
             `boardgameedge` session before it ships** — that is where an IP or user-agent

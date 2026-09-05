@@ -10,11 +10,16 @@ import { ensureAnonVisitCookie } from './anonVisit';
 // does NOT throw — it silently discards the write and stores nothing.
 function stubCookieJar(opts: { blocked?: boolean } = {}) {
   let jar = '';
+  // The jar keeps only the name=value pair, exactly as a browser does, so the attributes
+  // are unreadable after the fact — `written` keeps the full assigned string so a test can
+  // assert on the flags themselves.
+  let written = '';
   const doc = {};
   Object.defineProperty(doc, 'cookie', {
     configurable: true,
     get: () => jar,
     set: (v: string) => {
+      written = v;
       if (opts.blocked) return;
       const pair = v.split(';')[0];
       jar = jar ? `${jar}; ${pair}` : pair;
@@ -24,6 +29,7 @@ function stubCookieJar(opts: { blocked?: boolean } = {}) {
   vi.stubGlobal('window', { location: { protocol: 'https:' } });
   return {
     raw: () => jar,
+    written: () => written,
     seed: (v: string) => {
       jar = v;
     },
@@ -45,11 +51,21 @@ describe('bge_anon — the anonymous-visitor cookie', () => {
     expect(id).toMatch(/^[0-9a-f]{32}$/);
   });
 
+  it('expires in 180 days — the rate is normative, not this app\'s preference', () => {
+    // Every BGE app must decay a visitor at the same rate, or the counts are not
+    // comparable and the shared metric means nothing. This shipped at 365 against a
+    // contract that named no value; 180 is what landing and `bge_shared.anon_usage` use
+    // and what the contract now fixes. A drift here is a silent measurement bug, so it is
+    // asserted rather than left to the comment.
+    ensureAnonVisitCookie();
+    expect(jar.written()).toContain(`Max-Age=${180 * 24 * 60 * 60}`);
+  });
+
   it('is host-only — it must never carry a Domain attribute', () => {
     // A domain-wide cookie would follow a visitor across every BGE app AND suppress the
     // landing service's own minting, silently changing what the apex's numbers mean.
     ensureAnonVisitCookie();
-    expect(jar.raw()).not.toMatch(/Domain/i);
+    expect(jar.written()).not.toMatch(/Domain/i);
   });
 
   it('keeps an existing id rather than re-minting, so a visitor stays one visitor', () => {

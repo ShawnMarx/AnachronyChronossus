@@ -37,8 +37,16 @@
 
 /** Cookie name, fixed by the contract and shared across every BGE app. */
 const COOKIE = 'bge_anon';
-/** A visitor is the same visitor for a year, or until they clear cookies. */
-const MAX_AGE_SECONDS = 365 * 24 * 60 * 60;
+/**
+ * A visitor is the same visitor for 180 days, or until they clear cookies.
+ *
+ * **Normative, not a preference** — the contract fixes it so every app's visitor decays at
+ * the same rate. This shipped at 365 while the contract named no value; landing and
+ * `bge_shared.anon_usage` shipped 180, which made this app's visitor count incomparable
+ * with the rest of the suite — the one thing a shared metric may not do. Fixed in the
+ * contract and lowered here on 2026-09-05.
+ */
+const MAX_AGE_SECONDS = 180 * 24 * 60 * 60;
 
 /** Read a cookie by name, or null. Returns null rather than throwing on any oddity. */
 function readCookie(name: string): string | null {
