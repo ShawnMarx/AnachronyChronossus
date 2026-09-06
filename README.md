@@ -54,6 +54,39 @@ pw-*.mjs         Playwright harnesses for the things unit tests can't see
 humans — it is checked in because that is where the project's conventions actually
 live, and it stays accurate as the code changes.
 
+## Translating it
+
+The app is built to take a language as **one dropped-in file**, and the English side is
+finished: every string a player sees resolves through a key, verified by a pseudolocale run
+that replaces all 1,450 of them and then reports anything still in English. As of
+2026-09-06 that report is **four strings** — two proper nouns, the signed-in user's own
+name, and the language menu — across 897 screens, with no layout breakage at +40% text
+length. So there is nothing to discover: `src/i18n/locales/en.json` is the complete list of
+what needs translating.
+
+To add a language, copy `en.json` to `<code>.json` in the same directory and translate the
+values. It appears in the ⚙ menu on the next build — there is no registry, import list or
+enum to edit.
+
+**Two things to know before you start:**
+
+- **Do not translate the verbatim rulebook boxes.** Those quote Mindclash's rulebook, which
+  is not licensed by this repository (see below), and translating it would publish an
+  unofficial translation of their text. Set `"officialRulebook": false` in your file's
+  `$locale` header and the app keeps that text in English and explains why. Set it `true`
+  **only** if you are transcribing from an official edition of the *Chronobot & Chronossus
+  Solo Opponents* rulebook in your language.
+- **A partial file is valid** — lookups fall back to English per key. But judge readiness by
+  screens reached, not keys translated: the highest-frequency strings appear everywhere, so
+  a file covering 12% of the keys showed some translated text on 92% of screens, which reads
+  as broken rather than as in progress.
+
+`src/i18n/locales/README.md` is the full guide, including how to see your own work on every
+screen. `src/i18n/locales/drafts/` holds a partial Spanish file kept as a worked example of
+the format — it is outside the loader on purpose and is not offered in the app —
+with `GLOSSARY-es.md` beside it showing how published terminology was pinned to rulebook
+pages, and marked ⚠ where a solo-only term had to be inferred.
+
 ## Credits and rights
 
 **Anachrony** is designed by Dávid Turczi, Richard Amann and Viktor Peter, and published by

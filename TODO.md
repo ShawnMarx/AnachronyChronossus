@@ -8,6 +8,14 @@ The mechanism is in (`src/i18n/`, `src/i18n/locales/README.md`): drop a `<code>.
 `src/i18n/locales/` and it appears in the ⚙ menu. Ships English-only; no translations are
 committed and none are planned in-house.
 
+**Measured 2026-09-06 and considered closed:** an all-modes pseudolocale run over 897 screens
+leaves **four strings** in English — the signed-in user's name, `Chronobot`, `Chronossus` and
+`English` — all correct as they stand, with zero layout faults at +40% length. That is
+**99.79% of player-visible lines** reaching the locale (the raw 73% figure counts the dev-only
+Debug bar, which the harness itself turns on). Nothing is left to build: `en.json` is the
+complete list, and the repo README's **Translating it** section is the entry point for anyone
+who wants to fill it.
+
 - [x] **Engine instructions → message descriptors — DONE 2026-08-28.** All 8 features;
       archived to `docs/complete/20260828_I18N_MESSAGE_DESCRIPTORS_COMPLETED.md`. The engine
       returns `{key, params}` and never prose, so a persisted History line is re-rendered on

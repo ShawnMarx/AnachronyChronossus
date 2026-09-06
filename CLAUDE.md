@@ -685,4 +685,9 @@ draft up, **rebuild**, serve that build, then move it back.
   (A/B) and the module's combos.
 - Match surrounding code style; `npm run build` and `npm test` must stay clean before
   committing.
-- Board art is copyrighted → the GitHub repo is **private**.
+- **The GitHub repo is PUBLIC** (since 2026-08-22 — ops docs moved to the private
+  `droplet-ops`, history rewritten with `git filter-repo`). The board art is still
+  copyrighted; that is handled by the LICENSE carve-out rather than by hiding the repo —
+  MIT for the code, with Mindclash's artwork and rulebook text explicitly **not** licensed
+  by it. So: never commit anything that a public reader must not see (host names, key
+  names, IPs, service ports), and keep quoted rulebook text inside the carve-out's terms.

@@ -2,6 +2,38 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-09-06 — What the translation layer actually reaches, measured
+
+**The layer is finished; only the content was ever missing.** An all-modes pseudolocale run
+(`--pseudo`, all 1,450 keys replaced, `officialRulebook: true` so the verbatim boxes go too;
+written before the build, since a locale added after it is invisible to `import.meta.glob`)
+captured **897 screens** and reported what is still English.
+
+**Four strings, across all of them.** `👤 local-admin` (the signed-in user's own name),
+`Chronobot` and `Chronossus` (proper nouns) and `English` (the language menu, which names each
+language in its own language). All four are correct as they stand, so **zero hard-coded
+player-facing strings** — and **zero layout faults** at +40% text length.
+
+**The percentage needs its denominator stated, or it lies.** Of 28,946 translatable lines,
+21,122 resolve through the locale — 73%. The other 27% is almost entirely the **dev-only Debug
+bar** (`PHASE:`, `Setup`, `1 Prep` … `End Game`), which appears on 778 captures *because the
+harness turns Debug on to reach the Action dialogs*: the instrument measuring itself. Excluding
+it, **21,122 of 21,166 player-visible lines reach the locale — 99.79%**. Two earlier framings
+were wrong and are worth not repeating: a per-line test for the `⟦ ⟧` wrapper reads 43.7%,
+because a multi-line rule block carries the bracket only on its first line and 18,284 "misses"
+are bare digits from the board counters.
+
+**So a complete language is translation work, not engineering.** `en.json` is the exhaustive,
+generated list and the suite fails if it drifts. The repo README gained a **Translating it**
+section saying so — the entry point was three directories down where no outside reader would
+find it — including the two things a volunteer gets wrong: the verbatim rule boxes must stay
+English (they are Mindclash's text, outside this repo's LICENSE), and readiness is judged by
+screens reached rather than keys translated.
+
+**And a stale convention corrected:** `CLAUDE.md` still said the GitHub repo was private. It
+has been **public since 2026-08-22**; the copyrighted art is handled by the LICENSE carve-out,
+not by hiding the repo. That line is what a reader would have checked before sharing it.
+
 ## 2026-09-05 — The i18n work reaches production, English-only on purpose
 
 **33 commits went from `staging` to `main`** — the whole translation effort, from the
