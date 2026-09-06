@@ -148,9 +148,31 @@ git diff src/i18n/locales/en.json
 
 ## What is *not* here
 
-- **The bot's turn-by-turn instructions** ("Place the Chronossus's Exosuit on **Mine**").
-  Those are assembled inside the pure rules engine and written into the saved History as
-  finished sentences, so they need a further refactor before a key can reach them. They
-  stay English for now.
+- ~~**The bot's turn-by-turn instructions.**~~ **These ARE translatable now** (2026-08-28).
+  They used to be assembled in the engine as finished English sentences and frozen into the
+  saved History that way. The engine now returns `{key, params}` descriptors instead, so an
+  instruction is re-rendered from the catalog on every read — including in old saves. Look
+  for the `instr.*` family (234 keys) and `hist.*` (89). If you find a sentence on screen
+  with no key behind it, that is a bug worth reporting, not a limitation.
 - **Adventure card text.** Never shown to the player — it was transcribed only to derive
   each card's bot outcome, which is data, not prose.
+
+---
+
+## An example to look at: `drafts/es.json`
+
+`drafts/` holds a **work-in-progress Spanish file, kept as a worked example and nothing
+more.** It is deliberately outside the locale glob (`./locales/*.json` does not recurse),
+so it is not offered in the app and no player will ever see it. It covers about 12% of the
+surface.
+
+Read it for the *shape* — the `$locale` header, how `officialRulebook: false` is set when
+no official rulebook exists in that language, how placeholders are carried across. Read
+`drafts/GLOSSARY-es.md` beside it for how published terminology was pinned to rulebook
+pages, with ⚠ on every solo-only term that had to be inferred.
+
+**Do not treat it as a starting point to ship.** Work locally: put your own `<code>.json`
+in *this* directory, run the app (`npm run dev`), and use the review harness described
+above to see your text on every screen. The suite validates locale files in this directory
+only — a file under `drafts/` is unvalidated and drifts as the surface grows, which is
+exactly why the Spanish one is an example rather than a translation in progress.
