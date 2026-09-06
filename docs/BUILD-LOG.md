@@ -2,6 +2,43 @@
 
 Running log of implementation progress. Newest first.
 
+## 2026-09-05 — The i18n work reaches production, English-only on purpose
+
+**33 commits went from `staging` to `main`** — the whole translation effort, from the
+locale layer through the chrome sweep to the message-descriptor refactor. It had been
+sitting on staging since 2026-08-23; production was still running the pre-i18n build.
+
+**English is unchanged, and that is measured rather than asserted.** The layer is an
+override, not a relocation: the English text still lives in the catalogs the rules live in,
+`surface.ts` derives the key -> English map from them, and lookups fall back per key. The
+proof is the 36-screen text/layout/pixel diff against a `vite preview` build of the
+pre-refactor commit — identical, worst delta 0. Re-verified on the current tree before
+shipping: 573 unit tests, `pw-descriptors.mjs` green on **both** bots (no `[object Object]`,
+no raw keys on screen, a legacy saved English sentence still renders), and a signed-out pass
+over the deployed site afterwards — no page errors, no failed requests, no key leakage.
+
+**The Spanish locale was deliberately held back** (`src/i18n/locales/drafts/`). A
+`<code>.json` in `locales/` IS its own registration, so shipping it would have offered
+"Español" to every visitor at 174 of 1,450 keys — 12%. Nothing would break, since the
+fallback is per key, but a Spanish speaker who picked it would get a mostly-English UI that
+reads as broken rather than partial. It stays in the tree as a worked example of the file's
+*shape*, with `GLOSSARY-es.md` and its rulebook-pinned terminology beside it; someone
+adapting a language works locally against their own file. A pleasant consequence: the ⚙
+language row is gated on `locales.length > 1`, so with English alone there is no picker at
+all rather than a menu of one.
+
+**A stale line in the translator README was corrected on the way out.** It still told
+translators the bot's turn-by-turn instructions could not be keyed and "stay English for
+now" — false since 2026-08-28, and `instr.*` is 234 keys, the largest family in the app.
+Anyone starting from that document would have skipped it.
+
+Also shipped, unrelated: `bge_anon` now expires in 180 days rather than 365, matching the
+platform contract so this app's visitor count is comparable with the rest of the suite, with
+a test asserting it. And `src/rules/gamebrain.ts` records that Anachrony is the only one of
+GameBrain's 27 games with `PUBLIC_ACCESS` — verified end to end signed out — so the rules
+iframe's openness to strangers is a dependency someone could clear, not a property of the
+embedded path.
+
 ## 2026-08-28 — Message descriptors: finished, and the History pane speaks the locale
 
 **The refactor started on 2026-08-25 is done — all 8 features.** Archived to
