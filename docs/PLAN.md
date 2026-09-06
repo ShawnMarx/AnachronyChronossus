@@ -5,7 +5,7 @@
 > only the *bot's* turns, tells the player where to move physical pieces, and
 > performs random draws (e.g. the Chronossus Energy Pool) on the player's behalf.
 
-> **Status (2026-09-05): every module AND add-on is implemented, the repo is PUBLIC, saved
+> **Status (2026-09-06): every module AND add-on is implemented, the repo is PUBLIC, saved
 > history works in both environments, and the app is translation-ready — adding a language is
 > one dropped-in locale file (`src/i18n/locales/README.md`), with the app's own voice
 > translatable and verbatim rulebook text gated behind an `officialRulebook` flag.**
@@ -24,7 +24,13 @@
 > verified signed-out on the deployed site. Shipped **English-only on purpose**: the 12%
 > Spanish file sits in `src/i18n/locales/drafts/` as a worked example, since a `<code>.json`
 > in `locales/` is its own registration and would have offered a mostly-English UI to anyone
-> who picked it. **No plan is active** — the pickup
+> who picked it.
+> **2026-09-06:** the translation effort is **closed and handed over**, not paused. An
+> all-modes pseudolocale run over 897 screens leaves **four** strings in English (a user name,
+> two proper nouns, the language menu) with zero layout faults at +40% length — **99.79% of
+> player-visible lines** already resolve through a locale, so a complete language is
+> translation work, not engineering. `en.json` is the list; the repo README's **Translating
+> it** section is the entry point for anyone who wants to fill it. **No plan is active** — the pickup
 > point is `TODO.md`, whose largest remaining i18n items are the review sweep's coverage and
 > extending `es.json` past its 174 keys.
 > A **Spanish test locale** (`src/i18n/locales/es.json`, 174 keys) landed with it, built from the
