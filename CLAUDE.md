@@ -448,6 +448,18 @@ the ⚙ menu. `import.meta.glob` makes the file's presence its registration and 
 itself through its `$locale` header, so there is no registry, import list or enum to edit.
 Keep it that way; a change that requires a second edit to add a language is a regression.
 
+**The corollary: presence IS publication, so an unfinished locale cannot live in that
+directory.** `src/i18n/locales/drafts/` is outside the glob (it does not recurse), and that is
+where a work-in-progress file goes — `es.json` sits there at 12% of the surface as a worked
+example of the file's shape, with `GLOSSARY-es.md` beside it. Judge readiness by **screens
+reached, not keys translated**: 174 of 1,450 keys (12%) showed some Spanish on **92% of screens**,
+because the translated keys are the high-frequency chrome, so shipping it would have read as
+every screen half-broken rather than as a translation in progress. Two consequences worth
+knowing: the ⚙ language row is gated on `locales.length > 1`, so with English alone there is no
+picker at all; and the suite validates the parent directory only, so anything under `drafts/`
+is unvalidated and drifts as the surface grows. To run an EN-vs-target review, `git mv` the
+draft up, **rebuild**, serve that build, then move it back.
+
 - **It is an override layer, not a relocation.** English text stays in the catalog the rules
   live in (`chronossusTiles.ts`, `chronobotActions.ts`, `phaseMeta.ts`); `surface.ts` derives
   the `key -> English default` map from them, so a new tile or Action joins the translatable

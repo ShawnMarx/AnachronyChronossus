@@ -49,6 +49,14 @@ committed and none are planned in-house.
       keys rather than being translated as app voice. Deliberately NOT swept: debug/calibrate
       (dev-only) and anything persisted — see the convention in `CLAUDE.md`.
 
+- [ ] **`pw-descriptors.mjs` fails opaquely when its default port is taken.** It defaults to
+      `http://localhost:5199/`, which on this machine currently serves the **Marvel Champions
+      draft builder** from another session — so the harness spent 30s waiting for the text
+      `Chronobot` and died on a Playwright timeout that reads exactly like the app is broken
+      (2026-09-05; the real run against the right port was clean). Assert the page is Anachrony
+      before driving it and fail with that sentence instead. Same trap for any harness with a
+      hard-coded default port.
+
 - [ ] **Rule constants nothing renders.** `ENDGAME_TRIGGER_RULE`, `FAILED_ACTIONS`, the
       `QUANTUM_LOOPS_*` blocks and `DOOMSDAY_SETUP/DIFFICULTY/PLANNED_EXPERIMENTS_RULE` are
       exported but shown nowhere — they were pulled back out of the translatable surface so
