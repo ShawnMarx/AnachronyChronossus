@@ -12,12 +12,16 @@
 // anything shipped in `dist/` is public. Instead it uses the contract's third mode:
 //
 //   1. this file mints a random cookie in the browser  ← the only part that lives here
-//   2. nginx logs that cookie plus a signed-in boolean  ← not built yet
+//   2. nginx logs that cookie plus a signed-in boolean  ← the prod vhost, 2026-10-16
 //   3. a job on the droplet rolls the log into daily uniques and inserts them
+//      (`bge_auth_service.anon_rollup`, hourly — built 2026-10-16, Onyx first)
 //
-// Steps 2 and 3 are pending the platform's nginx rate-limiting work (`TODO.md`), so today
-// this cookie is INERT: nothing reads it, and no data leaves the browser. That is
-// deliberate — it lets the cookie age into real browsers before anything counts it.
+// **The first-visit ping.** nginx logs a page load when the request carries the cookie,
+// but the cookie is minted here, AFTER nginx has served the page that runs this — so a
+// visitor's first-ever load writes no line, and a one-time visitor is never counted. The
+// contract's fix (§"The first page load is invisible unless the app pings once"): right
+// after a fresh, verified mint, and only when not framed, GET the page once. Only a
+// browser that ran this bundle can send it, so cookie-ignoring bots stay uncounted.
 //
 // Three properties matter, and each is a rule from the contract rather than a preference:
 //
@@ -69,6 +73,22 @@ function newVisitId(): string {
 }
 
 /**
+ * One same-origin GET of the page, so nginx logs the load the mint came too late for.
+ *
+ * Never when framed: an embedded surface is not a visitor (contract, iframe section), and
+ * `window.top` throws cross-origin in some browsers, hence the guard. Fire-and-forget — a
+ * lost ping is one uncounted visitor, never a broken game.
+ */
+function pingFirstVisit(): void {
+  try {
+    if (window.top !== window) return;
+    void fetch('/', { cache: 'no-store', credentials: 'same-origin' }).catch(() => {});
+  } catch {
+    // Uncounted is the acceptable failure.
+  }
+}
+
+/**
  * Ensure this browser carries a `bge_anon` cookie, minting one if it has none.
  *
  * Safe to call on every load: an existing cookie is left exactly as it is, so a visitor's
@@ -93,7 +113,9 @@ export function ensureAnonVisitCookie(): string | null {
 
     // Blocked cookies fail silently rather than throwing, so confirm it stuck instead of
     // assuming — an unverified "we set it" is how an undercount turns into a wrong count.
-    return readCookie(COOKIE);
+    const stored = readCookie(COOKIE);
+    if (stored) pingFirstVisit();
+    return stored;
   } catch {
     return null;
   }

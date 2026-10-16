@@ -26,8 +26,16 @@ function stubCookieJar(opts: { blocked?: boolean } = {}) {
     },
   });
   vi.stubGlobal('document', doc);
-  vi.stubGlobal('window', { location: { protocol: 'https:' } });
+  const win: Record<string, unknown> = { location: { protocol: 'https:' } };
+  win.top = win; // top-level unless a test says otherwise
+  vi.stubGlobal('window', win);
+  const fetchSpy = vi.fn(() => Promise.resolve(new Response(null)));
+  vi.stubGlobal('fetch', fetchSpy);
   return {
+    fetch: fetchSpy,
+    frame: () => {
+      win.top = {};
+    },
     raw: () => jar,
     written: () => written,
     seed: (v: string) => {
@@ -123,5 +131,40 @@ describe('bge_anon — the anonymous-visitor cookie', () => {
     // nothing about the browser mixed in on the way.
     expect(id).toMatch(/^[0-9a-f]{32}$/);
     spy.mockRestore();
+  });
+
+  describe('the first-visit ping', () => {
+    // nginx logs a load only if it carried the cookie, and the cookie is minted after the
+    // page that mints it was served — so without one extra GET, a one-time visitor is
+    // never counted. Exactly one ping, only on a fresh mint, never framed.
+    it('pings the page once, same-origin, right after a fresh mint', () => {
+      ensureAnonVisitCookie();
+      expect(jar.fetch).toHaveBeenCalledOnce();
+      expect(jar.fetch).toHaveBeenCalledWith('/', { cache: 'no-store', credentials: 'same-origin' });
+    });
+
+    it('does not ping a returning visitor', () => {
+      jar.seed('bge_anon=0123456789abcdef0123456789abcdef');
+      ensureAnonVisitCookie();
+      expect(jar.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not ping when the cookie was blocked — there is nothing to log', () => {
+      jar = stubCookieJar({ blocked: true });
+      ensureAnonVisitCookie();
+      expect(jar.fetch).not.toHaveBeenCalled();
+    });
+
+    it('does not ping when embedded — a frame is not a visitor', () => {
+      jar.frame();
+      expect(ensureAnonVisitCookie()).toMatch(/^[0-9a-f]{32}$/);
+      expect(jar.fetch).not.toHaveBeenCalled();
+    });
+
+    it('survives a failing fetch', async () => {
+      jar.fetch.mockImplementation(() => Promise.reject(new Error('offline')));
+      expect(() => ensureAnonVisitCookie()).not.toThrow();
+      await Promise.resolve();
+    });
   });
 });
