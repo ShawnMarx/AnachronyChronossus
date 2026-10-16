@@ -167,7 +167,7 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       Wire it if Collapsing-Capital timing/automation is ever wanted.
 - [ ] **Narrow top bar ≤390px** — the ⚙ menu wraps to a second row (acceptable;
       could tighten button sizing/gaps if desired).
-- [~] **Anonymous-visitor counting** (2026-08-21) — the platform's `login_events` can't see
+- [x] **Anonymous-visitor counting** (2026-08-21; live 2026-10-16) — the platform's `login_events` can't see
       anyone who never signs in, which for this app is most sessions, so the admin dashboard
       would read usage as *falling* as anonymous use grows. Spec:
       `~/repos/boardgameedge/docs/CONTRACT_anonymous_usage.md`.
@@ -177,21 +177,22 @@ See `docs/complete/20260727_DEPLOY_DIGITALOCEAN_COMPLETED.md`. Staging is done �
       - [x] **Step 1 — the cookie** (`src/data/anonVisit.ts`, called from `main.tsx`):
             mints a random 128-bit **host-only** `bge_anon`, never derived from the visitor,
             never throwing, and returns null rather than claiming an id a blocked browser
-            never stored. **Inert today — nothing reads it**, which is deliberate: it lets
-            the cookie age into real browsers before anything counts it. 9 unit tests.
+            never stored. Was inert until 2026-10-16. **First-visit ping** (`d888a21`): the
+            cookie is minted after nginx served the page, so a first load carried none and a
+            one-time visitor was never counted; a fresh, verified mint now GETs `/` once
+            (never when framed). 14 unit tests.
             **Max-Age is 180 days** — normative across the suite as of 2026-09-05, not this
             app's choice: it shipped at 365 while the contract named no value, which made
             this app's visitor decay at half the rate of landing's and its count therefore
             incomparable with the rest. Asserted in a test so it can't drift back.
-      - [ ] **Step 2 — nginx** logs that cookie plus a signed-in boolean, so the *server*
-            decides anonymous-vs-authenticated. **Send the `log_format` line to the
-            `boardgameedge` session before it ships** — that is where an IP or user-agent
-            could sneak back in.
-      - [ ] **Step 3 — a local rollup job** inserts daily uniques into `bge_auth.anon_visits`
-            (`app_slug='anachrony'`). Bias it toward overlapping days: `ON CONFLICT DO
-            NOTHING` makes double-counting free, while a gap is unrecoverable.
-      **Steps 2–3 are held** until the platform's `limit_req` work, so droplet nginx is
-      touched once. Notes: host-only means staging and prod count separately, so testing
+      - [x] **Step 2 — nginx** (2026-10-16, by the `boardgameedge` session): the prod vhost
+            writes `/var/log/nginx/anachrony.anon.log` — timestamp, cookie, signed-in boolean,
+            nothing else — for top-level page GETs only. The vhost copy lives in
+            `droplet-ops/apps/anachrony/`. Prod only: staging is not counted.
+      - [x] **Step 3 — the rollup** is the platform's `bge_auth_service.anon_rollup`, hourly,
+            with `anachrony` in its `ANON_LOGS`. Rows land as `app_slug='anachrony'` in
+            `anon_visits` and as `a:<id>` uses in `app_activity`. Spec:
+            `CONTRACT_anonymous_usage.md` §"Built". Notes: host-only means staging and prod count separately, so testing
       can't contaminate the prod figure; the figure is a floor, not a census; and a cached
       shell opened offline is invisible — an undercount, the same honest direction as the
       rest of the design.
